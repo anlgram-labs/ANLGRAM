@@ -520,47 +520,67 @@ window.setRange = function(btn, range) {
   priceChart.update();
 };
 
-// ── Transactions Table ───────────────────────────────────────
-const txData = [];
-for(let i=0;i<12;i++){
-  const from = randPick(ENTITIES), to = randPick(ENTITIES.filter(e=>e!==from));
-  const isIn = Math.random()>0.5;
-  txData.push({
-    hash: shortHash(),
-    from, to,
-    amount: randInt(10000, 9000000),
-    mins: randInt(1, 480),
-    status: Math.random()>0.05?'confirmed':'pending'
-  });
+// ── Transactions Table (API Integrated) ────────────────────────
+// We use a high-volume known address to simulate the "Network Feed" for this demo
+const FEED_SOURCE = 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N'; // TON Foundation
+const tbody = document.getElementById('txBody');
+
+async function renderRealTxTable() {
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Fetching live network transactions...</td></tr>';
+  
+  try {
+    const data = await getAccountTransactions(FEED_SOURCE, 15);
+    if (!data || !data.transactions) throw new Error("No data");
+    
+    let txHtml = '';
+    data.transactions.forEach(tx => {
+      // Determine direction relative to the source to label it properly
+      const isIn = tx.in_msg && tx.in_msg.value > 0;
+      const value = isIn ? tx.in_msg.value : (tx.out_msgs && tx.out_msgs[0] ? tx.out_msgs[0].value : 0);
+      if (value === 0) return; // Skip 0 value txs
+      
+      const fromAddr = isIn ? tx.in_msg.source?.address : FEED_SOURCE;
+      const toAddr = isIn ? FEED_SOURCE : (tx.out_msgs && tx.out_msgs[0] ? tx.out_msgs[0].destination?.address : 'System');
+      
+      const fromShort = shortenAddress(fromAddr) || 'System';
+      const toShort = shortenAddress(toAddr) || 'System';
+      const status = tx.success ? 'confirmed' : 'failed';
+      
+      txHtml += `
+        <tr>
+          <td class="td-mono" style="cursor:pointer;" onclick="window.location='explorer.html?q=${tx.hash}'">${shortenAddress(tx.hash)}</td>
+          <td>
+            <div class="td-entity" style="cursor:pointer;" onclick="window.location='explorer.html?q=${fromAddr}'">
+              <div class="entity-avatar">${fromShort !== 'System' ? fromShort[0].toUpperCase() : '?'}</div>
+              <div>
+                <div style="font-size:var(--text-sm);font-weight:500;">${fromAddr === FEED_SOURCE ? 'TON Foundation' : fromShort}</div>
+                <span class="badge ${fromAddr === FEED_SOURCE ? 'badge-green' : 'badge-muted'}" style="margin-top:2px;">${fromAddr === FEED_SOURCE ? 'DAO' : 'Wallet'}</span>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="td-entity" style="cursor:pointer;" onclick="window.location='explorer.html?q=${toAddr}'">
+              <div class="entity-avatar">${toShort !== 'System' ? toShort[0].toUpperCase() : '?'}</div>
+              <span style="font-size:var(--text-sm);font-weight:500;">${toAddr === FEED_SOURCE ? 'TON Foundation' : toShort}</span>
+            </div>
+          </td>
+          <td style="font-family:var(--font-mono);font-weight:600;color:${isIn ? 'var(--green)' : 'var(--red)'};">${isIn ? '+' : '-'}${formatNanoTon(value)} GRAM</td>
+          <td style="color:var(--text-secondary);font-size:var(--text-xs);">${timeAgoTimestamp(tx.utime)}</td>
+          <td><span class="badge ${status === 'confirmed' ? 'badge-green' : 'badge-red'}">${status}</span></td>
+        </tr>
+      `;
+    });
+    
+    tbody.innerHTML = txHtml || '<tr><td colspan="6" style="text-align:center;">No recent large transactions found.</td></tr>';
+  } catch(e) {
+    console.error(e);
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);">Error loading live transactions</td></tr>';
+  }
 }
 
-function renderTxTable() {
-  const tbody = document.getElementById('txBody');
-  tbody.innerHTML = txData.map(tx => `
-    <tr onclick="window.location='explorer.html?tx=${tx.hash}'">
-      <td class="td-mono">${tx.hash}</td>
-      <td>
-        <div class="td-entity">
-          <div class="entity-avatar">${tx.from[0]}</div>
-          <div>
-            <div style="font-size:var(--text-sm);font-weight:500;">${tx.from}</div>
-            <span class="badge ${ENTITY_BADGES[tx.from]||'badge-muted'}" style="margin-top:2px;">${ENTITY_LABELS[tx.from]||'Unknown'}</span>
-          </div>
-        </div>
-      </td>
-      <td>
-        <div class="td-entity">
-          <div class="entity-avatar">${tx.to[0]}</div>
-          <span style="font-size:var(--text-sm);font-weight:500;">${tx.to}</span>
-        </div>
-      </td>
-      <td style="font-family:var(--font-mono);font-weight:600;">${fmtGram(tx.amount)}</td>
-      <td style="color:var(--text-secondary);font-size:var(--text-xs);">${timeAgo(tx.mins)}</td>
-      <td><span class="badge ${tx.status==='confirmed'?'badge-green':'badge-yellow'}">${tx.status}</span></td>
-    </tr>
-  `).join('');
-}
-renderTxTable();
+// Fetch table on load and every 30s
+renderRealTxTable();
+setInterval(renderRealTxTable, 30000);
 
 // ── Exchange Flow Bars ───────────────────────────────────────
 const exchangeFlows = [
