@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="assets/css/design-system.css"/>
   <link rel="stylesheet" href="assets/css/layout.css"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
+  <script src="assets/js/api.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     /* Search Bar Large */
@@ -295,48 +296,14 @@
 </div>
 
 <script>
-// Mock TX History
-const tbody = document.getElementById('txHistoryBody');
-const mockCounterparties = ['OKX Wallet 3', 'DeDust LP', 'Unknown 0xF4...9B', 'Ston.fi Pool', 'Gate.io', 'Whale #447'];
-let txHtml = '';
-
-for(let i=0; i<12; i++) {
-  const isIn = Math.random() > 0.4; // Binance gets lots of deposits
-  const amount = Math.floor(Math.random() * 500000) + 1000;
-  const cp = mockCounterparties[Math.floor(Math.random()*mockCounterparties.length)];
-  const typeBadge = isIn 
-    ? `<span class="badge badge-green">Deposit</span>` 
-    : `<span class="badge badge-red">Withdrawal</span>`;
-  const amtStyle = isIn ? 'color:var(--green);' : 'color:var(--red);';
-  const prefix = isIn ? '+' : '-';
-  const hash = '0x'+Math.random().toString(16).substr(2,8);
-  
-  txHtml += `
-    <tr>
-      <td style="color:var(--text-secondary);font-size:var(--text-xs);">${i}h ago</td>
-      <td>${typeBadge}</td>
-      <td>
-        <div class="td-entity">
-          <div class="entity-avatar" style="width:20px;height:20px;font-size:9px;">${cp[0]}</div>
-          <span>${cp}</span>
-        </div>
-      </td>
-      <td style="font-family:var(--font-mono);font-weight:600;${amtStyle}">${prefix}${new Intl.NumberFormat().format(amount)}</td>
-      <td class="td-mono">${hash}..</td>
-    </tr>
-  `;
-}
-tbody.innerHTML = txHtml;
-
-// Charts
+// Charts Initialization (Keeping as visual representations for now)
 Chart.defaults.color = '#8a8a9a';
 Chart.defaults.font.family = 'Inter';
 
-// Donut Chart
 new Chart(document.getElementById('cpChart').getContext('2d'), {
   type: 'doughnut',
   data: {
-    labels: ['OKX', 'DeDust', 'Gate.io', 'Other'],
+    labels: ['Exchange', 'DeFi', 'Wallet', 'Other'],
     datasets: [{
       data: [45, 25, 15, 15],
       backgroundColor: ['#0088CC', '#00CFFF', '#a855f7', '#252530'],
@@ -344,13 +311,9 @@ new Chart(document.getElementById('cpChart').getContext('2d'), {
       cutout: '75%'
     }]
   },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } }
-  }
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
 });
 
-// Line Chart
 const balData = []; let b = 40;
 for(let i=0;i<30;i++){ b+=(Math.random()-0.45)*2; balData.push(b); }
 new Chart(document.getElementById('balChart').getContext('2d'), {
@@ -358,8 +321,7 @@ new Chart(document.getElementById('balChart').getContext('2d'), {
   data: {
     labels: Array.from({length:30}, (_,i)=>i),
     datasets: [{
-      data: balData,
-      borderColor: '#00CFFF', borderWidth: 2, tension: 0.4, pointRadius: 0,
+      data: balData, borderColor: '#00CFFF', borderWidth: 2, tension: 0.4, pointRadius: 0,
       backgroundColor: (ctx) => {
         const g = ctx.chart.ctx.createLinearGradient(0,0,0,150);
         g.addColorStop(0,'rgba(0,207,255,0.2)'); g.addColorStop(1,'rgba(0,207,255,0)');
@@ -367,30 +329,119 @@ new Chart(document.getElementById('balChart').getContext('2d'), {
       }, fill: true
     }]
   },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: { x: { display: false }, y: { display: false, min: Math.min(...balData)-5 } }
-  }
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false, min: Math.min(...balData)-5 } } }
 });
 
-// Search Logic Simulation
+// Search Logic Integration
 const input = document.getElementById('searchInput');
 const res = document.getElementById('explorerResult');
 const empty = document.getElementById('emptyState');
+const tbody = document.getElementById('txHistoryBody');
 
+async function performSearch(query) {
+  if (!query) {
+    res.style.display = 'none';
+    empty.style.display = 'flex';
+    return;
+  }
+  
+  // Show loading state (can be enhanced with CSS spinner)
+  empty.style.display = 'none';
+  res.style.display = 'block';
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;">Fetching live on-chain data...</td></tr>';
+  
+  try {
+    // 1. Fetch Account Info
+    const acc = await getAccountInfo(query);
+    if (acc && !acc.error) {
+      document.querySelector('.entity-name').textContent = acc.name || 'Unknown Wallet';
+      document.querySelector('.entity-address span').textContent = shortenAddress(acc.address);
+      document.querySelector('.entity-avatar-large').textContent = (acc.name ? acc.name[0] : 'U').toUpperCase();
+      
+      const balStr = formatNanoTon(acc.balance);
+      document.querySelector('.entity-stat-val').textContent = balStr + ' GRAM';
+      
+      const price = await getTonPrice();
+      const usdVal = parseFloat(balStr.replace(/,/g, '')) * price;
+      document.querySelector('.stat-usd').textContent = '≈ $' + usdVal.toLocaleString('en-US', {maximumFractionDigits:2});
+      
+      // Update badge if recognizable
+      const badge = document.querySelector('.entity-header .badge');
+      if (acc.is_wallet) {
+        badge.className = 'badge badge-cyan';
+        badge.textContent = 'Wallet';
+      } else {
+        badge.className = 'badge badge-muted';
+        badge.textContent = 'Contract';
+      }
+    } else {
+      document.querySelector('.entity-name').textContent = 'Address Not Found';
+      document.querySelector('.entity-stat-val').textContent = '0 GRAM';
+    }
+
+    // 2. Fetch Transactions
+    const data = await getAccountTransactions(query, 12);
+    if (data && data.transactions) {
+      let txHtml = '';
+      data.transactions.forEach(tx => {
+        // Simplified parsing for demo: check if it's an incoming or outgoing transfer
+        // TonAPI tx structure can be complex, checking in_msg vs out_msgs
+        const isIn = tx.in_msg && tx.in_msg.value > 0 && tx.in_msg.source && tx.in_msg.destination?.address === acc?.address;
+        const value = isIn ? tx.in_msg.value : (tx.out_msgs && tx.out_msgs[0] ? tx.out_msgs[0].value : 0);
+        
+        const typeBadge = isIn 
+          ? `<span class="badge badge-green">Deposit</span>` 
+          : `<span class="badge badge-red">Withdrawal</span>`;
+        const amtStyle = isIn ? 'color:var(--green);' : 'color:var(--red);';
+        const prefix = isIn ? '+' : '-';
+        
+        // Counterparty
+        const cpAddr = isIn ? tx.in_msg.source?.address : (tx.out_msgs && tx.out_msgs[0] ? tx.out_msgs[0].destination?.address : 'Internal');
+        const cpShort = shortenAddress(cpAddr) || 'System';
+        
+        txHtml += `
+          <tr>
+            <td style="color:var(--text-secondary);font-size:var(--text-xs);">${timeAgoTimestamp(tx.utime)}</td>
+            <td>${typeBadge}</td>
+            <td>
+              <div class="td-entity">
+                <div class="entity-avatar" style="width:20px;height:20px;font-size:9px;">${cpShort[0]?.toUpperCase() || '?'}</div>
+                <span class="td-mono">${cpShort}</span>
+              </div>
+            </td>
+            <td style="font-family:var(--font-mono);font-weight:600;${amtStyle}">${prefix}${formatNanoTon(value)}</td>
+            <td class="td-mono">${shortenAddress(tx.hash)}</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = txHtml || '<tr><td colspan="5" style="text-align:center;">No recent transactions</td></tr>';
+    } else {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Could not load transactions</td></tr>';
+    }
+  } catch(e) {
+    console.error(e);
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);">Error connecting to TON API</td></tr>';
+  }
+}
+
+// Global Search Event
 input.addEventListener('keydown', (e) => {
   if(e.key === 'Enter') {
-    if(input.value.trim() === '') {
-      res.style.display = 'none';
-      empty.style.display = 'flex';
-    } else {
-      empty.style.display = 'none';
-      res.style.display = 'block';
-      // in real app, fetch data here
-    }
+    performSearch(input.value.trim());
   }
 });
+
+// Check if there's a query param on load (e.g. clicked from dashboard)
+const urlParams = new URLSearchParams(window.location.search);
+const initialQuery = urlParams.get('q');
+if (initialQuery) {
+  input.value = initialQuery;
+  performSearch(initialQuery);
+} else {
+  // Default search to clear state
+  input.value = '';
+  performSearch('');
+}
 </script>
 </body>
 </html>

@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="assets/css/design-system.css"/>
   <link rel="stylesheet" href="assets/css/layout.css"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
+  <script src="assets/js/api.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     .dashboard-layout {
@@ -621,31 +622,41 @@ document.getElementById('topEntities').innerHTML = topEntData.map((e,i) => `
   </div>
 `).join('');
 
-// ── Live Updates ─────────────────────────────────────────────
-let gramPrice = 2.47;
-setInterval(() => {
-  gramPrice += (Math.random()-0.48)*0.015;
-  gramPrice = Math.max(2.2, Math.min(2.8, gramPrice));
+// ── Live Updates (API Integrated) ────────────────────────────
+let currentPrice = 2.47;
+
+async function updateLivePrice() {
+  const price = await getTonPrice();
+  if (!price) return;
+  currentPrice = price;
+  
   const priceEl = document.getElementById('m-price');
   const topPrice = document.getElementById('topbar-price');
   const chartPrice = document.getElementById('chart-price');
-  if(priceEl) priceEl.textContent = '$'+gramPrice.toFixed(4);
-  if(topPrice) topPrice.textContent = '$'+gramPrice.toFixed(2);
-  if(chartPrice) chartPrice.textContent = '$'+gramPrice.toFixed(4);
+  
+  if(priceEl) priceEl.textContent = '$' + price.toFixed(4);
+  if(topPrice) topPrice.textContent = '$' + price.toFixed(2);
+  if(chartPrice) chartPrice.textContent = '$' + price.toFixed(4);
 
   // Add new price to chart
-  priceChart.data.labels.push('now');
-  priceChart.data.datasets[0].data.push(+gramPrice.toFixed(4));
+  const now = new Date();
+  priceChart.data.labels.push(now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0'));
+  priceChart.data.datasets[0].data.push(+price.toFixed(4));
+  
   if(priceChart.data.labels.length > 30) {
     priceChart.data.labels.shift();
     priceChart.data.datasets[0].data.shift();
   }
   priceChart.update('none');
 
-  // Update TPS
+  // Update TPS (mocked for now as TPS is not directly available via basic endpoints)
   const tpsEl = document.getElementById('m-tps');
   if(tpsEl) tpsEl.textContent = randInt(110, 180);
-}, 3000);
+}
+
+// Fetch price immediately, then every 10 seconds
+updateLivePrice();
+setInterval(updateLivePrice, 10000);
 
 // Search redirect
 document.getElementById('globalSearch').addEventListener('keydown', e => {
