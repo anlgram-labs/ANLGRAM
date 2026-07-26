@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Flow Visualizer — ANLGRAM Intelligence</title>
+  <meta name="description" content="Interactive D3.js network graph mapping fund flows on the TON blockchain."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/css/design-system.css"/>
+  <link rel="stylesheet" href="assets/css/layout.css"/>
+  <link rel="stylesheet" href="assets/css/animations.css"/>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    /* Visualizer specific overrides */
+    body, html { height: 100%; margin: 0; overflow: hidden; }
+    .app-shell { height: 100vh; }
+    
+    .main-content {
+      display: flex; flex-direction: column; height: 100vh;
+      overflow: hidden; padding: 0;
+    }
+
+    /* Topbar adjustments for fullscreen */
+    .topbar {
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(6,6,8,0.8);
+      backdrop-filter: blur(10px);
+      z-index: 10; padding: 0 var(--space-4);
+    }
+    
+    /* Viz Container */
+    .viz-container {
+      flex: 1; position: relative; background: var(--bg-void);
+      overflow: hidden;
+    }
+
+    #vizCanvas { width: 100%; height: 100%; cursor: grab; }
+    #vizCanvas:active { cursor: grabbing; }
+
+    /* Overlay UI */
+    .viz-overlay-top {
+      position: absolute; top: var(--space-4); left: var(--space-4); right: var(--space-4);
+      display: flex; justify-content: space-between; pointer-events: none; z-index: 5;
+    }
+    .viz-overlay-bottom {
+      position: absolute; bottom: var(--space-4); right: var(--space-4);
+      display: flex; gap: var(--space-2); pointer-events: none; z-index: 5;
+    }
+    
+    .viz-panel {
+      pointer-events: auto;
+      background: rgba(10, 10, 14, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      box-shadow: var(--shadow-lg);
+      color: var(--text-primary);
+    }
+
+    .viz-controls {
+      display: flex; gap: var(--space-2); align-items: center;
+    }
+
+    .ctrl-btn {
+      width: 32px; height: 32px;
+      border-radius: var(--radius-md);
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: var(--transition-fast);
+      pointer-events: auto;
+    }
+    .ctrl-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    
+    /* D3 SVG Styles */
+    .link { stroke-opacity: 0.6; }
+    .node-circle { stroke: var(--bg-void); stroke-width: 2px; transition: stroke 0.2s; }
+    .node-circle:hover { stroke: var(--text-primary); }
+    .node-label { font-family: var(--font-mono); font-size: 10px; fill: var(--text-secondary); pointer-events: none; }
+    
+    .node-halo { fill: none; stroke: var(--cyan); stroke-width: 1px; opacity: 0; transition: 0.3s; }
+    .node.active .node-halo { opacity: 0.4; animation: cyanPulse 2s infinite; }
+
+    /* Entity Sidebar (Right) */
+    .viz-entity-panel {
+      position: absolute; top: var(--space-4); right: -320px;
+      width: 300px; bottom: var(--space-4);
+      pointer-events: auto; transition: right 0.3s ease;
+      display: flex; flex-direction: column; gap: var(--space-4);
+      overflow-y: auto;
+    }
+    .viz-entity-panel.open { right: var(--space-4); }
+
+    .panel-close {
+      position: absolute; top: var(--space-2); right: var(--space-2);
+      background: transparent; border: none; color: var(--text-muted); cursor: pointer;
+    }
+    .panel-close:hover { color: var(--text-primary); }
+
+    /* Key Legend */
+    .legend {
+      display: flex; flex-direction: column; gap: var(--space-2);
+      font-size: var(--text-xs); color: var(--text-muted);
+    }
+    .legend-item { display: flex; align-items: center; gap: var(--space-2); }
+    .legend-color { width: 10px; height: 10px; border-radius: 50%; }
+
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar" style="z-index: 20;">
+    <a href="index.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon">A</div>
+      <span class="sidebar-logo-text">ANLGRAM</span>
+    </a>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Analytics</div>
+      <a href="dashboard.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="explorer.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Entity Explorer
+      </a>
+      <a href="visualizer.html" class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49"/></svg>
+        Flow Visualizer
+      </a>
+      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Intelligence</div>
+      <a href="intel-exchange.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Intel Exchange
+      </a>
+      <a href="alerts.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Alerts
+      </a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div class="topbar-search" style="pointer-events:auto;">
+        <svg class="topbar-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="vizSearch" placeholder="Enter address or entity to trace flows..." autocomplete="off"/>
+      </div>
+      <div class="topbar-actions" style="pointer-events:auto;">
+        <button class="btn btn-primary btn-sm">Generate Graph</button>
+      </div>
+    </header>
+
+    <div class="viz-container">
+      <svg id="vizCanvas"></svg>
+
+      <div class="viz-overlay-top">
+        <div class="viz-panel animate-fade-down">
+          <div style="font-weight:600; margin-bottom:var(--space-3); font-size:var(--text-sm);">Network Map Legend</div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-color" style="background:#0088CC;"></div> Exchanges</div>
+            <div class="legend-item"><div class="legend-color" style="background:#00CFFF;"></div> DeFi Protocols</div>
+            <div class="legend-item"><div class="legend-color" style="background:#e89a3c;"></div> Whales</div>
+            <div class="legend-item"><div class="legend-color" style="background:#a855f7;"></div> Funds / DAOs</div>
+            <div class="legend-item"><div class="legend-color" style="background:#4a4a5a;"></div> Unknown Wallets</div>
+          </div>
+          <div style="margin-top:var(--space-3); padding-top:var(--space-3); border-top:1px solid var(--border-subtle);">
+            <div class="legend-item">
+              <svg width="24" height="6"><line x1="0" y1="3" x2="24" y2="3" stroke="var(--green)" stroke-width="2" opacity="0.6"/></svg> Inflow
+            </div>
+            <div class="legend-item" style="margin-top:4px;">
+              <svg width="24" height="6"><line x1="0" y1="3" x2="24" y2="3" stroke="var(--red)" stroke-width="2" opacity="0.6"/></svg> Outflow
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="viz-overlay-bottom">
+        <button class="ctrl-btn" onclick="zoomIn()" title="Zoom In"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <button class="ctrl-btn" onclick="zoomOut()" title="Zoom Out"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <button class="ctrl-btn" onclick="resetZoom()" title="Reset"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></button>
+      </div>
+
+      <!-- Detail Panel -->
+      <div id="entityPanel" class="viz-panel viz-entity-panel">
+        <button class="panel-close" onclick="closePanel()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        
+        <div style="display:flex; align-items:center; gap:var(--space-3); margin-top:var(--space-2);">
+          <div id="panelAvatar" style="width:40px;height:40px;border-radius:var(--radius-md);background:var(--ton-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;"></div>
+          <div>
+            <div id="panelName" style="font-weight:700; font-size:var(--text-lg);"></div>
+            <div id="panelType" class="badge badge-blue" style="margin-top:2px;"></div>
+          </div>
+        </div>
+
+        <div style="font-family:var(--font-mono); font-size:var(--text-xs); color:var(--text-muted); background:var(--bg-input); padding:4px 8px; border-radius:var(--radius-sm); margin-top:var(--space-2);">
+          EQD...x8Kp
+        </div>
+
+        <div style="margin-top:var(--space-4);">
+          <div style="font-size:var(--text-xs); color:var(--text-muted); margin-bottom:4px;">Total Volume (30d)</div>
+          <div id="panelVol" style="font-size:var(--text-xl); font-family:var(--font-mono); font-weight:700;"></div>
+        </div>
+
+        <div style="margin-top:var(--space-2);">
+          <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="window.location='explorer.html'">View Full Profile →</button>
+        </div>
+
+        <div style="border-top:1px solid var(--border-subtle); padding-top:var(--space-4); margin-top:var(--space-4);">
+          <div style="font-size:var(--text-xs); color:var(--text-muted); margin-bottom:var(--space-3); font-weight:600; text-transform:uppercase;">Connected Entities</div>
+          <div id="panelLinks" style="display:flex; flex-direction:column; gap:var(--space-2);">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+// ── D3.js Network Visualization ────────────────────────────────
+const nodesData = [
+  { id: 'Binance', group: 'exchange', vol: 1500, label: 'Binance Hot Wallet' },
+  { id: 'OKX', group: 'exchange', vol: 800, label: 'OKX Wallet 3' },
+  { id: 'DeDust', group: 'defi', vol: 600, label: 'DeDust LP' },
+  { id: 'Stonfi', group: 'defi', vol: 500, label: 'Ston.fi Pool' },
+  { id: 'Whale1', group: 'whale', vol: 300, label: 'Whale #447' },
+  { id: 'Whale2', group: 'whale', vol: 200, label: 'Whale #89' },
+  { id: 'Foundation', group: 'dao', vol: 450, label: 'TON Foundation' },
+  { id: 'Gateio', group: 'exchange', vol: 120, label: 'Gate.io' },
+  { id: 'Unk1', group: 'unknown', vol: 80, label: '0xF4..9B' },
+  { id: 'Unk2', group: 'unknown', vol: 60, label: '0xA1..2C' },
+  { id: 'Unk3', group: 'unknown', vol: 40, label: '0x33..DF' },
+];
+
+const linksData = [
+  { source: 'Binance', target: 'DeDust', value: 120, type: 'out' },
+  { source: 'OKX', target: 'Binance', value: 80, type: 'in' },
+  { source: 'Whale1', target: 'Binance', value: 200, type: 'in' },
+  { source: 'Foundation', target: 'Stonfi', value: 150, type: 'out' },
+  { source: 'DeDust', target: 'Whale1', value: 50, type: 'out' },
+  { source: 'Stonfi', target: 'OKX', value: 90, type: 'in' },
+  { source: 'Gateio', target: 'Unk1', value: 30, type: 'out' },
+  { source: 'Unk1', target: 'Binance', value: 60, type: 'in' },
+  { source: 'Whale2', target: 'DeDust', value: 110, type: 'out' },
+  { source: 'Unk2', target: 'Foundation', value: 40, type: 'in' },
+  { source: 'Binance', target: 'Unk3', value: 20, type: 'out' },
+];
+
+const colors = {
+  exchange: '#0088CC', defi: '#00CFFF', whale: '#e89a3c', dao: '#a855f7', unknown: '#4a4a5a'
+};
+
+const width = window.innerWidth - 240; // minus sidebar
+const height = window.innerHeight - 60; // minus topbar
+
+const svg = d3.select("#vizCanvas")
+  .attr("viewBox", [0, 0, width, height]);
+
+const g = svg.append("g"); // for zooming
+
+// Zoom behavior
+const zoom = d3.zoom()
+  .scaleExtent([0.1, 4])
+  .on("zoom", (event) => {
+    g.attr("transform", event.transform);
+  });
+svg.call(zoom);
+
+// Force simulation
+const simulation = d3.forceSimulation(nodesData)
+  .force("link", d3.forceLink(linksData).id(d => d.id).distance(120))
+  .force("charge", d3.forceManyBody().strength(-400))
+  .force("center", d3.forceCenter(width / 2, height / 2))
+  .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.vol) + 10));
+
+// Defs for arrows/gradients
+const defs = svg.append("defs");
+
+// Links
+const link = g.append("g")
+  .selectAll("line")
+  .data(linksData)
+  .join("line")
+  .attr("class", "link")
+  .attr("stroke-width", d => Math.sqrt(d.value) * 0.5)
+  .attr("stroke", d => d.type === 'in' ? 'var(--green)' : 'var(--red)');
+
+// Nodes
+const node = g.append("g")
+  .selectAll("g")
+  .data(nodesData)
+  .join("g")
+  .attr("class", "node")
+  .call(drag(simulation))
+  .on("click", handleNodeClick);
+
+// Node Halos (for active state)
+node.append("circle")
+  .attr("class", "node-halo")
+  .attr("r", d => Math.sqrt(d.vol) * 1.5 + 5);
+
+node.append("circle")
+  .attr("class", "node-circle")
+  .attr("r", d => Math.max(8, Math.sqrt(d.vol) * 1.5))
+  .attr("fill", d => colors[d.group]);
+
+node.append("text")
+  .attr("class", "node-label")
+  .attr("dx", d => Math.sqrt(d.vol) * 1.5 + 8)
+  .attr("dy", 4)
+  .text(d => d.label);
+
+simulation.on("tick", () => {
+  link
+    .attr("x1", d => d.source.x)
+    .attr("y1", d => d.source.y)
+    .attr("x2", d => d.target.x)
+    .attr("y2", d => d.target.y);
+
+  node.attr("transform", d => `translate(${d.x},${d.y})`);
+});
+
+// Drag behavior
+function drag(simulation) {
+  function dragstarted(event) {
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    event.subject.fx = event.subject.x;
+    event.subject.fy = event.subject.y;
+  }
+  function dragged(event) {
+    event.subject.fx = event.x;
+    event.subject.fy = event.y;
+  }
+  function dragended(event) {
+    if (!event.active) simulation.alphaTarget(0);
+    event.subject.fx = null;
+    event.subject.fy = null;
+  }
+  return d3.drag()
+    .on("start", dragstarted)
+    .on("drag", dragged)
+    .on("end", dragended);
+}
+
+// UI Controls
+window.zoomIn = () => svg.transition().duration(300).call(zoom.scaleBy, 1.2);
+window.zoomOut = () => svg.transition().duration(300).call(zoom.scaleBy, 0.8);
+window.resetZoom = () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(0,0).scale(1));
+
+// Panel Logic
+const panel = document.getElementById('entityPanel');
+function handleNodeClick(event, d) {
+  // Update selection style
+  node.classed("active", n => n.id === d.id);
+  
+  // Highlight connected links
+  link.attr("stroke-opacity", l => (l.source.id === d.id || l.target.id === d.id) ? 1 : 0.1);
+  node.attr("opacity", n => {
+    if(n.id === d.id) return 1;
+    const isConnected = linksData.some(l => (l.source.id === d.id && l.target.id === n.id) || (l.target.id === d.id && l.source.id === n.id));
+    return isConnected ? 1 : 0.3;
+  });
+
+  // Populate Panel
+  document.getElementById('panelName').textContent = d.label;
+  document.getElementById('panelAvatar').textContent = d.label[0];
+  document.getElementById('panelAvatar').style.background = colors[d.group];
+  document.getElementById('panelType').textContent = d.group.toUpperCase();
+  document.getElementById('panelType').className = `badge ${d.group==='exchange'?'badge-blue':d.group==='defi'?'badge-cyan':d.group==='whale'?'badge-orange':'badge-muted'}`;
+  document.getElementById('panelVol').textContent = new Intl.NumberFormat().format(d.vol * 100000) + ' GRAM';
+
+  // Connected List
+  const connected = linksData.filter(l => l.source.id === d.id || l.target.id === d.id);
+  document.getElementById('panelLinks').innerHTML = connected.map(l => {
+    const isSource = l.source.id === d.id;
+    const other = isSource ? l.target : l.source;
+    const prefix = l.type === 'in' ? '+' : '-';
+    const color = l.type === 'in' ? 'var(--green)' : 'var(--red)';
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:var(--text-sm); padding:6px; background:rgba(255,255,255,0.02); border-radius:4px;">
+        <span style="color:var(--text-primary);">${other.label}</span>
+        <span style="font-family:var(--font-mono); color:${color}; font-weight:600;">${prefix}${l.value}K</span>
+      </div>
+    `;
+  }).join('');
+
+  panel.classList.add('open');
+}
+
+window.closePanel = () => {
+  panel.classList.remove('open');
+  node.classed("active", false).attr("opacity", 1);
+  link.attr("stroke-opacity", 0.6);
+};
+
+// Search simulation
+document.getElementById('vizSearch').addEventListener('keydown', e => {
+  if(e.key === 'Enter') {
+    const val = e.target.value.toLowerCase();
+    const found = nodesData.find(n => n.label.toLowerCase().includes(val));
+    if(found) {
+      // Center on node and select
+      svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity.translate(width/2 - found.x, height/2 - found.y).scale(1.5));
+      handleNodeClick(null, found);
+    }
+  }
+});
+</script>
+</body>
+</html>

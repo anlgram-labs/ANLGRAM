@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Intel Exchange — ANLGRAM Intelligence</title>
+  <meta name="description" content="Decentralized intelligence exchange for the TON blockchain."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/css/design-system.css"/>
+  <link rel="stylesheet" href="assets/css/layout.css"/>
+  <link rel="stylesheet" href="assets/css/animations.css"/>
+  <style>
+    /* Exchange Layout */
+    .exchange-header {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      margin-bottom: var(--space-8); padding-bottom: var(--space-4);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .stats-row {
+      display: flex; gap: var(--space-8);
+    }
+    .stat-item {
+      display: flex; flex-direction: column;
+    }
+    .stat-val { font-size: var(--text-xl); font-family: var(--font-mono); font-weight: 700; color: var(--cyan); }
+    .stat-lbl { font-size: var(--text-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+    .tabs {
+      display: flex; gap: var(--space-4); margin-bottom: var(--space-6);
+    }
+    .tab {
+      padding: var(--space-2) 0; font-size: var(--text-sm); font-weight: 600;
+      color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent;
+      transition: var(--transition-fast);
+    }
+    .tab:hover { color: var(--text-primary); }
+    .tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
+    /* Bounty Grid */
+    .bounty-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: var(--space-5);
+    }
+
+    .bounty-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      transition: var(--transition-fast);
+      display: flex; flex-direction: column;
+      position: relative; overflow: hidden;
+    }
+    .bounty-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+    .bounty-card::before {
+      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+      background: var(--grad-primary); opacity: 0; transition: 0.2s;
+    }
+    .bounty-card:hover::before { opacity: 1; }
+
+    .bounty-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-3); }
+    .bounty-reward { font-size: var(--text-2xl); font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); }
+    .bounty-usd { font-size: var(--text-xs); color: var(--text-muted); font-family: var(--font-mono); }
+    
+    .bounty-title { font-size: var(--text-md); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); line-height: 1.4; }
+    .bounty-desc { font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.6; margin-bottom: var(--space-4); flex: 1; }
+
+    .bounty-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-top: var(--space-4); border-top: 1px solid var(--border-subtle);
+      font-size: var(--text-xs); color: var(--text-muted);
+    }
+
+    /* Modal for New Bounty */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center; z-index: 100;
+    }
+    .modal {
+      background: var(--bg-card); border: 1px solid var(--border-accent);
+      border-radius: var(--radius-xl); width: 100%; max-width: 500px;
+      padding: var(--space-6); position: relative;
+    }
+    .form-group { margin-bottom: var(--space-4); }
+    .form-label { display: block; font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-2); color: var(--text-primary); }
+    .form-input {
+      width: 100%; padding: var(--space-3); background: var(--bg-input);
+      border: 1px solid var(--border-default); border-radius: var(--radius-md);
+      color: var(--text-primary); font-family: var(--font-mono);
+    }
+    .form-input:focus { outline: none; border-color: var(--ton-blue); }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <a href="index.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon">A</div>
+      <span class="sidebar-logo-text">ANLGRAM</span>
+    </a>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Analytics</div>
+      <a href="dashboard.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="explorer.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Entity Explorer
+      </a>
+      <a href="visualizer.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49"/></svg>
+        Flow Visualizer
+      </a>
+      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Intelligence</div>
+      <a href="intel-exchange.html" class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Intel Exchange
+      </a>
+      <a href="alerts.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Alerts
+      </a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div style="flex:1;"></div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('modal').style.display='flex'">Connect Wallet</button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <div class="exchange-header animate-fade-up">
+        <div>
+          <h1 class="page-title">Intel Exchange</h1>
+          <p class="page-subtitle">Buy and sell on-chain intelligence. Post bounties to crowdsource investigations.</p>
+        </div>
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="stat-val">12,450 GRAM</span>
+            <span class="stat-lbl">Total Paid Out</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-val">142</span>
+            <span class="stat-lbl">Active Bounties</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-val">89</span>
+            <span class="stat-lbl">Intel Auctions</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs animate-fade-up delay-1">
+        <div class="tab active">Open Bounties</div>
+        <div class="tab">Intel Auctions</div>
+        <div class="tab">My Submissions</div>
+        <div style="flex:1;"></div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal').style.display='flex'">+ Post Bounty</button>
+      </div>
+
+      <div class="bounty-grid animate-fade-up delay-2">
+        
+        <!-- Bounty Card -->
+        <div class="bounty-card">
+          <div class="bounty-header">
+            <div>
+              <div class="bounty-reward">500 GRAM</div>
+              <div class="bounty-usd">≈ $1,235 USD</div>
+            </div>
+            <span class="badge badge-yellow">Open</span>
+          </div>
+          <h3 class="bounty-title">Identify wallet draining $2M from DeDust</h3>
+          <p class="bounty-desc">Need exact entity identification for address EQCx8...9aB2 involved in the DeDust LP drain on July 24.</p>
+          <div class="bounty-meta">
+            <span>12 Submissions</span>
+            <span>Ends in 2 days</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;">View Details</button>
+        </div>
+
+        <div class="bounty-card">
+          <div class="bounty-header">
+            <div>
+              <div class="bounty-reward">1,200 GRAM</div>
+              <div class="bounty-usd">≈ $2,964 USD</div>
+            </div>
+            <span class="badge badge-yellow">Open</span>
+          </div>
+          <h3 class="bounty-title">Trace large withdrawal from Binance</h3>
+          <p class="bounty-desc">Target: 0xF4...9B. Wallet withdrew 45M GRAM and split it across 20 addresses. Need complete visual flow map.</p>
+          <div class="bounty-meta">
+            <span>3 Submissions</span>
+            <span>Ends in 5 days</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;">View Details</button>
+        </div>
+
+        <div class="bounty-card" style="opacity: 0.6;">
+          <div class="bounty-header">
+            <div>
+              <div class="bounty-reward" style="color:var(--text-muted);">250 GRAM</div>
+              <div class="bounty-usd">≈ $617 USD</div>
+            </div>
+            <span class="badge badge-green">Solved</span>
+          </div>
+          <h3 class="bounty-title">Identify top whale accumulating GRAM</h3>
+          <p class="bounty-desc">Who is behind the wallet that bought 1.2M GRAM over the last week via Ston.fi?</p>
+          <div class="bounty-meta">
+            <span>28 Submissions</span>
+            <span>Solved by @0xAnalyst</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:var(--space-3);width:100%;" disabled>Completed</button>
+        </div>
+
+        <div class="bounty-card">
+          <div class="bounty-header">
+            <div>
+              <div class="bounty-reward">3,000 GRAM</div>
+              <div class="bounty-usd">≈ $7,410 USD</div>
+            </div>
+            <span class="badge badge-yellow">Open</span>
+          </div>
+          <h3 class="bounty-title">Full entity map of TON DEX arbitrage bot</h3>
+          <p class="bounty-desc">Need a comprehensive mapping of all wallets and smart contracts used by the primary arbitrage bot between DeDust and Ston.fi.</p>
+          <div class="bounty-meta">
+            <span>5 Submissions</span>
+            <span>Ends in 12 days</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;">View Details</button>
+        </div>
+        
+        <div class="bounty-card">
+          <div class="bounty-header">
+            <div>
+              <div class="bounty-reward">150 GRAM</div>
+              <div class="bounty-usd">≈ $370 USD</div>
+            </div>
+            <span class="badge badge-yellow">Open</span>
+          </div>
+          <h3 class="bounty-title">Label unknown CEX deposit addresses</h3>
+          <p class="bounty-desc">We have a list of 50 addresses that frequently deposit to Gate.io. Need them verified and labeled.</p>
+          <div class="bounty-meta">
+            <span>0 Submissions</span>
+            <span>Ends in 24 hours</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;">View Details</button>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal-overlay">
+  <div class="modal animate-scale-in">
+    <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;" onclick="document.getElementById('modal').style.display='none'">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h2 style="font-size:24px;margin-bottom:8px;color:white;">Post New Bounty</h2>
+    <p style="color:var(--text-secondary);margin-bottom:24px;font-size:14px;">Fund a smart contract to crowdsource on-chain intelligence.</p>
+    
+    <div class="form-group">
+      <label class="form-label">Bounty Title</label>
+      <input type="text" class="form-input" placeholder="e.g. Identify wallet drainer">
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Target Address (Optional)</label>
+      <input type="text" class="form-input" placeholder="EQD...">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Reward Amount (GRAM)</label>
+      <input type="number" class="form-input" placeholder="500">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="form-input" rows="4" placeholder="Detail what constitutes a successful submission..."></textarea>
+    </div>
+    
+    <button class="btn btn-primary" style="width:100%;height:48px;" onclick="alert('Demo Mode: Wallet Connection Required');document.getElementById('modal').style.display='none'">Fund Contract & Post</button>
+  </div>
+</div>
+
+</body>
+</html>

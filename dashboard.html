@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — ANLGRAM Intelligence</title>
+  <meta name="description" content="TON/GRAM on-chain analytics dashboard — real-time metrics, transactions, entities"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/css/design-system.css"/>
+  <link rel="stylesheet" href="assets/css/layout.css"/>
+  <link rel="stylesheet" href="assets/css/animations.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: var(--space-5);
+    }
+
+    .dashboard-left { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+    .dashboard-right { display: flex; flex-direction: column; gap: var(--space-4); }
+
+    /* Price Chart Card */
+    .price-chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .chart-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--space-4) var(--space-5);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .chart-title-group { display: flex; align-items: center; gap: var(--space-3); }
+
+    .chart-price {
+      font-size: var(--text-2xl); font-weight: 700;
+      font-family: var(--font-mono); color: var(--text-primary);
+    }
+
+    .chart-change {
+      font-size: var(--text-sm); font-weight: 600;
+      font-family: var(--font-mono);
+    }
+
+    .chart-timerange {
+      display: flex; gap: 2px;
+    }
+
+    .time-btn {
+      padding: 4px 10px; font-size: var(--text-xs);
+      border-radius: var(--radius-sm); color: var(--text-muted);
+      cursor: pointer; transition: var(--transition-fast);
+      background: transparent; border: none;
+    }
+
+    .time-btn:hover { color: var(--text-primary); background: var(--bg-card-hover); }
+    .time-btn.active { color: var(--cyan); background: var(--cyan-dim); }
+
+    .chart-canvas-wrap { padding: var(--space-4) var(--space-5) 0; }
+    #priceChart { height: 180px !important; }
+
+    /* Entity Feed */
+    .entity-feed-item {
+      display: flex; align-items: center; gap: var(--space-3);
+      padding: var(--space-3) var(--space-5);
+      border-bottom: 1px solid var(--border-subtle);
+      transition: var(--transition-fast);
+      cursor: pointer;
+    }
+    .entity-feed-item:last-child { border-bottom: none; }
+    .entity-feed-item:hover { background: rgba(255,255,255,0.02); }
+
+    .feed-arrow {
+      width: 28px; height: 28px;
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; flex-shrink: 0;
+    }
+
+    .feed-arrow-in  { background: var(--green-dim); color: var(--green); }
+    .feed-arrow-out { background: var(--red-dim); color: var(--red); }
+
+    .feed-info { flex: 1; min-width: 0; }
+    .feed-entities {
+      display: flex; align-items: center; gap: 6px;
+      font-size: var(--text-sm); color: var(--text-primary);
+      font-weight: 500;
+    }
+    .feed-arrow-icon { color: var(--text-muted); font-size: 12px; }
+    .feed-time { font-size: var(--text-xs); color: var(--text-muted); margin-top: 2px; }
+
+    .feed-amount {
+      font-family: var(--font-mono); font-size: var(--text-sm);
+      font-weight: 600; white-space: nowrap;
+    }
+
+    /* Right Panel */
+    .panel-item {
+      display: flex; align-items: center; gap: var(--space-3);
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .panel-item:last-child { border-bottom: none; }
+
+    .panel-rank {
+      width: 20px; font-size: var(--text-xs);
+      color: var(--text-muted); font-family: var(--font-mono);
+      text-align: right; flex-shrink: 0;
+    }
+
+    .panel-entity-info { flex: 1; min-width: 0; }
+    .panel-entity-name {
+      font-size: var(--text-sm); font-weight: 500;
+      color: var(--text-primary);
+    }
+    .panel-entity-sub {
+      font-size: var(--text-xs); color: var(--text-muted);
+      font-family: var(--font-mono); margin-top: 2px;
+    }
+
+    .panel-bar-wrap {
+      width: 80px; height: 4px;
+      background: var(--border-subtle);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .panel-bar {
+      height: 100%; border-radius: var(--radius-full);
+      background: var(--grad-primary);
+    }
+
+    /* Network Health */
+    .health-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--space-2) 0;
+      font-size: var(--text-sm);
+    }
+    .health-label { color: var(--text-secondary); }
+    .health-value { font-family: var(--font-mono); font-weight: 600; color: var(--text-primary); }
+
+    /* Alerts mini */
+    .mini-alert {
+      display: flex; align-items: flex-start; gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--yellow);
+      border-radius: var(--radius-md);
+      font-size: var(--text-xs); margin-bottom: var(--space-2);
+    }
+    .mini-alert:last-child { margin-bottom: 0; }
+    .mini-alert-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+    .mini-alert-text { color: var(--text-secondary); line-height: 1.5; }
+    .mini-alert-text strong { color: var(--text-primary); }
+
+    @media (max-width: 1100px) {
+      .dashboard-layout { grid-template-columns: 1fr; }
+      .dashboard-right { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <a href="index.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon">A</div>
+      <span class="sidebar-logo-text">ANLGRAM</span>
+    </a>
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Analytics</div>
+      <a href="dashboard.html" class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="explorer.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Entity Explorer
+      </a>
+      <a href="visualizer.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49"/></svg>
+        Flow Visualizer
+      </a>
+
+      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Intelligence</div>
+      <a href="intel-exchange.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Intel Exchange
+      </a>
+      <a href="alerts.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Alerts
+        <span class="nav-badge">3</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-network-badge">
+        <span class="dot-live"></span>
+        TON Mainnet · Connected
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <header class="topbar">
+      <div class="topbar-search">
+        <svg class="topbar-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="globalSearch" placeholder="Search addresses, entities, tx hashes..." autocomplete="off"/>
+      </div>
+      <div class="topbar-actions">
+        <div class="topbar-price">
+          <span class="topbar-price-label">GRAM</span>
+          <span class="topbar-price-value" id="topbar-price">$2.47</span>
+          <span class="text-green" style="font-size:var(--text-xs);font-family:var(--font-mono);">+4.18%</span>
+        </div>
+        <button class="topbar-btn" title="Notifications">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </button>
+        <button class="topbar-btn" title="Settings">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Analytics Dashboard</h1>
+          <p class="page-subtitle">TON/GRAM Network · Real-time on-chain intelligence</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);">
+          <span class="badge badge-green"><span class="dot-live"></span> Live</span>
+          <button class="btn btn-ghost btn-sm">Export</button>
+          <button class="btn btn-primary btn-sm">+ New Alert</button>
+        </div>
+      </div>
+
+      <!-- Metric Grid -->
+      <div class="metric-grid" style="margin-bottom:var(--space-5);">
+        <div class="metric-card animate-fade-up">
+          <div class="metric-label">GRAM Price</div>
+          <div class="metric-value" id="m-price">$2.47</div>
+          <div class="metric-change change-up">▲ +4.18% 24h</div>
+        </div>
+        <div class="metric-card animate-fade-up delay-1">
+          <div class="metric-label">24h Volume</div>
+          <div class="metric-value">$892M</div>
+          <div class="metric-change change-down">▼ -2.1% 24h</div>
+        </div>
+        <div class="metric-card animate-fade-up delay-2">
+          <div class="metric-label">Active Addresses</div>
+          <div class="metric-value" id="m-wallets">892K</div>
+          <div class="metric-change change-up">▲ +5.2K today</div>
+        </div>
+        <div class="metric-card animate-fade-up delay-3">
+          <div class="metric-label">Transactions Today</div>
+          <div class="metric-value" id="m-txs">1.21M</div>
+          <div class="metric-change change-up">▲ +12% vs avg</div>
+        </div>
+        <div class="metric-card animate-fade-up delay-4">
+          <div class="metric-label">Network TPS</div>
+          <div class="metric-value" id="m-tps">142</div>
+          <div class="metric-change change-up">▲ Above avg</div>
+        </div>
+        <div class="metric-card animate-fade-up delay-5">
+          <div class="metric-label">Total Value Locked</div>
+          <div class="metric-value">$4.2B</div>
+          <div class="metric-change change-up">▲ +8.3% 7d</div>
+        </div>
+      </div>
+
+      <!-- Main Dashboard Layout -->
+      <div class="dashboard-layout">
+        <div class="dashboard-left">
+
+          <!-- Price Chart -->
+          <div class="price-chart-card animate-fade-up">
+            <div class="chart-header">
+              <div class="chart-title-group">
+                <div>
+                  <div style="font-size:var(--text-xs);color:var(--text-muted);margin-bottom:2px;">GRAM / USD</div>
+                  <span class="chart-price" id="chart-price">$2.47</span>
+                  <span class="chart-change change-up" style="margin-left:var(--space-2);">+4.18%</span>
+                </div>
+              </div>
+              <div class="chart-timerange">
+                <button class="time-btn" onclick="setRange(this,'1h')">1H</button>
+                <button class="time-btn active" onclick="setRange(this,'24h')">24H</button>
+                <button class="time-btn" onclick="setRange(this,'7d')">7D</button>
+                <button class="time-btn" onclick="setRange(this,'30d')">30D</button>
+                <button class="time-btn" onclick="setRange(this,'all')">ALL</button>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap">
+              <canvas id="priceChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Large Transactions Table -->
+          <div class="card animate-fade-up delay-1">
+            <div class="card-header">
+              <div class="card-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ton-blue)" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                Recent Large Transactions
+                <span class="badge badge-green"><span class="dot-live" style="width:5px;height:5px;"></span> Live</span>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="window.location='explorer.html'">View All →</button>
+            </div>
+            <div class="data-table-wrap">
+              <table class="data-table" id="txTable">
+                <thead>
+                  <tr>
+                    <th>Hash</th>
+                    <th>From Entity</th>
+                    <th>To Entity</th>
+                    <th>Amount</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="txBody">
+                  <!-- populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Exchange Flows -->
+          <div class="card animate-fade-up delay-2">
+            <div class="card-header">
+              <div class="card-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                Exchange Net Flows (24h)
+              </div>
+              <span class="badge badge-muted">CEX · DEX</span>
+            </div>
+            <div class="card-body">
+              <div id="flowBars"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="dashboard-right">
+
+          <!-- Top Entities -->
+          <div class="card animate-slide-right">
+            <div class="card-header">
+              <div class="card-title">Top Entities by Volume</div>
+            </div>
+            <div class="card-body" style="padding-top:var(--space-2);padding-bottom:var(--space-2);">
+              <div id="topEntities"></div>
+            </div>
+          </div>
+
+          <!-- Network Health -->
+          <div class="card animate-slide-right delay-1">
+            <div class="card-header">
+              <div class="card-title">Network Health</div>
+              <span class="badge badge-green">Healthy</span>
+            </div>
+            <div class="card-body">
+              <div class="health-row">
+                <span class="health-label">Block Time</span>
+                <span class="health-value text-green">~5.3s</span>
+              </div>
+              <div class="health-row">
+                <span class="health-label">Validators</span>
+                <span class="health-value">347</span>
+              </div>
+              <div class="health-row">
+                <span class="health-label">Market Cap</span>
+                <span class="health-value">$17.2B</span>
+              </div>
+              <div class="health-row">
+                <span class="health-label">Circulating</span>
+                <span class="health-value">5.1B GRAM</span>
+              </div>
+              <div class="health-row">
+                <span class="health-label">Total Supply</span>
+                <span class="health-value">5.85B GRAM</span>
+              </div>
+              <div class="health-row">
+                <span class="health-label">Network Fee</span>
+                <span class="health-value">~0.0055 GRAM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Alerts -->
+          <div class="card animate-slide-right delay-2">
+            <div class="card-header">
+              <div class="card-title">Active Alerts</div>
+              <a href="alerts.html" class="btn btn-ghost btn-sm">Manage</a>
+            </div>
+            <div class="card-body">
+              <div class="mini-alert">
+                <span class="mini-alert-icon">🐋</span>
+                <div class="mini-alert-text">
+                  <strong>Whale Movement</strong><br>
+                  Unknown wallet moved 8.9M GRAM 12min ago
+                </div>
+              </div>
+              <div class="mini-alert" style="border-left-color:var(--red);">
+                <span class="mini-alert-icon">⚠️</span>
+                <div class="mini-alert-text">
+                  <strong>Large Outflow</strong><br>
+                  Binance: -45M GRAM in past hour
+                </div>
+              </div>
+              <div class="mini-alert" style="border-left-color:var(--ton-blue);">
+                <span class="mini-alert-icon">ℹ️</span>
+                <div class="mini-alert-text">
+                  <strong>New Entity Labeled</strong><br>
+                  0xF4...9aB2 identified as OKX Cold
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── Mock Data ────────────────────────────────────────────────
+const ENTITIES = ['Binance Hot Wallet','OKX Wallet 3','Bybit CEX','Huobi Reserve','Gate.io','Unknown Whale #447','DeDust LP','Ston.fi Pool','Unknown 0xF4...9B','Telegram Wallet','Animoca Brands','TON Foundation'];
+const ENTITY_BADGES = {'Binance Hot Wallet':'badge-blue','OKX Wallet 3':'badge-blue','Bybit CEX':'badge-blue','Huobi Reserve':'badge-blue','Gate.io':'badge-blue','Unknown Whale #447':'badge-orange','DeDust LP':'badge-cyan','Ston.fi Pool':'badge-cyan','Unknown 0xF4...9B':'badge-muted','Telegram Wallet':'badge-purple','Animoca Brands':'badge-purple','TON Foundation':'badge-green'};
+const ENTITY_LABELS = {'Binance Hot Wallet':'Exchange','OKX Wallet 3':'Exchange','Bybit CEX':'Exchange','Huobi Reserve':'Exchange','Gate.io':'Exchange','Unknown Whale #447':'Whale','DeDust LP':'DeFi','Ston.fi Pool':'DeFi','Unknown 0xF4...9B':'Unknown','Telegram Wallet':'App','Animoca Brands':'Fund','TON Foundation':'DAO'};
+
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function randPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function shortHash(){ return '0x'+Math.random().toString(16).substr(2,8).toUpperCase()+'...'+Math.random().toString(16).substr(2,4).toUpperCase(); }
+function timeAgo(mins){ if(mins<60) return mins+'m ago'; if(mins<1440) return Math.floor(mins/60)+'h ago'; return Math.floor(mins/1440)+'d ago'; }
+function fmtGram(n){ return new Intl.NumberFormat().format(n)+' GRAM'; }
+
+// ── Price Chart ──────────────────────────────────────────────
+function generatePriceData(points) {
+  let p = 2.1, data = [];
+  for(let i=0;i<points;i++){
+    p += (Math.random()-0.48)*0.05;
+    p = Math.max(1.8, Math.min(3.2, p));
+    data.push(+p.toFixed(4));
+  }
+  return data;
+}
+
+function generateLabels(points, range) {
+  const labels = [];
+  const now = new Date();
+  const step = range==='1h'?60000:range==='24h'?3600000:range==='7d'?86400000:range==='30d'?86400000*2:86400000*10;
+  for(let i=points-1;i>=0;i--){
+    const d = new Date(now - i*step);
+    if(range==='1h'||range==='24h') labels.push(d.getHours()+':'+String(d.getMinutes()).padStart(2,'0'));
+    else labels.push((d.getMonth()+1)+'/'+d.getDate());
+  }
+  return labels;
+}
+
+const chartCtx = document.getElementById('priceChart').getContext('2d');
+let priceData = generatePriceData(24);
+let priceChart = new Chart(chartCtx, {
+  type: 'line',
+  data: {
+    labels: generateLabels(24, '24h'),
+    datasets: [{
+      data: priceData,
+      borderColor: '#0088CC',
+      borderWidth: 2,
+      fill: true,
+      backgroundColor: (ctx) => {
+        const g = ctx.chart.ctx.createLinearGradient(0,0,0,180);
+        g.addColorStop(0,'rgba(0,136,204,0.2)');
+        g.addColorStop(1,'rgba(0,136,204,0)');
+        return g;
+      },
+      tension: 0.4,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      pointHoverBackgroundColor: '#00CFFF',
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { display: false }, tooltip: {
+      backgroundColor: '#1a1a20',
+      borderColor: '#252530',
+      borderWidth: 1,
+      titleColor: '#8a8a9a',
+      bodyColor: '#e8e8ec',
+      bodyFont: { family: 'JetBrains Mono', weight: '600' },
+      callbacks: { label: ctx => ' $' + ctx.parsed.y.toFixed(4) }
+    }},
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#4a4a5a', font: { size: 10 }, maxTicksLimit: 8 } },
+      y: { position: 'right', grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#8a8a9a', font: { size: 10, family: 'JetBrains Mono' }, callback: v => '$'+v.toFixed(2) } }
+    }
+  }
+});
+
+window.setRange = function(btn, range) {
+  document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const pts = range==='1h'?60:range==='24h'?24:range==='7d'?7:range==='30d'?30:90;
+  priceChart.data.labels = generateLabels(pts, range);
+  priceChart.data.datasets[0].data = generatePriceData(pts);
+  priceChart.update();
+};
+
+// ── Transactions Table ───────────────────────────────────────
+const txData = [];
+for(let i=0;i<12;i++){
+  const from = randPick(ENTITIES), to = randPick(ENTITIES.filter(e=>e!==from));
+  const isIn = Math.random()>0.5;
+  txData.push({
+    hash: shortHash(),
+    from, to,
+    amount: randInt(10000, 9000000),
+    mins: randInt(1, 480),
+    status: Math.random()>0.05?'confirmed':'pending'
+  });
+}
+
+function renderTxTable() {
+  const tbody = document.getElementById('txBody');
+  tbody.innerHTML = txData.map(tx => `
+    <tr onclick="window.location='explorer.html?tx=${tx.hash}'">
+      <td class="td-mono">${tx.hash}</td>
+      <td>
+        <div class="td-entity">
+          <div class="entity-avatar">${tx.from[0]}</div>
+          <div>
+            <div style="font-size:var(--text-sm);font-weight:500;">${tx.from}</div>
+            <span class="badge ${ENTITY_BADGES[tx.from]||'badge-muted'}" style="margin-top:2px;">${ENTITY_LABELS[tx.from]||'Unknown'}</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="td-entity">
+          <div class="entity-avatar">${tx.to[0]}</div>
+          <span style="font-size:var(--text-sm);font-weight:500;">${tx.to}</span>
+        </div>
+      </td>
+      <td style="font-family:var(--font-mono);font-weight:600;">${fmtGram(tx.amount)}</td>
+      <td style="color:var(--text-secondary);font-size:var(--text-xs);">${timeAgo(tx.mins)}</td>
+      <td><span class="badge ${tx.status==='confirmed'?'badge-green':'badge-yellow'}">${tx.status}</span></td>
+    </tr>
+  `).join('');
+}
+renderTxTable();
+
+// ── Exchange Flow Bars ───────────────────────────────────────
+const exchangeFlows = [
+  { name: 'Binance', inflow: 420, outflow: 390 },
+  { name: 'OKX', inflow: 180, outflow: 220 },
+  { name: 'Bybit', inflow: 95, outflow: 85 },
+  { name: 'Gate.io', inflow: 60, outflow: 75 },
+  { name: 'Huobi', inflow: 45, outflow: 30 }
+];
+
+document.getElementById('flowBars').innerHTML = exchangeFlows.map(ex => {
+  const net = ex.inflow - ex.outflow;
+  const netColor = net > 0 ? 'var(--green)' : 'var(--red)';
+  const maxVal = 420;
+  return `
+    <div style="margin-bottom:var(--space-4);">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:var(--text-sm);font-weight:500;">${ex.name}</span>
+        <span style="font-family:var(--font-mono);font-size:var(--text-xs);color:${netColor};font-weight:600;">${net>0?'+':''}${net}M GRAM</span>
+      </div>
+      <div style="display:flex;gap:3px;height:6px;">
+        <div style="width:${(ex.inflow/maxVal)*100}%;background:var(--green);border-radius:var(--radius-sm);opacity:0.7;"></div>
+        <div style="width:${(ex.outflow/maxVal)*100}%;background:var(--red);border-radius:var(--radius-sm);opacity:0.7;"></div>
+      </div>
+      <div style="display:flex;gap:var(--space-4);margin-top:4px;">
+        <span style="font-size:var(--text-xs);color:var(--green);">▲ ${ex.inflow}M in</span>
+        <span style="font-size:var(--text-xs);color:var(--red);">▼ ${ex.outflow}M out</span>
+      </div>
+    </div>`;
+}).join('');
+
+// ── Top Entities ─────────────────────────────────────────────
+const topEntData = [
+  { name: 'Binance Hot Wallet', vol: 420, badge: 'badge-blue', label: 'Exchange' },
+  { name: 'OKX Wallet 3',       vol: 280, badge: 'badge-blue', label: 'Exchange' },
+  { name: 'Unknown Whale #447', vol: 195, badge: 'badge-orange', label: 'Whale'  },
+  { name: 'Bybit CEX',          vol: 145, badge: 'badge-blue', label: 'Exchange' },
+  { name: 'TON Foundation',     vol: 120, badge: 'badge-green', label: 'DAO'     },
+  { name: 'DeDust LP',          vol: 98,  badge: 'badge-cyan', label: 'DeFi'    },
+  { name: 'Animoca Brands',     vol: 72,  badge: 'badge-purple', label: 'Fund'  },
+];
+const maxVol = 420;
+document.getElementById('topEntities').innerHTML = topEntData.map((e,i) => `
+  <div class="panel-item">
+    <span class="panel-rank">${i+1}</span>
+    <div class="entity-avatar">${e.name[0]}</div>
+    <div class="panel-entity-info">
+      <div class="panel-entity-name">${e.name}</div>
+      <div style="display:flex;align-items:center;gap:var(--space-2);margin-top:3px;">
+        <span class="badge ${e.badge}" style="font-size:9px;padding:1px 5px;">${e.label}</span>
+        <span class="panel-entity-sub">${e.vol}M GRAM</span>
+      </div>
+    </div>
+    <div>
+      <div class="panel-bar-wrap">
+        <div class="panel-bar" style="width:${(e.vol/maxVol)*100}%"></div>
+      </div>
+    </div>
+  </div>
+`).join('');
+
+// ── Live Updates ─────────────────────────────────────────────
+let gramPrice = 2.47;
+setInterval(() => {
+  gramPrice += (Math.random()-0.48)*0.015;
+  gramPrice = Math.max(2.2, Math.min(2.8, gramPrice));
+  const priceEl = document.getElementById('m-price');
+  const topPrice = document.getElementById('topbar-price');
+  const chartPrice = document.getElementById('chart-price');
+  if(priceEl) priceEl.textContent = '$'+gramPrice.toFixed(4);
+  if(topPrice) topPrice.textContent = '$'+gramPrice.toFixed(2);
+  if(chartPrice) chartPrice.textContent = '$'+gramPrice.toFixed(4);
+
+  // Add new price to chart
+  priceChart.data.labels.push('now');
+  priceChart.data.datasets[0].data.push(+gramPrice.toFixed(4));
+  if(priceChart.data.labels.length > 30) {
+    priceChart.data.labels.shift();
+    priceChart.data.datasets[0].data.shift();
+  }
+  priceChart.update('none');
+
+  // Update TPS
+  const tpsEl = document.getElementById('m-tps');
+  if(tpsEl) tpsEl.textContent = randInt(110, 180);
+}, 3000);
+
+// Search redirect
+document.getElementById('globalSearch').addEventListener('keydown', e => {
+  if(e.key === 'Enter' && e.target.value.trim()) {
+    window.location = 'explorer.html?q='+encodeURIComponent(e.target.value.trim());
+  }
+});
+</script>
+</body>
+</html>
