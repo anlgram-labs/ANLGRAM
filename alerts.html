@@ -731,6 +731,21 @@ async function monitorBlockchain() {
 // ── Init ─────────────────────────────────────────────────────
 renderSavedRules();
 updateTgStatus();
+const urlParams = new URLSearchParams(window.location.search);
+const targetParam = urlParams.get('target');
+if (targetParam) {
+  const inputEl = document.getElementById('targetEntity');
+  if (inputEl) {
+    inputEl.value = targetParam;
+    inputEl.focus();
+    inputEl.style.borderColor = 'var(--cyan)';
+    setTimeout(() => {
+      if (typeof showWalletToast === 'function') {
+        showWalletToast('🔔 Holder Loaded', 'Target address pre-filled from Flow Visualizer.');
+      }
+    }, 500);
+  }
+}
 (async () => { const p = await getTonPrice(); if (p) document.getElementById('topbar-price').textContent = '$' + p.toFixed(2); })();
 setInterval(async () => { const p = await getTonPrice(); if (p) document.getElementById('topbar-price').textContent = '$' + p.toFixed(2); }, 15000);
 monitorBlockchain();
