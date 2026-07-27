@@ -330,6 +330,7 @@
   window.updateWalletUI = function() {
     const connectedWallet = localStorage.getItem('anlgram_wallet_addr');
     const connectedWalletName = localStorage.getItem('anlgram_wallet_name');
+    window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: connectedWallet || null, name: connectedWalletName || null } }));
     const btns = document.querySelectorAll('#topbarWalletBtn');
 
     btns.forEach(btn => {

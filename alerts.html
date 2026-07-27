@@ -403,10 +403,60 @@
 // ═══════════════════════════════════════════════════════════════
 
 let selectedType = 'Large Transfer';
-let alertRules = JSON.parse(localStorage.getItem('anlgram_rules') || '[]');
+let alertRules = [];
 let alertCounter = 0;
 let lastSeenTx = JSON.parse(localStorage.getItem('anlgram_last_tx') || '{}');
 let tgChatId = localStorage.getItem('anlgram_user_tg_chatid') || null;
+
+// ── Per-Wallet Storage Strategy ──────────────────────────────
+function getActiveWalletKey() {
+  const connected = localStorage.getItem('anlgram_wallet_addr');
+  if (connected && connected.trim() !== '') {
+    return 'anlgram_rules_' + connected.trim().toLowerCase();
+  }
+  const inputEl = document.getElementById('targetEntity');
+  if (inputEl && inputEl.value.trim() !== '') {
+    return 'anlgram_rules_' + inputEl.value.trim().toLowerCase();
+  }
+  return 'anlgram_rules';
+}
+
+function loadAlertRulesForWallet(silent = false) {
+  const key = getActiveWalletKey();
+  let rules = JSON.parse(localStorage.getItem(key) || 'null');
+  
+  // Migration fallback: if no rules for this wallet yet, check legacy global storage
+  if (!rules) {
+    const globalRules = JSON.parse(localStorage.getItem('anlgram_rules') || '[]');
+    const connected = localStorage.getItem('anlgram_wallet_addr');
+    if (connected && globalRules.length > 0) {
+      rules = globalRules.filter(r => r.targetEntity && r.targetEntity.toLowerCase() === connected.trim().toLowerCase());
+      if (rules.length === 0 && globalRules.length <= 5) {
+        rules = globalRules;
+      }
+      if (rules.length > 0) {
+        localStorage.setItem(key, JSON.stringify(rules));
+      }
+    } else {
+      rules = globalRules || [];
+    }
+  }
+  
+  alertRules = rules || [];
+  if (typeof renderSavedRules === 'function') renderSavedRules();
+  
+  if (!silent && alertRules.length > 0 && localStorage.getItem('anlgram_wallet_addr')) {
+    const short = typeof shortenAddress === 'function' ? shortenAddress(localStorage.getItem('anlgram_wallet_addr')) : 'wallet';
+    showToast('🔓 Alertas Sincronizadas', `Cargadas ${alertRules.length} alerta(s) configuradas para tu wallet.`);
+  }
+}
+
+function saveAlertRulesForWallet() {
+  const key = getActiveWalletKey();
+  localStorage.setItem(key, JSON.stringify(alertRules));
+  // Keep global storage updated as fallback
+  localStorage.setItem('anlgram_rules', JSON.stringify(alertRules));
+}
 
 // ── Toast ────────────────────────────────────────────────────
 function showToast(title, desc, dur = 2500) {
@@ -602,7 +652,12 @@ document.getElementById('saveRuleBtn').addEventListener('click', () => {
     id: Date.now(), type: selectedType, minAmount: minAmt,
     targetEntity: addr, channels, createdAt: new Date().toISOString()
   });
-  localStorage.setItem('anlgram_rules', JSON.stringify(alertRules));
+  if (!localStorage.getItem('anlgram_wallet_addr') && addr.length > 6) {
+    localStorage.setItem('anlgram_wallet_addr', addr);
+    localStorage.setItem('anlgram_wallet_name', 'My TON Wallet');
+    if (typeof updateWalletUI === 'function') updateWalletUI();
+  }
+  saveAlertRulesForWallet();
   renderSavedRules();
   showToast('🚀 Monitoring Started!', 'Watching ' + shortenAddress(addr) + ' for ≥' + minAmt + ' GRAM');
 
@@ -631,7 +686,7 @@ function renderSavedRules() {
 
 window.deleteRule = function(id) {
   alertRules = alertRules.filter(r => r.id !== id);
-  localStorage.setItem('anlgram_rules', JSON.stringify(alertRules));
+  saveAlertRulesForWallet();
   renderSavedRules();
   showToast('🗑️ Deleted', 'Rule removed.');
 };
@@ -735,24 +790,55 @@ async function monitorBlockchain() {
   }
 }
 
-// ── Init ─────────────────────────────────────────────────────
-renderSavedRules();
+// ── Init & Per-Wallet Sync ───────────────────────────────────
 updateTgStatus();
+
+window.addEventListener('anlgramWalletChanged', (e) => {
+  const addr = e.detail && e.detail.address ? e.detail.address : localStorage.getItem('anlgram_wallet_addr');
+  const inputEl = document.getElementById('targetEntity');
+  if (addr && inputEl && !inputEl.value.trim()) {
+    inputEl.value = addr;
+  }
+  loadAlertRulesForWallet(false);
+});
+
+const targetInputEl = document.getElementById('targetEntity');
+if (targetInputEl) {
+  targetInputEl.addEventListener('change', () => {
+    const addr = targetInputEl.value.trim();
+    if (addr && addr.length > 6) {
+      const currentConnected = localStorage.getItem('anlgram_wallet_addr');
+      if (!currentConnected || currentConnected !== addr) {
+        localStorage.setItem('anlgram_wallet_addr', addr);
+        localStorage.setItem('anlgram_wallet_name', 'My TON Wallet');
+        if (typeof updateWalletUI === 'function') updateWalletUI();
+      }
+      loadAlertRulesForWallet(false);
+    }
+  });
+}
+
 const urlParams = new URLSearchParams(window.location.search);
 const targetParam = urlParams.get('target');
 if (targetParam) {
-  const inputEl = document.getElementById('targetEntity');
-  if (inputEl) {
-    inputEl.value = targetParam;
-    inputEl.focus();
-    inputEl.style.borderColor = 'var(--cyan)';
+  if (targetInputEl) {
+    targetInputEl.value = targetParam;
+    targetInputEl.focus();
+    targetInputEl.style.borderColor = 'var(--cyan)';
     setTimeout(() => {
       if (typeof showWalletToast === 'function') {
         showWalletToast('🔔 Holder Loaded', 'Target address pre-filled from Flow Visualizer.');
       }
     }, 500);
   }
+} else {
+  const connected = localStorage.getItem('anlgram_wallet_addr');
+  if (connected && targetInputEl && !targetInputEl.value.trim()) {
+    targetInputEl.value = connected;
+  }
 }
+
+loadAlertRulesForWallet(true);
 (async () => { const p = await getTonPrice(); if (p) document.getElementById('topbar-price').textContent = '$' + p.toFixed(2); })();
 setInterval(async () => { const p = await getTonPrice(); if (p) document.getElementById('topbar-price').textContent = '$' + p.toFixed(2); }, 15000);
 monitorBlockchain();
