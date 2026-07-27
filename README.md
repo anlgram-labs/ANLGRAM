@@ -18,9 +18,11 @@
 | **💰 Intel Exchange** | Bounty/auction marketplace for on-chain intelligence |
 | **🔔 Alerts** | Custom alerts for whale movements and suspicious activity |
 
-## 🌐 Live Preview
+## 🌐 Live Preview & Production Deployment
 
-Open `index.html` in your browser to view the platform locally.
+* **Official Production App:** [https://anlgram-labs.github.io/ANLGRAM/](https://anlgram-labs.github.io/ANLGRAM/)
+* **Flow Visualizer (Bubblemaps):** [https://anlgram-labs.github.io/ANLGRAM/visualizer.html](https://anlgram-labs.github.io/ANLGRAM/visualizer.html)
+* **Local Preview:** Open `index.html` directly in any web browser.
 
 ## 📁 Project Structure
 
