@@ -106,7 +106,7 @@
             <p style="color:#aaa;margin-bottom:20px;font-size:13px;line-height:1.5;">Select your wallet to monitor your real transactions on ANLGRAM.</p>
             
             <div class="wallet-list">
-              <div class="wallet-item" onclick="selectWallet('Tonkeeper', '#0098EA', '💎', 'https://app.tonkeeper.com/ton-login')">
+              <div class="wallet-item" onclick="selectWallet('Tonkeeper', '#0098EA', '💎', 'https://app.tonkeeper.com/')">
                 <div class="wallet-info">
                   <div class="wallet-icon" style="background:#0098EA;">💎</div>
                   <div>
@@ -128,7 +128,7 @@
                 <span class="wallet-badge">IN-APP</span>
               </div>
 
-              <div class="wallet-item" onclick="selectWallet('MyTonWallet', '#6C5CE7', '⚡', 'https://mytonwallet.io/')">
+              <div class="wallet-item" onclick="selectWallet('MyTonWallet', '#6C5CE7', '⚡', 'https://app.mytonwallet.io/')">
                 <div class="wallet-info">
                   <div class="wallet-icon" style="background:#6C5CE7;">⚡</div>
                   <div>
@@ -162,10 +162,10 @@
               <span id="connIcon">💎</span>
             </div>
             <h3 style="font-size:18px;color:white;margin-bottom:6px;" id="connTitle">Connect Tonkeeper</h3>
-            <p style="font-size:13px;color:#aaa;margin-bottom:16px;">Step 1: Open your wallet app or universal link.</p>
+            <p style="font-size:13px;color:#aaa;margin-bottom:16px;">Step 1: Open your wallet app/portal to view or copy your address.</p>
             
             <div style="margin-bottom:20px;">
-              <a id="connOpenAppBtn" href="#" target="_blank" class="btn btn-primary btn-sm" style="display:inline-block;text-decoration:none;background:#222;color:#00f0ff;border:1px solid #00f0ff;padding:10px 18px;border-radius:10px;font-weight:600;font-size:13px;">🚀 Open App / Universal Link ↗</a>
+              <a id="connOpenAppBtn" href="#" target="_blank" class="btn btn-primary btn-sm" style="display:inline-block;text-decoration:none;background:rgba(0,240,255,0.15);color:#00f0ff;border:1px solid #00f0ff;padding:12px 20px;border-radius:10px;font-weight:700;font-size:13px;box-shadow:0 0 15px rgba(0,240,255,0.2);">🚀 Open Official Web App / Wallet ↗</a>
             </div>
 
             <div style="border-top:1px dashed rgba(255,255,255,0.15);padding-top:16px;text-align:left;">
