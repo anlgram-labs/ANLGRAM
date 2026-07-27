@@ -204,7 +204,14 @@
     .admin-panel .form-input { margin-bottom: var(--space-2); font-size: 11px; }
     .admin-title { font-size: var(--text-xs); font-weight: 700; color: var(--orange); margin-bottom: var(--space-3); }
 
-    @media (max-width: 900px) { .alerts-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) { .alerts-layout { grid-template-columns: 1fr !important; } }
+    @media (max-width: 768px) {
+      .alert-card { flex-direction: column; gap: 8px; padding: 12px; }
+      .alert-header { flex-wrap: wrap; gap: 6px; }
+      .alert-meta { margin-left: 0; }
+      .feed-header { flex-direction: column; gap: 10px; align-items: stretch; }
+      .rule-actions { width: 100%; display: flex; justify-content: space-between; }
+    }
   </style>
 </head>
 <body>

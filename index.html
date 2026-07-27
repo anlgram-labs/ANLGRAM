@@ -520,8 +520,20 @@
       .live-stats-grid { grid-template-columns: repeat(2, 1fr); }
       .steps-grid { grid-template-columns: 1fr; }
       .intel-grid { grid-template-columns: 1fr; }
-      .navbar { padding: 0 var(--space-4); }
+      .navbar { padding: 12px 16px; flex-wrap: wrap; gap: 10px; height: auto; }
       .nav-links { display: none; }
+      body { padding-bottom: 84px !important; }
+    }
+    @media (max-width: 600px) {
+      .nav-cta a[href="dashboard.html"]:first-child { display: none !important; }
+      .nav-cta button, .nav-cta a { padding: 0 12px !important; font-size: 11px !important; height: 32px !important; }
+      .hero-title { font-size: 32px !important; line-height: 1.2 !important; }
+      .hero-subtitle { font-size: 15px !important; padding: 0 10px; }
+      .live-stats-grid { grid-template-columns: 1fr !important; }
+      .section-header h2 { font-size: 26px !important; }
+      .cta-card { padding: 30px 16px !important; }
+      .footer { flex-direction: column !important; text-align: center; gap: 16px; }
+      .footer-left { flex-direction: column; }
     }
   </style>
 </head>

@@ -205,6 +205,35 @@
       topbarActions.appendChild(btn);
     }
 
+    // Auto-inject Universal Mobile Bottom Navigation Bar
+    if (!document.getElementById('mobileBottomNav')) {
+      const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+      const nav = document.createElement('nav');
+      nav.id = 'mobileBottomNav';
+      nav.className = 'mobile-bottom-nav';
+      
+      const items = [
+        { name: 'Inicio', href: 'index.html', icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+        { name: 'Dash', href: 'dashboard.html', icon: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>' },
+        { name: 'Explorar', href: 'explorer.html', icon: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>' },
+        { name: 'Flows', href: 'visualizer.html', icon: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49"/>' },
+        { name: 'Intel', href: 'intel-exchange.html', icon: '<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>' },
+        { name: 'Alertas', href: 'alerts.html', icon: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>' }
+      ];
+
+      nav.innerHTML = items.map(item => {
+        const isActive = currentPage === item.href || (currentPage === '' && item.href === 'index.html');
+        return `
+          <a href="${item.href}" class="mobile-nav-item ${isActive ? 'active' : ''}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${item.icon}</svg>
+            <span>${item.name}</span>
+          </a>
+        `;
+      }).join('');
+
+      document.body.appendChild(nav);
+    }
+
     updateWalletUI();
   }
 

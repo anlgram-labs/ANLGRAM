@@ -136,6 +136,14 @@
     .search-input-box:focus { border-color: #00f0ff; box-shadow: 0 0 15px rgba(0,240,255,0.2); }
 
     .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+
+    @media (max-width: 768px) {
+      .viz-entity-panel { width: 90% !important; right: -100% !important; top: 10px !important; bottom: 84px !important; }
+      .viz-entity-panel.open { right: 5% !important; }
+      .search-input-box { width: 100% !important; max-width: 100% !important; }
+      .viz-controls { flex-wrap: wrap; gap: 8px; padding: 10px !important; }
+      .viz-top-bar { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; padding: 10px !important; }
+    }
   </style>
 </head>
 <body>

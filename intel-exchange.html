@@ -260,6 +260,27 @@
       border-radius: 24px; width: 100%; max-width: 540px;
       padding: 32px; position: relative; box-shadow: 0 0 50px rgba(0,240,255,0.25);
     }
+
+    /* Mobile Responsive Optimizations for Intel Exchange */
+    @media (max-width: 768px) {
+      .exchange-grid { grid-template-columns: 1fr !important; gap: 16px; }
+      .modern-search { width: 100% !important; max-width: 100% !important; }
+      .modern-search:focus-within { width: 100% !important; }
+      .network-ticker { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 8px 12px; }
+      .control-bar { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; padding: 12px !important; }
+      .pills-container { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; width: 100%; }
+      .pill-btn { flex: 1 1 45%; text-align: center; font-size: 11px; padding: 8px 10px; }
+      .hero-banner { flex-direction: column !important; gap: 20px !important; padding: 20px !important; text-align: center; }
+      .stats-grid { grid-template-columns: 1fr 1fr !important; width: 100% !important; }
+      .ex-card { padding: 18px !important; }
+      .ex-btn-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .btn-cyber { font-size: 11px; padding: 8px 10px; }
+    }
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr !important; }
+      .ex-btn-grid { grid-template-columns: 1fr !important; }
+      .pill-btn { flex: 1 1 100%; }
+    }
   </style>
 </head>
 <body>
