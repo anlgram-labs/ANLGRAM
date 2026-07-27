@@ -3,56 +3,56 @@
 // ═══════════════════════════════════════════════════════════════
 
 (function() {
-  // Inject CSS for Wallet Modal & Toast if not already present
-  if (!document.getElementById('anlgram-wallet-styles')) {
-    const style = document.createElement('style');
-    style.id = 'anlgram-wallet-styles';
-    style.textContent = `
-      .wallet-list { display: flex; flex-direction: column; gap: var(--space-3); }
-      .wallet-item {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: var(--space-4); background: var(--bg-card-hover);
-        border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
-        cursor: pointer; transition: var(--transition-fast);
-      }
-      .wallet-item:hover {
-        border-color: var(--cyan); transform: translateX(4px);
-        background: rgba(0, 240, 255, 0.05);
-      }
-      .wallet-info { display: flex; align-items: center; gap: var(--space-4); }
-      .wallet-icon {
-        width: 44px; height: 44px; border-radius: 12px; display: flex;
-        align-items: center; justify-content: center; font-size: 22px;
-        color: white; font-weight: bold; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      }
-      .wallet-name { font-size: var(--text-md); font-weight: 600; color: var(--text-primary); }
-      .wallet-type { font-size: var(--text-xs); color: var(--text-muted); margin-top: 2px; }
-      .wallet-badge {
-        font-size: 11px; padding: 3px 8px; border-radius: 99px; font-weight: 600;
-        background: rgba(255,255,255,0.08); color: var(--text-secondary);
-      }
-      .toast {
-        position: fixed; bottom: 24px; right: 24px; background: #111; border: 1px solid var(--border-accent);
-        padding: 16px 20px; border-radius: 12px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        max-width: 380px;
-      }
-      .toast.show { transform: translateY(0); opacity: 1; }
-      .toast-title { font-weight: 600; color: white; font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; gap:8px; }
-      .toast-desc { font-size: 13px; color: #aaa; line-height: 1.4; }
-    `;
-    document.head.appendChild(style);
-  }
+  function initWalletManager() {
+    // Inject CSS for Wallet Modal & Toast if not already present
+    if (!document.getElementById('anlgram-wallet-styles')) {
+      const style = document.createElement('style');
+      style.id = 'anlgram-wallet-styles';
+      style.textContent = `
+        .wallet-list { display: flex; flex-direction: column; gap: var(--space-3); }
+        .wallet-item {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: var(--space-4); background: var(--bg-card-hover);
+          border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+          cursor: pointer; transition: var(--transition-fast);
+        }
+        .wallet-item:hover {
+          border-color: var(--cyan); transform: translateX(4px);
+          background: rgba(0, 240, 255, 0.05);
+        }
+        .wallet-info { display: flex; align-items: center; gap: var(--space-4); }
+        .wallet-icon {
+          width: 44px; height: 44px; border-radius: 12px; display: flex;
+          align-items: center; justify-content: center; font-size: 22px;
+          color: white; font-weight: bold; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .wallet-name { font-size: var(--text-md); font-weight: 600; color: var(--text-primary); }
+        .wallet-type { font-size: var(--text-xs); color: var(--text-muted); margin-top: 2px; }
+        .wallet-badge {
+          font-size: 11px; padding: 3px 8px; border-radius: 99px; font-weight: 600;
+          background: rgba(255,255,255,0.08); color: var(--text-secondary);
+        }
+        .toast {
+          position: fixed; bottom: 24px; right: 24px; background: #111; border: 1px solid var(--border-accent);
+          padding: 16px 20px; border-radius: 12px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+          transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          max-width: 380px;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast-title { font-weight: 600; color: white; font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; gap:8px; }
+        .toast-desc { font-size: 13px; color: #aaa; line-height: 1.4; }
+      `;
+      document.head.appendChild(style);
+    }
 
-  // Inject Wallet Modal HTML if not already present
-  window.addEventListener('DOMContentLoaded', () => {
     if (!document.getElementById('walletModal')) {
       const modalDiv = document.createElement('div');
       modalDiv.id = 'walletModal';
       modalDiv.className = 'modal-overlay';
+      modalDiv.style.display = 'none';
       modalDiv.innerHTML = `
-        <div class="modal animate-scale-in" style="max-width:420px;">
-          <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;" onclick="closeWalletModal()">
+        <div class="modal animate-scale-in" style="max-width:420px;position:relative;">
+          <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;z-index:10;" onclick="closeWalletModal()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
           <div id="walletStepList">
@@ -158,11 +158,18 @@
     }
 
     updateWalletUI();
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initWalletManager);
+  } else {
+    initWalletManager();
+  }
 
   let connectTimer = null;
 
   window.showWalletToast = function(title, desc, dur = 5000) {
+    initWalletManager();
     const t = document.getElementById('toast') || document.getElementById('walletToast');
     const tTitle = document.getElementById('toastTitle') || document.getElementById('walletToastTitle');
     const tDesc = document.getElementById('toastDesc') || document.getElementById('walletToastDesc');
@@ -200,6 +207,7 @@
   };
 
   window.openWalletModal = function() {
+    initWalletManager();
     const list = document.getElementById('walletStepList');
     const conn = document.getElementById('walletStepConnecting');
     const modal = document.getElementById('walletModal');
@@ -223,6 +231,7 @@
   };
 
   window.selectWallet = function(name, color, icon, url) {
+    initWalletManager();
     const list = document.getElementById('walletStepList');
     const conn = document.getElementById('walletStepConnecting');
     if (list) list.style.display = 'none';
