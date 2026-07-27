@@ -417,7 +417,13 @@ function getAdminConfig() {
     ejsTpl: ''
   };
   const stored = JSON.parse(localStorage.getItem('anlgram_admin') || '{}');
-  return { ...defaults, ...stored };
+  return {
+    botToken: stored.botToken || defaults.botToken,
+    botUsername: stored.botUsername || defaults.botUsername,
+    ejsPK: stored.ejsPK || defaults.ejsPK,
+    ejsSvc: stored.ejsSvc || defaults.ejsSvc,
+    ejsTpl: stored.ejsTpl || defaults.ejsTpl
+  };
 }
 
 function loadAdmin() {
