@@ -582,37 +582,22 @@ function renderUserSubmissions() {
   `).join('');
 }
 
-// Open Bid Modal (Auctions)
+// Open Bid Modal (Auctions) — Pending Update Notification
 let currentAuctionBid = null;
 function openBidModal(title, currentBid) {
-  const connectedWallet = localStorage.getItem('anlgram_wallet_addr');
-  if (!connectedWallet) {
-    showWalletToast('⚡ Connect Wallet Required', 'Please connect your wallet first to place an auction bid.');
-    openWalletModal();
-    return;
+  if (typeof showWalletToast === 'function') {
+    showWalletToast('⏳ Pendiente por nueva actualización', 'El módulo de subastas on-chain en tiempo real estará disponible en la próxima versión del protocolo.');
+  } else {
+    alert('⏳ Pendiente por nueva actualización: Las subastas en vivo estarán disponibles muy pronto.');
   }
-  currentAuctionBid = { title, currentBid };
-  document.getElementById('bidModalTitle').textContent = title;
-  document.getElementById('bidModalCurrent').textContent = `${currentBid} GRAM`;
-  document.getElementById('bidAmountInput').value = parseInt(currentBid.replace(/\D/g, '')) + 200;
-  document.getElementById('auctionBidModal').style.display = 'flex';
 }
 
 function handleConfirmBid() {
-  const val = document.getElementById('bidAmountInput').value.trim();
-  if (!val) return;
-  
-  const btn = document.getElementById('confirmBidBtn');
-  const oldText = btn.textContent;
-  btn.disabled = true;
-  btn.innerHTML = `<span class="dot-live" style="background:white;"></span> Signing transaction (${val} GRAM)...`;
-  
-  setTimeout(() => {
-    btn.disabled = false;
-    btn.textContent = oldText;
-    document.getElementById('auctionBidModal').style.display = 'none';
-    showWalletToast('⚡ Bid Placed!', `Your bid of ${val} GRAM for "${currentAuctionBid.title}" is confirmed on-chain.`);
-  }, 1500);
+  if (typeof showWalletToast === 'function') {
+    showWalletToast('⏳ Pendiente por nueva actualización', 'El módulo de subastas on-chain en tiempo real estará disponible en la próxima versión del protocolo.');
+  } else {
+    alert('⏳ Pendiente por nueva actualización.');
+  }
 }
 
 function openPostBountyModal() {
