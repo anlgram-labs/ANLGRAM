@@ -211,6 +211,7 @@
       const nav = document.createElement('nav');
       nav.id = 'mobileBottomNav';
       nav.className = 'mobile-bottom-nav';
+      nav.style.display = 'none'; // Hidden by default on PC until device recognition confirms mobile
       
       const items = [
         { name: 'Inicio', href: 'index.html', icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
@@ -239,6 +240,7 @@
       const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       const isSmallScreen = window.innerWidth <= 768;
       const isPhone = isSmallScreen || (isTouch && window.innerWidth <= 1024);
+      const nav = document.getElementById('mobileBottomNav');
       
       if (isPhone) {
         document.documentElement.classList.add('device-phone');
@@ -247,6 +249,7 @@
           document.body.classList.add('device-phone');
           document.body.classList.remove('device-pc');
         }
+        if (nav) nav.style.display = 'flex';
       } else {
         document.documentElement.classList.add('device-pc');
         document.documentElement.classList.remove('device-phone');
@@ -254,6 +257,7 @@
           document.body.classList.add('device-pc');
           document.body.classList.remove('device-phone');
         }
+        if (nav) nav.style.display = 'none';
       }
 
       let devicePill = document.getElementById('anlgramDevicePill');
