@@ -193,6 +193,67 @@
       document.body.appendChild(toastDiv);
     }
 
+    if (!document.getElementById('settingsModal')) {
+      const setDiv = document.createElement('div');
+      setDiv.id = 'settingsModal';
+      setDiv.style.cssText = 'display:none !important; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(16px); z-index:1000000; align-items:center; justify-content:center; padding:16px;';
+      setDiv.innerHTML = `
+        <div style="background:#111116; border:1px solid #00f0ff; border-radius:24px; max-width:460px; width:100%; padding:24px; box-shadow:0 0 40px rgba(0,240,255,0.25); color:#fff; position:relative; max-height:90vh; overflow-y:auto; text-align:left;">
+          <button onclick="closeSettingsModal()" style="position:absolute; top:20px; right:20px; background:transparent; border:none; color:#888; font-size:20px; cursor:pointer;">✕</button>
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px;">
+            <span style="font-size:24px;">⚙️</span>
+            <div>
+              <h2 style="font-size:18px; margin:0; font-weight:700; color:#00f0ff;">Ajustes de Plataforma</h2>
+              <span style="font-size:12px; color:#888;">Personaliza la interfaz y experiencia ANLGRAM</span>
+            </div>
+          </div>
+
+          <div style="margin-bottom:18px;">
+            <label style="font-size:13px; font-weight:600; color:#fff; display:block; margin-bottom:8px;">🎨 Tema Visual (Interfaz):</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <button onclick="setTheme('cyberpunk')" id="theme-cyberpunk" class="setting-opt-btn" style="padding:10px; border-radius:10px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">⚡ Cyberpunk Neon</button>
+              <button onclick="setTheme('midnight')" id="theme-midnight" class="setting-opt-btn" style="padding:10px; border-radius:10px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">🌙 Midnight OLED</button>
+              <button onclick="setTheme('matrix')" id="theme-matrix" class="setting-opt-btn" style="padding:10px; border-radius:10px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">🐍 Matrix Hacker</button>
+              <button onclick="setTheme('gold')" id="theme-gold" class="setting-opt-btn" style="padding:10px; border-radius:10px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">👑 Solar VIP Whale</button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:18px;">
+            <label style="font-size:13px; font-weight:600; color:#fff; display:block; margin-bottom:8px;">💱 Moneda de Referencia (Precios):</label>
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px;">
+              <button onclick="setCurrency('USD')" id="curr-USD" class="setting-opt-btn" style="padding:8px; border-radius:8px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">$ USD</button>
+              <button onclick="setCurrency('EUR')" id="curr-EUR" class="setting-opt-btn" style="padding:8px; border-radius:8px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">€ EUR</button>
+              <button onclick="setCurrency('TON')" id="curr-TON" class="setting-opt-btn" style="padding:8px; border-radius:8px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">💎 TON</button>
+              <button onclick="setCurrency('BTC')" id="curr-BTC" class="setting-opt-btn" style="padding:8px; border-radius:8px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">₿ BTC</button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:18px;">
+            <label style="font-size:13px; font-weight:600; color:#fff; display:block; margin-bottom:8px;">⏱️ Actualización en Vivo (Polling):</label>
+            <select id="setting-polling" onchange="setPolling(this.value)" style="width:100%; padding:10px; border-radius:10px; background:#1a1a24; border:1px solid #333; color:#fff; font-size:13px; outline:none;">
+              <option value="5">⚡ 5 segundos (Tiempo Real Rápido)</option>
+              <option value="15">🔥 15 segundos (Estándar Recomendado)</option>
+              <option value="60">🌱 60 segundos (Ahorro de Batería/Datos)</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom:24px; border-top:1px solid rgba(255,255,255,0.08); padding-top:16px;">
+            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; margin-bottom:12px;">
+              <span style="font-size:13px; color:#ddd;">👁️ Máscara de Wallet (Ocultar dirección completa)</span>
+              <input type="checkbox" id="setting-mask" onchange="toggleMask(this.checked)" style="width:18px; height:18px; accent-color:#00f0ff; cursor:pointer;" />
+            </label>
+            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;">
+              <span style="font-size:13px; color:#ddd;">🔊 Efectos de Sonido Futuristas</span>
+              <input type="checkbox" id="setting-sound" onchange="toggleSound(this.checked)" style="width:18px; height:18px; accent-color:#00f0ff; cursor:pointer;" />
+            </label>
+          </div>
+
+          <button onclick="saveAndCloseSettings()" style="width:100%; background:#00f0ff; color:#000; font-weight:700; padding:12px; border-radius:12px; border:none; cursor:pointer; font-size:14px; box-shadow:0 0 20px rgba(0,240,255,0.3);">💾 Guardar y Aplicar Ajustes</button>
+        </div>
+      `;
+      document.body.appendChild(setDiv);
+    }
+
     // Auto-inject Connect Wallet button into topbar if missing
     const topbarActions = document.querySelector('.topbar-actions');
     if (topbarActions && !document.getElementById('topbarWalletBtn')) {
@@ -204,6 +265,31 @@
       btn.onclick = window.openWalletModal;
       topbarActions.appendChild(btn);
     }
+
+    // Auto-inject or bind Settings button in topbar
+    if (topbarActions && !document.getElementById('topbarSettingsBtn')) {
+      let settingsBtn = topbarActions.querySelector('button[title="Settings"]') || topbarActions.querySelector('button[title="Ajustes"]');
+      if (!settingsBtn) {
+        settingsBtn = document.createElement('button');
+        settingsBtn.className = 'topbar-btn';
+        settingsBtn.title = 'Settings';
+        settingsBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06-.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06-.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+        const walletBtn = document.getElementById('topbarWalletBtn');
+        if (walletBtn && walletBtn.parentNode === topbarActions) {
+          topbarActions.insertBefore(settingsBtn, walletBtn);
+        } else {
+          topbarActions.appendChild(settingsBtn);
+        }
+      }
+      settingsBtn.id = 'topbarSettingsBtn';
+      settingsBtn.onclick = (e) => { e.preventDefault(); window.openSettingsModal(); };
+    } else if (document.getElementById('topbarSettingsBtn')) {
+      document.getElementById('topbarSettingsBtn').onclick = (e) => { e.preventDefault(); window.openSettingsModal(); };
+    }
+
+    document.querySelectorAll('button[title="Settings"], button[title="Ajustes"], #topbarSettingsBtn').forEach(b => {
+      b.onclick = (e) => { e.preventDefault(); window.openSettingsModal(); };
+    });
 
     // Auto-inject Universal Mobile Bottom Navigation Bar
     if (!document.getElementById('mobileBottomNav')) {
@@ -219,15 +305,16 @@
         { name: 'Explorar', href: 'explorer.html', icon: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>' },
         { name: 'Flows', href: 'visualizer.html', icon: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49"/>' },
         { name: 'Intel', href: 'intel-exchange.html', icon: '<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>' },
-        { name: 'Alertas', href: 'alerts.html', icon: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>' }
+        { name: 'Alertas', href: 'alerts.html', icon: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>' },
+        { name: 'Ajustes', href: '#', onclick: 'openSettingsModal(); return false;', icon: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06-.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06-.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>' }
       ];
 
       nav.innerHTML = items.map(item => {
         const isActive = currentPage === item.href || (currentPage === '' && item.href === 'index.html');
         return `
-          <a href="${item.href}" class="mobile-nav-item ${isActive ? 'active' : ''}" style="display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 3px !important; color: ${isActive ? '#00f0ff' : '#64748b'} !important; text-decoration: none !important; font-size: 10px !important; font-weight: 600 !important; padding: 6px 8px !important; flex: 1 !important; text-align: center !important; margin: 0 !important; background: ${isActive ? 'rgba(0,240,255,0.1)' : 'transparent'} !important; border-radius: 12px !important;">
-            <svg width="20" height="20" style="width: 20px !important; height: 20px !important; min-width: 20px !important; max-width: 20px !important; flex-shrink: 0 !important; margin: 0 auto !important; display: block !important;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${item.icon}</svg>
-            <span style="font-size: 10px !important; line-height: 1 !important; display: block !important; margin: 0 !important;">${item.name}</span>
+          <a href="${item.href}" ${item.onclick ? `onclick="${item.onclick}"` : ''} class="mobile-nav-item ${isActive ? 'active' : ''}" style="display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 3px !important; color: ${isActive ? '#00f0ff' : '#64748b'} !important; text-decoration: none !important; font-size: 9px !important; font-weight: 600 !important; padding: 4px 5px !important; flex: 1 !important; text-align: center !important; margin: 0 !important; background: ${isActive ? 'rgba(0,240,255,0.1)' : 'transparent'} !important; border-radius: 12px !important;">
+            <svg width="20" height="20" style="width: 18px !important; height: 18px !important; min-width: 18px !important; max-width: 18px !important; flex-shrink: 0 !important; margin: 0 auto !important; display: block !important;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${item.icon}</svg>
+            <span style="font-size: 9px !important; line-height: 1 !important; display: block !important; margin: 0 !important;">${item.name}</span>
           </a>
         `;
       }).join('');
@@ -333,9 +420,12 @@
     window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: connectedWallet || null, name: connectedWalletName || null } }));
     const btns = document.querySelectorAll('#topbarWalletBtn');
 
+    const settings = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{}');
+    const isMasked = settings.mask !== false;
+
     btns.forEach(btn => {
       if (connectedWallet) {
-        const shortAddr = connectedWallet.length > 12 ? (connectedWallet.slice(0, 6) + '...' + connectedWallet.slice(-4)) : connectedWallet;
+        const shortAddr = !isMasked ? connectedWallet : (connectedWallet.length > 12 ? (connectedWallet.slice(0, 6) + '...' + connectedWallet.slice(-4)) : connectedWallet);
         btn.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00e676;margin-right:6px;box-shadow:0 0 8px #00e676;"></span>${shortAddr}`;
         btn.className = 'btn btn-secondary btn-sm';
         btn.style.background = 'rgba(0, 230, 118, 0.1)';
@@ -439,5 +529,167 @@
     updateWalletUI();
     closeWalletModal();
     showWalletToast('✅ Real Wallet Connected!', `Successfully connected ${name} (${addr.slice(0,6)}...${addr.slice(-4)}).`);
+    playAnlgramSound('bleep');
   };
+
+  window.openSettingsModal = function() {
+    initWalletManager();
+    const modal = document.getElementById('settingsModal');
+    if (modal) {
+      modal.style.setProperty('display', 'flex', 'important');
+      const settings = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{"theme":"cyberpunk","currency":"USD","polling":"15","mask":true,"sound":true}');
+      
+      document.querySelectorAll('.setting-opt-btn').forEach(b => {
+        b.style.borderColor = '#333';
+        b.style.background = '#1a1a24';
+        b.style.color = '#fff';
+      });
+      const tBtn = document.getElementById('theme-' + (settings.theme || 'cyberpunk'));
+      if (tBtn) { tBtn.style.borderColor = '#00f0ff'; tBtn.style.background = 'rgba(0,240,255,0.15)'; tBtn.style.color = '#00f0ff'; }
+      
+      const cBtn = document.getElementById('curr-' + (settings.currency || 'USD'));
+      if (cBtn) { cBtn.style.borderColor = '#00f0ff'; cBtn.style.background = 'rgba(0,240,255,0.15)'; cBtn.style.color = '#00f0ff'; }
+
+      const pSel = document.getElementById('setting-polling');
+      if (pSel) pSel.value = settings.polling || '15';
+
+      const mChk = document.getElementById('setting-mask');
+      if (mChk) mChk.checked = settings.mask !== false;
+
+      const sChk = document.getElementById('setting-sound');
+      if (sChk) sChk.checked = settings.sound !== false;
+    }
+  };
+
+  window.closeSettingsModal = function() {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.style.setProperty('display', 'none', 'important');
+  };
+
+  window.setTheme = function(t) {
+    const s = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{}');
+    s.theme = t;
+    localStorage.setItem('anlgram_user_settings', JSON.stringify(s));
+    applyAnlgramSettings();
+    openSettingsModal();
+    playAnlgramSound('bleep');
+  };
+
+  window.setCurrency = function(c) {
+    const s = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{}');
+    s.currency = c;
+    localStorage.setItem('anlgram_user_settings', JSON.stringify(s));
+    applyAnlgramSettings();
+    openSettingsModal();
+    playAnlgramSound('bleep');
+  };
+
+  window.setPolling = function(p) {
+    const s = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{}');
+    s.polling = p;
+    localStorage.setItem('anlgram_user_settings', JSON.stringify(s));
+    showWalletToast('⏱️ Frecuencia Cambiada', `Actualización fijada cada ${p} segundos.`);
+    playAnlgramSound('bleep');
+  };
+
+  window.toggleMask = function(m) {
+    const s = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{}');
+    s.mask = m;
+    localStorage.setItem('anlgram_user_settings', JSON.stringify(s));
+    applyAnlgramSettings();
+  };
+
+  window.toggleSound = function(snd) {
+    const s = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{}');
+    s.sound = snd;
+    localStorage.setItem('anlgram_user_settings', JSON.stringify(s));
+    if (snd) playAnlgramSound('bleep');
+  };
+
+  window.saveAndCloseSettings = function() {
+    closeSettingsModal();
+    showWalletToast('⚙️ Ajustes Guardados', 'Tu configuración personalizada ha sido aplicada exitosamente.');
+    playAnlgramSound('bleep');
+  };
+
+  window.playAnlgramSound = function(type = 'bleep') {
+    const s = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{}');
+    if (s.sound === false) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if (type === 'bleep') {
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+      } else {
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+      }
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {}
+  };
+
+  window.applyAnlgramSettings = function() {
+    const settings = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{}');
+    const theme = settings.theme || 'cyberpunk';
+    
+    const root = document.documentElement;
+    if (theme === 'midnight') {
+      root.style.setProperty('--bg-void', '#000000');
+      root.style.setProperty('--bg-primary', '#040405');
+      root.style.setProperty('--bg-secondary', '#08080a');
+      root.style.setProperty('--bg-sidebar', '#020203');
+      root.style.setProperty('--bg-card', '#0a0a0d');
+      root.style.setProperty('--cyan', '#00CFFF');
+      root.style.setProperty('--ton-blue', '#0088CC');
+    } else if (theme === 'matrix') {
+      root.style.setProperty('--bg-void', '#040a06');
+      root.style.setProperty('--bg-primary', '#060f08');
+      root.style.setProperty('--bg-secondary', '#0a170d');
+      root.style.setProperty('--bg-card', '#0d2112');
+      root.style.setProperty('--cyan', '#00ff66');
+      root.style.setProperty('--ton-blue', '#00cc44');
+      root.style.setProperty('--border-cyan', 'rgba(0, 255, 102, 0.4)');
+    } else if (theme === 'gold') {
+      root.style.setProperty('--bg-void', '#0a0804');
+      root.style.setProperty('--bg-primary', '#120e06');
+      root.style.setProperty('--bg-secondary', '#1a1408');
+      root.style.setProperty('--bg-card', '#211a0a');
+      root.style.setProperty('--cyan', '#ffb800');
+      root.style.setProperty('--ton-blue', '#e09800');
+      root.style.setProperty('--border-cyan', 'rgba(255, 184, 0, 0.4)');
+    } else {
+      root.style.removeProperty('--bg-void');
+      root.style.removeProperty('--bg-primary');
+      root.style.removeProperty('--bg-secondary');
+      root.style.removeProperty('--bg-sidebar');
+      root.style.removeProperty('--bg-card');
+      root.style.removeProperty('--cyan');
+      root.style.removeProperty('--ton-blue');
+      root.style.removeProperty('--border-cyan');
+    }
+
+    const currency = settings.currency || 'USD';
+    const priceEl = document.getElementById('topbar-price');
+    if (priceEl && window.lastTonPriceVal) {
+      if (currency === 'EUR') priceEl.textContent = '€' + (window.lastTonPriceVal * 0.92).toFixed(2);
+      else if (currency === 'TON') priceEl.textContent = '1.00 💎';
+      else if (currency === 'BTC') priceEl.textContent = '₿' + (window.lastTonPriceVal / 65000).toFixed(6);
+      else priceEl.textContent = '$' + window.lastTonPriceVal.toFixed(2);
+    }
+
+    if (typeof updateWalletUI === 'function') updateWalletUI();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.applyAnlgramSettings);
+  } else {
+    window.applyAnlgramSettings();
+  }
 })();
+
