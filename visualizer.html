@@ -151,7 +151,8 @@
         <input type="text" id="vizSearch" placeholder="Enter address or entity to trace flows..." autocomplete="off"/>
       </div>
       <div class="topbar-actions" style="pointer-events:auto;">
-        <button class="btn btn-primary btn-sm">Generate Graph</button>
+        <button class="btn btn-secondary btn-sm">Generate Graph</button>
+        <button class="btn btn-primary btn-sm" id="topbarWalletBtn" onclick="openWalletModal()" style="margin-left:8px;">Connect Wallet</button>
       </div>
     </header>
 
@@ -412,5 +413,6 @@ document.getElementById('vizSearch').addEventListener('keydown', e => {
   }
 });
 </script>
+<script src="assets/js/wallet.js"></script>
 </body>
 </html>

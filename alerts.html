@@ -232,6 +232,7 @@
           <span class="topbar-price-label">GRAM</span>
           <span class="topbar-price-value" id="topbar-price">$—</span>
         </div>
+        <button class="btn btn-primary btn-sm" id="topbarWalletBtn" onclick="openWalletModal()" style="margin-left:12px;">Connect Wallet</button>
       </div>
     </header>
 
@@ -734,5 +735,6 @@ setInterval(async () => { const p = await getTonPrice(); if (p) document.getElem
 monitorBlockchain();
 setInterval(monitorBlockchain, 15000);
 </script>
+<script src="assets/js/wallet.js"></script>
 </body>
 </html>

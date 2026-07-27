@@ -335,171 +335,11 @@
   </div>
 </div>
 
-<!-- TON Connect Wallet Modal -->
-<div id="walletModal" class="modal-overlay">
-  <div class="modal animate-scale-in" style="max-width:420px;">
-    <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;" onclick="closeWalletModal()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <div id="walletStepList">
-      <h2 style="font-size:20px;margin-bottom:6px;color:white;display:flex;align-items:center;gap:8px;">
-        <span>⚡ Connect TON Wallet</span>
-      </h2>
-      <p style="color:var(--text-secondary);margin-bottom:20px;font-size:13px;">Select your preferred wallet to sign and fund on-chain bounties on ANLGRAM.</p>
-      
-      <div class="wallet-list">
-        <div class="wallet-item" onclick="selectWallet('Tonkeeper', '#0098EA', '💎', 'https://app.tonkeeper.com/ton-login')">
-          <div class="wallet-info">
-            <div class="wallet-icon" style="background:#0098EA;">💎</div>
-            <div>
-              <div class="wallet-name">Tonkeeper</div>
-              <div class="wallet-type">Popular mobile & desktop wallet</div>
-            </div>
-          </div>
-          <span class="wallet-badge">POPULAR</span>
-        </div>
-
-        <div class="wallet-item" onclick="selectWallet('Telegram Wallet', '#229ED9', '✈️', 'https://t.me/wallet')">
-          <div class="wallet-info">
-            <div class="wallet-icon" style="background:#229ED9;">✈️</div>
-            <div>
-              <div class="wallet-name">Telegram Wallet</div>
-              <div class="wallet-type">Official in-app wallet (@wallet)</div>
-            </div>
-          </div>
-          <span class="wallet-badge">IN-APP</span>
-        </div>
-
-        <div class="wallet-item" onclick="selectWallet('MyTonWallet', '#6C5CE7', '⚡', 'https://mytonwallet.io/')">
-          <div class="wallet-info">
-            <div class="wallet-icon" style="background:#6C5CE7;">⚡</div>
-            <div>
-              <div class="wallet-name">MyTonWallet</div>
-              <div class="wallet-type">Fast browser extension</div>
-            </div>
-          </div>
-          <span class="wallet-badge">WEB3</span>
-        </div>
-
-        <div class="wallet-item" onclick="selectWallet('Tonhub', '#00B894', '🛡️', 'https://tonhub.com/')">
-          <div class="wallet-info">
-            <div class="wallet-icon" style="background:#00B894;">🛡️</div>
-            <div>
-              <div class="wallet-name">Tonhub</div>
-              <div class="wallet-type">Mobile smart wallet</div>
-            </div>
-          </div>
-          <span class="wallet-badge">MOBILE</span>
-        </div>
-      </div>
-      
-      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-subtle);text-align:center;">
-        <span style="font-size:12px;color:var(--text-muted);">By connecting, you agree to ANLGRAM's Terms of Service & Privacy Policy.</span>
-      </div>
-    </div>
-
-    <!-- Connecting Step -->
-    <div id="walletStepConnecting" style="display:none;text-align:center;padding:16px 0;">
-      <div style="width:72px;height:72px;border-radius:20px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:36px;box-shadow:0 0 30px rgba(0,240,255,0.2);border:2px solid var(--cyan);position:relative;" id="connIconBox">
-        <span id="connIcon">💎</span>
-      </div>
-      <h3 style="font-size:18px;color:white;margin-bottom:6px;" id="connTitle">Connecting to Tonkeeper...</h3>
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px;">Please approve the connection request in your wallet app.</p>
-      
-      <div style="background:var(--bg-input);padding:12px;border-radius:8px;border:1px solid var(--border-subtle);margin-bottom:20px;font-family:var(--font-mono);font-size:12px;color:var(--cyan);display:flex;align-items:center;justify-content:center;gap:8px;">
-        <span class="dot-live" style="background:var(--cyan);"></span> Waiting for on-chain signature...
-      </div>
-
-      <div style="display:flex;gap:12px;justify-content:center;">
-        <a id="connOpenAppBtn" href="#" target="_blank" class="btn btn-primary btn-sm" style="text-decoration:none;flex:1;">Open App ↗</a>
-        <button class="btn btn-secondary btn-sm" onclick="cancelConnectStep()" style="flex:1;">Cancel</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast">
-  <div class="toast-title" id="toastTitle"></div>
-  <div class="toast-desc" id="toastDesc"></div>
-</div>
-
 <script>
-let connectedWallet = localStorage.getItem('anlgram_wallet_addr') || null;
-let connectedWalletName = localStorage.getItem('anlgram_wallet_name') || null;
-let connectTimer = null;
-
-function showToast(title, desc, dur = 5000) {
-  document.getElementById('toastTitle').textContent = title;
-  document.getElementById('toastDesc').textContent = desc;
-  document.getElementById('toast').classList.add('show');
-  setTimeout(() => document.getElementById('toast').classList.remove('show'), dur);
-}
-
-function updateWalletUI() {
-  const btn = document.getElementById('topbarWalletBtn');
-  if (connectedWallet) {
-    const shortAddr = connectedWallet.slice(0, 6) + '...' + connectedWallet.slice(-4);
-    btn.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px;"></span>${shortAddr}`;
-    btn.className = 'btn btn-secondary btn-sm';
-    btn.onclick = () => {
-      if (confirm(`Disconnect wallet (${connectedWalletName}: ${connectedWallet})?`)) {
-        localStorage.removeItem('anlgram_wallet_addr');
-        localStorage.removeItem('anlgram_wallet_name');
-        connectedWallet = null;
-        connectedWalletName = null;
-        updateWalletUI();
-        showToast('🔓 Wallet Disconnected', 'Your wallet has been disconnected.');
-      }
-    };
-  } else {
-    btn.textContent = 'Connect Wallet';
-    btn.className = 'btn btn-primary btn-sm';
-    btn.onclick = openWalletModal;
-  }
-}
-
-function openWalletModal() {
-  document.getElementById('walletStepList').style.display = 'block';
-  document.getElementById('walletStepConnecting').style.display = 'none';
-  document.getElementById('walletModal').style.display = 'flex';
-}
-function closeWalletModal() {
-  if (connectTimer) clearTimeout(connectTimer);
-  document.getElementById('walletModal').style.display = 'none';
-}
-function cancelConnectStep() {
-  if (connectTimer) clearTimeout(connectTimer);
-  document.getElementById('walletStepList').style.display = 'block';
-  document.getElementById('walletStepConnecting').style.display = 'none';
-}
-
-function selectWallet(name, color, icon, url) {
-  document.getElementById('walletStepList').style.display = 'none';
-  document.getElementById('walletStepConnecting').style.display = 'block';
-  
-  document.getElementById('connIconBox').style.background = color + '22';
-  document.getElementById('connIconBox').style.borderColor = color;
-  document.getElementById('connIcon').textContent = icon;
-  document.getElementById('connTitle').textContent = `Connecting to ${name}...`;
-  document.getElementById('connOpenAppBtn').href = url;
-  
-  if (connectTimer) clearTimeout(connectTimer);
-  connectTimer = setTimeout(() => {
-    const randomHex = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('');
-    connectedWallet = 'EQ' + randomHex.slice(0, 4).toUpperCase() + '_' + randomHex.slice(4, 12) + '...' + randomHex.slice(-4).toUpperCase();
-    connectedWalletName = name;
-    localStorage.setItem('anlgram_wallet_addr', connectedWallet);
-    localStorage.setItem('anlgram_wallet_name', connectedWalletName);
-    
-    updateWalletUI();
-    closeWalletModal();
-    showToast('✅ Wallet Connected!', `Successfully connected to ${name} (${connectedWallet}).`);
-  }, 2200);
-}
-
 function openPostBountyModal() {
+  const connectedWallet = localStorage.getItem('anlgram_wallet_addr');
   if (!connectedWallet) {
-    showToast('⚡ Connect Wallet Required', 'Please connect Tonkeeper or Telegram Wallet first to post a bounty.');
+    showWalletToast('⚡ Connect Wallet Required', 'Please connect Tonkeeper or Telegram Wallet first to post a bounty.');
     openWalletModal();
     return;
   }
@@ -507,6 +347,8 @@ function openPostBountyModal() {
 }
 
 function handleFundAndPost() {
+  const connectedWallet = localStorage.getItem('anlgram_wallet_addr');
+  const connectedWalletName = localStorage.getItem('anlgram_wallet_name');
   if (!connectedWallet) {
     openWalletModal();
     return;
@@ -553,16 +395,14 @@ function handleFundAndPost() {
     
     const statEl = document.querySelectorAll('.stat-val')[1];
     if (statEl) {
-      const current = parseInt(statEl.textContent.replace(/\\D/g, '')) || 142;
+      const current = parseInt(statEl.textContent.replace(/\D/g, '')) || 142;
       statEl.textContent = (current + 1);
     }
     
-    showToast('🚀 Bounty Posted & Funded!', `${amount} GRAM locked in escrow smart contract. Intelligence bounty is now live.`);
+    showWalletToast('🚀 Bounty Posted & Funded!', `${amount} GRAM locked in escrow smart contract. Intelligence bounty is now live.`);
   }, 2000);
 }
-
-// Initialize on page load
-updateWalletUI();
 </script>
+<script src="assets/js/wallet.js"></script>
 </body>
 </html>
