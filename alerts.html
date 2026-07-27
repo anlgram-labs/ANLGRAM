@@ -11,29 +11,22 @@
   <link rel="stylesheet" href="assets/css/layout.css"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
   <script src="assets/js/api.js"></script>
-  <!-- EmailJS SDK for real email sending -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <style>
     .alerts-layout {
-      display: grid; grid-template-columns: 400px 1fr; gap: var(--space-6);
+      display: grid; grid-template-columns: 420px 1fr; gap: var(--space-6);
       min-height: calc(100vh - 180px);
     }
 
-    /* Config Panel */
     .alerts-config {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-xl);
-      display: flex; flex-direction: column; overflow: hidden;
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl); display: flex; flex-direction: column; overflow: hidden;
     }
     .config-header {
-      padding: var(--space-4) var(--space-5);
-      border-bottom: 1px solid var(--border-subtle);
+      padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border-subtle);
       display: flex; justify-content: space-between; align-items: center;
     }
-    .config-body {
-      padding: var(--space-5); overflow-y: auto; flex: 1;
-    }
+    .config-body { padding: var(--space-5); overflow-y: auto; flex: 1; }
     .config-group { margin-bottom: var(--space-5); }
     .config-label { display: block; font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-3); color: var(--text-primary); }
 
@@ -47,127 +40,114 @@
     .rule-type:hover { border-color: var(--border-accent); color: var(--text-primary); }
     .rule-type.active { background: var(--ton-blue-dim); border-color: var(--ton-blue); color: var(--cyan); }
 
-    .form-input {
+    .form-input, .form-select {
       width: 100%; padding: var(--space-2) var(--space-3); background: var(--bg-input);
       border: 1px solid var(--border-default); border-radius: var(--radius-md);
       color: var(--text-primary); font-family: var(--font-mono); font-size: var(--text-sm);
       box-sizing: border-box;
     }
     .form-input:focus { outline: none; border-color: var(--ton-blue); }
+    .hint { font-size: 10px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
 
-    .switch-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: var(--space-2) 0;
-    }
-    .switch-label { font-size: var(--text-sm); color: var(--text-secondary); }
-    .switch {
-      position: relative; width: 36px; height: 20px;
-      background: var(--bg-input); border-radius: 20px;
-      cursor: pointer; transition: 0.3s; flex-shrink: 0;
-    }
-    .switch.on { background: var(--green); }
-    .switch::after {
-      content: ''; position: absolute; top: 2px; left: 2px;
-      width: 16px; height: 16px; background: white; border-radius: 50%;
-      transition: 0.3s;
-    }
-    .switch.on::after { transform: translateX(16px); }
-
-    .channel-input-wrap {
-      max-height: 0; overflow: hidden; transition: max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease;
-      margin-top: 0; padding: 0;
-    }
-    .channel-input-wrap.open {
-      max-height: 120px; margin-top: var(--space-2); padding: 0;
-    }
-    .channel-input {
-      width: 100%; padding: 6px 10px; background: var(--bg-secondary);
-      border: 1px solid var(--border-default); border-radius: var(--radius-md);
-      color: var(--text-primary); font-family: var(--font-mono); font-size: var(--text-xs);
-      box-sizing: border-box; margin-bottom: 4px;
-    }
-    .channel-input:focus { outline: none; border-color: var(--ton-blue); }
-    .channel-hint {
-      font-size: 10px; color: var(--text-muted); line-height: 1.4;
-    }
-    .channel-hint a { color: var(--cyan); text-decoration: underline; }
-
-    /* Settings Section */
-    .settings-section {
+    /* Telegram connect button */
+    .tg-connect-box {
       background: var(--bg-secondary); border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg); padding: var(--space-4);
-      margin-bottom: var(--space-5);
+      display: flex; flex-direction: column; gap: var(--space-3);
     }
-    .settings-title {
-      font-size: var(--text-sm); font-weight: 700; color: var(--cyan);
-      margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2);
+    .tg-status {
+      display: flex; align-items: center; gap: var(--space-2);
+      font-size: var(--text-sm); font-weight: 600;
     }
-    .settings-row { margin-bottom: var(--space-3); }
-    .settings-row:last-child { margin-bottom: 0; }
-    .settings-label { font-size: var(--text-xs); color: var(--text-muted); margin-bottom: 4px; display: block; }
-    .settings-saved { color: var(--green); font-size: 10px; font-weight: 600; margin-left: 6px; display: none; }
+    .tg-status-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .tg-connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .tg-disconnected { background: var(--red); }
+    .tg-connect-btn {
+      display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+      padding: 10px; border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #0088cc, #00cfff);
+      color: white; font-weight: 700; font-size: var(--text-sm);
+      cursor: pointer; border: none; transition: 0.2s;
+    }
+    .tg-connect-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .tg-connect-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Email simple */
+    .email-box {
+      background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg); padding: var(--space-4);
+    }
+
+    /* Notification toggles */
+    .channel-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--space-3); background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+      margin-bottom: var(--space-2); cursor: pointer; transition: 0.2s;
+    }
+    .channel-toggle:hover { border-color: var(--border-accent); }
+    .channel-toggle.active { border-color: var(--green); background: rgba(52,211,153,0.05); }
+    .channel-toggle-left { display: flex; align-items: center; gap: var(--space-3); }
+    .channel-toggle-icon { font-size: 18px; }
+    .channel-toggle-label { font-size: var(--text-sm); font-weight: 500; color: var(--text-primary); }
+    .channel-toggle-sub { font-size: 10px; color: var(--text-muted); }
+    .channel-check {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid var(--border-default); display: flex;
+      align-items: center; justify-content: center;
+      font-size: 11px; color: transparent; transition: 0.2s; flex-shrink: 0;
+    }
+    .channel-toggle.active .channel-check {
+      background: var(--green); border-color: var(--green); color: white;
+    }
 
     /* Alert Feed */
     .alerts-feed-column { display: flex; flex-direction: column; gap: var(--space-4); }
-
     .alerts-feed {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-xl);
-      display: flex; flex-direction: column; overflow: hidden;
-      flex: 1;
+      background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl); display: flex; flex-direction: column; overflow: hidden; flex: 1;
     }
     .feed-header {
-      padding: var(--space-4) var(--space-5);
-      border-bottom: 1px solid var(--border-subtle);
-      display: flex; justify-content: space-between; align-items: center;
-      background: var(--bg-card);
+      padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border-subtle);
+      display: flex; justify-content: space-between; align-items: center; background: var(--bg-card);
     }
-    .feed-body {
-      flex: 1; overflow-y: auto; padding: var(--space-2);
-      max-height: 520px;
-    }
+    .feed-body { flex: 1; overflow-y: auto; padding: var(--space-2); max-height: 600px; }
 
     .alert-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: var(--space-4); margin-bottom: var(--space-2);
-      display: flex; gap: var(--space-4);
-      animation: fadeUp 0.3s ease forwards;
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-2);
+      display: flex; gap: var(--space-4); animation: fadeUp 0.3s ease forwards;
       cursor: pointer; transition: var(--transition-fast);
     }
     .alert-card:hover { border-color: var(--border-accent); background: var(--bg-card-hover); }
     .alert-icon {
       width: 32px; height: 32px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; font-size: 14px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px;
     }
-    .icon-whale { background: rgba(232, 154, 60, 0.15); color: var(--orange); }
-    .icon-danger { background: rgba(255, 68, 68, 0.15); color: var(--red); }
-    .icon-info { background: rgba(0, 136, 204, 0.15); color: var(--ton-blue); }
-    .icon-success { background: rgba(52, 211, 153, 0.15); color: var(--green); }
+    .icon-whale { background: rgba(232,154,60,0.15); }
+    .icon-danger { background: rgba(255,68,68,0.15); }
+    .icon-info { background: rgba(0,136,204,0.15); }
+    .icon-success { background: rgba(52,211,153,0.15); }
 
     .alert-content { flex: 1; min-width: 0; }
     .alert-meta { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: var(--text-xs); color: var(--text-muted); }
     .alert-title { font-size: var(--text-sm); font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
     .alert-desc { font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.5; font-family: var(--font-mono); }
-    .alert-channels-sent { display: flex; gap: 4px; margin-top: 6px; }
+    .alert-channels-sent { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
 
     /* Saved Rules */
     .saved-rules {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
       border-radius: var(--radius-xl); overflow: hidden;
     }
     .saved-rules-header {
-      padding: var(--space-3) var(--space-5);
-      border-bottom: 1px solid var(--border-subtle);
+      padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--border-subtle);
       display: flex; justify-content: space-between; align-items: center;
       font-weight: 600; font-size: var(--text-sm);
     }
-    .saved-rules-body { padding: var(--space-3); max-height: 200px; overflow-y: auto; }
-
+    .saved-rules-body { padding: var(--space-3); max-height: 180px; overflow-y: auto; }
     .rule-item {
       display: flex; align-items: center; justify-content: space-between;
       padding: var(--space-3); margin-bottom: var(--space-2);
@@ -179,52 +159,55 @@
     .rule-item-type { font-weight: 600; color: var(--text-primary); font-size: var(--text-sm); }
     .rule-item-details { color: var(--text-muted); font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .rule-item-channels { display: flex; gap: 4px; margin-top: 3px; flex-wrap: wrap; }
-
     .delete-rule {
-      background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3);
+      background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3);
       color: var(--red); border-radius: var(--radius-sm);
       padding: 4px 8px; cursor: pointer; font-size: 11px; font-weight: 600;
       transition: 0.2s; flex-shrink: 0; margin-left: var(--space-3);
     }
-    .delete-rule:hover { background: rgba(255, 68, 68, 0.25); }
+    .delete-rule:hover { background: rgba(255,68,68,0.25); }
 
     /* Toast */
     .toast {
       position: fixed; top: 20px; right: 20px; z-index: 9999;
       background: var(--bg-card); border: 1px solid var(--border-accent);
-      border-left: 4px solid var(--green);
-      border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      transform: translateX(120%); transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      border-left: 4px solid var(--green); border-radius: var(--radius-lg);
+      padding: var(--space-4) var(--space-5); box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      transform: translateX(120%); transition: transform 0.4s cubic-bezier(0.22,1,0.36,1);
       max-width: 380px;
     }
     .toast.show { transform: translateX(0); }
     .toast-title { font-weight: 700; color: var(--text-primary); font-size: var(--text-sm); margin-bottom: 4px; }
     .toast-desc { font-size: var(--text-xs); color: var(--text-secondary); font-family: var(--font-mono); }
 
-    .no-rules-msg {
-      text-align: center; padding: var(--space-4);
-      color: var(--text-muted); font-size: var(--text-sm);
-    }
+    .no-rules-msg { text-align: center; padding: var(--space-4); color: var(--text-muted); font-size: var(--text-sm); }
 
-    /* Monitor Status */
     .monitor-status {
       display: flex; align-items: center; gap: var(--space-2);
       font-size: var(--text-xs); color: var(--text-muted);
-      padding: var(--space-2) var(--space-5);
-      border-top: 1px solid var(--border-subtle);
+      padding: var(--space-2) var(--space-5); border-top: 1px solid var(--border-subtle);
       background: var(--bg-secondary);
     }
-    .monitor-status .dot-live { width: 6px; height: 6px; }
 
-    @media (max-width: 900px) {
-      .alerts-layout { grid-template-columns: 1fr; }
+    /* Admin panel toggle */
+    .admin-toggle {
+      font-size: 10px; color: var(--text-muted); cursor: pointer;
+      text-decoration: underline; margin-top: var(--space-2); display: block; text-align: center;
     }
+    .admin-panel {
+      max-height: 0; overflow: hidden; transition: max-height 0.4s ease;
+      background: var(--bg-secondary); border-radius: var(--radius-lg);
+      border: 1px solid var(--border-subtle); margin-bottom: var(--space-4);
+    }
+    .admin-panel.open { max-height: 600px; padding: var(--space-4); }
+    .admin-panel .form-input { margin-bottom: var(--space-2); font-size: 11px; }
+    .admin-title { font-size: var(--text-xs); font-weight: 700; color: var(--orange); margin-bottom: var(--space-3); }
+
+    @media (max-width: 900px) { .alerts-layout { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
 <div class="app-shell">
-  <!-- Sidebar -->
   <aside class="sidebar">
     <a href="index.html" class="sidebar-logo">
       <div class="sidebar-logo-icon">A</div>
@@ -232,28 +215,12 @@
     </a>
     <nav class="sidebar-nav">
       <div class="sidebar-section-label">Analytics</div>
-      <a href="dashboard.html" class="nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        Dashboard
-      </a>
-      <a href="explorer.html" class="nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        Entity Explorer
-      </a>
-      <a href="visualizer.html" class="nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49"/></svg>
-        Flow Visualizer
-      </a>
+      <a href="dashboard.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a>
+      <a href="explorer.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Entity Explorer</a>
+      <a href="visualizer.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49"/></svg>Flow Visualizer</a>
       <div class="sidebar-section-label" style="margin-top:var(--space-3);">Intelligence</div>
-      <a href="intel-exchange.html" class="nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-        Intel Exchange
-      </a>
-      <a href="alerts.html" class="nav-item active">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        Alerts
-        <span class="nav-badge" id="alertBadge">0</span>
-      </a>
+      <a href="intel-exchange.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>Intel Exchange</a>
+      <a href="alerts.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Alerts<span class="nav-badge" id="alertBadge">0</span></a>
     </nav>
   </aside>
 
@@ -272,72 +239,29 @@
       <div class="page-header animate-fade-up">
         <div>
           <h1 class="page-title">Smart Alerts</h1>
-          <p class="page-subtitle">Configure real-time notifications for whale movements and entity activity on the TON/GRAM network.</p>
+          <p class="page-subtitle">Get notified instantly via Telegram or Email when activity happens on any TON wallet.</p>
         </div>
-        <div style="display:flex;align-items:center;gap:var(--space-3);">
-          <span class="badge badge-green"><span class="dot-live"></span> Monitoring</span>
-        </div>
+        <span class="badge badge-green"><span class="dot-live"></span> Monitoring</span>
       </div>
 
       <div class="alerts-layout">
 
-        <!-- Config Panel -->
+        <!-- ════════ CONFIG PANEL ════════ -->
         <div class="alerts-config animate-fade-up delay-1">
           <div class="config-header">
-            <div style="font-weight:600;">⚙️ Alert Configuration</div>
+            <div style="font-weight:600;">🔔 Create Alert</div>
           </div>
           <div class="config-body">
 
-            <!-- Telegram Bot Settings -->
-            <div class="settings-section">
-              <div class="settings-title">🤖 Telegram Bot Setup <span class="settings-saved" id="tgSaved">✓ Saved</span></div>
-              <div class="settings-row">
-                <label class="settings-label">Bot Token (from <a href="https://t.me/BotFather" target="_blank" style="color:var(--cyan);">@BotFather</a>)</label>
-                <input type="text" class="form-input" id="tgBotToken" placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" style="font-size:11px;">
-              </div>
-              <div class="settings-row">
-                <label class="settings-label">Your Chat ID (<a href="#" onclick="getChatId();return false;" style="color:var(--cyan);">Auto-detect →</a>)</label>
-                <input type="text" class="form-input" id="tgChatId" placeholder="Click 'Auto-detect' after messaging your bot">
-              </div>
-              <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:var(--space-2);" onclick="saveTelegramSettings()">Save Telegram Settings</button>
-              <div class="channel-hint" style="margin-top:6px;">
-                1. Open Telegram → search <a href="https://t.me/BotFather" target="_blank">@BotFather</a><br>
-                2. Send <code>/newbot</code> → name it "ANLGRAM Alerts"<br>
-                3. Copy the token and paste it above<br>
-                4. Open a chat with YOUR new bot and send <code>/start</code><br>
-                5. Click "Auto-detect" to get your Chat ID
-              </div>
-            </div>
-
-            <!-- EmailJS Settings -->
-            <div class="settings-section">
-              <div class="settings-title">📧 Email Setup (via EmailJS) <span class="settings-saved" id="emailSaved">✓ Saved</span></div>
-              <div class="settings-row">
-                <label class="settings-label">EmailJS Public Key (<a href="https://www.emailjs.com/" target="_blank" style="color:var(--cyan);">Get free account</a>)</label>
-                <input type="text" class="form-input" id="ejsPublicKey" placeholder="Your EmailJS public key" style="font-size:11px;">
-              </div>
-              <div class="settings-row">
-                <label class="settings-label">Service ID</label>
-                <input type="text" class="form-input" id="ejsServiceId" placeholder="e.g. service_abc123" style="font-size:11px;">
-              </div>
-              <div class="settings-row">
-                <label class="settings-label">Template ID</label>
-                <input type="text" class="form-input" id="ejsTemplateId" placeholder="e.g. template_xyz789" style="font-size:11px;">
-              </div>
-              <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:var(--space-2);" onclick="saveEmailSettings()">Save Email Settings</button>
-              <div class="channel-hint" style="margin-top:6px;">
-                1. Register free at <a href="https://www.emailjs.com/" target="_blank">emailjs.com</a><br>
-                2. Add your Gmail as an Email Service<br>
-                3. Create a template with variables: <code>{{subject}}</code>, <code>{{message}}</code>, <code>{{to_email}}</code><br>
-                4. Copy IDs and paste above
-              </div>
-            </div>
-
-            <hr style="border-color:var(--border-subtle);margin:var(--space-4) 0;">
-
-            <!-- Create Rule -->
+            <!-- STEP 1: What to watch -->
             <div class="config-group">
-              <label class="config-label">📌 Create Alert Rule</label>
+              <label class="config-label">1️⃣ Wallet Address to Monitor</label>
+              <input type="text" class="form-input" id="targetEntity" placeholder="Paste any TON wallet address here...">
+              <div class="hint">We'll watch this wallet every 15 seconds and alert you on any new transaction.</div>
+            </div>
+
+            <div class="config-group">
+              <label class="config-label">Alert Type</label>
               <div class="rule-type-grid" id="ruleTypeGrid">
                 <div class="rule-type active" data-type="Large Transfer">🐋 Large Transfer</div>
                 <div class="rule-type" data-type="Entity Activity">👁 Entity Activity</div>
@@ -349,66 +273,104 @@
             <div class="config-group">
               <label class="config-label">Minimum Amount (GRAM)</label>
               <input type="number" class="form-input" id="minAmount" value="1" min="0.001" step="any">
-              <div class="channel-hint" style="margin-top:4px;">Set to 1 to catch every transaction on the target address</div>
+              <div class="hint">Set to 1 to receive alerts for every transaction.</div>
             </div>
 
+            <!-- STEP 2: Where to notify (SIMPLE) -->
             <div class="config-group">
-              <label class="config-label">Target Address to Monitor (Required)</label>
-              <input type="text" class="form-input" id="targetEntity" placeholder="Paste your TON wallet address here...">
-              <div class="channel-hint" style="margin-top:4px;">This is the wallet address the system will watch every 15 seconds for new transactions.</div>
+              <label class="config-label">2️⃣ Where to Receive Alerts</label>
+
+              <!-- Browser Push -->
+              <div class="channel-toggle active" id="togglePush" onclick="this.classList.toggle('active')">
+                <div class="channel-toggle-left">
+                  <span class="channel-toggle-icon">🔔</span>
+                  <div>
+                    <div class="channel-toggle-label">Browser Notification</div>
+                    <div class="channel-toggle-sub">Pop-up alerts while page is open</div>
+                  </div>
+                </div>
+                <div class="channel-check">✓</div>
+              </div>
+
+              <!-- Telegram — SIMPLE -->
+              <div class="channel-toggle" id="toggleTelegram" onclick="this.classList.toggle('active')">
+                <div class="channel-toggle-left">
+                  <span class="channel-toggle-icon">✈️</span>
+                  <div>
+                    <div class="channel-toggle-label">Telegram</div>
+                    <div class="channel-toggle-sub" id="tgSubLabel">Click to enable</div>
+                  </div>
+                </div>
+                <div class="channel-check">✓</div>
+              </div>
+              <!-- Telegram connect (appears when Telegram is toggled on but not connected) -->
+              <div class="tg-connect-box" id="tgConnectBox" style="display:none;">
+                <div class="tg-status">
+                  <div class="tg-status-dot" id="tgDot"></div>
+                  <span id="tgStatusText">Not connected</span>
+                </div>
+                <button class="tg-connect-btn" id="tgConnectBtn" onclick="connectTelegram()">
+                  ✈️ Connect Telegram (1 click)
+                </button>
+                <div class="hint">Opens our bot in Telegram. Press START, then come back here — we detect you automatically.</div>
+              </div>
+
+              <!-- Email — SIMPLE -->
+              <div class="channel-toggle" id="toggleEmail" onclick="this.classList.toggle('active')">
+                <div class="channel-toggle-left">
+                  <span class="channel-toggle-icon">📧</span>
+                  <div>
+                    <div class="channel-toggle-label">Email</div>
+                    <div class="channel-toggle-sub">Receive alerts to your inbox</div>
+                  </div>
+                </div>
+                <div class="channel-check">✓</div>
+              </div>
+              <div class="email-box" id="emailBox" style="display:none;">
+                <input type="email" class="form-input" id="userEmail" placeholder="your@email.com">
+              </div>
             </div>
 
-            <div class="config-group">
-              <label class="config-label">Notification Channels</label>
-
-              <div class="switch-row">
-                <span class="switch-label">🔔 Browser Push</span>
-                <div class="switch on" id="switchPush"></div>
-              </div>
-
-              <div class="switch-row">
-                <span class="switch-label">✈️ Telegram Message</span>
-                <div class="switch" id="switchTelegram"></div>
-              </div>
-
-              <div class="switch-row">
-                <span class="switch-label">📧 Email</span>
-                <div class="switch" id="switchEmail"></div>
-              </div>
-              <div class="channel-input-wrap" id="emailRuleWrap">
-                <input type="email" class="channel-input" id="ruleEmail" placeholder="Email to receive alerts (e.g. you@gmail.com)">
-              </div>
+            <!-- Admin panel (hidden, only for platform owner setup) -->
+            <span class="admin-toggle" onclick="document.getElementById('adminPanel').classList.toggle('open')">⚙ Admin Setup (platform owner only)</span>
+            <div class="admin-panel" id="adminPanel">
+              <div class="admin-title">🔐 One-time setup by platform owner</div>
+              <label class="hint" style="margin-bottom:4px;display:block;">Telegram Bot Token (<a href="https://t.me/BotFather" target="_blank" style="color:var(--cyan);">@BotFather</a>)</label>
+              <input type="text" class="form-input" id="adminBotToken" placeholder="123456:ABC-DEF...">
+              <label class="hint" style="margin-bottom:4px;display:block;margin-top:8px;">Telegram Bot Username (without @)</label>
+              <input type="text" class="form-input" id="adminBotUsername" placeholder="e.g. ANLGRAMAlertBot">
+              <label class="hint" style="margin-bottom:4px;display:block;margin-top:8px;">EmailJS Public Key</label>
+              <input type="text" class="form-input" id="adminEjsPK" placeholder="Public key">
+              <label class="hint" style="margin-bottom:4px;display:block;margin-top:8px;">EmailJS Service ID</label>
+              <input type="text" class="form-input" id="adminEjsSvc" placeholder="service_xxx">
+              <label class="hint" style="margin-bottom:4px;display:block;margin-top:8px;">EmailJS Template ID</label>
+              <input type="text" class="form-input" id="adminEjsTpl" placeholder="template_xxx">
+              <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:var(--space-3);" onclick="saveAdminSettings()">Save Admin Settings</button>
             </div>
 
           </div>
           <div style="padding:var(--space-4);border-top:1px solid var(--border-subtle);background:var(--bg-card-hover);">
-            <button class="btn btn-primary" style="width:100%;" id="saveRuleBtn">💾 Save Alert Rule</button>
+            <button class="btn btn-primary" style="width:100%;font-size:var(--text-base);padding:12px;" id="saveRuleBtn">🚀 Start Monitoring</button>
           </div>
           <div class="monitor-status" id="monitorStatus">
-            <span class="dot-live"></span> Monitor idle — create a rule to start
+            <span class="dot-live" style="background:var(--text-muted);box-shadow:none;"></span> Idle — create a rule to start
           </div>
         </div>
 
-        <!-- Right Column -->
+        <!-- ════════ RIGHT COLUMN ════════ -->
         <div class="alerts-feed-column">
-
-          <!-- Saved Rules -->
           <div class="saved-rules animate-fade-up delay-2">
             <div class="saved-rules-header">
               <span>📋 Active Rules</span>
-              <span class="badge badge-muted" id="ruleCount">0 rules</span>
+              <span class="badge badge-muted" id="ruleCount">0</span>
             </div>
             <div class="saved-rules-body" id="savedRulesBody">
-              <div class="no-rules-msg">No rules configured yet.</div>
+              <div class="no-rules-msg">No rules yet. Create one on the left.</div>
             </div>
           </div>
-
-          <!-- Live Feed -->
           <div class="alerts-feed animate-fade-up delay-3">
             <div class="feed-header">
-              <div style="font-weight:600;display:flex;align-items:center;gap:var(--space-2);">
-                <span class="dot-live"></span> Live Alert Feed
-              </div>
+              <div style="font-weight:600;display:flex;align-items:center;gap:var(--space-2);"><span class="dot-live"></span> Live Alert Feed</div>
               <button class="btn btn-ghost btn-sm" id="clearFeedBtn">Clear All</button>
             </div>
             <div class="feed-body" id="feedBody">
@@ -421,7 +383,6 @@
   </main>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast">
   <div class="toast-title" id="toastTitle"></div>
   <div class="toast-desc" id="toastDesc"></div>
@@ -429,129 +390,156 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════
-// ANLGRAM Smart Alerts — Full Working System
+// ANLGRAM Smart Alerts — Simplified User Experience
 // ═══════════════════════════════════════════════════════════════
 
 let selectedType = 'Large Transfer';
 let alertRules = JSON.parse(localStorage.getItem('anlgram_rules') || '[]');
 let alertCounter = 0;
-
-// Track last seen tx per address to avoid duplicate alerts
 let lastSeenTx = JSON.parse(localStorage.getItem('anlgram_last_tx') || '{}');
+let tgChatId = localStorage.getItem('anlgram_user_tg_chatid') || null;
 
 // ── Toast ────────────────────────────────────────────────────
-function showToast(title, desc, duration = 5000) {
-  const t = document.getElementById('toast');
+function showToast(title, desc, dur = 5000) {
   document.getElementById('toastTitle').textContent = title;
   document.getElementById('toastDesc').textContent = desc;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), duration);
+  document.getElementById('toast').classList.add('show');
+  setTimeout(() => document.getElementById('toast').classList.remove('show'), dur);
 }
 
-// ── Load Saved Settings ──────────────────────────────────────
-function loadSettings() {
-  const tg = JSON.parse(localStorage.getItem('anlgram_telegram') || '{}');
-  if (tg.token) document.getElementById('tgBotToken').value = tg.token;
-  if (tg.chatId) document.getElementById('tgChatId').value = tg.chatId;
-  if (tg.token && tg.chatId) document.getElementById('tgSaved').style.display = 'inline';
-
-  const ej = JSON.parse(localStorage.getItem('anlgram_emailjs') || '{}');
-  if (ej.publicKey) document.getElementById('ejsPublicKey').value = ej.publicKey;
-  if (ej.serviceId) document.getElementById('ejsServiceId').value = ej.serviceId;
-  if (ej.templateId) document.getElementById('ejsTemplateId').value = ej.templateId;
-  if (ej.publicKey && ej.serviceId && ej.templateId) document.getElementById('emailSaved').style.display = 'inline';
+// ── Admin Settings (Platform owner does this ONCE) ───────────
+function loadAdmin() {
+  const a = JSON.parse(localStorage.getItem('anlgram_admin') || '{}');
+  if (a.botToken) document.getElementById('adminBotToken').value = a.botToken;
+  if (a.botUsername) document.getElementById('adminBotUsername').value = a.botUsername;
+  if (a.ejsPK) document.getElementById('adminEjsPK').value = a.ejsPK;
+  if (a.ejsSvc) document.getElementById('adminEjsSvc').value = a.ejsSvc;
+  if (a.ejsTpl) document.getElementById('adminEjsTpl').value = a.ejsTpl;
+  return a;
 }
-loadSettings();
+const adminConfig = loadAdmin();
 
-// ── Save Telegram Settings ───────────────────────────────────
-window.saveTelegramSettings = function() {
-  const token = document.getElementById('tgBotToken').value.trim();
-  const chatId = document.getElementById('tgChatId').value.trim();
-  if (!token) { showToast('⚠️ Missing Token', 'Paste your bot token from @BotFather'); return; }
-  localStorage.setItem('anlgram_telegram', JSON.stringify({ token, chatId }));
-  document.getElementById('tgSaved').style.display = 'inline';
-  showToast('✅ Telegram Saved', 'Bot token and Chat ID saved successfully.');
+window.saveAdminSettings = function() {
+  const cfg = {
+    botToken: document.getElementById('adminBotToken').value.trim(),
+    botUsername: document.getElementById('adminBotUsername').value.trim(),
+    ejsPK: document.getElementById('adminEjsPK').value.trim(),
+    ejsSvc: document.getElementById('adminEjsSvc').value.trim(),
+    ejsTpl: document.getElementById('adminEjsTpl').value.trim()
+  };
+  localStorage.setItem('anlgram_admin', JSON.stringify(cfg));
+  Object.assign(adminConfig, cfg);
+  showToast('✅ Admin Settings Saved', 'Bot and Email settings saved.');
 };
 
-// ── Auto-detect Telegram Chat ID ─────────────────────────────
-window.getChatId = async function() {
-  const token = document.getElementById('tgBotToken').value.trim();
-  if (!token) { showToast('⚠️ Missing Token', 'First paste your bot token above.'); return; }
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
-    const data = await res.json();
-    if (data.ok && data.result.length > 0) {
-      const chatId = data.result[data.result.length - 1].message.chat.id;
-      document.getElementById('tgChatId').value = chatId;
-      showToast('✅ Chat ID Found!', 'Chat ID: ' + chatId);
-    } else {
-      showToast('⚠️ No Messages', 'Open a chat with your bot and send /start first, then try again.');
-    }
-  } catch (e) {
-    showToast('❌ Error', 'Could not connect to Telegram API. Check your token.');
+// ── Telegram: Simple Connect Flow ────────────────────────────
+function updateTgStatus() {
+  const dot = document.getElementById('tgDot');
+  const txt = document.getElementById('tgStatusText');
+  const sub = document.getElementById('tgSubLabel');
+  if (tgChatId) {
+    dot.className = 'tg-status-dot tg-connected';
+    txt.textContent = 'Connected ✓ (Chat ID: ' + tgChatId + ')';
+    txt.style.color = 'var(--green)';
+    sub.textContent = 'Connected ✓';
+    sub.style.color = 'var(--green)';
+    document.getElementById('tgConnectBtn').textContent = '✅ Connected!';
+    document.getElementById('tgConnectBtn').disabled = true;
+  } else {
+    dot.className = 'tg-status-dot tg-disconnected';
+    txt.textContent = 'Not connected';
+    txt.style.color = '';
+    sub.textContent = 'Click to enable';
+    sub.style.color = '';
   }
-};
+}
 
-// ── Save EmailJS Settings ────────────────────────────────────
-window.saveEmailSettings = function() {
-  const publicKey = document.getElementById('ejsPublicKey').value.trim();
-  const serviceId = document.getElementById('ejsServiceId').value.trim();
-  const templateId = document.getElementById('ejsTemplateId').value.trim();
-  if (!publicKey || !serviceId || !templateId) {
-    showToast('⚠️ Missing Fields', 'Fill in all three EmailJS fields.');
+window.connectTelegram = async function() {
+  const a = JSON.parse(localStorage.getItem('anlgram_admin') || '{}');
+  if (!a.botToken || !a.botUsername) {
+    showToast('⚠️ Bot Not Configured', 'Ask the platform admin to set up the Telegram bot in Admin Setup.');
     return;
   }
-  localStorage.setItem('anlgram_emailjs', JSON.stringify({ publicKey, serviceId, templateId }));
-  document.getElementById('emailSaved').style.display = 'inline';
-  // Initialize EmailJS
-  emailjs.init(publicKey);
-  showToast('✅ Email Saved', 'EmailJS credentials saved successfully.');
+
+  // Open bot in Telegram
+  window.open('https://t.me/' + a.botUsername + '?start=connect', '_blank');
+  
+  document.getElementById('tgConnectBtn').textContent = '⏳ Waiting for you to press START...';
+  document.getElementById('tgConnectBtn').disabled = true;
+
+  // Poll for the user's message (check every 3 seconds for 60 seconds)
+  let attempts = 0;
+  const maxAttempts = 20;
+  
+  const poller = setInterval(async () => {
+    attempts++;
+    if (attempts > maxAttempts) {
+      clearInterval(poller);
+      document.getElementById('tgConnectBtn').textContent = '✈️ Try Again';
+      document.getElementById('tgConnectBtn').disabled = false;
+      showToast('⏰ Timeout', 'Open the bot in Telegram, press START, and try again.');
+      return;
+    }
+
+    try {
+      const res = await fetch('https://api.telegram.org/bot' + a.botToken + '/getUpdates?offset=-5');
+      const data = await res.json();
+      if (data.ok && data.result.length > 0) {
+        // Get the most recent chat ID from any message
+        const latest = data.result[data.result.length - 1];
+        const chatId = latest.message ? latest.message.chat.id : null;
+        
+        if (chatId) {
+          clearInterval(poller);
+          tgChatId = String(chatId);
+          localStorage.setItem('anlgram_user_tg_chatid', tgChatId);
+          updateTgStatus();
+          showToast('✅ Telegram Connected!', 'You will now receive alerts in Telegram.');
+          
+          // Send welcome message
+          await sendTelegram('🎉 <b>ANLGRAM Connected!</b>\n\nYou will now receive real-time blockchain alerts here.\n\nManage your rules at ANLGRAM Intelligence.');
+        }
+      }
+    } catch (e) { console.error('TG poll error:', e); }
+  }, 3000);
 };
 
-// ── SEND TELEGRAM MESSAGE (Real) ─────────────────────────────
+// Toggle visibility of Telegram/Email panels
+const toggleTg = document.getElementById('toggleTelegram');
+const toggleEm = document.getElementById('toggleEmail');
+
+toggleTg.addEventListener('click', () => {
+  document.getElementById('tgConnectBox').style.display = toggleTg.classList.contains('active') ? 'flex' : 'none';
+  updateTgStatus();
+});
+toggleEm.addEventListener('click', () => {
+  document.getElementById('emailBox').style.display = toggleEm.classList.contains('active') ? 'block' : 'none';
+});
+
+// ── Send Telegram (Real) ─────────────────────────────────────
 async function sendTelegram(text) {
-  const tg = JSON.parse(localStorage.getItem('anlgram_telegram') || '{}');
-  if (!tg.token || !tg.chatId) {
-    console.warn('Telegram not configured');
-    return false;
-  }
+  const a = JSON.parse(localStorage.getItem('anlgram_admin') || '{}');
+  if (!a.botToken || !tgChatId) return false;
   try {
-    const res = await fetch(`https://api.telegram.org/bot${tg.token}/sendMessage`, {
+    const res = await fetch('https://api.telegram.org/bot' + a.botToken + '/sendMessage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: tg.chatId,
-        text: text,
-        parse_mode: 'HTML'
-      })
+      body: JSON.stringify({ chat_id: tgChatId, text: text, parse_mode: 'HTML' })
     });
-    const data = await res.json();
-    return data.ok;
-  } catch (e) {
-    console.error('Telegram send error:', e);
-    return false;
-  }
+    const d = await res.json();
+    return d.ok;
+  } catch (e) { console.error('TG error:', e); return false; }
 }
 
-// ── SEND EMAIL (Real via EmailJS) ────────────────────────────
+// ── Send Email (Real via EmailJS) ────────────────────────────
 async function sendEmail(toEmail, subject, message) {
-  const ej = JSON.parse(localStorage.getItem('anlgram_emailjs') || '{}');
-  if (!ej.publicKey || !ej.serviceId || !ej.templateId) {
-    console.warn('EmailJS not configured');
-    return false;
-  }
+  const a = JSON.parse(localStorage.getItem('anlgram_admin') || '{}');
+  if (!a.ejsPK || !a.ejsSvc || !a.ejsTpl) return false;
   try {
-    emailjs.init(ej.publicKey);
-    const res = await emailjs.send(ej.serviceId, ej.templateId, {
-      to_email: toEmail,
-      subject: subject,
-      message: message
-    });
-    return res.status === 200;
-  } catch (e) {
-    console.error('Email send error:', e);
-    return false;
-  }
+    emailjs.init(a.ejsPK);
+    const r = await emailjs.send(a.ejsSvc, a.ejsTpl, { to_email: toEmail, subject, message });
+    return r.status === 200;
+  } catch (e) { console.error('Email error:', e); return false; }
 }
 
 // ── Rule Type Selection ──────────────────────────────────────
@@ -563,95 +551,53 @@ document.querySelectorAll('.rule-type').forEach(btn => {
   });
 });
 
-// ── Switch Toggles ───────────────────────────────────────────
-const switchExpand = { switchEmail: 'emailRuleWrap' };
-document.querySelectorAll('.switch').forEach(sw => {
-  sw.addEventListener('click', () => {
-    sw.classList.toggle('on');
-    const wrapId = switchExpand[sw.id];
-    if (wrapId) {
-      document.getElementById(wrapId).classList.toggle('open', sw.classList.contains('on'));
-    }
-  });
-});
-
 // ── Save Rule ────────────────────────────────────────────────
 document.getElementById('saveRuleBtn').addEventListener('click', () => {
-  const minAmount = parseFloat(document.getElementById('minAmount').value) || 1;
-  const targetEntity = document.getElementById('targetEntity').value.trim();
-
-  if (!targetEntity) {
-    showToast('⚠️ Address Required', 'Paste the TON wallet address you want to monitor.');
-    return;
-  }
-
+  const addr = document.getElementById('targetEntity').value.trim();
+  const minAmt = parseFloat(document.getElementById('minAmount').value) || 1;
+  
+  if (!addr) { showToast('⚠️ Missing Wallet', 'Paste the TON wallet address to monitor.'); return; }
+  
   const channels = [];
-  if (document.getElementById('switchPush').classList.contains('on')) channels.push('push');
-  if (document.getElementById('switchTelegram').classList.contains('on')) channels.push('telegram');
-  if (document.getElementById('switchEmail').classList.contains('on')) {
-    const em = document.getElementById('ruleEmail').value.trim();
-    if (!em || !em.includes('@')) {
-      showToast('⚠️ Invalid Email', 'Please enter a valid email address.');
-      return;
-    }
+  if (document.getElementById('togglePush').classList.contains('active')) channels.push('push');
+  if (document.getElementById('toggleTelegram').classList.contains('active')) {
+    if (!tgChatId) { showToast('⚠️ Telegram Not Connected', 'Click "Connect Telegram" first.'); return; }
+    channels.push('telegram');
+  }
+  if (document.getElementById('toggleEmail').classList.contains('active')) {
+    const em = document.getElementById('userEmail').value.trim();
+    if (!em || !em.includes('@')) { showToast('⚠️ Invalid Email', 'Enter a valid email address.'); return; }
     channels.push({ type: 'email', value: em });
   }
+  if (channels.length === 0) { showToast('⚠️ No Channel', 'Select at least one notification channel.'); return; }
 
-  if (channels.length === 0) {
-    showToast('⚠️ No Channels', 'Enable at least one notification channel.');
-    return;
-  }
-
-  const rule = {
-    id: Date.now(),
-    type: selectedType,
-    minAmount,
-    targetEntity,
-    channels,
-    createdAt: new Date().toISOString()
-  };
-
-  alertRules.push(rule);
+  alertRules.push({
+    id: Date.now(), type: selectedType, minAmount: minAmt,
+    targetEntity: addr, channels, createdAt: new Date().toISOString()
+  });
   localStorage.setItem('anlgram_rules', JSON.stringify(alertRules));
   renderSavedRules();
-  showToast('✅ Rule Saved!', `Monitoring ${shortenAddress(targetEntity)} for ≥${minAmount} GRAM`);
+  showToast('🚀 Monitoring Started!', 'Watching ' + shortenAddress(addr) + ' for ≥' + minAmt + ' GRAM');
 
-  // Request push permission
-  if (channels.includes('push') && 'Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
-
-  // Force immediate first check
+  if (channels.includes('push') && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   monitorBlockchain();
 });
 
-// ── Render Rules ─────────────────────────────────────────────
+// ── Render Saved Rules ───────────────────────────────────────
 function renderSavedRules() {
-  const container = document.getElementById('savedRulesBody');
-  const countEl = document.getElementById('ruleCount');
-
-  if (alertRules.length === 0) {
-    container.innerHTML = '<div class="no-rules-msg">No rules configured yet.</div>';
-    countEl.textContent = '0 rules';
-    updateMonitorStatus();
-    return;
-  }
-
-  countEl.textContent = alertRules.length + ' rule' + (alertRules.length > 1 ? 's' : '');
-  container.innerHTML = alertRules.map(rule => {
-    const chBadges = rule.channels.map(ch => {
-      if (typeof ch === 'string') return `<span class="badge badge-green" style="font-size:9px;padding:1px 5px;">${ch}</span>`;
-      return `<span class="badge badge-cyan" style="font-size:9px;padding:1px 5px;">${ch.type}: ${ch.value}</span>`;
-    }).join('');
-    return `
-      <div class="rule-item">
-        <div class="rule-item-info">
-          <div class="rule-item-type">${rule.type}</div>
-          <div class="rule-item-details">≥ ${rule.minAmount} GRAM · ${shortenAddress(rule.targetEntity)}</div>
-          <div class="rule-item-channels">${chBadges}</div>
-        </div>
-        <button class="delete-rule" onclick="deleteRule(${rule.id})">✕</button>
-      </div>`;
+  const c = document.getElementById('savedRulesBody');
+  document.getElementById('ruleCount').textContent = alertRules.length;
+  if (!alertRules.length) { c.innerHTML = '<div class="no-rules-msg">No rules yet.</div>'; updateMonitorStatus(); return; }
+  c.innerHTML = alertRules.map(r => {
+    const ch = r.channels.map(c => typeof c === 'string'
+      ? `<span class="badge badge-green" style="font-size:9px;padding:1px 5px;">${c}</span>`
+      : `<span class="badge badge-cyan" style="font-size:9px;padding:1px 5px;">${c.type}</span>`
+    ).join('');
+    return `<div class="rule-item"><div class="rule-item-info">
+      <div class="rule-item-type">${r.type}</div>
+      <div class="rule-item-details">≥ ${r.minAmount} GRAM · ${shortenAddress(r.targetEntity)}</div>
+      <div class="rule-item-channels">${ch}</div>
+    </div><button class="delete-rule" onclick="deleteRule(${r.id})">✕</button></div>`;
   }).join('');
   updateMonitorStatus();
 }
@@ -660,166 +606,113 @@ window.deleteRule = function(id) {
   alertRules = alertRules.filter(r => r.id !== id);
   localStorage.setItem('anlgram_rules', JSON.stringify(alertRules));
   renderSavedRules();
-  showToast('🗑️ Rule Deleted', 'Alert rule removed.');
+  showToast('🗑️ Deleted', 'Rule removed.');
 };
 
-// ── Monitor Status ───────────────────────────────────────────
 function updateMonitorStatus() {
   const el = document.getElementById('monitorStatus');
   if (alertRules.length > 0) {
-    const addrs = [...new Set(alertRules.map(r => shortenAddress(r.targetEntity)))].join(', ');
-    el.innerHTML = `<span class="dot-live"></span> Monitoring ${alertRules.length} rule(s): ${addrs} — checking every 15s`;
+    const n = [...new Set(alertRules.map(r => shortenAddress(r.targetEntity)))].join(', ');
+    el.innerHTML = '<span class="dot-live"></span> Watching ' + n + ' — every 15s';
   } else {
-    el.innerHTML = `<span class="dot-live" style="background:var(--text-muted);box-shadow:none;"></span> Monitor idle — create a rule to start`;
+    el.innerHTML = '<span class="dot-live" style="background:var(--text-muted);box-shadow:none;"></span> Idle — create a rule to start';
   }
 }
 
-// ── Add Alert to Feed + Send Real Notifications ──────────────
+// ── Trigger Alert ────────────────────────────────────────────
 async function triggerAlert(alert) {
   alertCounter++;
   document.getElementById('alertBadge').textContent = alertCounter;
+  const em = document.getElementById('emptyFeedMsg');
+  if (em) em.style.display = 'none';
 
-  const emptyMsg = document.getElementById('emptyFeedMsg');
-  if (emptyMsg) emptyMsg.style.display = 'none';
+  const iconClass = alert.type.includes('Large') ? 'icon-whale' : alert.type.includes('Entity') ? 'icon-danger' : alert.type.includes('DEX') ? 'icon-info' : 'icon-success';
+  const emoji = alert.type.includes('Large') ? '🐋' : alert.type.includes('Entity') ? '⚠️' : alert.type.includes('DEX') ? '🔄' : '🌉';
+  const sent = [];
 
-  const feedBody = document.getElementById('feedBody');
-  const iconClass = alert.type === 'Large Transfer' ? 'icon-whale' :
-                    alert.type === 'Entity Activity' ? 'icon-danger' :
-                    alert.type === 'DEX Swap' ? 'icon-info' : 'icon-success';
-  const emoji = alert.type === 'Large Transfer' ? '🐋' :
-                alert.type === 'Entity Activity' ? '⚠️' :
-                alert.type === 'DEX Swap' ? '🔄' : '🌉';
-
-  const sentChannels = [];
-
-  // 1. Browser Push
-  if (alert.channels.some(ch => ch === 'push')) {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('ANLGRAM Alert: ' + alert.title, { body: alert.plainDesc });
-    }
-    sentChannels.push('<span class="badge badge-green" style="font-size:9px;padding:1px 4px;">🔔 push</span>');
+  if (alert.channels.some(c => c === 'push') && 'Notification' in window && Notification.permission === 'granted') {
+    new Notification('ANLGRAM: ' + alert.title, { body: alert.plainDesc });
+    sent.push('<span class="badge badge-green" style="font-size:9px;padding:1px 4px;">🔔 push ✓</span>');
   }
-
-  // 2. Telegram (REAL)
-  if (alert.channels.some(ch => ch === 'telegram')) {
-    const tgMsg = `🚨 <b>ANLGRAM Alert: ${alert.title}</b>\n\n${alert.plainDesc}\n\n🔗 Type: ${alert.type}\n⏰ ${new Date().toLocaleTimeString()}`;
-    const sent = await sendTelegram(tgMsg);
-    sentChannels.push(`<span class="badge ${sent ? 'badge-green' : 'badge-red'}" style="font-size:9px;padding:1px 4px;">✈️ telegram ${sent ? '✓' : '✗'}</span>`);
+  if (alert.channels.some(c => c === 'telegram')) {
+    const ok = await sendTelegram('🚨 <b>' + alert.title + '</b>\n\n' + alert.plainDesc + '\n\n⏰ ' + new Date().toLocaleTimeString());
+    sent.push('<span class="badge ' + (ok ? 'badge-green' : 'badge-red') + '" style="font-size:9px;padding:1px 4px;">✈️ tg ' + (ok ? '✓' : '✗') + '</span>');
   }
-
-  // 3. Email (REAL via EmailJS)
-  const emailCh = alert.channels.find(ch => typeof ch === 'object' && ch.type === 'email');
+  const emailCh = alert.channels.find(c => typeof c === 'object' && c.type === 'email');
   if (emailCh) {
-    const sent = await sendEmail(
-      emailCh.value,
-      'ANLGRAM Alert: ' + alert.title,
-      alert.plainDesc + '\n\nType: ' + alert.type + '\nTime: ' + new Date().toLocaleString()
-    );
-    sentChannels.push(`<span class="badge ${sent ? 'badge-green' : 'badge-red'}" style="font-size:9px;padding:1px 4px;">📧 email ${sent ? '✓' : '✗'}</span>`);
+    const ok = await sendEmail(emailCh.value, 'ANLGRAM Alert: ' + alert.title, alert.plainDesc);
+    sent.push('<span class="badge ' + (ok ? 'badge-green' : 'badge-red') + '" style="font-size:9px;padding:1px 4px;">📧 ' + (ok ? '✓' : '✗') + '</span>');
   }
 
-  // Render card
   const card = document.createElement('div');
   card.className = 'alert-card';
   card.onclick = () => { if (alert.address) window.location = 'explorer.html?q=' + alert.address; };
-  card.innerHTML = `
-    <div class="alert-icon ${iconClass}">${emoji}</div>
-    <div class="alert-content">
-      <div class="alert-meta"><span>${alert.type}</span><span>${new Date().toLocaleTimeString()}</span></div>
-      <div class="alert-title">${alert.title}</div>
-      <div class="alert-desc">${alert.desc}</div>
-      <div class="alert-channels-sent">${sentChannels.join('')}</div>
-    </div>`;
-  feedBody.insertBefore(card, feedBody.firstChild);
-
+  card.innerHTML = '<div class="alert-icon ' + iconClass + '">' + emoji + '</div><div class="alert-content">' +
+    '<div class="alert-meta"><span>' + alert.type + '</span><span>' + new Date().toLocaleTimeString() + '</span></div>' +
+    '<div class="alert-title">' + alert.title + '</div>' +
+    '<div class="alert-desc">' + alert.desc + '</div>' +
+    '<div class="alert-channels-sent">' + sent.join('') + '</div></div>';
+  document.getElementById('feedBody').insertBefore(card, document.getElementById('feedBody').firstChild);
   showToast('🔔 ' + alert.title, alert.plainDesc);
 }
 
-// ── Clear Feed ───────────────────────────────────────────────
 document.getElementById('clearFeedBtn').addEventListener('click', () => {
   alertCounter = 0;
   document.getElementById('alertBadge').textContent = '0';
   document.getElementById('feedBody').innerHTML = '<div class="no-rules-msg" id="emptyFeedMsg">Waiting for alerts...</div>';
-  showToast('🧹 Feed Cleared', 'All alerts removed.');
 });
 
 // ═══════════════════════════════════════════════════════════════
-// REAL-TIME BLOCKCHAIN MONITORING ENGINE
-// Polls each unique address in the saved rules every 15 seconds.
-// When a new transaction is found that matches a rule, it fires
-// real notifications via Telegram, Email, and Browser Push.
+// BLOCKCHAIN MONITOR — Checks each rule's target address
 // ═══════════════════════════════════════════════════════════════
 async function monitorBlockchain() {
-  if (alertRules.length === 0) return;
-
-  // Get unique addresses to monitor
+  if (!alertRules.length) return;
   const addresses = [...new Set(alertRules.map(r => r.targetEntity))];
 
   for (const addr of addresses) {
     try {
       const data = await getAccountTransactions(addr, 5);
-      if (!data || !data.transactions || data.transactions.length === 0) continue;
+      if (!data || !data.transactions || !data.transactions.length) continue;
 
       const lastSeen = lastSeenTx[addr] || null;
-      let foundNewTx = false;
+      let foundNew = false;
 
       for (const tx of data.transactions) {
-        // Stop if we've already seen this tx
         if (tx.hash === lastSeen) break;
-        foundNewTx = true;
+        foundNew = true;
 
-        // Calculate value
         const isIn = tx.in_msg && tx.in_msg.value > 0 && tx.in_msg.source;
-        const value = isIn ? tx.in_msg.value : (tx.out_msgs && tx.out_msgs[0] ? tx.out_msgs[0].value : 0);
-        const gramAmount = parseInt(value) / 1e9;
-        if (gramAmount <= 0) continue;
+        const val = isIn ? tx.in_msg.value : (tx.out_msgs && tx.out_msgs[0] ? tx.out_msgs[0].value : 0);
+        const gram = parseInt(val) / 1e9;
+        if (gram <= 0) continue;
 
-        const fromAddr = isIn ? tx.in_msg.source.address : addr;
-        const toAddr = isIn ? addr : (tx.out_msgs && tx.out_msgs[0] ? tx.out_msgs[0].destination?.address : '');
+        const from = isIn ? tx.in_msg.source.address : addr;
+        const to = isIn ? addr : (tx.out_msgs && tx.out_msgs[0] ? tx.out_msgs[0].destination?.address : '');
+        const dir = isIn ? 'received' : 'sent';
 
-        // Check rules that match this address
-        const matchingRules = alertRules.filter(r => r.targetEntity === addr && gramAmount >= r.minAmount);
-
-        for (const rule of matchingRules) {
-          const direction = isIn ? 'received' : 'sent';
-          const plainDesc = `${gramAmount.toLocaleString()} GRAM ${direction} — From: ${shortenAddress(fromAddr)} → To: ${shortenAddress(toAddr)}`;
-
+        for (const rule of alertRules.filter(r => r.targetEntity === addr && gram >= r.minAmount)) {
+          const plain = gram.toLocaleString() + ' GRAM ' + dir + ' — ' + shortenAddress(from) + ' → ' + shortenAddress(to);
           await triggerAlert({
             type: rule.type,
-            title: gramAmount >= 100000 ? 'Whale Movement Detected!' :
-                   gramAmount >= 10000 ? 'Large Transfer Detected' :
-                   'Transaction Detected',
-            desc: `<span style="color:var(--cyan);">${gramAmount.toLocaleString()} GRAM</span> ${direction} — <span style="color:var(--text-primary);">${shortenAddress(fromAddr)}</span> → <span style="color:var(--text-primary);">${shortenAddress(toAddr)}</span>`,
-            plainDesc,
-            channels: rule.channels,
-            address: addr
+            title: gram >= 100000 ? 'Whale Movement!' : gram >= 1000 ? 'Large Transfer' : 'Transaction Detected',
+            desc: '<span style="color:var(--cyan);">' + gram.toLocaleString() + ' GRAM</span> ' + dir + ' — ' + shortenAddress(from) + ' → ' + shortenAddress(to),
+            plainDesc: plain, channels: rule.channels, address: addr
           });
         }
       }
-
-      // Remember last tx hash for this address
-      if (foundNewTx || !lastSeen) {
+      if (foundNew || !lastSeen) {
         lastSeenTx[addr] = data.transactions[0].hash;
         localStorage.setItem('anlgram_last_tx', JSON.stringify(lastSeenTx));
       }
-    } catch (e) {
-      console.error('Monitor error for', shortenAddress(addr), e);
-    }
+    } catch (e) { console.error('Monitor error:', e); }
   }
 }
 
-// ── Price Update ─────────────────────────────────────────────
-async function updateTopPrice() {
-  const p = await getTonPrice();
-  if (p) document.getElementById('topbar-price').textContent = '$' + p.toFixed(2);
-}
-
-// ── Initialize ───────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────
 renderSavedRules();
-updateTopPrice();
-setInterval(updateTopPrice, 15000);
-
-// Start blockchain monitor — every 15 seconds
+updateTgStatus();
+(async () => { const p = await getTonPrice(); if (p) document.getElementById('topbar-price').textContent = '$' + p.toFixed(2); })();
+setInterval(async () => { const p = await getTonPrice(); if (p) document.getElementById('topbar-price').textContent = '$' + p.toFixed(2); }, 15000);
 monitorBlockchain();
 setInterval(monitorBlockchain, 15000);
 </script>
