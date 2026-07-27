@@ -202,16 +202,17 @@
       </div>
 
       <div class="tabs animate-fade-up delay-1">
-        <div class="tab active">Open Bounties</div>
-        <div class="tab">Intel Auctions</div>
-        <div class="tab">My Submissions</div>
+        <div class="tab active" onclick="switchTab('bounties', this)">Open Bounties</div>
+        <div class="tab" onclick="switchTab('auctions', this)">Intel Auctions</div>
+        <div class="tab" onclick="switchTab('submissions', this)">My Submissions</div>
         <div style="flex:1;"></div>
         <button class="btn btn-ghost btn-sm" onclick="openPostBountyModal()">+ Post Bounty</button>
       </div>
 
-      <div class="bounty-grid animate-fade-up delay-2">
+      <!-- TAB 1: OPEN BOUNTIES -->
+      <div id="tab-bounties" class="bounty-grid animate-fade-up delay-2">
         
-        <!-- Bounty Card -->
+        <!-- Bounty Card 1 -->
         <div class="bounty-card">
           <div class="bounty-header">
             <div>
@@ -221,14 +222,15 @@
             <span class="badge badge-yellow">Open</span>
           </div>
           <h3 class="bounty-title">Identify wallet draining $2M from DeDust</h3>
-          <p class="bounty-desc">Need exact entity identification for address EQCx8...9aB2 involved in the DeDust LP drain on July 24.</p>
+          <p class="bounty-desc">Need exact entity identification for address EQCvxJ..._v0A involved in the DeDust LP drain on July 24.</p>
           <div class="bounty-meta">
             <span>12 Submissions</span>
             <span>Ends in 2 days</span>
           </div>
-          <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;">View Details</button>
+          <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;" onclick="openBountyDetails('Identify wallet draining $2M from DeDust', '500 GRAM', '$1,235 USD', 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A', 'Need exact entity identification for address EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A involved in the DeDust LP drain on July 24. We require proof of centralized exchange (CEX) deposit addresses or social identity linking.', 'Open', '2 days')">View Details & Submit Intel</button>
         </div>
 
+        <!-- Bounty Card 2 -->
         <div class="bounty-card">
           <div class="bounty-header">
             <div>
@@ -238,15 +240,16 @@
             <span class="badge badge-yellow">Open</span>
           </div>
           <h3 class="bounty-title">Trace large withdrawal from Binance</h3>
-          <p class="bounty-desc">Target: 0xF4...9B. Wallet withdrew 45M GRAM and split it across 20 addresses. Need complete visual flow map.</p>
+          <p class="bounty-desc">Target: EQCD39...qB2N. Wallet withdrew 45M GRAM and split it across 20 addresses. Need complete visual flow map.</p>
           <div class="bounty-meta">
             <span>3 Submissions</span>
             <span>Ends in 5 days</span>
           </div>
-          <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;">View Details</button>
+          <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;" onclick="openBountyDetails('Trace large withdrawal from Binance', '1,200 GRAM', '$2,964 USD', 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', 'Target wallet EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N withdrew 45M GRAM and split it across 20 addresses. Submit a complete visual cluster graph or transaction trace demonstrating the terminal recipient wallets.', 'Open', '5 days')">View Details & Submit Intel</button>
         </div>
 
-        <div class="bounty-card" style="opacity: 0.6;">
+        <!-- Bounty Card 3 (Solved) -->
+        <div class="bounty-card" style="opacity: 0.7;">
           <div class="bounty-header">
             <div>
               <div class="bounty-reward" style="color:var(--text-muted);">250 GRAM</div>
@@ -260,9 +263,10 @@
             <span>28 Submissions</span>
             <span>Solved by @0xAnalyst</span>
           </div>
-          <button class="btn btn-ghost btn-sm" style="margin-top:var(--space-3);width:100%;" disabled>Completed</button>
+          <button class="btn btn-ghost btn-sm" style="margin-top:var(--space-3);width:100%;" onclick="openBountyDetails('Identify top whale accumulating GRAM', '250 GRAM', '$617 USD', 'EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_', 'The target entity EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_ accumulated 1.2M GRAM. @0xAnalyst successfully proved attribution to an institutional quantitative fund.', 'Solved', 'Completed')">View Solved Report</button>
         </div>
 
+        <!-- Bounty Card 4 -->
         <div class="bounty-card">
           <div class="bounty-header">
             <div>
@@ -277,9 +281,10 @@
             <span>5 Submissions</span>
             <span>Ends in 12 days</span>
           </div>
-          <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;">View Details</button>
+          <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;" onclick="openBountyDetails('Full entity map of TON DEX arbitrage bot', '3,000 GRAM', '$7,410 USD', 'EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt', 'Comprehensive mapping required for contract EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt operating high-frequency arbitrage between DeDust and Ston.fi routers.', 'Open', '12 days')">View Details & Submit Intel</button>
         </div>
         
+        <!-- Bounty Card 5 -->
         <div class="bounty-card">
           <div class="bounty-header">
             <div>
@@ -294,15 +299,147 @@
             <span>0 Submissions</span>
             <span>Ends in 24 hours</span>
           </div>
-          <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;">View Details</button>
+          <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;" onclick="openBountyDetails('Label unknown CEX deposit addresses', '150 GRAM', '$370 USD', 'EQC47093oX5XmnBRNDCQ09027lxlIlqxiKj0jN4g69h9aL2_', 'Target representative address EQC47093oX5XmnBRNDCQ09027lxlIlqxiKj0jN4g69h9aL2_ deposits directly into Gate.io hot wallets. Provide exchange memo tags and clustering data.', 'Open', '24 hours')">View Details & Submit Intel</button>
         </div>
 
       </div>
+
+      <!-- TAB 2: INTEL AUCTIONS -->
+      <div id="tab-auctions" class="bounty-grid animate-fade-up delay-2" style="display:none;">
+        
+        <div class="bounty-card" style="border-color: rgba(0, 207, 255, 0.3);">
+          <div class="bounty-header">
+            <div>
+              <div class="bounty-reward" style="color:var(--cyan);">4,500 GRAM</div>
+              <div class="bounty-usd">Highest Bid ≈ $11,115 USD</div>
+            </div>
+            <span class="badge badge-blue">Live Auction</span>
+          </div>
+          <h3 class="bounty-title">⚡ Top 50 Notcoin Whale Cluster Dataset</h3>
+          <p class="bounty-desc">Verified dataset containing private cluster linkages, Telegram bot IDs, and exchange deposit addresses of the 50 largest NOT holders.</p>
+          <div class="bounty-meta">
+            <span>Buy Now: <strong>10,000 GRAM</strong></span>
+            <span>Ends in 4h 12m</span>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:var(--space-3);width:100%;" onclick="openBidModal('Top 50 Notcoin Whale Cluster Dataset', '4,500')">Place Bid ⚡</button>
+        </div>
+
+        <div class="bounty-card" style="border-color: rgba(0, 207, 255, 0.3);">
+          <div class="bounty-header">
+            <div>
+              <div class="bounty-reward" style="color:var(--cyan);">2,800 GRAM</div>
+              <div class="bounty-usd">Highest Bid ≈ $6,916 USD</div>
+            </div>
+            <span class="badge badge-blue">Live Auction</span>
+          </div>
+          <h3 class="bounty-title">🛡️ MEV Arbitrage Bot Routing Algorithms</h3>
+          <p class="bounty-desc">Reverse-engineered smart contract calls and latency optimization logs for the most profitable TON sandwich arbitrage bots.</p>
+          <div class="bounty-meta">
+            <span>Buy Now: <strong>6,000 GRAM</strong></span>
+            <span>Ends in 18h 45m</span>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:var(--space-3);width:100%;" onclick="openBidModal('MEV Arbitrage Bot Routing Algorithms', '2,800')">Place Bid ⚡</button>
+        </div>
+
+        <div class="bounty-card" style="border-color: rgba(0, 207, 255, 0.3);">
+          <div class="bounty-header">
+            <div>
+              <div class="bounty-reward" style="color:var(--cyan);">8,500 GRAM</div>
+              <div class="bounty-usd">Highest Bid ≈ $20,995 USD</div>
+            </div>
+            <span class="badge badge-blue">Live Auction</span>
+          </div>
+          <h3 class="bounty-title">🔐 OTC Whale Directory & Cold Storage Map</h3>
+          <p class="bounty-desc">Complete mapping of institutional OTC trading desks on TON, including unlisted multi-sig cold wallets with balances >100k TON.</p>
+          <div class="bounty-meta">
+            <span>Buy Now: <strong>15,000 GRAM</strong></span>
+            <span>Ends in 1d 6h</span>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:var(--space-3);width:100%;" onclick="openBidModal('OTC Whale Directory & Cold Storage Map', '8,500')">Place Bid ⚡</button>
+        </div>
+
+      </div>
+
+      <!-- TAB 3: MY SUBMISSIONS -->
+      <div id="tab-submissions" class="bounty-grid animate-fade-up delay-2" style="display:none;">
+        <div id="noSubmissionsCard" class="bounty-card" style="grid-column: 1 / -1; text-align:center; padding:40px;">
+          <div style="font-size:36px;margin-bottom:12px;">📁</div>
+          <h3 style="color:white;margin-bottom:8px;">No Intelligence Submissions Yet</h3>
+          <p style="color:var(--text-secondary);max-width:480px;margin:0 auto 20px;font-size:14px;">You have not submitted on-chain proof or cluster analyses for any open bounties. Browse open investigations and submit intelligence to earn GRAM bounties.</p>
+          <button class="btn btn-primary btn-sm" onclick="switchTab('bounties', document.querySelectorAll('.tab')[0])">Browse Open Bounties</button>
+        </div>
+      </div>
+
     </div>
   </main>
 </div>
 
-<!-- Post Bounty Modal -->
+<!-- BOUNTY DETAILS & SUBMISSION MODAL -->
+<div id="bountyDetailsModal" class="modal-overlay">
+  <div class="modal animate-scale-in" style="max-width:640px;">
+    <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;" onclick="document.getElementById('bountyDetailsModal').style.display='none'">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <span id="modalBountyBadge" class="badge badge-yellow">Open</span>
+      <span id="modalBountyTime" style="font-size:12px;color:#aaa;">Ends in 2 days</span>
+    </div>
+    <h2 id="modalBountyTitle" style="font-size:22px;margin-bottom:6px;color:white;line-height:1.3;">Identify wallet draining $2M from DeDust</h2>
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:16px;">
+      <span id="modalBountyReward" style="font-size:20px;font-weight:700;color:var(--cyan);">500 GRAM</span>
+      <span id="modalBountyUsd" style="font-size:13px;color:#888;">≈ $1,235 USD</span>
+    </div>
+    <p id="modalBountyDesc" style="color:var(--text-secondary);font-size:14px;line-height:1.5;margin-bottom:20px;background:rgba(255,255,255,0.03);padding:14px;border-radius:8px;border:1px solid #222;">Description</p>
+    
+    <!-- Target Address Section & Action Links -->
+    <div style="background:#0e0e0e;border:1px solid #222;padding:14px;border-radius:8px;margin-bottom:20px;">
+      <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:1px;margin-bottom:6px;">Target Blockchain Address</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--cyan);word-break:break-all;margin-bottom:12px;" id="modalBountyTargetAddr">EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A</div>
+      
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <a id="linkVisualizer" href="#" class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 10px;display:inline-flex;align-items:center;gap:5px;text-decoration:none;">
+          <span>🕸️</span> Flow Visualizer
+        </a>
+        <a id="linkExplorer" href="#" class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 10px;display:inline-flex;align-items:center;gap:5px;text-decoration:none;">
+          <span>🔍</span> Entity Explorer
+        </a>
+        <a id="linkAlerts" href="#" class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 10px;display:inline-flex;align-items:center;gap:5px;text-decoration:none;">
+          <span>⚡</span> Monitor in Alerts
+        </a>
+        <a id="linkTonviewer" href="#" target="_blank" class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 10px;display:inline-flex;align-items:center;gap:5px;text-decoration:none;border-color:rgba(0,207,255,0.3);color:var(--cyan);">
+          Tonviewer ↗
+        </a>
+      </div>
+    </div>
+
+    <!-- Submit Intelligence Form -->
+    <div id="modalSubmitSection">
+      <div style="font-size:14px;font-weight:600;color:white;margin-bottom:8px;">💡 Submit On-Chain Intelligence</div>
+      <textarea id="intelSubmissionText" class="form-input" rows="3" placeholder="Paste proof of attribution, clustering analysis, TX hashes, or wallet labels here..."></textarea>
+      <button class="btn btn-primary" style="width:100%;height:44px;margin-top:12px;" onclick="handleSubmitIntel()">Submit Intelligence & Claim Reward</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLACE BID MODAL (AUCTIONS) -->
+<div id="auctionBidModal" class="modal-overlay">
+  <div class="modal animate-scale-in" style="max-width:460px;">
+    <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;" onclick="document.getElementById('auctionBidModal').style.display='none'">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h3 style="color:white;font-size:20px;margin-bottom:6px;" id="bidModalTitle">Place Bid</h3>
+    <p style="color:#aaa;font-size:13px;margin-bottom:20px;">Current Highest Bid: <strong style="color:var(--cyan);" id="bidModalCurrent">4,500 GRAM</strong></p>
+    
+    <div class="form-group">
+      <label class="form-label">Your Bid Amount (GRAM)</label>
+      <input type="number" id="bidAmountInput" class="form-input" placeholder="4700">
+    </div>
+    
+    <button id="confirmBidBtn" class="btn btn-primary" style="width:100%;height:44px;" onclick="handleConfirmBid()">Place On-Chain Bid ⚡</button>
+  </div>
+</div>
+
+<!-- POST BOUNTY MODAL -->
 <div id="postBountyModal" class="modal-overlay">
   <div class="modal animate-scale-in">
     <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;" onclick="document.getElementById('postBountyModal').style.display='none'">
@@ -318,7 +455,7 @@
     
     <div class="form-group">
       <label class="form-label">Target Address (Optional)</label>
-      <input type="text" id="bountyTargetInput" class="form-input" placeholder="EQD...">
+      <input type="text" id="bountyTargetInput" class="form-input" placeholder="EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A">
     </div>
 
     <div class="form-group">
@@ -336,6 +473,148 @@
 </div>
 
 <script>
+// Tab Switching Logic
+function switchTab(tabId, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  
+  document.getElementById('tab-bounties').style.display = (tabId === 'bounties') ? 'grid' : 'none';
+  document.getElementById('tab-auctions').style.display = (tabId === 'auctions') ? 'grid' : 'none';
+  document.getElementById('tab-submissions').style.display = (tabId === 'submissions') ? 'grid' : 'none';
+  
+  if (tabId === 'submissions') {
+    renderUserSubmissions();
+  }
+}
+
+// Open Bounty Details & Setup Links
+let currentActiveBounty = null;
+function openBountyDetails(title, reward, usd, target, desc, status, timeLeft) {
+  currentActiveBounty = { title, reward, target };
+  document.getElementById('modalBountyTitle').textContent = title;
+  document.getElementById('modalBountyReward').textContent = reward;
+  document.getElementById('modalBountyUsd').textContent = usd;
+  document.getElementById('modalBountyTargetAddr').textContent = target;
+  document.getElementById('modalBountyDesc').textContent = desc;
+  
+  const badge = document.getElementById('modalBountyBadge');
+  badge.textContent = status;
+  badge.className = (status === 'Solved') ? 'badge badge-green' : 'badge badge-yellow';
+  
+  document.getElementById('modalBountyTime').textContent = (status === 'Solved') ? 'Completed' : `Ends in ${timeLeft}`;
+  
+  // Connect Action Links to specific pages & tools
+  document.getElementById('linkVisualizer').href = `visualizer.html?target=${target}`;
+  document.getElementById('linkExplorer').href = `explorer.html`;
+  document.getElementById('linkAlerts').href = `alerts.html?target=${target}`;
+  document.getElementById('linkTonviewer').href = `https://tonviewer.com/${target}`;
+  
+  // Hide submit section if solved
+  document.getElementById('modalSubmitSection').style.display = (status === 'Solved') ? 'none' : 'block';
+  document.getElementById('intelSubmissionText').value = '';
+  
+  document.getElementById('bountyDetailsModal').style.display = 'flex';
+}
+
+// Submit Intelligence Report
+function handleSubmitIntel() {
+  const connectedWallet = localStorage.getItem('anlgram_wallet_addr');
+  if (!connectedWallet) {
+    showWalletToast('⚡ Connect Wallet Required', 'Please connect your TON wallet to submit an intelligence report.');
+    openWalletModal();
+    return;
+  }
+  
+  const proof = document.getElementById('intelSubmissionText').value.trim();
+  if (!proof) {
+    showWalletToast('⚠️ Empty Submission', 'Please paste your analysis, TX hashes, or proof before submitting.');
+    return;
+  }
+  
+  const subs = JSON.parse(localStorage.getItem('anlgram_my_submissions') || '[]');
+  subs.unshift({
+    title: currentActiveBounty ? currentActiveBounty.title : 'Bounty Investigation',
+    reward: currentActiveBounty ? currentActiveBounty.reward : '500 GRAM',
+    target: currentActiveBounty ? currentActiveBounty.target : 'EQC...',
+    proof: proof,
+    date: new Date().toLocaleDateString(),
+    status: 'Under Review 🟡'
+  });
+  localStorage.setItem('anlgram_my_submissions', JSON.stringify(subs));
+  
+  showWalletToast('🚀 Intel Submitted!', 'Your intelligence report has been recorded on-chain. Reward will release upon verification.');
+  document.getElementById('bountyDetailsModal').style.display = 'none';
+}
+
+// Render User Submissions in Tab 3
+function renderUserSubmissions() {
+  const subs = JSON.parse(localStorage.getItem('anlgram_my_submissions') || '[]');
+  const container = document.getElementById('tab-submissions');
+  
+  if (subs.length === 0) {
+    container.innerHTML = `
+      <div id="noSubmissionsCard" class="bounty-card" style="grid-column: 1 / -1; text-align:center; padding:40px;">
+        <div style="font-size:36px;margin-bottom:12px;">📁</div>
+        <h3 style="color:white;margin-bottom:8px;">No Intelligence Submissions Yet</h3>
+        <p style="color:var(--text-secondary);max-width:480px;margin:0 auto 20px;font-size:14px;">You have not submitted on-chain proof or cluster analyses for any open bounties. Browse open investigations and submit intelligence to earn GRAM bounties.</p>
+        <button class="btn btn-primary btn-sm" onclick="switchTab('bounties', document.querySelectorAll('.tab')[0])">Browse Open Bounties</button>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = subs.map(s => `
+    <div class="bounty-card animate-scale-in" style="border-color: rgba(0, 207, 255, 0.4);">
+      <div class="bounty-header">
+        <div>
+          <div class="bounty-reward" style="color:var(--cyan);">${s.reward}</div>
+          <div class="bounty-usd">Submitted on ${s.date}</div>
+        </div>
+        <span class="badge badge-yellow">${s.status}</span>
+      </div>
+      <h3 class="bounty-title">${s.title}</h3>
+      <p class="bounty-desc" style="background:rgba(0,0,0,0.3);padding:10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;border:1px dashed #333;">"${s.proof}"</p>
+      <div class="bounty-meta" style="margin-top:12px;">
+        <span>Target: <strong style="color:#aaa;">${s.target.slice(0,8)}...${s.target.slice(-6)}</strong></span>
+        <span>Escrow Locked</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Open Bid Modal (Auctions)
+let currentAuctionBid = null;
+function openBidModal(title, currentBid) {
+  const connectedWallet = localStorage.getItem('anlgram_wallet_addr');
+  if (!connectedWallet) {
+    showWalletToast('⚡ Connect Wallet Required', 'Please connect your wallet first to place an auction bid.');
+    openWalletModal();
+    return;
+  }
+  currentAuctionBid = { title, currentBid };
+  document.getElementById('bidModalTitle').textContent = title;
+  document.getElementById('bidModalCurrent').textContent = `${currentBid} GRAM`;
+  document.getElementById('bidAmountInput').value = parseInt(currentBid.replace(/\D/g, '')) + 200;
+  document.getElementById('auctionBidModal').style.display = 'flex';
+}
+
+function handleConfirmBid() {
+  const val = document.getElementById('bidAmountInput').value.trim();
+  if (!val) return;
+  
+  const btn = document.getElementById('confirmBidBtn');
+  const oldText = btn.textContent;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="dot-live" style="background:white;"></span> Signing transaction (${val} GRAM)...`;
+  
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = oldText;
+    document.getElementById('auctionBidModal').style.display = 'none';
+    showWalletToast('⚡ Bid Placed!', `Your bid of ${val} GRAM for "${currentAuctionBid.title}" is confirmed on-chain.`);
+  }, 1500);
+}
+
 function openPostBountyModal() {
   const connectedWallet = localStorage.getItem('anlgram_wallet_addr');
   if (!connectedWallet) {
@@ -355,7 +634,7 @@ function handleFundAndPost() {
   }
   
   const title = document.getElementById('bountyTitleInput').value.trim() || 'Identify suspicious DEX activity';
-  const target = document.getElementById('bountyTargetInput').value.trim() || 'EQCx8...9aB2';
+  const target = document.getElementById('bountyTargetInput').value.trim() || 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A';
   const amount = document.getElementById('bountyAmountInput').value.trim() || '500';
   const desc = document.getElementById('bountyDescInput').value.trim() || 'Need full analysis and entity mapping for this address.';
 
@@ -369,7 +648,7 @@ function handleFundAndPost() {
     btn.textContent = originalText;
     document.getElementById('postBountyModal').style.display = 'none';
     
-    const grid = document.querySelector('.bounty-grid');
+    const grid = document.getElementById('tab-bounties');
     const usdVal = (parseFloat(amount) * 2.47).toLocaleString('en-US', {maximumFractionDigits:0});
     
     const card = document.createElement('div');
@@ -386,10 +665,10 @@ function handleFundAndPost() {
       <h3 class="bounty-title">${title}</h3>
       <p class="bounty-desc">${desc}</p>
       <div class="bounty-meta">
-        <span>Target: <strong style="color:var(--text-primary);">${target}</strong></span>
+        <span>Target: <strong style="color:var(--text-primary);">${target.slice(0,8)}...${target.slice(-6)}</strong></span>
         <span>Funded by You</span>
       </div>
-      <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;">View Details & Submissions</button>
+      <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;" onclick="openBountyDetails('${title}', '${parseInt(amount).toLocaleString()} GRAM', '$${usdVal} USD', '${target}', '${desc}', 'Open', '30 days')">View Details & Submit Intel</button>
     `;
     grid.insertBefore(card, grid.firstChild);
     
