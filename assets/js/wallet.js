@@ -234,6 +234,53 @@
       document.body.appendChild(nav);
     }
 
+    // ── Device Recognition & Layout Adapter System ───────────────
+    function initDeviceRecognition() {
+      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isSmallScreen = window.innerWidth <= 768;
+      const isPhone = isSmallScreen || (isTouch && window.innerWidth <= 1024);
+      
+      if (isPhone) {
+        document.documentElement.classList.add('device-phone');
+        document.documentElement.classList.remove('device-pc');
+        if (document.body) {
+          document.body.classList.add('device-phone');
+          document.body.classList.remove('device-pc');
+        }
+      } else {
+        document.documentElement.classList.add('device-pc');
+        document.documentElement.classList.remove('device-phone');
+        if (document.body) {
+          document.body.classList.add('device-pc');
+          document.body.classList.remove('device-phone');
+        }
+      }
+
+      let devicePill = document.getElementById('anlgramDevicePill');
+      if (!devicePill) {
+        const targetContainer = document.querySelector('.topbar-actions') || document.querySelector('.nav-cta');
+        if (targetContainer) {
+          devicePill = document.createElement('div');
+          devicePill.id = 'anlgramDevicePill';
+          devicePill.style.cssText = 'display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:99px; font-size:11px; font-weight:600; font-family:var(--font-mono, monospace); margin-right:8px; border:1px solid rgba(0, 240, 255, 0.25); background:rgba(0, 240, 255, 0.08); color:#00f0ff; transition:all 0.3s ease; white-space:nowrap; cursor:default;';
+          targetContainer.insertBefore(devicePill, targetContainer.firstChild);
+        }
+      }
+
+      if (devicePill) {
+        if (isPhone) {
+          devicePill.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#00e676;display:inline-block;box-shadow:0 0 8px #00e676;"></span> 📱 Modo Móvil';
+          devicePill.title = 'Plataforma adaptada para experiencia táctil en Móvil / Tablet';
+        } else {
+          devicePill.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#00f0ff;display:inline-block;box-shadow:0 0 8px #00f0ff;"></span> 💻 Modo PC';
+          devicePill.title = 'Plataforma optimizada para experiencia de Escritorio (PC)';
+        }
+      }
+    }
+
+    initDeviceRecognition();
+    window.addEventListener('resize', initDeviceRecognition);
+
     updateWalletUI();
   }
 

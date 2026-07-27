@@ -654,3 +654,28 @@
   .mobile-nav-item { font-size: 9px; padding: 4px 2px; }
   .mobile-nav-item svg { width: 18px; height: 18px; }
 }
+
+/* ── Automatic Device Recognition & Adaptation Rules ──────────────────────── */
+html.device-pc body {
+  /* Enforce clean desktop proportions and prevent oversized text */
+  --content-scale: 1;
+}
+html.device-phone body {
+  /* Optimize touch target spacing and prevent bottom navigation clipping */
+  --content-scale: 0.95;
+  padding-bottom: 84px !important;
+}
+html.device-phone .sidebar {
+  display: none !important;
+}
+html.device-phone .topbar {
+  left: 0 !important;
+}
+html.device-phone .main-content {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+/* Ensure device pill is responsive on very small screens */
+@media (max-width: 420px) {
+  #anlgramDevicePill { padding: 3px 6px !important; font-size: 9px !important; }
+}
