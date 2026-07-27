@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// ANLGRAM TON Connect Wallet Manager (Shared across all pages)
+// ANLGRAM TON Connect Real Wallet Manager (Shared across all pages)
 // ═══════════════════════════════════════════════════════════════
 
 (function() {
@@ -12,20 +12,24 @@
         .modal-overlay {
           position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
           width: 100vw !important; height: 100vh !important;
-          background: rgba(0, 0, 0, 0.85) !important; backdrop-filter: blur(8px) !important;
-          display: none; align-items: center !important; justify-content: center !important;
-          z-index: 99999 !important;
+          background: rgba(0, 0, 0, 0.88) !important; backdrop-filter: blur(10px) !important;
+          display: none !important; align-items: center !important; justify-content: center !important;
+          z-index: 999999 !important;
+        }
+        .modal-overlay[style*="display: flex"] {
+          display: flex !important;
         }
         .modal {
-          background: #111118 !important; border: 1px solid rgba(0, 240, 255, 0.3) !important;
-          border-radius: 20px !important; width: 90% !important; max-width: 420px !important;
-          padding: 24px !important; position: relative !important;
-          box-shadow: 0 25px 60px rgba(0,0,0,0.9) !important;
+          background: #0f0f16 !important; border: 1px solid rgba(0, 240, 255, 0.4) !important;
+          border-radius: 20px !important; width: 92% !important; max-width: 440px !important;
+          padding: 28px !important; position: relative !important;
+          box-shadow: 0 25px 60px rgba(0,0,0,0.95), 0 0 40px rgba(0, 240, 255, 0.15) !important;
           color: #fff !important; font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+          text-align: left !important;
         }
         .panel-close {
           position: absolute; top: 20px; right: 20px; background: none; border: none;
-          color: #888; cursor: pointer; z-index: 10; padding: 4px; transition: color 0.2s;
+          color: #888; cursor: pointer; z-index: 10; padding: 6px; transition: color 0.2s;
         }
         .panel-close:hover { color: #fff; }
         .wallet-list { display: flex; flex-direction: column; gap: 12px; }
@@ -33,7 +37,7 @@
           display: flex; align-items: center; justify-content: space-between;
           padding: 16px; background: rgba(255,255,255,0.03);
           border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
-          cursor: pointer; transition: all 0.2s ease;
+          cursor: pointer; transition: all 0.2s ease; text-decoration: none !important;
         }
         .wallet-item:hover {
           border-color: #00f0ff; transform: translateX(4px);
@@ -53,17 +57,22 @@
         }
         .toast {
           position: fixed !important; bottom: 24px !important; right: 24px !important;
-          background: #111118 !important; border: 1px solid rgba(0, 240, 255, 0.4) !important;
-          padding: 16px 20px !important; border-radius: 12px !important; z-index: 999999 !important;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+          background: #111118 !important; border: 1px solid rgba(0, 240, 255, 0.5) !important;
+          padding: 16px 22px !important; border-radius: 14px !important; z-index: 9999999 !important;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px rgba(0, 240, 255, 0.2) !important;
           transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
           max-width: 380px; color: #fff !important; font-family: 'Inter', system-ui, sans-serif !important;
         }
         .toast.show { transform: translateY(0); opacity: 1; }
         .toast-title { font-weight: 600; color: white; font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; gap:8px; }
         .toast-desc { font-size: 13px; color: #aaa; line-height: 1.4; }
-        .dot-live { display: inline-block; width: 8px; height: 8px; border-radius: 50%; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(0.95); opacity: 0.7; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.95); opacity: 0.7; } }
+        .real-wallet-input {
+          width: 100% !important; padding: 14px !important; background: #07070a !important;
+          border: 1px solid rgba(0, 240, 255, 0.4) !important; border-radius: 12px !important;
+          color: #00f0ff !important; font-family: monospace !important; font-size: 14px !important;
+          margin: 16px 0 !important; box-sizing: border-box !important;
+        }
+        .real-wallet-input:focus { outline: none !important; border-color: #00f0ff !important; box-shadow: 0 0 15px rgba(0,240,255,0.2) !important; }
       `;
       document.head.appendChild(style);
     }
@@ -72,17 +81,17 @@
       const modalDiv = document.createElement('div');
       modalDiv.id = 'walletModal';
       modalDiv.className = 'modal-overlay';
-      modalDiv.style.display = 'none';
+      modalDiv.style.cssText = 'display: none !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0,0,0,0.88) !important; backdrop-filter: blur(10px) !important; z-index: 999999 !important; align-items: center; justify-content: center;';
       modalDiv.innerHTML = `
-        <div class="modal animate-scale-in" style="max-width:420px;position:relative;">
-          <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;z-index:10;" onclick="closeWalletModal()">
+        <div class="modal animate-scale-in" style="max-width:440px;position:relative;">
+          <button class="panel-close" onclick="closeWalletModal()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
           <div id="walletStepList">
             <h2 style="font-size:20px;margin-bottom:6px;color:white;display:flex;align-items:center;gap:8px;">
               <span>⚡ Connect TON Wallet</span>
             </h2>
-            <p style="color:#aaa;margin-bottom:20px;font-size:13px;">Select your preferred wallet to sign and fund on-chain bounties on ANLGRAM.</p>
+            <p style="color:#aaa;margin-bottom:20px;font-size:13px;line-height:1.5;">Select your preferred wallet to synchronize your real TON address on ANLGRAM.</p>
             
             <div class="wallet-list">
               <div class="wallet-item" onclick="selectWallet('Tonkeeper', '#0098EA', '💎', 'https://app.tonkeeper.com/ton-login')">
@@ -131,25 +140,29 @@
             </div>
             
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);text-align:center;">
-              <span style="font-size:12px;color:#777;">By connecting, you agree to ANLGRAM's Terms of Service & Privacy Policy.</span>
+              <span style="font-size:12px;color:#777;">Connect your true wallet to monitor TON networks & receive alerts.</span>
             </div>
           </div>
 
-          <!-- Connecting Step -->
-          <div id="walletStepConnecting" style="display:none;text-align:center;padding:16px 0;">
-            <div style="width:72px;height:72px;border-radius:20px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:36px;box-shadow:0 0 30px rgba(0,240,255,0.2);border:2px solid #00f0ff;position:relative;" id="connIconBox">
+          <!-- Connecting & Real Address Input Step -->
+          <div id="walletStepConnecting" style="display:none;text-align:center;padding:8px 0;">
+            <div style="width:64px;height:64px;border-radius:18px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:0 0 30px rgba(0,240,255,0.2);border:2px solid #00f0ff;position:relative;" id="connIconBox">
               <span id="connIcon">💎</span>
             </div>
-            <h3 style="font-size:18px;color:white;margin-bottom:6px;" id="connTitle">Connecting to Tonkeeper...</h3>
-            <p style="font-size:13px;color:#aaa;margin-bottom:24px;">Please approve the connection request in your wallet app.</p>
+            <h3 style="font-size:18px;color:white;margin-bottom:6px;" id="connTitle">Connect Tonkeeper</h3>
+            <p style="font-size:13px;color:#aaa;margin-bottom:16px;">Step 1: Open your wallet app or web link.</p>
             
-            <div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);margin-bottom:20px;font-family:monospace;font-size:12px;color:#00f0ff;display:flex;align-items:center;justify-content:center;gap:8px;">
-              <span class="dot-live" style="background:#00f0ff;"></span> Waiting for on-chain signature...
+            <div style="margin-bottom:20px;">
+              <a id="connOpenAppBtn" href="#" target="_blank" class="btn btn-primary btn-sm" style="display:inline-block;text-decoration:none;background:#222;color:#00f0ff;border:1px solid #00f0ff;padding:10px 18px;border-radius:10px;font-weight:600;font-size:13px;">🚀 Open App / Universal Link ↗</a>
             </div>
 
-            <div style="display:flex;gap:12px;justify-content:center;">
-              <a id="connOpenAppBtn" href="#" target="_blank" class="btn btn-primary btn-sm" style="text-decoration:none;flex:1;background:#00f0ff;color:#000;padding:10px;border-radius:8px;font-weight:600;">Open App ↗</a>
-              <button class="btn btn-secondary btn-sm" onclick="cancelConnectStep()" style="flex:1;background:rgba(255,255,255,0.1);color:#fff;padding:10px;border-radius:8px;border:none;cursor:pointer;">Cancel</button>
+            <div style="border-top:1px dashed rgba(255,255,255,0.15);padding-top:16px;text-align:left;">
+              <label style="font-size:13px;font-weight:600;color:#fff;display:block;margin-bottom:4px;">Step 2: Enter your REAL TON Wallet Address:</label>
+              <span style="font-size:12px;color:#888;display:block;">Paste your true address below to monitor your transactions and receive live alerts.</span>
+              <input type="text" id="realWalletAddressInput" class="real-wallet-input" placeholder="EQ... or UQ... (e.g. EQD4x...9aL2)" />
+              
+              <button onclick="confirmRealWalletConnection()" style="width:100%;background:#00f0ff;color:#000;font-weight:700;padding:14px;border-radius:12px;border:none;cursor:pointer;font-size:14px;margin-bottom:8px;box-shadow:0 0 20px rgba(0,240,255,0.3);transition:all 0.2s;">⚡ Confirm & Connect My Real Wallet</button>
+              <button onclick="cancelConnectStep()" style="width:100%;background:transparent;color:#888;padding:10px;border-radius:10px;border:none;cursor:pointer;font-size:13px;">← Back to wallet list</button>
             </div>
           </div>
         </div>
@@ -224,15 +237,16 @@
 
     btns.forEach(btn => {
       if (connectedWallet) {
-        const shortAddr = connectedWallet.slice(0, 6) + '...' + connectedWallet.slice(-4);
-        btn.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00e676;margin-right:6px;"></span>${shortAddr}`;
+        const shortAddr = connectedWallet.length > 12 ? (connectedWallet.slice(0, 6) + '...' + connectedWallet.slice(-4)) : connectedWallet;
+        btn.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00e676;margin-right:6px;box-shadow:0 0 8px #00e676;"></span>${shortAddr}`;
         btn.className = 'btn btn-secondary btn-sm';
-        btn.style.background = 'rgba(255,255,255,0.08)';
-        btn.style.color = '#fff';
-        btn.style.border = '1px solid rgba(255,255,255,0.2)';
+        btn.style.background = 'rgba(0, 230, 118, 0.1)';
+        btn.style.color = '#00e676';
+        btn.style.border = '1px solid rgba(0, 230, 118, 0.3)';
+        btn.title = `Connected to ${connectedWalletName || 'Wallet'}: ${connectedWallet}. Click to disconnect.`;
         btn.onclick = (e) => {
           e.preventDefault();
-          if (confirm(`Disconnect wallet (${connectedWalletName || 'Wallet'}: ${connectedWallet})?`)) {
+          if (confirm(`Disconnect wallet (${connectedWalletName || 'Wallet'}:\n${connectedWallet})?`)) {
             localStorage.removeItem('anlgram_wallet_addr');
             localStorage.removeItem('anlgram_wallet_name');
             updateWalletUI();
@@ -246,6 +260,7 @@
         btn.style.color = '#000';
         btn.style.border = 'none';
         btn.style.fontWeight = '600';
+        btn.title = 'Click to connect your TON wallet';
         btn.onclick = (e) => {
           e.preventDefault();
           window.openWalletModal();
@@ -262,7 +277,6 @@
     if (list) list.style.display = 'block';
     if (conn) conn.style.display = 'none';
     if (modal) {
-      modal.style.display = 'flex';
       modal.style.setProperty('display', 'flex', 'important');
     }
   };
@@ -271,7 +285,6 @@
     if (connectTimer) clearTimeout(connectTimer);
     const modal = document.getElementById('walletModal');
     if (modal) {
-      modal.style.display = 'none';
       modal.style.setProperty('display', 'none', 'important');
     }
   };
@@ -298,19 +311,36 @@
 
     if (iconBox) { iconBox.style.background = color + '22'; iconBox.style.borderColor = color; }
     if (iconEl) iconEl.textContent = icon;
-    if (titleEl) titleEl.textContent = `Connecting to ${name}...`;
-    if (btnEl) btnEl.href = url;
+    if (titleEl) titleEl.textContent = `Connect ${name}`;
+    if (btnEl) {
+      btnEl.href = url;
+      btnEl.innerHTML = `🚀 Open ${name} App / Web ↗`;
+    }
     
-    if (connectTimer) clearTimeout(connectTimer);
-    connectTimer = setTimeout(() => {
-      const randomHex = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('');
-      const connectedWallet = 'EQ' + randomHex.slice(0, 4).toUpperCase() + '_' + randomHex.slice(4, 12) + '...' + randomHex.slice(-4).toUpperCase();
-      localStorage.setItem('anlgram_wallet_addr', connectedWallet);
-      localStorage.setItem('anlgram_wallet_name', name);
-      
-      updateWalletUI();
-      closeWalletModal();
-      showWalletToast('✅ Wallet Connected!', `Successfully connected to ${name} (${connectedWallet}).`);
-    }, 2200);
+    localStorage.setItem('anlgram_pending_wallet_name', name);
+    
+    const input = document.getElementById('realWalletAddressInput');
+    if (input) {
+      const existing = localStorage.getItem('anlgram_wallet_addr');
+      input.value = existing && !existing.includes('...') ? existing : '';
+      setTimeout(() => input.focus(), 100);
+    }
+  };
+
+  window.confirmRealWalletConnection = function() {
+    const input = document.getElementById('realWalletAddressInput');
+    const addr = input ? input.value.trim() : '';
+    if (!addr || addr.length < 6) {
+      showWalletToast('⚠️ Invalid Address', 'Please enter your true TON wallet address (e.g. EQ... or UQ...).');
+      return;
+    }
+    const name = localStorage.getItem('anlgram_pending_wallet_name') || 'TON Wallet';
+    localStorage.setItem('anlgram_wallet_addr', addr);
+    localStorage.setItem('anlgram_wallet_name', name);
+    localStorage.removeItem('anlgram_pending_wallet_name');
+    
+    updateWalletUI();
+    closeWalletModal();
+    showWalletToast('✅ Real Wallet Connected!', `Successfully connected ${name} (${addr.slice(0,6)}...${addr.slice(-4)}).`);
   };
 })();
