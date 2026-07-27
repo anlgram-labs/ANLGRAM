@@ -349,7 +349,6 @@
           <button class="pill-btn active" onclick="filterExchanges('all', this)">🌐 All Entities (8)</button>
           <button class="pill-btn" onclick="filterExchanges('cex', this)">🏛️ Centralized CEX (5)</button>
           <button class="pill-btn" onclick="filterExchanges('dex', this)">⚡ Decentralized DEX (3)</button>
-          <button class="pill-btn" onclick="filterExchanges('auctions', this)" style="color:#facc15;">🔐 Dataset Subastas ⚡</button>
         </div>
 
         <div class="modern-search">
@@ -698,18 +697,6 @@
         </div>
 
       </div>
-
-      <!-- TAB AUCTIONS (SUBSET) -->
-      <div id="tab-auctions" class="exchange-grid animate-fade-up delay-2" style="display:none;">
-        <div class="ex-card" style="border: 1px solid var(--neon-cyan); grid-column: 1 / -1; max-width: 640px; margin: 20px auto; text-align:center; padding: 48px; box-shadow: 0 0 50px rgba(0,240,255,0.15);">
-          <div style="font-size:56px;margin-bottom:18px;">⚡</div>
-          <span class="ex-badge badge-cex" style="margin-bottom:16px;">VIP ON-CHAIN DATASETS</span>
-          <h3 style="color:white;font-size:26px;font-weight:800;margin-bottom:10px;">Dataset Subastas & VIP Intelligence</h3>
-          <p style="color:#94a3b8;font-size:15px;line-height:1.6;margin-bottom:30px;max-width:480px;margin-left:auto;margin-right:auto;">Acceso en subasta a clústeres privados de Notcoin whales, directorios institucionales OTC cold storage y algoritmos de ruteo de bots de arbitraje MEV.</p>
-          <button class="btn btn-primary" style="padding:14px 36px;font-weight:800;font-size:15px;border-radius:12px;box-shadow:0 0 25px rgba(0,240,255,0.4);" onclick="openPendingUpdateModal()">⚡ Place Bid / Ver Subastas</button>
-        </div>
-      </div>
-
     </div>
   </main>
 </div>
@@ -765,18 +752,6 @@
   </div>
 </div>
 
-<!-- PLACE BID MODAL (PENDING UPDATE) -->
-<div id="auctionBidModal" class="modal-overlay">
-  <div class="modal-glass animate-scale-in" style="max-width:480px;text-align:center;padding:40px;">
-    <button style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;font-size:20px;" onclick="document.getElementById('auctionBidModal').style.display='none'">✕</button>
-    <div style="font-size:54px;margin-bottom:16px;">⏳</div>
-    <span class="ex-badge badge-cex" style="margin-bottom:14px;background:rgba(250,204,21,0.15);color:#facc15;border-color:rgba(250,204,21,0.3);">EN DESARROLLO / COMING SOON</span>
-    <h3 style="color:white;font-size:24px;margin:12px 0 10px;font-weight:800;">Pendientes por nueva actualización</h3>
-    <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin-bottom:28px;max-width:400px;margin-left:auto;margin-right:auto;">El módulo de subastas on-chain en tiempo real (Intel Auctions) estará activo en la próxima versión del protocolo ANLGRAM.</p>
-    <button class="btn btn-primary" style="width:100%;height:48px;font-weight:700;border-radius:12px;box-shadow:0 0 25px rgba(0,240,255,0.4);" onclick="document.getElementById('auctionBidModal').style.display='none'">Entendido / Got it 👍</button>
-  </div>
-</div>
-
 <!-- CONNECT WALLET MODAL -->
 <div id="walletModal" class="modal-overlay">
   <div class="modal-glass animate-scale-in" style="max-width:400px;padding:28px;">
@@ -809,23 +784,15 @@ function filterExchanges(category, tabEl) {
   tabEl.classList.add('active');
 
   const grid = document.getElementById('exchangesGrid');
-  const auctionTab = document.getElementById('tab-auctions');
+  grid.style.display = 'grid';
 
-  if (category === 'auctions') {
-    grid.style.display = 'none';
-    auctionTab.style.display = 'grid';
-  } else {
-    auctionTab.style.display = 'none';
-    grid.style.display = 'grid';
-
-    document.querySelectorAll('.ex-card').forEach(card => {
-      if (category === 'all' || card.getAttribute('data-category') === category) {
-        card.style.display = 'flex';
-      } else {
-        card.style.display = 'none';
-      }
-    });
-  }
+  document.querySelectorAll('.ex-card').forEach(card => {
+    if (category === 'all' || card.getAttribute('data-category') === category) {
+      card.style.display = 'flex';
+    } else {
+      card.style.display = 'none';
+    }
+  });
 }
 
 function handleSearch() {
@@ -879,16 +846,6 @@ function exportAnalysisCSV() {
   
   if (typeof showWalletToast === 'function') {
     showWalletToast('📥 CSV Report Exported', `Downloaded full on-chain report for ${name}.`);
-  }
-}
-
-function openPendingUpdateModal() {
-  const modal = document.getElementById('auctionBidModal');
-  if (modal) {
-    modal.style.display = 'flex';
-  }
-  if (typeof showWalletToast === 'function') {
-    showWalletToast('⏳ Pendientes por nueva actualización', 'El módulo de subastas estará disponible muy pronto.');
   }
 }
 </script>
