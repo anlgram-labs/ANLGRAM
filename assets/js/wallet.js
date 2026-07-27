@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// ANLGRAM TON Connect Real Wallet Manager (v7.0 - Clean & Genuine)
+// ANLGRAM TON Connect Real Wallet Manager (v7.1 - Sleek & Non-conflicting)
 // ═══════════════════════════════════════════════════════════════
 
 (function() {
@@ -65,17 +65,19 @@
           font-size: 11px; padding: 4px 10px; border-radius: 99px; font-weight: 600;
           background: rgba(255,255,255,0.1); color: #ccc;
         }
-        .toast {
-          position: fixed !important; bottom: 24px !important; right: 24px !important;
-          background: #111118 !important; border: 1px solid rgba(0, 240, 255, 0.5) !important;
-          padding: 16px 22px !important; border-radius: 14px !important; z-index: 9999999 !important;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px rgba(0, 240, 255, 0.2) !important;
-          transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-          max-width: 380px; color: #fff !important; font-family: 'Inter', system-ui, sans-serif !important;
+        .wallet-toast-popup {
+          position: fixed !important; bottom: 20px !important; right: 20px !important;
+          background: #0c0c12 !important; border: 1px solid rgba(0, 240, 255, 0.3) !important;
+          border-left: 3px solid #00f0ff !important; border-radius: 10px !important;
+          padding: 10px 14px !important; z-index: 9999999 !important;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important;
+          transform: translateY(80px); opacity: 0; pointer-events: none !important;
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          max-width: 260px; width: auto; color: #fff !important; font-family: 'Inter', system-ui, sans-serif !important;
         }
-        .toast.show { transform: translateY(0); opacity: 1; }
-        .toast-title { font-weight: 600; color: white; font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; gap:8px; }
-        .toast-desc { font-size: 13px; color: #aaa; line-height: 1.4; }
+        .wallet-toast-popup.show { transform: translateY(0); opacity: 1; pointer-events: auto !important; }
+        .wallet-toast-title { font-weight: 600; color: white; font-size: 13px; margin-bottom: 2px; display:flex; align-items:center; gap:6px; }
+        .wallet-toast-desc { font-size: 11px; color: #aaa; line-height: 1.3; font-family: monospace; }
         .real-wallet-input {
           width: 100% !important; padding: 14px !important; background: #07070a !important;
           border: 1px solid rgba(0, 240, 255, 0.4) !important; border-radius: 12px !important;
@@ -180,13 +182,13 @@
       document.body.appendChild(modalDiv);
     }
 
-    if (!document.getElementById('toast') && !document.getElementById('walletToast')) {
+    if (!document.getElementById('walletToastPopup')) {
       const toastDiv = document.createElement('div');
-      toastDiv.id = 'walletToast';
-      toastDiv.className = 'toast';
+      toastDiv.id = 'walletToastPopup';
+      toastDiv.className = 'wallet-toast-popup';
       toastDiv.innerHTML = `
-        <div class="toast-title" id="walletToastTitle"></div>
-        <div class="toast-desc" id="walletToastDesc"></div>
+        <div class="wallet-toast-title" id="walletToastTitle"></div>
+        <div class="wallet-toast-desc" id="walletToastDesc"></div>
       `;
       document.body.appendChild(toastDiv);
     }
@@ -227,11 +229,11 @@
 
   let connectTimer = null;
 
-  window.showWalletToast = function(title, desc, dur = 5000) {
+  window.showWalletToast = function(title, desc, dur = 2500) {
     initWalletManager();
-    const t = document.getElementById('toast') || document.getElementById('walletToast');
-    const tTitle = document.getElementById('toastTitle') || document.getElementById('walletToastTitle');
-    const tDesc = document.getElementById('toastDesc') || document.getElementById('walletToastDesc');
+    const t = document.getElementById('walletToastPopup');
+    const tTitle = document.getElementById('walletToastTitle');
+    const tDesc = document.getElementById('walletToastDesc');
     if (t && tTitle && tDesc) {
       tTitle.textContent = title;
       tDesc.textContent = desc;
