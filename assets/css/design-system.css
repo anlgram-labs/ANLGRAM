@@ -265,6 +265,13 @@ ul, ol { list-style: none; }
 .mobile-bottom-nav {
   display: none !important;
 }
+.mobile-nav-item svg {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  max-width: 20px !important;
+  flex-shrink: 0 !important;
+}
 @media (max-width: 768px) {
   .mobile-bottom-nav {
     display: flex !important;

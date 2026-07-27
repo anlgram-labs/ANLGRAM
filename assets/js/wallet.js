@@ -226,7 +226,7 @@
         const isActive = currentPage === item.href || (currentPage === '' && item.href === 'index.html');
         return `
           <a href="${item.href}" class="mobile-nav-item ${isActive ? 'active' : ''}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${item.icon}</svg>
+            <svg width="20" height="20" style="width:20px !important; height:20px !important; min-width:20px !important; max-width:20px !important; flex-shrink:0 !important;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${item.icon}</svg>
             <span>${item.name}</span>
           </a>
         `;
@@ -237,9 +237,9 @@
 
     // ── Device Recognition & Layout Adapter System ───────────────
     function initDeviceRecognition() {
-      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       const isSmallScreen = window.innerWidth <= 768;
-      const isPhone = isSmallScreen || (isTouch && window.innerWidth <= 1024);
+      const isPhone = isSmallScreen || (isMobileDevice && window.innerWidth <= 1024);
       const nav = document.getElementById('mobileBottomNav');
       
       if (isPhone) {
@@ -249,7 +249,11 @@
           document.body.classList.add('device-phone');
           document.body.classList.remove('device-pc');
         }
-        if (nav) nav.style.display = 'flex';
+        if (nav && window.innerWidth <= 768) {
+          nav.style.display = 'flex';
+        } else if (nav) {
+          nav.style.display = 'none';
+        }
       } else {
         document.documentElement.classList.add('device-pc');
         document.documentElement.classList.remove('device-phone');
