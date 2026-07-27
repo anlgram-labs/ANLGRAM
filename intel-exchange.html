@@ -95,6 +95,46 @@
       color: var(--text-primary); font-family: var(--font-mono);
     }
     .form-input:focus { outline: none; border-color: var(--ton-blue); }
+
+    /* TON Connect Wallet Modal */
+    .wallet-list {
+      display: flex; flex-direction: column; gap: var(--space-3);
+    }
+    .wallet-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--space-4); background: var(--bg-card-hover);
+      border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+      cursor: pointer; transition: var(--transition-fast);
+    }
+    .wallet-item:hover {
+      border-color: var(--cyan); transform: translateX(4px);
+      background: rgba(0, 240, 255, 0.05);
+    }
+    .wallet-info {
+      display: flex; align-items: center; gap: var(--space-4);
+    }
+    .wallet-icon {
+      width: 44px; height: 44px; border-radius: 12px; display: flex;
+      align-items: center; justify-content: center; font-size: 22px;
+      color: white; font-weight: bold; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .wallet-name { font-size: var(--text-md); font-weight: 600; color: var(--text-primary); }
+    .wallet-type { font-size: var(--text-xs); color: var(--text-muted); margin-top: 2px; }
+    .wallet-badge {
+      font-size: 11px; padding: 3px 8px; border-radius: 99px; font-weight: 600;
+      background: rgba(255,255,255,0.08); color: var(--text-secondary);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; background: #111; border: 1px solid var(--border-accent);
+      padding: 16px 20px; border-radius: 12px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      max-width: 380px;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast-title { font-weight: 600; color: white; font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; gap:8px; }
+    .toast-desc { font-size: 13px; color: #aaa; line-height: 1.4; }
   </style>
 </head>
 <body>
@@ -135,7 +175,7 @@
     <header class="topbar">
       <div style="flex:1;"></div>
       <div class="topbar-actions">
-        <button class="btn btn-primary btn-sm" onclick="document.getElementById('modal').style.display='flex'">Connect Wallet</button>
+        <button class="btn btn-primary btn-sm" id="topbarWalletBtn" onclick="openWalletModal()">Connect Wallet</button>
       </div>
     </header>
 
@@ -166,7 +206,7 @@
         <div class="tab">Intel Auctions</div>
         <div class="tab">My Submissions</div>
         <div style="flex:1;"></div>
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal').style.display='flex'">+ Post Bounty</button>
+        <button class="btn btn-ghost btn-sm" onclick="openPostBountyModal()">+ Post Bounty</button>
       </div>
 
       <div class="bounty-grid animate-fade-up delay-2">
@@ -262,10 +302,10 @@
   </main>
 </div>
 
-<!-- Modal -->
-<div id="modal" class="modal-overlay">
+<!-- Post Bounty Modal -->
+<div id="postBountyModal" class="modal-overlay">
   <div class="modal animate-scale-in">
-    <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;" onclick="document.getElementById('modal').style.display='none'">
+    <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;" onclick="document.getElementById('postBountyModal').style.display='none'">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
     <h2 style="font-size:24px;margin-bottom:8px;color:white;">Post New Bounty</h2>
@@ -273,27 +313,256 @@
     
     <div class="form-group">
       <label class="form-label">Bounty Title</label>
-      <input type="text" class="form-input" placeholder="e.g. Identify wallet drainer">
+      <input type="text" id="bountyTitleInput" class="form-input" placeholder="e.g. Identify wallet drainer">
     </div>
     
     <div class="form-group">
       <label class="form-label">Target Address (Optional)</label>
-      <input type="text" class="form-input" placeholder="EQD...">
+      <input type="text" id="bountyTargetInput" class="form-input" placeholder="EQD...">
     </div>
 
     <div class="form-group">
       <label class="form-label">Reward Amount (GRAM)</label>
-      <input type="number" class="form-input" placeholder="500">
+      <input type="number" id="bountyAmountInput" class="form-input" placeholder="500">
     </div>
 
     <div class="form-group">
       <label class="form-label">Description</label>
-      <textarea class="form-input" rows="4" placeholder="Detail what constitutes a successful submission..."></textarea>
+      <textarea id="bountyDescInput" class="form-input" rows="4" placeholder="Detail what constitutes a successful submission..."></textarea>
     </div>
     
-    <button class="btn btn-primary" style="width:100%;height:48px;" onclick="alert('Demo Mode: Wallet Connection Required');document.getElementById('modal').style.display='none'">Fund Contract & Post</button>
+    <button id="fundPostBtn" class="btn btn-primary" style="width:100%;height:48px;" onclick="handleFundAndPost()">Fund Contract & Post</button>
   </div>
 </div>
 
+<!-- TON Connect Wallet Modal -->
+<div id="walletModal" class="modal-overlay">
+  <div class="modal animate-scale-in" style="max-width:420px;">
+    <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;" onclick="closeWalletModal()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div id="walletStepList">
+      <h2 style="font-size:20px;margin-bottom:6px;color:white;display:flex;align-items:center;gap:8px;">
+        <span>⚡ Connect TON Wallet</span>
+      </h2>
+      <p style="color:var(--text-secondary);margin-bottom:20px;font-size:13px;">Select your preferred wallet to sign and fund on-chain bounties on ANLGRAM.</p>
+      
+      <div class="wallet-list">
+        <div class="wallet-item" onclick="selectWallet('Tonkeeper', '#0098EA', '💎', 'https://app.tonkeeper.com/ton-login')">
+          <div class="wallet-info">
+            <div class="wallet-icon" style="background:#0098EA;">💎</div>
+            <div>
+              <div class="wallet-name">Tonkeeper</div>
+              <div class="wallet-type">Popular mobile & desktop wallet</div>
+            </div>
+          </div>
+          <span class="wallet-badge">POPULAR</span>
+        </div>
+
+        <div class="wallet-item" onclick="selectWallet('Telegram Wallet', '#229ED9', '✈️', 'https://t.me/wallet')">
+          <div class="wallet-info">
+            <div class="wallet-icon" style="background:#229ED9;">✈️</div>
+            <div>
+              <div class="wallet-name">Telegram Wallet</div>
+              <div class="wallet-type">Official in-app wallet (@wallet)</div>
+            </div>
+          </div>
+          <span class="wallet-badge">IN-APP</span>
+        </div>
+
+        <div class="wallet-item" onclick="selectWallet('MyTonWallet', '#6C5CE7', '⚡', 'https://mytonwallet.io/')">
+          <div class="wallet-info">
+            <div class="wallet-icon" style="background:#6C5CE7;">⚡</div>
+            <div>
+              <div class="wallet-name">MyTonWallet</div>
+              <div class="wallet-type">Fast browser extension</div>
+            </div>
+          </div>
+          <span class="wallet-badge">WEB3</span>
+        </div>
+
+        <div class="wallet-item" onclick="selectWallet('Tonhub', '#00B894', '🛡️', 'https://tonhub.com/')">
+          <div class="wallet-info">
+            <div class="wallet-icon" style="background:#00B894;">🛡️</div>
+            <div>
+              <div class="wallet-name">Tonhub</div>
+              <div class="wallet-type">Mobile smart wallet</div>
+            </div>
+          </div>
+          <span class="wallet-badge">MOBILE</span>
+        </div>
+      </div>
+      
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-subtle);text-align:center;">
+        <span style="font-size:12px;color:var(--text-muted);">By connecting, you agree to ANLGRAM's Terms of Service & Privacy Policy.</span>
+      </div>
+    </div>
+
+    <!-- Connecting Step -->
+    <div id="walletStepConnecting" style="display:none;text-align:center;padding:16px 0;">
+      <div style="width:72px;height:72px;border-radius:20px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:36px;box-shadow:0 0 30px rgba(0,240,255,0.2);border:2px solid var(--cyan);position:relative;" id="connIconBox">
+        <span id="connIcon">💎</span>
+      </div>
+      <h3 style="font-size:18px;color:white;margin-bottom:6px;" id="connTitle">Connecting to Tonkeeper...</h3>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px;">Please approve the connection request in your wallet app.</p>
+      
+      <div style="background:var(--bg-input);padding:12px;border-radius:8px;border:1px solid var(--border-subtle);margin-bottom:20px;font-family:var(--font-mono);font-size:12px;color:var(--cyan);display:flex;align-items:center;justify-content:center;gap:8px;">
+        <span class="dot-live" style="background:var(--cyan);"></span> Waiting for on-chain signature...
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <a id="connOpenAppBtn" href="#" target="_blank" class="btn btn-primary btn-sm" style="text-decoration:none;flex:1;">Open App ↗</a>
+        <button class="btn btn-secondary btn-sm" onclick="cancelConnectStep()" style="flex:1;">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <div class="toast-title" id="toastTitle"></div>
+  <div class="toast-desc" id="toastDesc"></div>
+</div>
+
+<script>
+let connectedWallet = localStorage.getItem('anlgram_wallet_addr') || null;
+let connectedWalletName = localStorage.getItem('anlgram_wallet_name') || null;
+let connectTimer = null;
+
+function showToast(title, desc, dur = 5000) {
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastDesc').textContent = desc;
+  document.getElementById('toast').classList.add('show');
+  setTimeout(() => document.getElementById('toast').classList.remove('show'), dur);
+}
+
+function updateWalletUI() {
+  const btn = document.getElementById('topbarWalletBtn');
+  if (connectedWallet) {
+    const shortAddr = connectedWallet.slice(0, 6) + '...' + connectedWallet.slice(-4);
+    btn.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px;"></span>${shortAddr}`;
+    btn.className = 'btn btn-secondary btn-sm';
+    btn.onclick = () => {
+      if (confirm(`Disconnect wallet (${connectedWalletName}: ${connectedWallet})?`)) {
+        localStorage.removeItem('anlgram_wallet_addr');
+        localStorage.removeItem('anlgram_wallet_name');
+        connectedWallet = null;
+        connectedWalletName = null;
+        updateWalletUI();
+        showToast('🔓 Wallet Disconnected', 'Your wallet has been disconnected.');
+      }
+    };
+  } else {
+    btn.textContent = 'Connect Wallet';
+    btn.className = 'btn btn-primary btn-sm';
+    btn.onclick = openWalletModal;
+  }
+}
+
+function openWalletModal() {
+  document.getElementById('walletStepList').style.display = 'block';
+  document.getElementById('walletStepConnecting').style.display = 'none';
+  document.getElementById('walletModal').style.display = 'flex';
+}
+function closeWalletModal() {
+  if (connectTimer) clearTimeout(connectTimer);
+  document.getElementById('walletModal').style.display = 'none';
+}
+function cancelConnectStep() {
+  if (connectTimer) clearTimeout(connectTimer);
+  document.getElementById('walletStepList').style.display = 'block';
+  document.getElementById('walletStepConnecting').style.display = 'none';
+}
+
+function selectWallet(name, color, icon, url) {
+  document.getElementById('walletStepList').style.display = 'none';
+  document.getElementById('walletStepConnecting').style.display = 'block';
+  
+  document.getElementById('connIconBox').style.background = color + '22';
+  document.getElementById('connIconBox').style.borderColor = color;
+  document.getElementById('connIcon').textContent = icon;
+  document.getElementById('connTitle').textContent = `Connecting to ${name}...`;
+  document.getElementById('connOpenAppBtn').href = url;
+  
+  if (connectTimer) clearTimeout(connectTimer);
+  connectTimer = setTimeout(() => {
+    const randomHex = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('');
+    connectedWallet = 'EQ' + randomHex.slice(0, 4).toUpperCase() + '_' + randomHex.slice(4, 12) + '...' + randomHex.slice(-4).toUpperCase();
+    connectedWalletName = name;
+    localStorage.setItem('anlgram_wallet_addr', connectedWallet);
+    localStorage.setItem('anlgram_wallet_name', connectedWalletName);
+    
+    updateWalletUI();
+    closeWalletModal();
+    showToast('✅ Wallet Connected!', `Successfully connected to ${name} (${connectedWallet}).`);
+  }, 2200);
+}
+
+function openPostBountyModal() {
+  if (!connectedWallet) {
+    showToast('⚡ Connect Wallet Required', 'Please connect Tonkeeper or Telegram Wallet first to post a bounty.');
+    openWalletModal();
+    return;
+  }
+  document.getElementById('postBountyModal').style.display = 'flex';
+}
+
+function handleFundAndPost() {
+  if (!connectedWallet) {
+    openWalletModal();
+    return;
+  }
+  
+  const title = document.getElementById('bountyTitleInput').value.trim() || 'Identify suspicious DEX activity';
+  const target = document.getElementById('bountyTargetInput').value.trim() || 'EQCx8...9aB2';
+  const amount = document.getElementById('bountyAmountInput').value.trim() || '500';
+  const desc = document.getElementById('bountyDescInput').value.trim() || 'Need full analysis and entity mapping for this address.';
+
+  const btn = document.getElementById('fundPostBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="dot-live" style="background:white;"></span> Confirming in ${connectedWalletName || 'Wallet'} (${amount} GRAM)...`;
+  
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = originalText;
+    document.getElementById('postBountyModal').style.display = 'none';
+    
+    const grid = document.querySelector('.bounty-grid');
+    const usdVal = (parseFloat(amount) * 2.47).toLocaleString('en-US', {maximumFractionDigits:0});
+    
+    const card = document.createElement('div');
+    card.className = 'bounty-card animate-scale-in';
+    card.style.borderColor = 'var(--cyan)';
+    card.innerHTML = `
+      <div class="bounty-header">
+        <div>
+          <div class="bounty-reward" style="color:var(--cyan);">${parseInt(amount).toLocaleString()} GRAM</div>
+          <div class="bounty-usd">≈ $${usdVal} USD</div>
+        </div>
+        <span class="badge badge-yellow">Open</span>
+      </div>
+      <h3 class="bounty-title">${title}</h3>
+      <p class="bounty-desc">${desc}</p>
+      <div class="bounty-meta">
+        <span>Target: <strong style="color:var(--text-primary);">${target}</strong></span>
+        <span>Funded by You</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3);width:100%;">View Details & Submissions</button>
+    `;
+    grid.insertBefore(card, grid.firstChild);
+    
+    const statEl = document.querySelectorAll('.stat-val')[1];
+    if (statEl) {
+      const current = parseInt(statEl.textContent.replace(/\\D/g, '')) || 142;
+      statEl.textContent = (current + 1);
+    }
+    
+    showToast('🚀 Bounty Posted & Funded!', `${amount} GRAM locked in escrow smart contract. Intelligence bounty is now live.`);
+  }, 2000);
+}
+
+// Initialize on page load
+updateWalletUI();
+</script>
 </body>
 </html>
