@@ -3,170 +3,289 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Exchange Intelligence — ANLGRAM On-Chain Analysis</title>
-  <meta name="description" content="Verified on-chain directory and analysis of CEX and DEX wallets on TON / GRAM."/>
+  <title>CEX & DEX Intelligence Hub — ANLGRAM</title>
+  <meta name="description" content="Next-Gen On-Chain Exchange Intelligence & Hot Wallet Flow Directory for TON and GRAM."/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="assets/css/design-system.css"/>
   <link rel="stylesheet" href="assets/css/layout.css"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
   <style>
-    /* Exchange Hub Layout */
-    .exchange-header {
-      display: flex; justify-content: space-between; align-items: flex-end;
-      margin-bottom: var(--space-6); padding-bottom: var(--space-4);
-      border-bottom: 1px solid var(--border-subtle);
+    :root {
+      --bg-obsidian: #07090e;
+      --bg-glass: rgba(16, 22, 32, 0.65);
+      --bg-glass-hover: rgba(22, 30, 44, 0.8);
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --border-neon: rgba(0, 207, 255, 0.4);
+      --neon-cyan: #00f0ff;
+      --neon-green: #00ff88;
+      --neon-pink: #ff007f;
+      --neon-purple: #9d00ff;
     }
-    
-    .stats-row {
-      display: flex; gap: var(--space-8);
-    }
-    .stat-item {
-      display: flex; flex-direction: column;
-    }
-    .stat-val { font-size: var(--text-xl); font-family: var(--font-mono); font-weight: 700; color: var(--cyan); }
-    .stat-lbl { font-size: var(--text-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
 
-    /* Search & Filter Bar */
-    .filter-bar {
-      display: flex; gap: var(--space-4); align-items: center; justify-content: space-between;
-      margin-bottom: var(--space-6); background: var(--bg-card); padding: var(--space-3) var(--space-4);
-      border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+    body {
+      background-color: var(--bg-obsidian);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(0, 240, 255, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(157, 0, 255, 0.08) 0%, transparent 45%),
+        radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 0);
+      background-size: 100% 100%, 100% 100%, 28px 28px;
+      color: #e0e6ed;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
     }
-    .tabs {
-      display: flex; gap: var(--space-3);
-    }
-    .tab {
-      padding: 6px 14px; font-size: var(--text-sm); font-weight: 600;
-      color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-md);
-      transition: var(--transition-fast); background: transparent;
-    }
-    .tab:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
-    .tab.active { color: var(--cyan); background: rgba(0, 207, 255, 0.1); border: 1px solid rgba(0, 207, 255, 0.3); }
 
-    .search-box {
-      display: flex; align-items: center; gap: 8px; background: var(--bg-input);
-      border: 1px solid var(--border-default); border-radius: var(--radius-md);
-      padding: 6px 12px; width: 280px;
+    /* Top Live Network Ticker */
+    .network-ticker {
+      background: rgba(8, 12, 18, 0.9);
+      border-bottom: 1px solid var(--border-glass);
+      padding: 8px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: #94a3b8;
+      backdrop-filter: blur(10px);
     }
-    .search-box input {
-      background: none; border: none; color: white; font-size: 13px; width: 100%; font-family: var(--font-mono);
+    .ticker-items {
+      display: flex; gap: 24px; align-items: center;
     }
-    .search-box input:focus { outline: none; }
+    .ticker-item { display: flex; align-items: center; gap: 6px; }
+    .ticker-val { color: var(--neon-cyan); font-weight: 600; }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--neon-green);
+      box-shadow: 0 0 10px var(--neon-green);
+      animation: pulse 1.5s infinite;
+    }
 
-    /* Exchange Cards Grid */
+    /* Hero Section */
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(16, 22, 34, 0.8) 0%, rgba(10, 14, 22, 0.6) 100%);
+      border: 1px solid var(--border-glass);
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      backdrop-filter: blur(20px);
+    }
+    .hero-banner::before {
+      content: ''; position: absolute; top: -50%; right: -10%; width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(0, 240, 255, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-title {
+      font-size: 32px; font-weight: 800; letter-spacing: -0.5px; margin: 0 0 8px 0;
+      background: linear-gradient(135deg, #ffffff 0%, #a5f3fc 50%, #00f0ff 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-subtitle {
+      font-size: 15px; color: #94a3b8; max-width: 600px; margin: 0; line-height: 1.6;
+    }
+
+    /* Modern Stats Widgets */
+    .stats-grid {
+      display: flex; gap: 16px;
+    }
+    .stat-widget {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-glass);
+      border-radius: 14px;
+      padding: 16px 22px;
+      min-width: 150px;
+      text-align: right;
+      transition: all 0.3s ease;
+    }
+    .stat-widget:hover {
+      border-color: var(--border-neon);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0, 240, 255, 0.1);
+    }
+    .stat-widget-val {
+      font-size: 22px; font-weight: 700; font-family: var(--font-mono); color: var(--neon-cyan);
+      display: block; margin-bottom: 4px;
+    }
+    .stat-widget-lbl {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 600;
+    }
+
+    /* Navigation & Search Control Bar */
+    .control-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 28px; gap: 20px; flex-wrap: wrap;
+    }
+    .pills-container {
+      display: flex; background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-glass); border-radius: 14px; padding: 5px; gap: 4px;
+      backdrop-filter: blur(12px);
+    }
+    .pill-btn {
+      padding: 8px 18px; font-size: 13px; font-weight: 600; color: #94a3b8;
+      border-radius: 10px; cursor: pointer; transition: all 0.25s ease; border: none; background: transparent;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .pill-btn:hover { color: #ffffff; background: rgba(255,255,255,0.05); }
+    .pill-btn.active {
+      color: #000; background: var(--neon-cyan); font-weight: 700;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+    }
+
+    .modern-search {
+      display: flex; align-items: center; background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-glass); border-radius: 14px; padding: 8px 16px;
+      width: 320px; transition: all 0.3s ease; backdrop-filter: blur(12px);
+    }
+    .modern-search:focus-within {
+      border-color: var(--neon-cyan); box-shadow: 0 0 20px rgba(0, 240, 255, 0.15); width: 360px;
+    }
+    .modern-search input {
+      background: none; border: none; color: white; font-size: 13px; width: 100%; font-family: var(--font-mono); margin-left: 10px;
+    }
+    .modern-search input:focus { outline: none; }
+    .modern-search input::placeholder { color: #475569; }
+
+    /* Ultra-Modern Exchange Cards Grid */
     .exchange-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-      gap: var(--space-5);
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(370px, 1fr));
+      gap: 24px;
     }
 
-    .exchange-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: var(--space-5);
-      transition: var(--transition-fast);
+    .ex-card {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 18px;
+      padding: 24px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       display: flex; flex-direction: column;
       position: relative; overflow: hidden;
+      backdrop-filter: blur(16px);
     }
-    .exchange-card:hover {
-      border-color: var(--border-accent);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-lg);
+    .ex-card:hover {
+      background: var(--bg-glass-hover);
+      border-color: var(--border-neon);
+      transform: translateY(-5px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 240, 255, 0.12);
     }
-    .exchange-card::before {
-      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-      background: var(--grad-primary); opacity: 0; transition: 0.2s;
+    .ex-card::after {
+      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px;
+      background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+      opacity: 0.3; transition: 0.3s;
     }
-    .exchange-card:hover::before { opacity: 1; }
+    .ex-card:hover::after { opacity: 1; height: 4px; box-shadow: 0 0 15px var(--neon-cyan); }
 
-    .exchange-card-header {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      margin-bottom: var(--space-3);
+    .ex-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+    .ex-id-row { display: flex; align-items: center; gap: 14px; }
+    .ex-icon {
+      width: 46px; height: 46px; border-radius: 14px; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0; box-shadow: inset 0 0 15px rgba(255,255,255,0.05);
     }
-    .exchange-name-row {
-      display: flex; align-items: center; gap: 10px;
-    }
-    .exchange-logo {
-      width: 36px; height: 36px; border-radius: 10px; background: rgba(0, 207, 255, 0.1);
-      border: 1px solid rgba(0, 207, 255, 0.3); display: flex; align-items: center; justify-content: center;
-      font-size: 18px; font-weight: bold; color: var(--cyan); flex-shrink: 0;
-    }
-    .exchange-title { font-size: 17px; font-weight: 700; color: white; margin: 0; }
-    .exchange-type-label { font-size: 12px; color: var(--text-muted); }
+    .ex-title { font-size: 18px; font-weight: 700; color: #ffffff; margin: 0 0 4px 0; letter-spacing: -0.3px; }
+    .ex-type { font-size: 12px; color: #64748b; font-weight: 500; }
 
-    .exchange-balance-box {
-      background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
-      padding: 12px; margin: 12px 0;
+    .ex-badge {
+      font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 99px;
+      display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0.5px; text-transform: uppercase;
     }
-    .balance-val { font-size: 20px; font-weight: 700; font-family: var(--font-mono); color: var(--cyan); }
-    .balance-usd { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); }
-    
-    .flow-stats {
-      display: flex; justify-content: space-between; font-size: 12px; font-family: var(--font-mono);
-      padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.08); margin-top: 8px;
-    }
-    .flow-in { color: #00ff88; }
-    .flow-out { color: #ff3366; }
+    .badge-cex { background: rgba(0, 240, 255, 0.1); color: var(--neon-cyan); border: 1px solid rgba(0, 240, 255, 0.3); }
+    .badge-dex { background: rgba(0, 255, 136, 0.1); color: var(--neon-green); border: 1px solid rgba(0, 255, 136, 0.3); }
 
-    .addr-box {
-      font-family: var(--font-mono); font-size: 12px; background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border-subtle); padding: 6px 10px; border-radius: 6px;
-      color: #ccc; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;
+    .ex-address-pill {
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px; padding: 8px 12px; margin-bottom: 16px;
+      font-family: var(--font-mono); font-size: 12px; color: #cbd5e1;
+    }
+    .copy-btn {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8;
+      font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: 0.2s;
+    }
+    .copy-btn:hover { background: var(--neon-cyan); color: #000; border-color: var(--neon-cyan); }
+
+    .ex-metrics-box {
+      background: rgba(10, 15, 24, 0.7); border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 14px; padding: 16px; margin-bottom: 18px;
+    }
+    .metric-main-val {
+      font-size: 24px; font-weight: 800; font-family: var(--font-mono); color: #ffffff;
+      margin-bottom: 2px;
+    }
+    .metric-sub-val {
+      font-size: 12px; font-family: var(--font-mono); color: #64748b; margin-bottom: 12px;
     }
 
-    .exchange-actions {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto;
+    /* Ratio Bar */
+    .flow-ratio-label { display: flex; justify-content: space-between; font-size: 11px; font-family: var(--font-mono); margin-bottom: 6px; }
+    .ratio-bar {
+      height: 6px; width: 100%; background: rgba(255,255,255,0.05); border-radius: 99px; overflow: hidden;
+      display: flex; gap: 2px;
     }
-    .btn-action {
-      background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle);
-      color: white; font-size: 12px; font-weight: 600; padding: 8px 10px;
-      border-radius: 6px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
-      text-decoration: none;
+    .ratio-in { background: var(--neon-green); height: 100%; transition: width 1s ease; }
+    .ratio-out { background: var(--neon-pink); height: 100%; transition: width 1s ease; }
+
+    /* Action Buttons Grid */
+    .ex-btn-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto;
     }
-    .btn-action:hover {
-      background: rgba(0, 207, 255, 0.15); border-color: var(--cyan); color: var(--cyan);
+    .btn-cyber {
+      background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #cbd5e1; font-size: 12px; font-weight: 600; padding: 10px 12px;
+      border-radius: 10px; cursor: pointer; transition: all 0.25s ease;
+      display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;
     }
-    .btn-action.primary {
-      background: rgba(0, 207, 255, 0.15); border-color: rgba(0, 207, 255, 0.4); color: var(--cyan);
+    .btn-cyber:hover {
+      background: rgba(0, 240, 255, 0.1); border-color: var(--neon-cyan); color: var(--neon-cyan);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
     }
-    .btn-action.primary:hover {
-      background: var(--cyan); color: #000; font-weight: 700;
+    .btn-cyber.glow {
+      background: rgba(0, 240, 255, 0.12); border-color: rgba(0, 240, 255, 0.35); color: var(--neon-cyan);
+    }
+    .btn-cyber.glow:hover {
+      background: var(--neon-cyan); color: #000; font-weight: 700;
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.5); transform: scale(1.02);
     }
 
     /* Modal Styling */
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
       display: none; align-items: center; justify-content: center; z-index: 1000;
     }
-    .modal {
-      background: var(--bg-card); border: 1px solid var(--cyan);
-      border-radius: var(--radius-xl); width: 100%; max-width: 520px;
-      padding: var(--space-6); position: relative; box-shadow: 0 0 40px rgba(0,207,255,0.2);
+    .modal-glass {
+      background: rgba(15, 22, 34, 0.95); border: 1px solid var(--neon-cyan);
+      border-radius: 24px; width: 100%; max-width: 540px;
+      padding: 32px; position: relative; box-shadow: 0 0 50px rgba(0,240,255,0.25);
     }
-
-    /* Toast */
-    .toast {
-      position: fixed; bottom: 24px; right: 24px; background: #111; border: 1px solid var(--border-accent);
-      padding: 16px 20px; border-radius: 12px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-      transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      max-width: 380px;
-    }
-    .toast.show { transform: translateY(0); opacity: 1; }
-    .toast-title { font-weight: 600; color: white; font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; gap:8px; }
-    .toast-desc { font-size: 13px; color: #aaa; line-height: 1.4; }
   </style>
 </head>
 <body>
+
+<!-- Live Top Network Ticker -->
+<div class="network-ticker">
+  <div class="ticker-items">
+    <div class="ticker-item"><span class="live-dot"></span> <span>TON MAINNET: <strong class="ticker-val">ONLINE ⚡</strong></span></div>
+    <div class="ticker-item"><span>TOTAL TRACKED TVL: <strong class="ticker-val">$1,482,500,000 USD</strong></span></div>
+    <div class="ticker-item"><span>24H EXCHANGE VOLUME: <strong class="ticker-val">482.5M GRAM</strong></span></div>
+    <div class="ticker-item"><span>GAS FEE: <strong class="ticker-val">0.025 TON</strong></span></div>
+  </div>
+  <div>
+    <span style="color:#64748b;">AI ANALYTICS ENGINE v8.0 · BUBBLEMAPS INTEGRATED</span>
+  </div>
+</div>
+
 <div class="app-shell">
   <!-- Sidebar -->
   <aside class="sidebar">
     <a href="index.html" class="sidebar-logo">
-      <div class="sidebar-logo-icon">A</div>
-      <span class="sidebar-logo-text">ANLGRAM</span>
+      <div class="sidebar-logo-icon" style="background:var(--neon-cyan);color:#000;font-weight:800;">A</div>
+      <span class="sidebar-logo-text" style="letter-spacing:1px;font-weight:800;">ANLGRAM</span>
     </a>
     <nav class="sidebar-nav">
-      <div class="sidebar-section-label">Analytics</div>
+      <div class="sidebar-section-label">Analytics & Flow</div>
       <a href="dashboard.html" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         Dashboard
@@ -179,59 +298,63 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49"/></svg>
         Flow Visualizer
       </a>
-      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Intelligence</div>
-      <a href="intel-exchange.html" class="nav-item active">
+      <div class="sidebar-section-label" style="margin-top:var(--space-4);">On-Chain Intelligence</div>
+      <a href="intel-exchange.html" class="nav-item active" style="background:rgba(0, 240, 255, 0.1);border-left:3px solid var(--neon-cyan);color:var(--neon-cyan);">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         Exchange Intel Hub
       </a>
       <a href="alerts.html" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        Alerts
+        Live Alerts
       </a>
     </nav>
   </aside>
 
   <main class="main-content">
-    <header class="topbar">
+    <header class="topbar" style="background:transparent;border-bottom:none;margin-bottom:12px;">
       <div style="flex:1;"></div>
       <div class="topbar-actions">
-        <button class="btn btn-primary btn-sm" id="topbarWalletBtn" onclick="openWalletModal()">Connect Wallet</button>
+        <button class="btn btn-primary btn-sm" id="topbarWalletBtn" onclick="openWalletModal()" style="border-radius:10px;padding:8px 18px;font-weight:700;box-shadow:0 0 20px rgba(0,240,255,0.3);">⚡ Connect Web3 Wallet</button>
       </div>
     </header>
 
-    <div class="page-content">
-      <div class="exchange-header animate-fade-up">
+    <div class="page-content" style="padding-top:0;">
+      
+      <!-- Hero Banner -->
+      <div class="hero-banner animate-fade-up">
         <div>
-          <h1 class="page-title">CEX & DEX Exchange Intelligence</h1>
-          <p class="page-subtitle">Verified on-chain directory of Centralized (CEX) and Decentralized (DEX) hot wallets, routers, and liquidity pools on TON / GRAM.</p>
+          <span class="badge badge-cex" style="margin-bottom:12px;"><span class="live-dot"></span> LIVE ON-CHAIN ANALYSIS</span>
+          <h1 class="hero-title">CEX & DEX Intelligence Hub</h1>
+          <p class="hero-subtitle">Real-time surveillance directory of verified Centralized (CEX) hot wallets, Decentralized (DEX) liquidity routers, and OTC multi-sig custody vaults across the TON ecosystem.</p>
         </div>
-        <div class="stats-row">
-          <div class="stat-item">
-            <span class="stat-val">235.4M GRAM</span>
-            <span class="stat-lbl">Tracked Exchange TVL</span>
+        <div class="stats-grid">
+          <div class="stat-widget">
+            <span class="stat-widget-val">235.4M</span>
+            <span class="stat-widget-lbl">Tracked GRAM</span>
           </div>
-          <div class="stat-item">
-            <span class="stat-val">12 Wallets</span>
-            <span class="stat-lbl">Verified Entities</span>
+          <div class="stat-widget">
+            <span class="stat-widget-val">12</span>
+            <span class="stat-lbl stat-widget-lbl">Verified Wallets</span>
           </div>
-          <div class="stat-item">
-            <span class="stat-val">$482.5M USD</span>
-            <span class="stat-lbl">24h Flow Volume</span>
+          <div class="stat-widget">
+            <span class="stat-widget-val">$482.5M</span>
+            <span class="stat-widget-lbl">24h Vol (USD)</span>
           </div>
         </div>
       </div>
 
-      <!-- Filter Bar -->
-      <div class="filter-bar animate-fade-up delay-1">
-        <div class="tabs">
-          <div class="tab active" onclick="filterExchanges('all', this)">All Entities (8)</div>
-          <div class="tab" onclick="filterExchanges('cex', this)">Centralized CEX (5)</div>
-          <div class="tab" onclick="filterExchanges('dex', this)">Decentralized DEX (3)</div>
-          <div class="tab" onclick="filterExchanges('auctions', this)">Dataset Subastas ⚡</div>
+      <!-- Navigation Pills & Search -->
+      <div class="control-bar animate-fade-up delay-1">
+        <div class="pills-container">
+          <button class="pill-btn active" onclick="filterExchanges('all', this)">🌐 All Entities (8)</button>
+          <button class="pill-btn" onclick="filterExchanges('cex', this)">🏛️ Centralized CEX (5)</button>
+          <button class="pill-btn" onclick="filterExchanges('dex', this)">⚡ Decentralized DEX (3)</button>
+          <button class="pill-btn" onclick="filterExchanges('auctions', this)" style="color:#facc15;">🔐 Dataset Subastas ⚡</button>
         </div>
-        <div class="search-box">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="searchInput" placeholder="Search exchange name or address..." oninput="handleSearch()">
+
+        <div class="modern-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="searchInput" placeholder="Search entity name or TON address..." oninput="handleSearch()">
         </div>
       </div>
 
@@ -239,298 +362,338 @@
       <div id="exchangesGrid" class="exchange-grid animate-fade-up delay-2">
         
         <!-- Binance Card -->
-        <div class="exchange-card" data-category="cex" data-name="binance hot wallet 7">
-          <div class="exchange-card-header">
-            <div class="exchange-name-row">
-              <div class="exchange-logo">🟡</div>
+        <div class="ex-card" data-category="cex" data-name="binance hot wallet 7">
+          <div class="ex-header">
+            <div class="ex-id-row">
+              <div class="ex-icon" style="color:#fbbf24;background:rgba(251,191,36,0.1);border-color:rgba(251,191,36,0.3);">🟡</div>
               <div>
-                <h3 class="exchange-title">Binance Hot Wallet 7</h3>
-                <span class="exchange-type-label">Centralized Exchange (CEX)</span>
+                <h3 class="ex-title">Binance Hot Wallet 7</h3>
+                <span class="ex-type">Tier-1 Centralized Exchange</span>
               </div>
             </div>
-            <span class="badge badge-blue">Verified</span>
+            <span class="ex-badge badge-cex"><span class="live-dot" style="width:5px;height:5px;"></span> Verified CEX</span>
           </div>
           
-          <div class="addr-box">
+          <div class="ex-address-pill">
             <span>EQCD39VS...4bpAOg8xqB2N</span>
-            <button onclick="copyAddr('EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N')" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:11px;">📋 Copy</button>
+            <button class="copy-btn" onclick="copyAddr('EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N')">📋 Copy</button>
           </div>
 
-          <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;">Primary deposit aggregation and high-frequency withdrawal wallet for Binance retail & VIP traders on TON.</p>
-
-          <div class="exchange-balance-box">
-            <div class="balance-val">45,892,000 GRAM</div>
-            <div class="balance-usd">≈ $113,353,240 USD · 1,420 TXs / 24h</div>
-            <div class="flow-stats">
-              <span class="flow-in">▲ In: +1,240,000 GRAM</span>
-              <span class="flow-out">▼ Out: -840,500 GRAM</span>
+          <div class="ex-metrics-box">
+            <div class="metric-main-val">45,892,000 <span style="font-size:16px;color:var(--neon-cyan);">GRAM</span></div>
+            <div class="metric-sub-val">≈ $113,353,240 USD · 1,420 TXs / 24h</div>
+            
+            <div class="flow-ratio-label">
+              <span style="color:var(--neon-green);">▲ In: 60% (+1.24M)</span>
+              <span style="color:var(--neon-pink);">▼ Out: 40% (-840k)</span>
+            </div>
+            <div class="ratio-bar">
+              <div class="ratio-in" style="width: 60%;"></div>
+              <div class="ratio-out" style="width: 40%;"></div>
             </div>
           </div>
 
-          <div class="exchange-actions">
-            <a href="visualizer.html?target=EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" class="btn-action primary">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('Binance Hot Wallet 7', 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', '45,892,000 GRAM', '+1.24M / -840k')" class="btn-action">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" class="btn-action">⚡ Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" target="_blank" class="btn-action">Tonviewer ↗</a>
+          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Primary deposit aggregation and high-frequency withdrawal routing wallet for Binance retail & VIP institutional traders on TON.</p>
+
+          <div class="ex-btn-grid">
+            <a href="visualizer.html?target=EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" class="btn-cyber glow">🕸️ Flow Visualizer</a>
+            <button onclick="openAnalysisModal('Binance Hot Wallet 7', 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', '45,892,000 GRAM', '+1.24M / -840k')" class="btn-cyber">📊 Analyze Flows</button>
+            <a href="alerts.html?target=EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" class="btn-cyber">⚡ Monitor Alerts</a>
+            <a href="https://tonviewer.com/EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" target="_blank" class="btn-cyber">Tonviewer ↗</a>
           </div>
         </div>
 
         <!-- OKX Card -->
-        <div class="exchange-card" data-category="cex" data-name="okx deposit router">
-          <div class="exchange-card-header">
-            <div class="exchange-name-row">
-              <div class="exchange-logo">⚫</div>
+        <div class="ex-card" data-category="cex" data-name="okx deposit router">
+          <div class="ex-header">
+            <div class="ex-id-row">
+              <div class="ex-icon" style="color:#ffffff;background:rgba(255,255,255,0.08);">⚫</div>
               <div>
-                <h3 class="exchange-title">OKX Main Deposit Router</h3>
-                <span class="exchange-type-label">Centralized Exchange (CEX)</span>
+                <h3 class="ex-title">OKX Main Deposit Router</h3>
+                <span class="ex-type">Tier-1 Centralized Exchange</span>
               </div>
             </div>
-            <span class="badge badge-blue">Verified</span>
+            <span class="ex-badge badge-cex"><span class="live-dot" style="width:5px;height:5px;"></span> Verified CEX</span>
           </div>
           
-          <div class="addr-box">
+          <div class="ex-address-pill">
             <span>EQAvlWFD...220rS0K_7ZN6_</span>
-            <button onclick="copyAddr('EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_')" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:11px;">📋 Copy</button>
+            <button class="copy-btn" onclick="copyAddr('EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_')">📋 Copy</button>
           </div>
 
-          <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;">Core deposit gateway routing institutional inflows into OKX multi-sig cold custody vaults.</p>
-
-          <div class="exchange-balance-box">
-            <div class="balance-val">28,450,000 GRAM</div>
-            <div class="balance-usd">≈ $70,271,500 USD · 890 TXs / 24h</div>
-            <div class="flow-stats">
-              <span class="flow-in">▲ In: +890,000 GRAM</span>
-              <span class="flow-out">▼ Out: -620,000 GRAM</span>
+          <div class="ex-metrics-box">
+            <div class="metric-main-val">28,450,000 <span style="font-size:16px;color:var(--neon-cyan);">GRAM</span></div>
+            <div class="metric-sub-val">≈ $70,271,500 USD · 890 TXs / 24h</div>
+            
+            <div class="flow-ratio-label">
+              <span style="color:var(--neon-green);">▲ In: 59% (+890k)</span>
+              <span style="color:var(--neon-pink);">▼ Out: 41% (-620k)</span>
+            </div>
+            <div class="ratio-bar">
+              <div class="ratio-in" style="width: 59%;"></div>
+              <div class="ratio-out" style="width: 41%;"></div>
             </div>
           </div>
 
-          <div class="exchange-actions">
-            <a href="visualizer.html?target=EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_" class="btn-action primary">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('OKX Main Deposit Router', 'EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_', '28,450,000 GRAM', '+890k / -620k')" class="btn-action">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_" class="btn-action">⚡ Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_" target="_blank" class="btn-action">Tonviewer ↗</a>
+          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Core deposit gateway routing institutional inflows directly into OKX multi-sig cold custody vaults.</p>
+
+          <div class="ex-btn-grid">
+            <a href="visualizer.html?target=EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_" class="btn-cyber glow">🕸️ Flow Visualizer</a>
+            <button onclick="openAnalysisModal('OKX Main Deposit Router', 'EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_', '28,450,000 GRAM', '+890k / -620k')" class="btn-cyber">📊 Analyze Flows</button>
+            <a href="alerts.html?target=EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_" class="btn-cyber">⚡ Monitor Alerts</a>
+            <a href="https://tonviewer.com/EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_" target="_blank" class="btn-cyber">Tonviewer ↗</a>
           </div>
         </div>
 
         <!-- Ston.fi Card -->
-        <div class="exchange-card" data-category="dex" data-name="ston.fi dex router & amm">
-          <div class="exchange-card-header">
-            <div class="exchange-name-row">
-              <div class="exchange-logo">🔵</div>
+        <div class="ex-card" data-category="dex" data-name="ston.fi dex router & amm">
+          <div class="ex-header">
+            <div class="ex-id-row">
+              <div class="ex-icon" style="color:#38bdf8;background:rgba(56,189,248,0.1);border-color:rgba(56,189,248,0.3);">🔵</div>
               <div>
-                <h3 class="exchange-title">Ston.fi DEX Router & AMM</h3>
-                <span class="exchange-type-label">Decentralized Exchange (DEX)</span>
+                <h3 class="ex-title">Ston.fi DEX Router & AMM</h3>
+                <span class="ex-type">Automated Market Maker (AMM)</span>
               </div>
             </div>
-            <span class="badge badge-green">Top DEX</span>
+            <span class="ex-badge badge-dex"><span class="live-dot" style="width:5px;height:5px;background:var(--neon-green);"></span> Top DEX Pool</span>
           </div>
           
-          <div class="addr-box">
+          <div class="ex-address-pill">
             <span>EQB3ncyB...aiU71gc4TiUt</span>
-            <button onclick="copyAddr('EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt')" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:11px;">📋 Copy</button>
+            <button class="copy-btn" onclick="copyAddr('EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt')">📋 Copy</button>
           </div>
 
-          <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;">Primary Automated Market Maker (AMM) contract handling token swaps, LP routing, and farming rewards.</p>
-
-          <div class="exchange-balance-box">
-            <div class="balance-val">64,200,000 GRAM</div>
-            <div class="balance-usd">≈ $158,574,000 TVL · 4,820 Swaps / 24h</div>
-            <div class="flow-stats">
-              <span class="flow-in">▲ Vol: $18.4M USD</span>
-              <span class="flow-out">▼ LP Yield: 34.2% APR</span>
+          <div class="ex-metrics-box">
+            <div class="metric-main-val">64,200,000 <span style="font-size:16px;color:var(--neon-green);">GRAM TVL</span></div>
+            <div class="metric-sub-val">≈ $158,574,000 USD · 4,820 Swaps / 24h</div>
+            
+            <div class="flow-ratio-label">
+              <span style="color:var(--neon-green);">▲ Buy Vol: 55% ($10.1M)</span>
+              <span style="color:var(--neon-pink);">▼ Sell Vol: 45% ($8.3M)</span>
+            </div>
+            <div class="ratio-bar">
+              <div class="ratio-in" style="width: 55%;"></div>
+              <div class="ratio-out" style="width: 45%;"></div>
             </div>
           </div>
 
-          <div class="exchange-actions">
-            <a href="visualizer.html?target=EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt" class="btn-action primary">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('Ston.fi DEX Router & AMM', 'EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt', '64,200,000 GRAM', '$18.4M Vol / 4.8k TXs')" class="btn-action">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt" class="btn-action">⚡ Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt" target="_blank" class="btn-action">Tonviewer ↗</a>
+          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Primary Automated Market Maker contract handling token swaps, LP routing, and farming yield distributions.</p>
+
+          <div class="ex-btn-grid">
+            <a href="visualizer.html?target=EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt" class="btn-cyber glow">🕸️ Flow Visualizer</a>
+            <button onclick="openAnalysisModal('Ston.fi DEX Router & AMM', 'EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt', '64,200,000 GRAM', '$18.4M Vol / 4.8k TXs')" class="btn-cyber">📊 Analyze Flows</button>
+            <a href="alerts.html?target=EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt" class="btn-cyber">⚡ Monitor Alerts</a>
+            <a href="https://tonviewer.com/EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt" target="_blank" class="btn-cyber">Tonviewer ↗</a>
           </div>
         </div>
 
         <!-- DeDust Card -->
-        <div class="exchange-card" data-category="dex" data-name="dedust protocol router">
-          <div class="exchange-card-header">
-            <div class="exchange-name-row">
-              <div class="exchange-logo">🟣</div>
+        <div class="ex-card" data-category="dex" data-name="dedust protocol router">
+          <div class="ex-header">
+            <div class="ex-id-row">
+              <div class="ex-icon" style="color:#c084fc;background:rgba(192,132,252,0.1);border-color:rgba(192,132,252,0.3);">🟣</div>
               <div>
-                <h3 class="exchange-title">DeDust Protocol Router</h3>
-                <span class="exchange-type-label">Decentralized Exchange (DEX)</span>
+                <h3 class="ex-title">DeDust Protocol Router</h3>
+                <span class="ex-type">DEX Protocol Vaults</span>
               </div>
             </div>
-            <span class="badge badge-green">Top DEX</span>
+            <span class="ex-badge badge-dex"><span class="live-dot" style="width:5px;height:5px;background:var(--neon-green);"></span> Top DEX Pool</span>
           </div>
           
-          <div class="addr-box">
+          <div class="ex-address-pill">
             <span>EQCvxJy4...wY-XC-C1_v0A</span>
-            <button onclick="copyAddr('EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A')" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:11px;">📋 Copy</button>
+            <button class="copy-btn" onclick="copyAddr('EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A')">📋 Copy</button>
           </div>
 
-          <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;">Advanced DEX engine and liquidity vault supporting stable pools and volatile token arbitrage.</p>
-
-          <div class="exchange-balance-box">
-            <div class="balance-val">41,100,000 GRAM</div>
-            <div class="balance-usd">≈ $101,517,000 TVL · 3,150 Swaps / 24h</div>
-            <div class="flow-stats">
-              <span class="flow-in">▲ Vol: $12.1M USD</span>
-              <span class="flow-out">▼ LP Yield: 28.5% APR</span>
+          <div class="ex-metrics-box">
+            <div class="metric-main-val">41,100,000 <span style="font-size:16px;color:var(--neon-green);">GRAM TVL</span></div>
+            <div class="metric-sub-val">≈ $101,517,000 USD · 3,150 Swaps / 24h</div>
+            
+            <div class="flow-ratio-label">
+              <span style="color:var(--neon-green);">▲ Buy Vol: 52% ($6.3M)</span>
+              <span style="color:var(--neon-pink);">▼ Sell Vol: 48% ($5.8M)</span>
+            </div>
+            <div class="ratio-bar">
+              <div class="ratio-in" style="width: 52%;"></div>
+              <div class="ratio-out" style="width: 48%;"></div>
             </div>
           </div>
 
-          <div class="exchange-actions">
-            <a href="visualizer.html?target=EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A" class="btn-action primary">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('DeDust Protocol Router', 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A', '41,100,000 GRAM', '$12.1M Vol / 3.1k TXs')" class="btn-action">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A" class="btn-action">⚡ Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A" target="_blank" class="btn-action">Tonviewer ↗</a>
+          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Advanced DEX routing engine and liquidity vault supporting stable pools and volatile token arbitrage pairs.</p>
+
+          <div class="ex-btn-grid">
+            <a href="visualizer.html?target=EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A" class="btn-cyber glow">🕸️ Flow Visualizer</a>
+            <button onclick="openAnalysisModal('DeDust Protocol Router', 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A', '41,100,000 GRAM', '$12.1M Vol / 3.1k TXs')" class="btn-cyber">📊 Analyze Flows</button>
+            <a href="alerts.html?target=EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A" class="btn-cyber">⚡ Monitor Alerts</a>
+            <a href="https://tonviewer.com/EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A" target="_blank" class="btn-cyber">Tonviewer ↗</a>
           </div>
         </div>
 
         <!-- Bybit Card -->
-        <div class="exchange-card" data-category="cex" data-name="bybit institutional hot wallet">
-          <div class="exchange-card-header">
-            <div class="exchange-name-row">
-              <div class="exchange-logo">🟠</div>
+        <div class="ex-card" data-category="cex" data-name="bybit institutional hot wallet">
+          <div class="ex-header">
+            <div class="ex-id-row">
+              <div class="ex-icon" style="color:#f97316;background:rgba(249,115,22,0.1);border-color:rgba(249,115,22,0.3);">🟠</div>
               <div>
-                <h3 class="exchange-title">Bybit Institutional Hot Wallet</h3>
-                <span class="exchange-type-label">Centralized Exchange (CEX)</span>
+                <h3 class="ex-title">Bybit Institutional Hot</h3>
+                <span class="ex-type">Centralized Derivatives CEX</span>
               </div>
             </div>
-            <span class="badge badge-blue">Verified</span>
+            <span class="ex-badge badge-cex"><span class="live-dot" style="width:5px;height:5px;"></span> Verified CEX</span>
           </div>
           
-          <div class="addr-box">
+          <div class="ex-address-pill">
             <span>EQC47093...Kj0jN4g69h9aL2_</span>
-            <button onclick="copyAddr('EQC47093oX5XmnBRNDCQ09027lxlIlqxiKj0jN4g69h9aL2_')" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:11px;">📋 Copy</button>
+            <button class="copy-btn" onclick="copyAddr('EQC47093oX5XmnBRNDCQ09027lxlIlqxiKj0jN4g69h9aL2_')">📋 Copy</button>
           </div>
 
-          <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;">High-frequency collateral and settlement wallet supporting Bybit spot and margin derivatives trading.</p>
-
-          <div class="exchange-balance-box">
-            <div class="balance-val">19,500,000 GRAM</div>
-            <div class="balance-usd">≈ $48,165,000 USD · 520 TXs / 24h</div>
-            <div class="flow-stats">
-              <span class="flow-in">▲ In: +520,000 GRAM</span>
-              <span class="flow-out">▼ Out: -310,000 GRAM</span>
+          <div class="ex-metrics-box">
+            <div class="metric-main-val">19,500,000 <span style="font-size:16px;color:var(--neon-cyan);">GRAM</span></div>
+            <div class="metric-sub-val">≈ $48,165,000 USD · 520 TXs / 24h</div>
+            
+            <div class="flow-ratio-label">
+              <span style="color:var(--neon-green);">▲ In: 63% (+520k)</span>
+              <span style="color:var(--neon-pink);">▼ Out: 37% (-310k)</span>
+            </div>
+            <div class="ratio-bar">
+              <div class="ratio-in" style="width: 63%;"></div>
+              <div class="ratio-out" style="width: 37%;"></div>
             </div>
           </div>
 
-          <div class="exchange-actions">
-            <a href="visualizer.html?target=EQC47093oX5XmnBRNDCQ09027lxlIlqxiKj0jN4g69h9aL2_" class="btn-action primary">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('Bybit Institutional Hot Wallet', 'EQC47093oX5XmnBRNDCQ09027lxlIlqxiKj0jN4g69h9aL2_', '19,500,000 GRAM', '+520k / -310k')" class="btn-action">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQC47093oX5XmnBRNDCQ09027lxlIlqxiKj0jN4g69h9aL2_" class="btn-action">⚡ Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQC47093oX5XmnBRNDCQ09027lxlIlqxiKj0jN4g69h9aL2_" target="_blank" class="btn-action">Tonviewer ↗</a>
+          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">High-frequency collateral and settlement wallet supporting Bybit spot and margin derivatives settlements.</p>
+
+          <div class="ex-btn-grid">
+            <a href="visualizer.html?target=EQC47093oX5XmnBRNDCQ09027lxlIlqxiKj0jN4g69h9aL2_" class="btn-cyber glow">🕸️ Flow Visualizer</a>
+            <button onclick="openAnalysisModal('Bybit Institutional Hot', 'EQC47093oX5XmnBRNDCQ09027lxlIlqxiKj0jN4g69h9aL2_', '19,500,000 GRAM', '+520k / -310k')" class="btn-cyber">📊 Analyze Flows</button>
+            <a href="alerts.html?target=EQC47093oX5XmnBRNDCQ09027lxlIlqxiKj0jN4g69h9aL2_" class="btn-cyber">⚡ Monitor Alerts</a>
+            <a href="https://tonviewer.com/EQC47093oX5XmnBRNDCQ09027lxlIlqxiKj0jN4g69h9aL2_" target="_blank" class="btn-cyber">Tonviewer ↗</a>
           </div>
         </div>
 
         <!-- Gate.io Card -->
-        <div class="exchange-card" data-category="cex" data-name="gate.io deposit gateway">
-          <div class="exchange-card-header">
-            <div class="exchange-name-row">
-              <div class="exchange-logo">🟢</div>
+        <div class="ex-card" data-category="cex" data-name="gate.io deposit gateway">
+          <div class="ex-header">
+            <div class="ex-id-row">
+              <div class="ex-icon" style="color:#10b981;background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.3);">🟢</div>
               <div>
-                <h3 class="exchange-title">Gate.io Deposit Gateway</h3>
-                <span class="exchange-type-label">Centralized Exchange (CEX)</span>
+                <h3 class="ex-title">Gate.io Deposit Gateway</h3>
+                <span class="ex-type">Centralized Exchange Gateway</span>
               </div>
             </div>
-            <span class="badge badge-blue">Verified</span>
+            <span class="ex-badge badge-cex"><span class="live-dot" style="width:5px;height:5px;"></span> Verified CEX</span>
           </div>
           
-          <div class="addr-box">
+          <div class="ex-address-pill">
             <span>EQCzY5n0...8k9l0m1n2o3p4</span>
-            <button onclick="copyAddr('EQCzY5n0n8Wc4tV8s9B0c1d2e3f4g5h6i7j8k9l0m1n2o3p4')" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:11px;">📋 Copy</button>
+            <button class="copy-btn" onclick="copyAddr('EQCzY5n0n8Wc4tV8s9B0c1d2e3f4g5h6i7j8k9l0m1n2o3p4')">📋 Copy</button>
           </div>
 
-          <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;">Active aggregation gateway processing user deposits and sweeping balances into cold storage.</p>
-
-          <div class="exchange-balance-box">
-            <div class="balance-val">8,900,000 GRAM</div>
-            <div class="balance-usd">≈ $21,983,000 USD · 610 TXs / 24h</div>
-            <div class="flow-stats">
-              <span class="flow-in">▲ In: +410,000 GRAM</span>
-              <span class="flow-out">▼ Out: -390,000 GRAM</span>
+          <div class="ex-metrics-box">
+            <div class="metric-main-val">8,900,000 <span style="font-size:16px;color:var(--neon-cyan);">GRAM</span></div>
+            <div class="metric-sub-val">≈ $21,983,000 USD · 610 TXs / 24h</div>
+            
+            <div class="flow-ratio-label">
+              <span style="color:var(--neon-green);">▲ In: 51% (+410k)</span>
+              <span style="color:var(--neon-pink);">▼ Out: 49% (-390k)</span>
+            </div>
+            <div class="ratio-bar">
+              <div class="ratio-in" style="width: 51%;"></div>
+              <div class="ratio-out" style="width: 49%;"></div>
             </div>
           </div>
 
-          <div class="exchange-actions">
-            <a href="visualizer.html?target=EQCzY5n0n8Wc4tV8s9B0c1d2e3f4g5h6i7j8k9l0m1n2o3p4" class="btn-action primary">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('Gate.io Deposit Gateway', 'EQCzY5n0n8Wc4tV8s9B0c1d2e3f4g5h6i7j8k9l0m1n2o3p4', '8,900,000 GRAM', '+410k / -390k')" class="btn-action">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQCzY5n0n8Wc4tV8s9B0c1d2e3f4g5h6i7j8k9l0m1n2o3p4" class="btn-action">⚡ Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQCzY5n0n8Wc4tV8s9B0c1d2e3f4g5h6i7j8k9l0m1n2o3p4" target="_blank" class="btn-action">Tonviewer ↗</a>
+          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Active aggregation gateway processing retail user deposits and sweeping balances into cold storage.</p>
+
+          <div class="ex-btn-grid">
+            <a href="visualizer.html?target=EQCzY5n0n8Wc4tV8s9B0c1d2e3f4g5h6i7j8k9l0m1n2o3p4" class="btn-cyber glow">🕸️ Flow Visualizer</a>
+            <button onclick="openAnalysisModal('Gate.io Deposit Gateway', 'EQCzY5n0n8Wc4tV8s9B0c1d2e3f4g5h6i7j8k9l0m1n2o3p4', '8,900,000 GRAM', '+410k / -390k')" class="btn-cyber">📊 Analyze Flows</button>
+            <a href="alerts.html?target=EQCzY5n0n8Wc4tV8s9B0c1d2e3f4g5h6i7j8k9l0m1n2o3p4" class="btn-cyber">⚡ Monitor Alerts</a>
+            <a href="https://tonviewer.com/EQCzY5n0n8Wc4tV8s9B0c1d2e3f4g5h6i7j8k9l0m1n2o3p4" target="_blank" class="btn-cyber">Tonviewer ↗</a>
           </div>
         </div>
 
         <!-- MEXC Card -->
-        <div class="exchange-card" data-category="cex" data-name="mexc global hot wallet">
-          <div class="exchange-card-header">
-            <div class="exchange-name-row">
-              <div class="exchange-logo">🔵</div>
+        <div class="ex-card" data-category="cex" data-name="mexc global hot wallet">
+          <div class="ex-header">
+            <div class="ex-id-row">
+              <div class="ex-icon" style="color:#06b6d4;background:rgba(6,182,212,0.1);border-color:rgba(6,182,212,0.3);">🔵</div>
               <div>
-                <h3 class="exchange-title">MEXC Global Hot Wallet</h3>
-                <span class="exchange-type-label">Centralized Exchange (CEX)</span>
+                <h3 class="ex-title">MEXC Global Hot Wallet</h3>
+                <span class="ex-type">Centralized Exchange (CEX)</span>
               </div>
             </div>
-            <span class="badge badge-blue">Verified</span>
+            <span class="ex-badge badge-cex"><span class="live-dot" style="width:5px;height:5px;"></span> Verified CEX</span>
           </div>
           
-          <div class="addr-box">
+          <div class="ex-address-pill">
             <span>EQD12345...uvwxyz123456789</span>
-            <button onclick="copyAddr('EQD1234567890abcdefghijklmnopqrstuvwxyz123456789')" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:11px;">📋 Copy</button>
+            <button class="copy-btn" onclick="copyAddr('EQD1234567890abcdefghijklmnopqrstuvwxyz123456789')">📋 Copy</button>
           </div>
 
-          <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;">Active hot wallet for rapid token listings, quick withdrawals, and cross-market arbitrage.</p>
-
-          <div class="exchange-balance-box">
-            <div class="balance-val">6,200,000 GRAM</div>
-            <div class="balance-usd">≈ $15,314,000 USD · 410 TXs / 24h</div>
-            <div class="flow-stats">
-              <span class="flow-in">▲ In: +350,000 GRAM</span>
-              <span class="flow-out">▼ Out: -420,000 GRAM</span>
+          <div class="ex-metrics-box">
+            <div class="metric-main-val">6,200,000 <span style="font-size:16px;color:var(--neon-cyan);">GRAM</span></div>
+            <div class="metric-sub-val">≈ $15,314,000 USD · 410 TXs / 24h</div>
+            
+            <div class="flow-ratio-label">
+              <span style="color:var(--neon-green);">▲ In: 45% (+350k)</span>
+              <span style="color:var(--neon-pink);">▼ Out: 55% (-420k)</span>
+            </div>
+            <div class="ratio-bar">
+              <div class="ratio-in" style="width: 45%;"></div>
+              <div class="ratio-out" style="width: 55%;"></div>
             </div>
           </div>
 
-          <div class="exchange-actions">
-            <a href="visualizer.html?target=EQD1234567890abcdefghijklmnopqrstuvwxyz123456789" class="btn-action primary">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('MEXC Global Hot Wallet', 'EQD1234567890abcdefghijklmnopqrstuvwxyz123456789', '6,200,000 GRAM', '+350k / -420k')" class="btn-action">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQD1234567890abcdefghijklmnopqrstuvwxyz123456789" class="btn-action">⚡ Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQD1234567890abcdefghijklmnopqrstuvwxyz123456789" target="_blank" class="btn-action">Tonviewer ↗</a>
+          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Active hot wallet for rapid token listings, quick user withdrawals, and cross-market arbitrage.</p>
+
+          <div class="ex-btn-grid">
+            <a href="visualizer.html?target=EQD1234567890abcdefghijklmnopqrstuvwxyz123456789" class="btn-cyber glow">🕸️ Flow Visualizer</a>
+            <button onclick="openAnalysisModal('MEXC Global Hot Wallet', 'EQD1234567890abcdefghijklmnopqrstuvwxyz123456789', '6,200,000 GRAM', '+350k / -420k')" class="btn-cyber">📊 Analyze Flows</button>
+            <a href="alerts.html?target=EQD1234567890abcdefghijklmnopqrstuvwxyz123456789" class="btn-cyber">⚡ Monitor Alerts</a>
+            <a href="https://tonviewer.com/EQD1234567890abcdefghijklmnopqrstuvwxyz123456789" target="_blank" class="btn-cyber">Tonviewer ↗</a>
           </div>
         </div>
 
-        <!-- Megaton Finance Card -->
-        <div class="exchange-card" data-category="dex" data-name="megaton finance dex vault">
-          <div class="exchange-card-header">
-            <div class="exchange-name-row">
-              <div class="exchange-logo">🔴</div>
+        <!-- Megaton Card -->
+        <div class="ex-card" data-category="dex" data-name="megaton finance dex vault">
+          <div class="ex-header">
+            <div class="ex-id-row">
+              <div class="ex-icon" style="color:#ef4444;background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.3);">🔴</div>
               <div>
-                <h3 class="exchange-title">Megaton Finance DEX Vault</h3>
-                <span class="exchange-type-label">Decentralized Exchange (DEX)</span>
+                <h3 class="ex-title">Megaton DEX Vault</h3>
+                <span class="ex-type">Decentralized Yield Protocol</span>
               </div>
             </div>
-            <span class="badge badge-green">Yield Pool</span>
+            <span class="ex-badge badge-dex"><span class="live-dot" style="width:5px;height:5px;background:var(--neon-green);"></span> Yield Pool</span>
           </div>
           
-          <div class="addr-box">
+          <div class="ex-address-pill">
             <span>EQE98765...cba987654321</span>
-            <button onclick="copyAddr('EQE9876543210zyxwvutsrqponmlkjihgfedcba987654321')" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:11px;">📋 Copy</button>
+            <button class="copy-btn" onclick="copyAddr('EQE9876543210zyxwvutsrqponmlkjihgfedcba987654321')">📋 Copy</button>
           </div>
 
-          <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;">Decentralized yield farming vault and liquidity reward distribution contract on TON network.</p>
-
-          <div class="exchange-balance-box">
-            <div class="balance-val">12,800,000 GRAM</div>
-            <div class="balance-usd">≈ $31,616,000 TVL · 940 Swaps / 24h</div>
-            <div class="flow-stats">
-              <span class="flow-in">▲ Vol: $3.8M USD</span>
-              <span class="flow-out">▼ LP Yield: 22.4% APR</span>
+          <div class="ex-metrics-box">
+            <div class="metric-main-val">12,800,000 <span style="font-size:16px;color:var(--neon-green);">GRAM TVL</span></div>
+            <div class="metric-sub-val">≈ $31,616,000 USD · 940 Swaps / 24h</div>
+            
+            <div class="flow-ratio-label">
+              <span style="color:var(--neon-green);">▲ Staked: 68% ($2.5M)</span>
+              <span style="color:var(--neon-pink);">▼ Unstaked: 32% ($1.3M)</span>
+            </div>
+            <div class="ratio-bar">
+              <div class="ratio-in" style="width: 68%;"></div>
+              <div class="ratio-out" style="width: 32%;"></div>
             </div>
           </div>
 
-          <div class="exchange-actions">
-            <a href="visualizer.html?target=EQE9876543210zyxwvutsrqponmlkjihgfedcba987654321" class="btn-action primary">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('Megaton Finance DEX Vault', 'EQE9876543210zyxwvutsrqponmlkjihgfedcba987654321', '12,800,000 GRAM', '$3.8M Vol / 940 TXs')" class="btn-action">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQE9876543210zyxwvutsrqponmlkjihgfedcba987654321" class="btn-action">⚡ Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQE9876543210zyxwvutsrqponmlkjihgfedcba987654321" target="_blank" class="btn-action">Tonviewer ↗</a>
+          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Decentralized yield farming vault and liquidity reward distribution smart contract on TON network.</p>
+
+          <div class="ex-btn-grid">
+            <a href="visualizer.html?target=EQE9876543210zyxwvutsrqponmlkjihgfedcba987654321" class="btn-cyber glow">🕸️ Flow Visualizer</a>
+            <button onclick="openAnalysisModal('Megaton DEX Vault', 'EQE9876543210zyxwvutsrqponmlkjihgfedcba987654321', '12,800,000 GRAM', '$3.8M Vol / 940 TXs')" class="btn-cyber">📊 Analyze Flows</button>
+            <a href="alerts.html?target=EQE9876543210zyxwvutsrqponmlkjihgfedcba987654321" class="btn-cyber">⚡ Monitor Alerts</a>
+            <a href="https://tonviewer.com/EQE9876543210zyxwvutsrqponmlkjihgfedcba987654321" target="_blank" class="btn-cyber">Tonviewer ↗</a>
           </div>
         </div>
 
@@ -538,11 +701,12 @@
 
       <!-- TAB AUCTIONS (SUBSET) -->
       <div id="tab-auctions" class="exchange-grid animate-fade-up delay-2" style="display:none;">
-        <div class="exchange-card" style="border-color: rgba(0, 207, 255, 0.4); grid-column: 1 / -1; max-width: 600px; margin: 0 auto; text-align:center; padding: 40px;">
-          <div style="font-size:48px;margin-bottom:16px;">⚡</div>
-          <h3 style="color:white;font-size:22px;margin-bottom:8px;">Dataset Subastas & VIP Intelligence</h3>
-          <p style="color:var(--text-secondary);font-size:14px;line-height:1.6;margin-bottom:24px;">Subastas exclusivas de clusters on-chain, directorios institucionales OTC y algoritmos de ruteo MEV.</p>
-          <button class="btn btn-primary" style="padding:12px 30px;font-weight:700;" onclick="openPendingUpdateModal()">Place Bid / Ver Subastas ⚡</button>
+        <div class="ex-card" style="border: 1px solid var(--neon-cyan); grid-column: 1 / -1; max-width: 640px; margin: 20px auto; text-align:center; padding: 48px; box-shadow: 0 0 50px rgba(0,240,255,0.15);">
+          <div style="font-size:56px;margin-bottom:18px;">⚡</div>
+          <span class="ex-badge badge-cex" style="margin-bottom:16px;">VIP ON-CHAIN DATASETS</span>
+          <h3 style="color:white;font-size:26px;font-weight:800;margin-bottom:10px;">Dataset Subastas & VIP Intelligence</h3>
+          <p style="color:#94a3b8;font-size:15px;line-height:1.6;margin-bottom:30px;max-width:480px;margin-left:auto;margin-right:auto;">Acceso en subasta a clústeres privados de Notcoin whales, directorios institucionales OTC cold storage y algoritmos de ruteo de bots de arbitraje MEV.</p>
+          <button class="btn btn-primary" style="padding:14px 36px;font-weight:800;font-size:15px;border-radius:12px;box-shadow:0 0 25px rgba(0,240,255,0.4);" onclick="openPendingUpdateModal()">⚡ Place Bid / Ver Subastas</button>
         </div>
       </div>
 
@@ -552,97 +716,88 @@
 
 <!-- ON-CHAIN ANALYSIS MODAL -->
 <div id="analysisModal" class="modal-overlay">
-  <div class="modal animate-scale-in" style="max-width:540px;">
-    <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;" onclick="document.getElementById('analysisModal').style.display='none'">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-      <div style="width:40px;height:40px;border-radius:10px;background:rgba(0,207,255,0.1);border:1px solid var(--cyan);display:flex;align-items:center;justify-content:center;font-size:20px;">🛡️</div>
+  <div class="modal-glass animate-scale-in">
+    <button style="position:absolute;top:24px;right:24px;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:20px;" onclick="document.getElementById('analysisModal').style.display='none'">✕</button>
+    
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+      <div style="width:48px;height:48px;border-radius:14px;background:rgba(0,240,255,0.15);border:1px solid var(--neon-cyan);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px rgba(0,240,255,0.2);">🛡️</div>
       <div>
-        <h3 style="color:white;font-size:18px;margin:0;" id="modalExName">Exchange Analysis</h3>
-        <span style="font-size:12px;color:var(--cyan);font-family:var(--font-mono);" id="modalExAddr">EQ...</span>
+        <h3 style="color:white;font-size:20px;font-weight:800;margin:0;" id="modalExName">Exchange Analysis</h3>
+        <span style="font-size:13px;color:var(--neon-cyan);font-family:var(--font-mono);" id="modalExAddr">EQ...</span>
       </div>
     </div>
 
-    <div style="background:rgba(0,0,0,0.4);border:1px solid var(--border-subtle);border-radius:10px;padding:16px;margin-bottom:16px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-        <span style="font-size:13px;color:#aaa;">Current Balance / TVL:</span>
-        <strong style="color:var(--cyan);font-family:var(--font-mono);font-size:14px;" id="modalExBal">0 GRAM</strong>
+    <div style="background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-size:13px;color:#94a3b8;">Current Balance / TVL:</span>
+        <strong style="color:var(--neon-cyan);font-family:var(--font-mono);font-size:15px;" id="modalExBal">0 GRAM</strong>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-        <span style="font-size:13px;color:#aaa;">24h Flow Velocity:</span>
-        <strong style="color:white;font-family:var(--font-mono);font-size:13px;" id="modalExFlow">0 / 0</strong>
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-size:13px;color:#94a3b8;">24h Flow Velocity:</span>
+        <strong style="color:white;font-family:var(--font-mono);font-size:14px;" id="modalExFlow">0 / 0</strong>
       </div>
-      <div style="display:flex;justify-content:space-between;">
-        <span style="font-size:13px;color:#aaa;">On-Chain Risk Score:</span>
-        <span class="badge badge-green">99/100 · Safe Institutional CEX</span>
-      </div>
-    </div>
-
-    <h4 style="color:white;font-size:14px;margin-bottom:10px;">Top Cluster Interactions (Last 24h)</h4>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;max-height:160px;overflow-y:auto;">
-      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:6px;font-size:12px;font-family:var(--font-mono);">
-        <span style="color:#00ff88;">▲ Deposit Cluster #12 (Market Maker)</span>
-        <span style="color:white;">+450,000 GRAM</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:6px;font-size:12px;font-family:var(--font-mono);">
-        <span style="color:#ff3366;">▼ Withdrawal Cluster #04 (Staking Vault)</span>
-        <span style="color:white;">-310,000 GRAM</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:6px;font-size:12px;font-family:var(--font-mono);">
-        <span style="color:#00ff88;">▲ Arbitrage Bot Routing Pool</span>
-        <span style="color:white;">+185,000 GRAM</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:13px;color:#94a3b8;">On-Chain Health Score:</span>
+        <span class="ex-badge badge-dex" style="background:rgba(0,255,136,0.15);color:#00ff88;">99/100 · Verified CEX/DEX</span>
       </div>
     </div>
 
-    <div style="display:flex;gap:10px;">
-      <button class="btn btn-secondary" style="flex:1;height:42px;" onclick="exportAnalysisCSV()">📥 Export CSV Report</button>
-      <button class="btn btn-primary" style="flex:1;height:42px;" id="btnLaunchFlows">🕸️ Open Flow Map</button>
+    <h4 style="color:white;font-size:14px;font-weight:700;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;color:#cbd5e1;">Top Cluster Flows (Last 24h)</h4>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;max-height:180px;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:10px 14px;border-radius:10px;font-size:13px;font-family:var(--font-mono);">
+        <span style="color:#00ff88;">▲ Deposit Cluster #12 (Institutional MM)</span>
+        <span style="color:white;font-weight:700;">+450,000 GRAM</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:10px 14px;border-radius:10px;font-size:13px;font-family:var(--font-mono);">
+        <span style="color:#ff007f;">▼ Withdrawal Cluster #04 (Cold Storage)</span>
+        <span style="color:white;font-weight:700;">-310,000 GRAM</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:10px 14px;border-radius:10px;font-size:13px;font-family:var(--font-mono);">
+        <span style="color:#00ff88;">▲ Arbitrage Bot Routing Pool #08</span>
+        <span style="color:white;font-weight:700;">+185,000 GRAM</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;">
+      <button class="btn-cyber" style="flex:1;height:46px;font-size:13px;" onclick="exportAnalysisCSV()">📥 Export CSV Report</button>
+      <button class="btn-cyber glow" style="flex:1;height:46px;font-size:13px;font-weight:700;" id="btnLaunchFlows">🕸️ Launch Bubble Flow Map</button>
     </div>
   </div>
 </div>
 
 <!-- PLACE BID MODAL (PENDING UPDATE) -->
 <div id="auctionBidModal" class="modal-overlay">
-  <div class="modal animate-scale-in" style="max-width:480px;text-align:center;padding:36px;border:1px solid var(--cyan);box-shadow:0 0 30px rgba(0,207,255,0.15);">
-    <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;" onclick="document.getElementById('auctionBidModal').style.display='none'">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <div style="font-size:48px;margin-bottom:14px;">⏳</div>
-    <span class="badge badge-yellow" style="margin-bottom:12px;font-size:12px;padding:5px 12px;letter-spacing:0.5px;">EN DESARROLLO / COMING SOON</span>
-    <h3 style="color:white;font-size:24px;margin:12px 0 10px;font-weight:700;">Pendientes por nueva actualización</h3>
-    <p style="color:var(--text-secondary);font-size:14px;line-height:1.6;margin-bottom:26px;max-width:400px;margin-left:auto;margin-right:auto;">El módulo de subastas on-chain en tiempo real (Intel Auctions) estará activo en la próxima versión del protocolo ANLGRAM.</p>
-    <button class="btn btn-primary" style="width:100%;height:46px;font-weight:600;" onclick="document.getElementById('auctionBidModal').style.display='none'">Entendido / Got it 👍</button>
+  <div class="modal-glass animate-scale-in" style="max-width:480px;text-align:center;padding:40px;">
+    <button style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;font-size:20px;" onclick="document.getElementById('auctionBidModal').style.display='none'">✕</button>
+    <div style="font-size:54px;margin-bottom:16px;">⏳</div>
+    <span class="ex-badge badge-cex" style="margin-bottom:14px;background:rgba(250,204,21,0.15);color:#facc15;border-color:rgba(250,204,21,0.3);">EN DESARROLLO / COMING SOON</span>
+    <h3 style="color:white;font-size:24px;margin:12px 0 10px;font-weight:800;">Pendientes por nueva actualización</h3>
+    <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin-bottom:28px;max-width:400px;margin-left:auto;margin-right:auto;">El módulo de subastas on-chain en tiempo real (Intel Auctions) estará activo en la próxima versión del protocolo ANLGRAM.</p>
+    <button class="btn btn-primary" style="width:100%;height:48px;font-weight:700;border-radius:12px;box-shadow:0 0 25px rgba(0,240,255,0.4);" onclick="document.getElementById('auctionBidModal').style.display='none'">Entendido / Got it 👍</button>
   </div>
 </div>
 
 <!-- CONNECT WALLET MODAL -->
 <div id="walletModal" class="modal-overlay">
-  <div class="modal animate-scale-in" style="max-width:400px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-6);">
-      <h3 style="color:white;font-size:18px;margin:0;">Connect TON Wallet</h3>
+  <div class="modal-glass animate-scale-in" style="max-width:400px;padding:28px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <h3 style="color:white;font-size:18px;font-weight:800;margin:0;">Connect TON Wallet</h3>
       <button onclick="closeWalletModal()" style="background:none;border:none;color:#888;cursor:pointer;font-size:18px;">✕</button>
     </div>
-    <div class="wallet-list">
-      <div class="wallet-item" onclick="connectWallet('Tonkeeper')">
-        <div class="wallet-info">
-          <div class="wallet-icon" style="background:#0088CC;">💎</div>
-          <div><div class="wallet-name">Tonkeeper</div><div class="wallet-type">Mobile & Desktop</div></div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="ex-card" style="padding:14px;flex-direction:row;align-items:center;justify-content:space-between;cursor:pointer;" onclick="connectWallet('Tonkeeper')">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:40px;height:40px;border-radius:12px;background:#0088CC;display:flex;align-items:center;justify-content:center;font-size:20px;color:white;">💎</div>
+          <div><div style="font-weight:700;color:white;font-size:15px;">Tonkeeper</div><div style="font-size:12px;color:#64748b;">Mobile & Desktop</div></div>
         </div>
-        <span class="wallet-badge">Popular</span>
+        <span class="ex-badge badge-cex">Popular</span>
       </div>
-      <div class="wallet-item" onclick="connectWallet('MyTonWallet')">
-        <div class="wallet-info">
-          <div class="wallet-icon" style="background:#111;border:1px solid #333;">🛰️</div>
-          <div><div class="wallet-name">MyTonWallet</div><div class="wallet-type">Browser Extension</div></div>
+      <div class="ex-card" style="padding:14px;flex-direction:row;align-items:center;justify-content:space-between;cursor:pointer;" onclick="connectWallet('MyTonWallet')">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:40px;height:40px;border-radius:12px;background:#111;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:20px;color:white;">🛰️</div>
+          <div><div style="font-weight:700;color:white;font-size:15px;">MyTonWallet</div><div style="font-size:12px;color:#64748b;">Extension</div></div>
         </div>
-        <span class="wallet-badge">Fast</span>
-      </div>
-      <div class="wallet-item" onclick="connectWallet('Telegram Wallet')">
-        <div class="wallet-info">
-          <div class="wallet-icon" style="background:#2481cc;">✈️</div>
-          <div><div class="wallet-name">Telegram Wallet</div><div class="wallet-type">In-App Web3</div></div>
-        </div>
+        <span class="ex-badge badge-dex">Fast</span>
       </div>
     </div>
   </div>
@@ -650,8 +805,7 @@
 
 <script>
 function filterExchanges(category, tabEl) {
-  // Update tabs
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.pill-btn').forEach(t => t.classList.remove('active'));
   tabEl.classList.add('active');
 
   const grid = document.getElementById('exchangesGrid');
@@ -664,7 +818,7 @@ function filterExchanges(category, tabEl) {
     auctionTab.style.display = 'none';
     grid.style.display = 'grid';
 
-    document.querySelectorAll('.exchange-card').forEach(card => {
+    document.querySelectorAll('.ex-card').forEach(card => {
       if (category === 'all' || card.getAttribute('data-category') === category) {
         card.style.display = 'flex';
       } else {
@@ -676,7 +830,7 @@ function filterExchanges(category, tabEl) {
 
 function handleSearch() {
   const query = document.getElementById('searchInput').value.toLowerCase().trim();
-  document.querySelectorAll('.exchange-card').forEach(card => {
+  document.querySelectorAll('.ex-card').forEach(card => {
     const name = card.getAttribute('data-name');
     const text = card.textContent.toLowerCase();
     if (name.includes(query) || text.includes(query)) {
@@ -690,7 +844,7 @@ function handleSearch() {
 function copyAddr(addr) {
   navigator.clipboard.writeText(addr);
   if (typeof showWalletToast === 'function') {
-    showWalletToast('📋 Address Copied!', `Copied ${addr.slice(0,10)}... to clipboard.`);
+    showWalletToast('📋 Address Copied!', `Copied ${addr.slice(0,12)}... to clipboard.`);
   } else {
     alert('Address copied to clipboard!');
   }
