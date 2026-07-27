@@ -211,7 +211,7 @@
       const nav = document.createElement('nav');
       nav.id = 'mobileBottomNav';
       nav.className = 'mobile-bottom-nav';
-      nav.style.display = 'none'; // Hidden by default on PC until device recognition confirms mobile
+      nav.style.cssText = 'display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 68px; background: rgba(13, 13, 18, 0.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid rgba(0, 240, 255, 0.25); box-shadow: 0 -10px 30px rgba(0,0,0,0.8); z-index: 999999; flex-direction: row; justify-content: space-around; align-items: center; padding: 0 4px; margin: 0;';
       
       const items = [
         { name: 'Inicio', href: 'index.html', icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
@@ -225,9 +225,9 @@
       nav.innerHTML = items.map(item => {
         const isActive = currentPage === item.href || (currentPage === '' && item.href === 'index.html');
         return `
-          <a href="${item.href}" class="mobile-nav-item ${isActive ? 'active' : ''}">
-            <svg width="20" height="20" style="width:20px !important; height:20px !important; min-width:20px !important; max-width:20px !important; flex-shrink:0 !important;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${item.icon}</svg>
-            <span>${item.name}</span>
+          <a href="${item.href}" class="mobile-nav-item ${isActive ? 'active' : ''}" style="display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 3px !important; color: ${isActive ? '#00f0ff' : '#64748b'} !important; text-decoration: none !important; font-size: 10px !important; font-weight: 600 !important; padding: 6px 8px !important; flex: 1 !important; text-align: center !important; margin: 0 !important; background: ${isActive ? 'rgba(0,240,255,0.1)' : 'transparent'} !important; border-radius: 12px !important;">
+            <svg width="20" height="20" style="width: 20px !important; height: 20px !important; min-width: 20px !important; max-width: 20px !important; flex-shrink: 0 !important; margin: 0 auto !important; display: block !important;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${item.icon}</svg>
+            <span style="font-size: 10px !important; line-height: 1 !important; display: block !important; margin: 0 !important;">${item.name}</span>
           </a>
         `;
       }).join('');
@@ -251,6 +251,7 @@
         }
         if (nav && window.innerWidth <= 768) {
           nav.style.display = 'flex';
+          nav.style.flexDirection = 'row';
         } else if (nav) {
           nav.style.display = 'none';
         }
