@@ -106,7 +106,7 @@
             <p style="color:#aaa;margin-bottom:20px;font-size:13px;line-height:1.5;">Select your wallet to monitor your real transactions on ANLGRAM.</p>
             
             <div class="wallet-list">
-              <div class="wallet-item" onclick="selectWallet('Tonkeeper', '#0098EA', '💎', 'https://app.tonkeeper.com/')">
+              <div class="wallet-item" onclick="selectWallet('Tonkeeper', '#0098EA', '💎', 'https://tonkeeper.com/')">
                 <div class="wallet-info">
                   <div class="wallet-icon" style="background:#0098EA;">💎</div>
                   <div>
@@ -117,7 +117,7 @@
                 <span class="wallet-badge">POPULAR</span>
               </div>
 
-              <div class="wallet-item" onclick="selectWallet('Telegram Wallet', '#229ED9', '✈️', 'https://t.me/wallet')">
+              <div class="wallet-item" onclick="selectWallet('Telegram Wallet', '#229ED9', '✈️', 'https://wallet.tg/')">
                 <div class="wallet-info">
                   <div class="wallet-icon" style="background:#229ED9;">✈️</div>
                   <div>
@@ -128,7 +128,7 @@
                 <span class="wallet-badge">IN-APP</span>
               </div>
 
-              <div class="wallet-item" onclick="selectWallet('MyTonWallet', '#6C5CE7', '⚡', 'https://app.mytonwallet.io/')">
+              <div class="wallet-item" onclick="selectWallet('MyTonWallet', '#6C5CE7', '⚡', 'https://mytonwallet.io/')">
                 <div class="wallet-info">
                   <div class="wallet-icon" style="background:#6C5CE7;">⚡</div>
                   <div>
