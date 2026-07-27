@@ -421,21 +421,17 @@
   </div>
 </div>
 
-<!-- PLACE BID MODAL (AUCTIONS) -->
+<!-- PLACE BID MODAL (AUCTIONS - PENDING UPDATE) -->
 <div id="auctionBidModal" class="modal-overlay">
-  <div class="modal animate-scale-in" style="max-width:460px;">
+  <div class="modal animate-scale-in" style="max-width:480px;text-align:center;padding:36px;border:1px solid var(--cyan);box-shadow:0 0 30px rgba(0,207,255,0.15);">
     <button class="panel-close" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#888;cursor:pointer;" onclick="document.getElementById('auctionBidModal').style.display='none'">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
-    <h3 style="color:white;font-size:20px;margin-bottom:6px;" id="bidModalTitle">Place Bid</h3>
-    <p style="color:#aaa;font-size:13px;margin-bottom:20px;">Current Highest Bid: <strong style="color:var(--cyan);" id="bidModalCurrent">4,500 GRAM</strong></p>
-    
-    <div class="form-group">
-      <label class="form-label">Your Bid Amount (GRAM)</label>
-      <input type="number" id="bidAmountInput" class="form-input" placeholder="4700">
-    </div>
-    
-    <button id="confirmBidBtn" class="btn btn-primary" style="width:100%;height:44px;" onclick="handleConfirmBid()">Place On-Chain Bid ⚡</button>
+    <div style="font-size:48px;margin-bottom:14px;">⏳</div>
+    <span class="badge badge-yellow" style="margin-bottom:12px;font-size:12px;padding:5px 12px;letter-spacing:0.5px;">EN DESARROLLO / COMING SOON</span>
+    <h3 style="color:white;font-size:24px;margin:12px 0 10px;font-weight:700;">Pendientes por nueva actualización</h3>
+    <p style="color:var(--text-secondary);font-size:14px;line-height:1.6;margin-bottom:26px;max-width:400px;margin-left:auto;margin-right:auto;">El módulo de subastas on-chain en tiempo real (Intel Auctions) estará activo en la próxima versión del protocolo ANLGRAM.</p>
+    <button class="btn btn-primary" style="width:100%;height:46px;font-weight:600;" onclick="document.getElementById('auctionBidModal').style.display='none'">Entendido / Got it 👍</button>
   </div>
 </div>
 
@@ -585,18 +581,19 @@ function renderUserSubmissions() {
 // Open Bid Modal (Auctions) — Pending Update Notification
 let currentAuctionBid = null;
 function openBidModal(title, currentBid) {
+  const modal = document.getElementById('auctionBidModal');
+  if (modal) {
+    modal.style.display = 'flex';
+  }
   if (typeof showWalletToast === 'function') {
-    showWalletToast('⏳ Pendiente por nueva actualización', 'El módulo de subastas on-chain en tiempo real estará disponible en la próxima versión del protocolo.');
-  } else {
-    alert('⏳ Pendiente por nueva actualización: Las subastas en vivo estarán disponibles muy pronto.');
+    showWalletToast('⏳ Pendientes por nueva actualización', 'El módulo de subastas en vivo estará activo muy pronto.');
   }
 }
 
 function handleConfirmBid() {
-  if (typeof showWalletToast === 'function') {
-    showWalletToast('⏳ Pendiente por nueva actualización', 'El módulo de subastas on-chain en tiempo real estará disponible en la próxima versión del protocolo.');
-  } else {
-    alert('⏳ Pendiente por nueva actualización.');
+  const modal = document.getElementById('auctionBidModal');
+  if (modal) {
+    modal.style.display = 'flex';
   }
 }
 
