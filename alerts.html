@@ -11,12 +11,14 @@
   <link rel="stylesheet" href="assets/css/layout.css"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
   <script src="assets/js/api.js"></script>
+  <!-- EmailJS SDK for real email sending -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <style>
     .alerts-layout {
-      display: grid; grid-template-columns: 380px 1fr; gap: var(--space-6);
+      display: grid; grid-template-columns: 400px 1fr; gap: var(--space-6);
       min-height: calc(100vh - 180px);
     }
-    
+
     /* Config Panel */
     .alerts-config {
       background: var(--bg-card);
@@ -34,7 +36,7 @@
     }
     .config-group { margin-bottom: var(--space-5); }
     .config-label { display: block; font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-3); color: var(--text-primary); }
-    
+
     .rule-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
     .rule-type {
       background: var(--bg-input); border: 1px solid var(--border-default);
@@ -49,6 +51,7 @@
       width: 100%; padding: var(--space-2) var(--space-3); background: var(--bg-input);
       border: 1px solid var(--border-default); border-radius: var(--radius-md);
       color: var(--text-primary); font-family: var(--font-mono); font-size: var(--text-sm);
+      box-sizing: border-box;
     }
     .form-input:focus { outline: none; border-color: var(--ton-blue); }
 
@@ -70,20 +73,39 @@
     }
     .switch.on::after { transform: translateX(16px); }
 
-    /* Expandable input that appears below a switch when toggled ON */
     .channel-input-wrap {
-      max-height: 0; overflow: hidden; transition: max-height 0.3s ease, margin 0.3s ease;
-      margin-top: 0;
+      max-height: 0; overflow: hidden; transition: max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease;
+      margin-top: 0; padding: 0;
     }
     .channel-input-wrap.open {
-      max-height: 60px; margin-top: var(--space-2);
+      max-height: 120px; margin-top: var(--space-2); padding: 0;
     }
     .channel-input {
       width: 100%; padding: 6px 10px; background: var(--bg-secondary);
       border: 1px solid var(--border-default); border-radius: var(--radius-md);
       color: var(--text-primary); font-family: var(--font-mono); font-size: var(--text-xs);
+      box-sizing: border-box; margin-bottom: 4px;
     }
     .channel-input:focus { outline: none; border-color: var(--ton-blue); }
+    .channel-hint {
+      font-size: 10px; color: var(--text-muted); line-height: 1.4;
+    }
+    .channel-hint a { color: var(--cyan); text-decoration: underline; }
+
+    /* Settings Section */
+    .settings-section {
+      background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg); padding: var(--space-4);
+      margin-bottom: var(--space-5);
+    }
+    .settings-title {
+      font-size: var(--text-sm); font-weight: 700; color: var(--cyan);
+      margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2);
+    }
+    .settings-row { margin-bottom: var(--space-3); }
+    .settings-row:last-child { margin-bottom: 0; }
+    .settings-label { font-size: var(--text-xs); color: var(--text-muted); margin-bottom: 4px; display: block; }
+    .settings-saved { color: var(--green); font-size: 10px; font-weight: 600; margin-left: 6px; display: none; }
 
     /* Alert Feed */
     .alerts-feed-column { display: flex; flex-direction: column; gap: var(--space-4); }
@@ -103,7 +125,7 @@
     }
     .feed-body {
       flex: 1; overflow-y: auto; padding: var(--space-2);
-      max-height: 500px;
+      max-height: 520px;
     }
 
     .alert-card {
@@ -113,8 +135,7 @@
       padding: var(--space-4); margin-bottom: var(--space-2);
       display: flex; gap: var(--space-4);
       animation: fadeUp 0.3s ease forwards;
-      cursor: pointer;
-      transition: var(--transition-fast);
+      cursor: pointer; transition: var(--transition-fast);
     }
     .alert-card:hover { border-color: var(--border-accent); background: var(--bg-card-hover); }
     .alert-icon {
@@ -131,13 +152,13 @@
     .alert-meta { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: var(--text-xs); color: var(--text-muted); }
     .alert-title { font-size: var(--text-sm); font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
     .alert-desc { font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.5; font-family: var(--font-mono); }
+    .alert-channels-sent { display: flex; gap: 4px; margin-top: 6px; }
 
-    /* Saved Rules Panel */
+    /* Saved Rules */
     .saved-rules {
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-xl);
-      overflow: hidden;
+      border-radius: var(--radius-xl); overflow: hidden;
     }
     .saved-rules-header {
       padding: var(--space-3) var(--space-5);
@@ -156,8 +177,8 @@
     .rule-item:last-child { margin-bottom: 0; }
     .rule-item-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
     .rule-item-type { font-weight: 600; color: var(--text-primary); font-size: var(--text-sm); }
-    .rule-item-details { color: var(--text-muted); font-family: var(--font-mono); }
-    .rule-item-channels { display: flex; gap: 4px; margin-top: 3px; }
+    .rule-item-details { color: var(--text-muted); font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rule-item-channels { display: flex; gap: 4px; margin-top: 3px; flex-wrap: wrap; }
 
     .delete-rule {
       background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3);
@@ -167,7 +188,7 @@
     }
     .delete-rule:hover { background: rgba(255, 68, 68, 0.25); }
 
-    /* Toast Notification */
+    /* Toast */
     .toast {
       position: fixed; top: 20px; right: 20px; z-index: 9999;
       background: var(--bg-card); border: 1px solid var(--border-accent);
@@ -175,7 +196,7 @@
       border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5);
       box-shadow: 0 8px 32px rgba(0,0,0,0.4);
       transform: translateX(120%); transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-      max-width: 360px;
+      max-width: 380px;
     }
     .toast.show { transform: translateX(0); }
     .toast-title { font-weight: 700; color: var(--text-primary); font-size: var(--text-sm); margin-bottom: 4px; }
@@ -186,9 +207,18 @@
       color: var(--text-muted); font-size: var(--text-sm);
     }
 
+    /* Monitor Status */
+    .monitor-status {
+      display: flex; align-items: center; gap: var(--space-2);
+      font-size: var(--text-xs); color: var(--text-muted);
+      padding: var(--space-2) var(--space-5);
+      border-top: 1px solid var(--border-subtle);
+      background: var(--bg-secondary);
+    }
+    .monitor-status .dot-live { width: 6px; height: 6px; }
+
     @media (max-width: 900px) {
       .alerts-layout { grid-template-columns: 1fr; }
-      .alerts-feed { max-height: 500px; }
     }
   </style>
 </head>
@@ -250,16 +280,64 @@
       </div>
 
       <div class="alerts-layout">
-        
+
         <!-- Config Panel -->
         <div class="alerts-config animate-fade-up delay-1">
           <div class="config-header">
-            <div style="font-weight:600;">Create New Rule</div>
+            <div style="font-weight:600;">⚙️ Alert Configuration</div>
           </div>
           <div class="config-body">
-            
+
+            <!-- Telegram Bot Settings -->
+            <div class="settings-section">
+              <div class="settings-title">🤖 Telegram Bot Setup <span class="settings-saved" id="tgSaved">✓ Saved</span></div>
+              <div class="settings-row">
+                <label class="settings-label">Bot Token (from <a href="https://t.me/BotFather" target="_blank" style="color:var(--cyan);">@BotFather</a>)</label>
+                <input type="text" class="form-input" id="tgBotToken" placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" style="font-size:11px;">
+              </div>
+              <div class="settings-row">
+                <label class="settings-label">Your Chat ID (<a href="#" onclick="getChatId();return false;" style="color:var(--cyan);">Auto-detect →</a>)</label>
+                <input type="text" class="form-input" id="tgChatId" placeholder="Click 'Auto-detect' after messaging your bot">
+              </div>
+              <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:var(--space-2);" onclick="saveTelegramSettings()">Save Telegram Settings</button>
+              <div class="channel-hint" style="margin-top:6px;">
+                1. Open Telegram → search <a href="https://t.me/BotFather" target="_blank">@BotFather</a><br>
+                2. Send <code>/newbot</code> → name it "ANLGRAM Alerts"<br>
+                3. Copy the token and paste it above<br>
+                4. Open a chat with YOUR new bot and send <code>/start</code><br>
+                5. Click "Auto-detect" to get your Chat ID
+              </div>
+            </div>
+
+            <!-- EmailJS Settings -->
+            <div class="settings-section">
+              <div class="settings-title">📧 Email Setup (via EmailJS) <span class="settings-saved" id="emailSaved">✓ Saved</span></div>
+              <div class="settings-row">
+                <label class="settings-label">EmailJS Public Key (<a href="https://www.emailjs.com/" target="_blank" style="color:var(--cyan);">Get free account</a>)</label>
+                <input type="text" class="form-input" id="ejsPublicKey" placeholder="Your EmailJS public key" style="font-size:11px;">
+              </div>
+              <div class="settings-row">
+                <label class="settings-label">Service ID</label>
+                <input type="text" class="form-input" id="ejsServiceId" placeholder="e.g. service_abc123" style="font-size:11px;">
+              </div>
+              <div class="settings-row">
+                <label class="settings-label">Template ID</label>
+                <input type="text" class="form-input" id="ejsTemplateId" placeholder="e.g. template_xyz789" style="font-size:11px;">
+              </div>
+              <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:var(--space-2);" onclick="saveEmailSettings()">Save Email Settings</button>
+              <div class="channel-hint" style="margin-top:6px;">
+                1. Register free at <a href="https://www.emailjs.com/" target="_blank">emailjs.com</a><br>
+                2. Add your Gmail as an Email Service<br>
+                3. Create a template with variables: <code>{{subject}}</code>, <code>{{message}}</code>, <code>{{to_email}}</code><br>
+                4. Copy IDs and paste above
+              </div>
+            </div>
+
+            <hr style="border-color:var(--border-subtle);margin:var(--space-4) 0;">
+
+            <!-- Create Rule -->
             <div class="config-group">
-              <label class="config-label">Trigger Type</label>
+              <label class="config-label">📌 Create Alert Rule</label>
               <div class="rule-type-grid" id="ruleTypeGrid">
                 <div class="rule-type active" data-type="Large Transfer">🐋 Large Transfer</div>
                 <div class="rule-type" data-type="Entity Activity">👁 Entity Activity</div>
@@ -270,49 +348,35 @@
 
             <div class="config-group">
               <label class="config-label">Minimum Amount (GRAM)</label>
-              <input type="number" class="form-input" id="minAmount" value="100000" min="1">
+              <input type="number" class="form-input" id="minAmount" value="1" min="0.001" step="any">
+              <div class="channel-hint" style="margin-top:4px;">Set to 1 to catch every transaction on the target address</div>
             </div>
 
             <div class="config-group">
-              <label class="config-label">Target Entity / Address (Optional)</label>
-              <input type="text" class="form-input" id="targetEntity" placeholder="e.g. EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7...">
-              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Leave blank for all network transactions matching amount</div>
+              <label class="config-label">Target Address to Monitor (Required)</label>
+              <input type="text" class="form-input" id="targetEntity" placeholder="Paste your TON wallet address here...">
+              <div class="channel-hint" style="margin-top:4px;">This is the wallet address the system will watch every 15 seconds for new transactions.</div>
             </div>
 
             <div class="config-group">
               <label class="config-label">Notification Channels</label>
-              
-              <!-- Push -->
+
               <div class="switch-row">
-                <span class="switch-label">🔔 Push Notification (Browser)</span>
-                <div class="switch on" id="switchPush" data-channel="push"></div>
+                <span class="switch-label">🔔 Browser Push</span>
+                <div class="switch on" id="switchPush"></div>
               </div>
 
-              <!-- Telegram -->
               <div class="switch-row">
-                <span class="switch-label">✈️ Telegram Bot</span>
-                <div class="switch" id="switchTelegram" data-channel="telegram"></div>
-              </div>
-              <div class="channel-input-wrap" id="telegramWrap">
-                <input type="text" class="channel-input" id="telegramInput" placeholder="Your Telegram username or Chat ID, e.g. @usuario">
+                <span class="switch-label">✈️ Telegram Message</span>
+                <div class="switch" id="switchTelegram"></div>
               </div>
 
-              <!-- Email -->
               <div class="switch-row">
-                <span class="switch-label">📧 Email Alert</span>
-                <div class="switch" id="switchEmail" data-channel="email"></div>
+                <span class="switch-label">📧 Email</span>
+                <div class="switch" id="switchEmail"></div>
               </div>
-              <div class="channel-input-wrap" id="emailWrap">
-                <input type="email" class="channel-input" id="emailInput" placeholder="Your email, e.g. user@gmail.com">
-              </div>
-
-              <!-- Webhook -->
-              <div class="switch-row">
-                <span class="switch-label">🔗 Webhook POST</span>
-                <div class="switch" id="switchWebhook" data-channel="webhook"></div>
-              </div>
-              <div class="channel-input-wrap" id="webhookWrap">
-                <input type="url" class="channel-input" id="webhookInput" placeholder="https://your-server.com/webhook">
+              <div class="channel-input-wrap" id="emailRuleWrap">
+                <input type="email" class="channel-input" id="ruleEmail" placeholder="Email to receive alerts (e.g. you@gmail.com)">
               </div>
             </div>
 
@@ -320,9 +384,12 @@
           <div style="padding:var(--space-4);border-top:1px solid var(--border-subtle);background:var(--bg-card-hover);">
             <button class="btn btn-primary" style="width:100%;" id="saveRuleBtn">💾 Save Alert Rule</button>
           </div>
+          <div class="monitor-status" id="monitorStatus">
+            <span class="dot-live"></span> Monitor idle — create a rule to start
+          </div>
         </div>
 
-        <!-- Right Column: Saved Rules + Feed -->
+        <!-- Right Column -->
         <div class="alerts-feed-column">
 
           <!-- Saved Rules -->
@@ -332,7 +399,7 @@
               <span class="badge badge-muted" id="ruleCount">0 rules</span>
             </div>
             <div class="saved-rules-body" id="savedRulesBody">
-              <div class="no-rules-msg" id="noRulesMsg">No rules configured yet. Create one on the left panel.</div>
+              <div class="no-rules-msg">No rules configured yet.</div>
             </div>
           </div>
 
@@ -345,17 +412,16 @@
               <button class="btn btn-ghost btn-sm" id="clearFeedBtn">Clear All</button>
             </div>
             <div class="feed-body" id="feedBody">
-              <div class="no-rules-msg" id="emptyFeedMsg">Waiting for alerts... Create a rule and the system will monitor the TON network in real time.</div>
+              <div class="no-rules-msg" id="emptyFeedMsg">Waiting for alerts... Create a rule to start monitoring.</div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
   </main>
 </div>
 
-<!-- Toast Notification -->
+<!-- Toast -->
 <div class="toast" id="toast">
   <div class="toast-title" id="toastTitle"></div>
   <div class="toast-desc" id="toastDesc"></div>
@@ -363,22 +429,129 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════
-// ANLGRAM Smart Alerts — Full Frontend Logic
+// ANLGRAM Smart Alerts — Full Working System
 // ═══════════════════════════════════════════════════════════════
 
-// ── State ────────────────────────────────────────────────────
 let selectedType = 'Large Transfer';
 let alertRules = JSON.parse(localStorage.getItem('anlgram_rules') || '[]');
-let alertFeed = [];
 let alertCounter = 0;
 
+// Track last seen tx per address to avoid duplicate alerts
+let lastSeenTx = JSON.parse(localStorage.getItem('anlgram_last_tx') || '{}');
+
 // ── Toast ────────────────────────────────────────────────────
-function showToast(title, desc, duration = 4000) {
-  const toast = document.getElementById('toast');
+function showToast(title, desc, duration = 5000) {
+  const t = document.getElementById('toast');
   document.getElementById('toastTitle').textContent = title;
   document.getElementById('toastDesc').textContent = desc;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), duration);
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ── Load Saved Settings ──────────────────────────────────────
+function loadSettings() {
+  const tg = JSON.parse(localStorage.getItem('anlgram_telegram') || '{}');
+  if (tg.token) document.getElementById('tgBotToken').value = tg.token;
+  if (tg.chatId) document.getElementById('tgChatId').value = tg.chatId;
+  if (tg.token && tg.chatId) document.getElementById('tgSaved').style.display = 'inline';
+
+  const ej = JSON.parse(localStorage.getItem('anlgram_emailjs') || '{}');
+  if (ej.publicKey) document.getElementById('ejsPublicKey').value = ej.publicKey;
+  if (ej.serviceId) document.getElementById('ejsServiceId').value = ej.serviceId;
+  if (ej.templateId) document.getElementById('ejsTemplateId').value = ej.templateId;
+  if (ej.publicKey && ej.serviceId && ej.templateId) document.getElementById('emailSaved').style.display = 'inline';
+}
+loadSettings();
+
+// ── Save Telegram Settings ───────────────────────────────────
+window.saveTelegramSettings = function() {
+  const token = document.getElementById('tgBotToken').value.trim();
+  const chatId = document.getElementById('tgChatId').value.trim();
+  if (!token) { showToast('⚠️ Missing Token', 'Paste your bot token from @BotFather'); return; }
+  localStorage.setItem('anlgram_telegram', JSON.stringify({ token, chatId }));
+  document.getElementById('tgSaved').style.display = 'inline';
+  showToast('✅ Telegram Saved', 'Bot token and Chat ID saved successfully.');
+};
+
+// ── Auto-detect Telegram Chat ID ─────────────────────────────
+window.getChatId = async function() {
+  const token = document.getElementById('tgBotToken').value.trim();
+  if (!token) { showToast('⚠️ Missing Token', 'First paste your bot token above.'); return; }
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
+    const data = await res.json();
+    if (data.ok && data.result.length > 0) {
+      const chatId = data.result[data.result.length - 1].message.chat.id;
+      document.getElementById('tgChatId').value = chatId;
+      showToast('✅ Chat ID Found!', 'Chat ID: ' + chatId);
+    } else {
+      showToast('⚠️ No Messages', 'Open a chat with your bot and send /start first, then try again.');
+    }
+  } catch (e) {
+    showToast('❌ Error', 'Could not connect to Telegram API. Check your token.');
+  }
+};
+
+// ── Save EmailJS Settings ────────────────────────────────────
+window.saveEmailSettings = function() {
+  const publicKey = document.getElementById('ejsPublicKey').value.trim();
+  const serviceId = document.getElementById('ejsServiceId').value.trim();
+  const templateId = document.getElementById('ejsTemplateId').value.trim();
+  if (!publicKey || !serviceId || !templateId) {
+    showToast('⚠️ Missing Fields', 'Fill in all three EmailJS fields.');
+    return;
+  }
+  localStorage.setItem('anlgram_emailjs', JSON.stringify({ publicKey, serviceId, templateId }));
+  document.getElementById('emailSaved').style.display = 'inline';
+  // Initialize EmailJS
+  emailjs.init(publicKey);
+  showToast('✅ Email Saved', 'EmailJS credentials saved successfully.');
+};
+
+// ── SEND TELEGRAM MESSAGE (Real) ─────────────────────────────
+async function sendTelegram(text) {
+  const tg = JSON.parse(localStorage.getItem('anlgram_telegram') || '{}');
+  if (!tg.token || !tg.chatId) {
+    console.warn('Telegram not configured');
+    return false;
+  }
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${tg.token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: tg.chatId,
+        text: text,
+        parse_mode: 'HTML'
+      })
+    });
+    const data = await res.json();
+    return data.ok;
+  } catch (e) {
+    console.error('Telegram send error:', e);
+    return false;
+  }
+}
+
+// ── SEND EMAIL (Real via EmailJS) ────────────────────────────
+async function sendEmail(toEmail, subject, message) {
+  const ej = JSON.parse(localStorage.getItem('anlgram_emailjs') || '{}');
+  if (!ej.publicKey || !ej.serviceId || !ej.templateId) {
+    console.warn('EmailJS not configured');
+    return false;
+  }
+  try {
+    emailjs.init(ej.publicKey);
+    const res = await emailjs.send(ej.serviceId, ej.templateId, {
+      to_email: toEmail,
+      subject: subject,
+      message: message
+    });
+    return res.status === 200;
+  } catch (e) {
+    console.error('Email send error:', e);
+    return false;
+  }
 }
 
 // ── Rule Type Selection ──────────────────────────────────────
@@ -390,54 +563,42 @@ document.querySelectorAll('.rule-type').forEach(btn => {
   });
 });
 
-// ── Switch Toggles with Expandable Inputs ────────────────────
-const switchMap = {
-  switchTelegram: 'telegramWrap',
-  switchEmail: 'emailWrap',
-  switchWebhook: 'webhookWrap'
-};
-
+// ── Switch Toggles ───────────────────────────────────────────
+const switchExpand = { switchEmail: 'emailRuleWrap' };
 document.querySelectorAll('.switch').forEach(sw => {
   sw.addEventListener('click', () => {
     sw.classList.toggle('on');
-    const wrapId = switchMap[sw.id];
+    const wrapId = switchExpand[sw.id];
     if (wrapId) {
-      const wrap = document.getElementById(wrapId);
-      if (sw.classList.contains('on')) {
-        wrap.classList.add('open');
-      } else {
-        wrap.classList.remove('open');
-      }
+      document.getElementById(wrapId).classList.toggle('open', sw.classList.contains('on'));
     }
   });
 });
 
 // ── Save Rule ────────────────────────────────────────────────
 document.getElementById('saveRuleBtn').addEventListener('click', () => {
-  const minAmount = parseInt(document.getElementById('minAmount').value) || 100000;
+  const minAmount = parseFloat(document.getElementById('minAmount').value) || 1;
   const targetEntity = document.getElementById('targetEntity').value.trim();
-  
+
+  if (!targetEntity) {
+    showToast('⚠️ Address Required', 'Paste the TON wallet address you want to monitor.');
+    return;
+  }
+
   const channels = [];
   if (document.getElementById('switchPush').classList.contains('on')) channels.push('push');
-  if (document.getElementById('switchTelegram').classList.contains('on')) {
-    const tg = document.getElementById('telegramInput').value.trim();
-    channels.push({ type: 'telegram', value: tg || 'Not set' });
-  }
+  if (document.getElementById('switchTelegram').classList.contains('on')) channels.push('telegram');
   if (document.getElementById('switchEmail').classList.contains('on')) {
-    const em = document.getElementById('emailInput').value.trim();
+    const em = document.getElementById('ruleEmail').value.trim();
     if (!em || !em.includes('@')) {
-      showToast('⚠️ Invalid Email', 'Please enter a valid email address.', 3000);
+      showToast('⚠️ Invalid Email', 'Please enter a valid email address.');
       return;
     }
     channels.push({ type: 'email', value: em });
   }
-  if (document.getElementById('switchWebhook').classList.contains('on')) {
-    const wh = document.getElementById('webhookInput').value.trim();
-    channels.push({ type: 'webhook', value: wh || 'Not set' });
-  }
 
   if (channels.length === 0) {
-    showToast('⚠️ No Channels', 'Please enable at least one notification channel.', 3000);
+    showToast('⚠️ No Channels', 'Enable at least one notification channel.');
     return;
   }
 
@@ -445,77 +606,83 @@ document.getElementById('saveRuleBtn').addEventListener('click', () => {
     id: Date.now(),
     type: selectedType,
     minAmount,
-    targetEntity: targetEntity || 'All Network',
+    targetEntity,
     channels,
     createdAt: new Date().toISOString()
   };
 
   alertRules.push(rule);
   localStorage.setItem('anlgram_rules', JSON.stringify(alertRules));
-  
   renderSavedRules();
-  showToast('✅ Rule Saved!', `${rule.type} alert for ≥${minAmount.toLocaleString()} GRAM`);
-  
-  // Request browser notification permission
+  showToast('✅ Rule Saved!', `Monitoring ${shortenAddress(targetEntity)} for ≥${minAmount} GRAM`);
+
+  // Request push permission
   if (channels.includes('push') && 'Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
   }
+
+  // Force immediate first check
+  monitorBlockchain();
 });
 
-// ── Render Saved Rules ───────────────────────────────────────
+// ── Render Rules ─────────────────────────────────────────────
 function renderSavedRules() {
   const container = document.getElementById('savedRulesBody');
-  const noMsg = document.getElementById('noRulesMsg');
   const countEl = document.getElementById('ruleCount');
 
   if (alertRules.length === 0) {
-    container.innerHTML = '<div class="no-rules-msg">No rules configured yet. Create one on the left panel.</div>';
+    container.innerHTML = '<div class="no-rules-msg">No rules configured yet.</div>';
     countEl.textContent = '0 rules';
+    updateMonitorStatus();
     return;
   }
 
   countEl.textContent = alertRules.length + ' rule' + (alertRules.length > 1 ? 's' : '');
-
   container.innerHTML = alertRules.map(rule => {
-    const channelBadges = rule.channels.map(ch => {
+    const chBadges = rule.channels.map(ch => {
       if (typeof ch === 'string') return `<span class="badge badge-green" style="font-size:9px;padding:1px 5px;">${ch}</span>`;
       return `<span class="badge badge-cyan" style="font-size:9px;padding:1px 5px;">${ch.type}: ${ch.value}</span>`;
     }).join('');
-
     return `
       <div class="rule-item">
         <div class="rule-item-info">
           <div class="rule-item-type">${rule.type}</div>
-          <div class="rule-item-details">≥ ${rule.minAmount.toLocaleString()} GRAM · ${rule.targetEntity}</div>
-          <div class="rule-item-channels">${channelBadges}</div>
+          <div class="rule-item-details">≥ ${rule.minAmount} GRAM · ${shortenAddress(rule.targetEntity)}</div>
+          <div class="rule-item-channels">${chBadges}</div>
         </div>
-        <button class="delete-rule" onclick="deleteRule(${rule.id})">✕ Delete</button>
-      </div>
-    `;
+        <button class="delete-rule" onclick="deleteRule(${rule.id})">✕</button>
+      </div>`;
   }).join('');
+  updateMonitorStatus();
 }
 
-// ── Delete Rule ──────────────────────────────────────────────
 window.deleteRule = function(id) {
   alertRules = alertRules.filter(r => r.id !== id);
   localStorage.setItem('anlgram_rules', JSON.stringify(alertRules));
   renderSavedRules();
-  showToast('🗑️ Rule Deleted', 'Alert rule has been removed.');
+  showToast('🗑️ Rule Deleted', 'Alert rule removed.');
 };
 
-// ── Live Feed Rendering ──────────────────────────────────────
-function addAlertToFeed(alert) {
-  alertFeed.unshift(alert);
-  if (alertFeed.length > 50) alertFeed.pop();
-  alertCounter++;
-  
-  const badge = document.getElementById('alertBadge');
-  badge.textContent = alertCounter;
+// ── Monitor Status ───────────────────────────────────────────
+function updateMonitorStatus() {
+  const el = document.getElementById('monitorStatus');
+  if (alertRules.length > 0) {
+    const addrs = [...new Set(alertRules.map(r => shortenAddress(r.targetEntity)))].join(', ');
+    el.innerHTML = `<span class="dot-live"></span> Monitoring ${alertRules.length} rule(s): ${addrs} — checking every 15s`;
+  } else {
+    el.innerHTML = `<span class="dot-live" style="background:var(--text-muted);box-shadow:none;"></span> Monitor idle — create a rule to start`;
+  }
+}
 
-  const feedBody = document.getElementById('feedBody');
+// ── Add Alert to Feed + Send Real Notifications ──────────────
+async function triggerAlert(alert) {
+  alertCounter++;
+  document.getElementById('alertBadge').textContent = alertCounter;
+
   const emptyMsg = document.getElementById('emptyFeedMsg');
   if (emptyMsg) emptyMsg.style.display = 'none';
 
+  const feedBody = document.getElementById('feedBody');
   const iconClass = alert.type === 'Large Transfer' ? 'icon-whale' :
                     alert.type === 'Entity Activity' ? 'icon-danger' :
                     alert.type === 'DEX Swap' ? 'icon-info' : 'icon-success';
@@ -523,109 +690,128 @@ function addAlertToFeed(alert) {
                 alert.type === 'Entity Activity' ? '⚠️' :
                 alert.type === 'DEX Swap' ? '🔄' : '🌉';
 
-  const channelStr = alert.channels.map(ch => typeof ch === 'string' ? ch : ch.type).join(', ');
+  const sentChannels = [];
 
+  // 1. Browser Push
+  if (alert.channels.some(ch => ch === 'push')) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('ANLGRAM Alert: ' + alert.title, { body: alert.plainDesc });
+    }
+    sentChannels.push('<span class="badge badge-green" style="font-size:9px;padding:1px 4px;">🔔 push</span>');
+  }
+
+  // 2. Telegram (REAL)
+  if (alert.channels.some(ch => ch === 'telegram')) {
+    const tgMsg = `🚨 <b>ANLGRAM Alert: ${alert.title}</b>\n\n${alert.plainDesc}\n\n🔗 Type: ${alert.type}\n⏰ ${new Date().toLocaleTimeString()}`;
+    const sent = await sendTelegram(tgMsg);
+    sentChannels.push(`<span class="badge ${sent ? 'badge-green' : 'badge-red'}" style="font-size:9px;padding:1px 4px;">✈️ telegram ${sent ? '✓' : '✗'}</span>`);
+  }
+
+  // 3. Email (REAL via EmailJS)
+  const emailCh = alert.channels.find(ch => typeof ch === 'object' && ch.type === 'email');
+  if (emailCh) {
+    const sent = await sendEmail(
+      emailCh.value,
+      'ANLGRAM Alert: ' + alert.title,
+      alert.plainDesc + '\n\nType: ' + alert.type + '\nTime: ' + new Date().toLocaleString()
+    );
+    sentChannels.push(`<span class="badge ${sent ? 'badge-green' : 'badge-red'}" style="font-size:9px;padding:1px 4px;">📧 email ${sent ? '✓' : '✗'}</span>`);
+  }
+
+  // Render card
   const card = document.createElement('div');
   card.className = 'alert-card';
-  card.style.cursor = 'pointer';
-  card.onclick = () => {
-    if (alert.address) window.location = 'explorer.html?q=' + alert.address;
-  };
+  card.onclick = () => { if (alert.address) window.location = 'explorer.html?q=' + alert.address; };
   card.innerHTML = `
     <div class="alert-icon ${iconClass}">${emoji}</div>
     <div class="alert-content">
-      <div class="alert-meta">
-        <span>${alert.type}</span>
-        <span>Just now · Sent to: ${channelStr}</span>
-      </div>
+      <div class="alert-meta"><span>${alert.type}</span><span>${new Date().toLocaleTimeString()}</span></div>
       <div class="alert-title">${alert.title}</div>
       <div class="alert-desc">${alert.desc}</div>
-    </div>
-  `;
-
+      <div class="alert-channels-sent">${sentChannels.join('')}</div>
+    </div>`;
   feedBody.insertBefore(card, feedBody.firstChild);
 
-  // Browser push notification
-  if (alert.channels.some(ch => ch === 'push') && 'Notification' in window && Notification.permission === 'granted') {
-    new Notification('ANLGRAM Alert: ' + alert.title, { body: alert.desc.replace(/<[^>]*>/g, ''), icon: '🐋' });
-  }
-
-  showToast('🔔 ' + alert.title, alert.desc.replace(/<[^>]*>/g, ''));
+  showToast('🔔 ' + alert.title, alert.plainDesc);
 }
 
 // ── Clear Feed ───────────────────────────────────────────────
 document.getElementById('clearFeedBtn').addEventListener('click', () => {
-  alertFeed = [];
   alertCounter = 0;
   document.getElementById('alertBadge').textContent = '0';
-  document.getElementById('feedBody').innerHTML = '<div class="no-rules-msg" id="emptyFeedMsg">Waiting for alerts... Create a rule and the system will monitor the TON network in real time.</div>';
-  showToast('🧹 Feed Cleared', 'All alerts have been removed from the feed.');
+  document.getElementById('feedBody').innerHTML = '<div class="no-rules-msg" id="emptyFeedMsg">Waiting for alerts...</div>';
+  showToast('🧹 Feed Cleared', 'All alerts removed.');
 });
 
 // ═══════════════════════════════════════════════════════════════
-// REAL-TIME MONITORING ENGINE
-// Polls the TON blockchain for large transactions and triggers
-// alerts that match the saved rules.
+// REAL-TIME BLOCKCHAIN MONITORING ENGINE
+// Polls each unique address in the saved rules every 15 seconds.
+// When a new transaction is found that matches a rule, it fires
+// real notifications via Telegram, Email, and Browser Push.
 // ═══════════════════════════════════════════════════════════════
-const MONITOR_ADDRESS = 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N'; // TON Foundation
-let lastSeenTxHash = null;
-
 async function monitorBlockchain() {
-  if (alertRules.length === 0) return; // No rules, don't fetch
+  if (alertRules.length === 0) return;
 
-  try {
-    const data = await getAccountTransactions(MONITOR_ADDRESS, 10);
-    if (!data || !data.transactions) return;
+  // Get unique addresses to monitor
+  const addresses = [...new Set(alertRules.map(r => r.targetEntity))];
 
-    for (const tx of data.transactions) {
-      // Skip if we already processed this tx
-      if (tx.hash === lastSeenTxHash) break;
-      
-      const isIn = tx.in_msg && tx.in_msg.value > 0;
-      const value = isIn ? tx.in_msg.value : (tx.out_msgs && tx.out_msgs[0] ? tx.out_msgs[0].value : 0);
-      const gramAmount = parseInt(value) / 1e9;
-      
-      if (gramAmount <= 0) continue;
+  for (const addr of addresses) {
+    try {
+      const data = await getAccountTransactions(addr, 5);
+      if (!data || !data.transactions || data.transactions.length === 0) continue;
 
-      const fromAddr = isIn ? tx.in_msg.source?.address : MONITOR_ADDRESS;
-      const toAddr = isIn ? MONITOR_ADDRESS : (tx.out_msgs && tx.out_msgs[0] ? tx.out_msgs[0].destination?.address : '');
+      const lastSeen = lastSeenTx[addr] || null;
+      let foundNewTx = false;
 
-      // Check each rule
-      for (const rule of alertRules) {
-        if (gramAmount >= rule.minAmount) {
-          // Check if target entity matches (if specified)
-          if (rule.targetEntity !== 'All Network') {
-            if (fromAddr !== rule.targetEntity && toAddr !== rule.targetEntity) continue;
-          }
+      for (const tx of data.transactions) {
+        // Stop if we've already seen this tx
+        if (tx.hash === lastSeen) break;
+        foundNewTx = true;
 
-          addAlertToFeed({
+        // Calculate value
+        const isIn = tx.in_msg && tx.in_msg.value > 0 && tx.in_msg.source;
+        const value = isIn ? tx.in_msg.value : (tx.out_msgs && tx.out_msgs[0] ? tx.out_msgs[0].value : 0);
+        const gramAmount = parseInt(value) / 1e9;
+        if (gramAmount <= 0) continue;
+
+        const fromAddr = isIn ? tx.in_msg.source.address : addr;
+        const toAddr = isIn ? addr : (tx.out_msgs && tx.out_msgs[0] ? tx.out_msgs[0].destination?.address : '');
+
+        // Check rules that match this address
+        const matchingRules = alertRules.filter(r => r.targetEntity === addr && gramAmount >= r.minAmount);
+
+        for (const rule of matchingRules) {
+          const direction = isIn ? 'received' : 'sent';
+          const plainDesc = `${gramAmount.toLocaleString()} GRAM ${direction} — From: ${shortenAddress(fromAddr)} → To: ${shortenAddress(toAddr)}`;
+
+          await triggerAlert({
             type: rule.type,
-            title: rule.type === 'Large Transfer' ? 'Whale Movement Detected' :
-                   rule.type === 'Entity Activity' ? 'Entity Activity Triggered' :
-                   rule.type === 'DEX Swap' ? 'DEX Swap Detected' : 'Bridge Flow Detected',
-            desc: `<span style="color:var(--cyan);">${gramAmount.toLocaleString()} GRAM</span> moved from <span style="color:var(--text-primary);">${shortenAddress(fromAddr)}</span> → <span style="color:var(--text-primary);">${shortenAddress(toAddr)}</span>`,
+            title: gramAmount >= 100000 ? 'Whale Movement Detected!' :
+                   gramAmount >= 10000 ? 'Large Transfer Detected' :
+                   'Transaction Detected',
+            desc: `<span style="color:var(--cyan);">${gramAmount.toLocaleString()} GRAM</span> ${direction} — <span style="color:var(--text-primary);">${shortenAddress(fromAddr)}</span> → <span style="color:var(--text-primary);">${shortenAddress(toAddr)}</span>`,
+            plainDesc,
             channels: rule.channels,
-            address: fromAddr
+            address: addr
           });
         }
       }
-    }
 
-    // Remember last seen tx to avoid duplicates
-    if (data.transactions.length > 0) {
-      lastSeenTxHash = data.transactions[0].hash;
+      // Remember last tx hash for this address
+      if (foundNewTx || !lastSeen) {
+        lastSeenTx[addr] = data.transactions[0].hash;
+        localStorage.setItem('anlgram_last_tx', JSON.stringify(lastSeenTx));
+      }
+    } catch (e) {
+      console.error('Monitor error for', shortenAddress(addr), e);
     }
-  } catch (e) {
-    console.error('Monitor error:', e);
   }
 }
 
-// Update price in topbar
+// ── Price Update ─────────────────────────────────────────────
 async function updateTopPrice() {
-  const price = await getTonPrice();
-  if (price) {
-    document.getElementById('topbar-price').textContent = '$' + price.toFixed(2);
-  }
+  const p = await getTonPrice();
+  if (p) document.getElementById('topbar-price').textContent = '$' + p.toFixed(2);
 }
 
 // ── Initialize ───────────────────────────────────────────────
@@ -633,9 +819,9 @@ renderSavedRules();
 updateTopPrice();
 setInterval(updateTopPrice, 15000);
 
-// Start monitoring every 20 seconds
+// Start blockchain monitor — every 15 seconds
 monitorBlockchain();
-setInterval(monitorBlockchain, 20000);
+setInterval(monitorBlockchain, 15000);
 </script>
 </body>
 </html>
