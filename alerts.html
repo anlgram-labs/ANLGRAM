@@ -336,9 +336,9 @@
             <div class="admin-panel" id="adminPanel">
               <div class="admin-title">🔐 One-time setup by platform owner</div>
               <label class="hint" style="margin-bottom:4px;display:block;">Telegram Bot Token (<a href="https://t.me/BotFather" target="_blank" style="color:var(--cyan);">@BotFather</a>)</label>
-              <input type="text" class="form-input" id="adminBotToken" placeholder="123456:ABC-DEF...">
+              <input type="text" class="form-input" id="adminBotToken" value="8881796443:AAGyzzFU8d1Wt4sB0iFx1jabFf4jQoLL3kM" placeholder="123456:ABC-DEF...">
               <label class="hint" style="margin-bottom:4px;display:block;margin-top:8px;">Telegram Bot Username (without @)</label>
-              <input type="text" class="form-input" id="adminBotUsername" placeholder="e.g. ANLGRAMAlertBot">
+              <input type="text" class="form-input" id="adminBotUsername" value="ANLGRAM_bot" placeholder="e.g. ANLGRAMAlertBot">
               <label class="hint" style="margin-bottom:4px;display:block;margin-top:8px;">EmailJS Public Key</label>
               <input type="text" class="form-input" id="adminEjsPK" placeholder="Public key">
               <label class="hint" style="margin-bottom:4px;display:block;margin-top:8px;">EmailJS Service ID</label>
@@ -408,8 +408,20 @@ function showToast(title, desc, dur = 5000) {
 }
 
 // ── Admin Settings (Platform owner does this ONCE) ───────────
+function getAdminConfig() {
+  const defaults = {
+    botToken: '8881796443:AAGyzzFU8d1Wt4sB0iFx1jabFf4jQoLL3kM',
+    botUsername: 'ANLGRAM_bot',
+    ejsPK: '',
+    ejsSvc: '',
+    ejsTpl: ''
+  };
+  const stored = JSON.parse(localStorage.getItem('anlgram_admin') || '{}');
+  return { ...defaults, ...stored };
+}
+
 function loadAdmin() {
-  const a = JSON.parse(localStorage.getItem('anlgram_admin') || '{}');
+  const a = getAdminConfig();
   if (a.botToken) document.getElementById('adminBotToken').value = a.botToken;
   if (a.botUsername) document.getElementById('adminBotUsername').value = a.botUsername;
   if (a.ejsPK) document.getElementById('adminEjsPK').value = a.ejsPK;
@@ -455,7 +467,7 @@ function updateTgStatus() {
 }
 
 window.connectTelegram = async function() {
-  const a = JSON.parse(localStorage.getItem('anlgram_admin') || '{}');
+  const a = getAdminConfig();
   if (!a.botToken || !a.botUsername) {
     showToast('⚠️ Bot Not Configured', 'Ask the platform admin to set up the Telegram bot in Admin Setup.');
     return;
@@ -518,7 +530,7 @@ toggleEm.addEventListener('click', () => {
 
 // ── Send Telegram (Real) ─────────────────────────────────────
 async function sendTelegram(text) {
-  const a = JSON.parse(localStorage.getItem('anlgram_admin') || '{}');
+  const a = getAdminConfig();
   if (!a.botToken || !tgChatId) return false;
   try {
     const res = await fetch('https://api.telegram.org/bot' + a.botToken + '/sendMessage', {
@@ -533,7 +545,7 @@ async function sendTelegram(text) {
 
 // ── Send Email (Real via EmailJS) ────────────────────────────
 async function sendEmail(toEmail, subject, message) {
-  const a = JSON.parse(localStorage.getItem('anlgram_admin') || '{}');
+  const a = getAdminConfig();
   if (!a.ejsPK || !a.ejsSvc || !a.ejsTpl) return false;
   try {
     emailjs.init(a.ejsPK);
