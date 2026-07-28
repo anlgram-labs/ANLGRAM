@@ -7,8 +7,11 @@
   <meta name="description" content="Set custom alerts for TON blockchain events."/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/design-system.css?v=2026.2"/>
-  <link rel="stylesheet" href="assets/css/layout.css?v=2026.2"/>
+  <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"/>
+  <link rel="shortcut icon" href="favicon.ico?v=2"/>
+  <link rel="apple-touch-icon" href="favicon.svg?v=2"/>
+  <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
   <script src="assets/js/api.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -218,7 +221,7 @@
 <div class="app-shell">
   <aside class="sidebar">
     <a href="index.html" class="sidebar-logo">
-      <div class="sidebar-logo-icon">A</div>
+      <div class="sidebar-logo-icon"><img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Crystal"/></div>
       <span class="sidebar-logo-text">ANLGRAM</span>
     </a>
     <nav class="sidebar-nav">
@@ -851,6 +854,6 @@ setInterval(async () => { const p = await getTonPrice(); if (p) document.getElem
 monitorBlockchain();
 setInterval(monitorBlockchain, 15000);
 </script>
-<script src="assets/js/wallet.js?v=2026.2"></script>
+<script src="assets/js/wallet.js?v=2026.3"></script>
 </body>
 </html>

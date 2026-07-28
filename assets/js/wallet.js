@@ -848,10 +848,61 @@
     if (typeof updateWalletUI === 'function') updateWalletUI();
   };
 
+  // Universal TON/GRAM Crystal Branding & Favicon Injector
+  window.applyAnlgramBranding = function() {
+    // 1. Inject Favicon & Domain Icon into Head if not already present or update existing
+    let favSvg = document.querySelector('link[rel="icon"]');
+    if (!favSvg) {
+      favSvg = document.createElement('link');
+      favSvg.rel = 'icon';
+      favSvg.type = 'image/svg+xml';
+      favSvg.href = 'favicon.svg?v=2';
+      document.head.appendChild(favSvg);
+    } else {
+      favSvg.href = 'favicon.svg?v=2';
+      favSvg.type = 'image/svg+xml';
+    }
+
+    let favIco = document.querySelector('link[rel="shortcut icon"]');
+    if (!favIco) {
+      favIco = document.createElement('link');
+      favIco.rel = 'shortcut icon';
+      favIco.href = 'favicon.ico?v=2';
+      document.head.appendChild(favIco);
+    } else {
+      favIco.href = 'favicon.ico?v=2';
+    }
+
+    let appleIco = document.querySelector('link[rel="apple-touch-icon"]');
+    if (!appleIco) {
+      appleIco = document.createElement('link');
+      appleIco.rel = 'apple-touch-icon';
+      appleIco.href = 'favicon.svg?v=2';
+      document.head.appendChild(appleIco);
+    } else {
+      appleIco.href = 'favicon.svg?v=2';
+    }
+
+    // 2. Transform all nav-logo-icon and sidebar-logo-icon elements into TON Crystal emblems
+    const logoIcons = document.querySelectorAll('.nav-logo-icon, .sidebar-logo-icon');
+    logoIcons.forEach(icon => {
+      if (!icon.querySelector('img')) {
+        icon.style.background = 'transparent';
+        icon.style.boxShadow = 'none';
+        icon.style.padding = '0';
+        icon.innerHTML = `<img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Crystal" style="width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 0 8px rgba(0,207,255,0.4)); transition:transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;">`;
+      }
+    });
+  };
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', window.applyAnlgramSettings);
+    document.addEventListener('DOMContentLoaded', () => {
+      window.applyAnlgramSettings();
+      window.applyAnlgramBranding();
+    });
   } else {
     window.applyAnlgramSettings();
+    window.applyAnlgramBranding();
   }
 })();
 

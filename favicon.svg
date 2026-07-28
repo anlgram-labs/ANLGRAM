@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Facet Gradients for TON Crystal 3D Gemstone -->
+    <linearGradient id="facetTopLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00CFFF"/>
+      <stop offset="100%" stop-color="#0088CC"/>
+    </linearGradient>
+    <linearGradient id="facetTopRight" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00AEEF"/>
+      <stop offset="100%" stop-color="#005588"/>
+    </linearGradient>
+    <linearGradient id="facetBotLeft" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0098EA"/>
+      <stop offset="100%" stop-color="#003355"/>
+    </linearGradient>
+    <linearGradient id="facetBotRight" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#0077BB"/>
+      <stop offset="100%" stop-color="#00223E"/>
+    </linearGradient>
+
+    <!-- Outer Glow Filter -->
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="circuitGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Halo -->
+  <circle cx="256" cy="256" r="230" fill="rgba(0,136,204,0.08)" filter="url(#neonGlow)"/>
+
+  <!-- TON 3D Diamond / Crystal Base -->
+  <g filter="url(#neonGlow)">
+    <!-- Top-Left Facet -->
+    <polygon points="256,36 68,196 256,266" fill="url(#facetTopLeft)" stroke="#00CFFF" stroke-width="2" stroke-linejoin="round"/>
+    <!-- Top-Right Facet -->
+    <polygon points="256,36 444,196 256,266" fill="url(#facetTopRight)" stroke="#00CFFF" stroke-width="2" stroke-linejoin="round"/>
+    <!-- Bottom-Left Facet -->
+    <polygon points="68,196 256,476 256,266" fill="url(#facetBotLeft)" stroke="#0088CC" stroke-width="2" stroke-linejoin="round"/>
+    <!-- Bottom-Right Facet -->
+    <polygon points="444,196 256,476 256,266" fill="url(#facetBotRight)" stroke="#005588" stroke-width="2" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Inner Cybernetic "A" Node Circuit (ANLGRAM Intelligence) -->
+  <g filter="url(#circuitGlow)">
+    <!-- Main "A" Struts -->
+    <path d="M256,110 L156,366 M256,110 L356,366 M190,282 L322,282" fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M256,110 L156,366 M256,110 L356,366 M190,282 L322,282" fill="none" stroke="#00CFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Circuit Nodes / Pulse Vertices -->
+    <circle cx="256" cy="110" r="14" fill="#FFFFFF" stroke="#00CFFF" stroke-width="6"/>
+    <circle cx="156" cy="366" r="14" fill="#FFFFFF" stroke="#0088CC" stroke-width="6"/>
+    <circle cx="356" cy="366" r="14" fill="#FFFFFF" stroke="#0088CC" stroke-width="6"/>
+    <circle cx="256" cy="282" r="10" fill="#00CFFF" stroke="#FFFFFF" stroke-width="4"/>
+  </g>
+
+  <!-- High-tech Outer Ring accents -->
+  <circle cx="256" cy="256" r="244" fill="none" stroke="rgba(0,207,255,0.25)" stroke-width="3" stroke-dasharray="24 12"/>
+</svg>

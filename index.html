@@ -7,10 +7,13 @@
   <meta name="description" content="Professional on-chain analytics platform for TON/GRAM blockchain. Track wallets, trace funds, and unmask entities."/>
   <meta property="og:title" content="ANLGRAM Intelligence"/>
   <meta property="og:description" content="Deanonymizing The Open Network"/>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"/>
+  <link rel="shortcut icon" href="favicon.ico?v=2"/>
+  <link rel="apple-touch-icon" href="favicon.svg?v=2"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/design-system.css?v=2026.2"/>
+  <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
   <style>
     /* ── Landing Specific ────────────────────── */
@@ -32,12 +35,20 @@
     }
 
     .nav-logo-icon {
-      width: 32px; height: 32px;
-      background: var(--grad-primary);
+      width: 34px; height: 34px;
+      background: transparent;
       border-radius: var(--radius-md);
       display: flex; align-items: center; justify-content: center;
-      font-weight: 900; font-size: 15px; color: #fff;
-      box-shadow: var(--shadow-glow-blue);
+      box-shadow: none;
+    }
+    .nav-logo-icon img {
+      width: 100%; height: 100%; object-fit: contain;
+      filter: drop-shadow(0 0 8px rgba(0,207,255,0.4));
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
+    }
+    .nav-logo:hover .nav-logo-icon img {
+      transform: scale(1.15) rotate(6deg);
+      filter: drop-shadow(0 0 14px rgba(0,207,255,0.8));
     }
 
     .nav-logo-text {
@@ -542,7 +553,7 @@
 <!-- ── Navbar ────────────────────────────────────────── -->
 <nav class="navbar">
   <a href="index.html" class="nav-logo">
-    <div class="nav-logo-icon">A</div>
+    <div class="nav-logo-icon"><img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Crystal"/></div>
     <span class="nav-logo-text">ANLGRAM</span>
   </a>
 
@@ -839,7 +850,7 @@
 <footer class="footer">
   <div class="footer-left">
     <a href="index.html" class="nav-logo">
-      <div class="nav-logo-icon" style="width:24px;height:24px;font-size:11px;">A</div>
+      <div class="nav-logo-icon" style="width:26px;height:26px;background:transparent;box-shadow:none;"><img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Crystal"/></div>
       <span class="nav-logo-text" style="font-size:14px;">ANLGRAM</span>
     </a>
     <div class="footer-links">
@@ -997,6 +1008,6 @@ function animateStats() {
 }
 animateStats();
 </script>
-<script src="assets/js/wallet.js?v=2026.2"></script>
+<script src="assets/js/wallet.js?v=2026.3"></script>
 </body>
 </html>
