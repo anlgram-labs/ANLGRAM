@@ -211,10 +211,10 @@
           <div style="margin-bottom:18px;">
             <label style="font-size:13px; font-weight:600; color:#fff; display:block; margin-bottom:8px;">🎨 Tema Visual (Interfaz):</label>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-              <button onclick="setTheme('cyberpunk')" id="theme-cyberpunk" class="setting-opt-btn" style="padding:10px; border-radius:10px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">⚡ Cyberpunk Neon</button>
+              <button onclick="setTheme('cyberpunk')" id="theme-cyberpunk" class="setting-opt-btn" style="padding:10px; border-radius:10px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">🔵 TON Original Blue</button>
               <button onclick="setTheme('midnight')" id="theme-midnight" class="setting-opt-btn" style="padding:10px; border-radius:10px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">🌙 Midnight OLED</button>
               <button onclick="setTheme('matrix')" id="theme-matrix" class="setting-opt-btn" style="padding:10px; border-radius:10px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">🐍 Matrix Hacker</button>
-              <button onclick="setTheme('glacier')" id="theme-glacier" class="setting-opt-btn" style="padding:10px; border-radius:10px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">💎 Glacier Frost</button>
+              <button onclick="setTheme('glacier')" id="theme-glacier" class="setting-opt-btn" style="padding:10px; border-radius:10px; background:#1a1a24; border:1px solid #333; color:#fff; cursor:pointer; font-size:12px; font-weight:600;">💎 Deep Ocean Blue</button>
             </div>
           </div>
 
@@ -544,7 +544,7 @@
         b.style.background = '#1a1a24';
         b.style.color = '#fff';
       });
-      if (settings.theme === 'gold') settings.theme = 'glacier';
+      if (settings.theme === 'gold' || settings.theme === 'glacier') settings.theme = 'cyberpunk';
       const tBtn = document.getElementById('theme-' + (settings.theme || 'cyberpunk'));
       if (tBtn) { tBtn.style.borderColor = '#00f0ff'; tBtn.style.background = 'rgba(0,240,255,0.15)'; tBtn.style.color = '#00f0ff'; }
       
@@ -657,17 +657,16 @@
       root.style.setProperty('--ton-blue', '#00cc44');
       root.style.setProperty('--border-cyan', 'rgba(0, 255, 102, 0.4)');
     } else if (theme === 'glacier' || theme === 'gold') {
-      if (theme === 'gold') {
-        settings.theme = 'glacier';
-        localStorage.setItem('anlgram_user_settings', JSON.stringify(settings));
-      }
-      root.style.setProperty('--bg-void', '#030712');
-      root.style.setProperty('--bg-primary', '#050c1e');
-      root.style.setProperty('--bg-secondary', '#081432');
-      root.style.setProperty('--bg-card', '#0b1a40');
-      root.style.setProperty('--cyan', '#00f0ff');
-      root.style.setProperty('--ton-blue', '#0088cc');
-      root.style.setProperty('--border-cyan', 'rgba(0, 240, 255, 0.4)');
+      settings.theme = 'cyberpunk';
+      localStorage.setItem('anlgram_user_settings', JSON.stringify(settings));
+      root.style.removeProperty('--bg-void');
+      root.style.removeProperty('--bg-primary');
+      root.style.removeProperty('--bg-secondary');
+      root.style.removeProperty('--bg-sidebar');
+      root.style.removeProperty('--bg-card');
+      root.style.removeProperty('--cyan');
+      root.style.removeProperty('--ton-blue');
+      root.style.removeProperty('--border-cyan');
     } else {
       root.style.removeProperty('--bg-void');
       root.style.removeProperty('--bg-primary');
