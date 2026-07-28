@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TON Memecoin & Token Bubblemaps — ANLGRAM Flow Visualizer</title>
+  <title>TON Memecoin & Token Bubblemaps â€” ANLGRAM Flow Visualizer</title>
   <meta name="description" content="Real-time interactive bubble map visualization of token holder clusters and fund flows on the TON blockchain."/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
@@ -184,7 +184,7 @@
     <header class="topbar">
       <div style="display:flex; align-items:center; gap: 16px;">
         <span style="font-weight:700; font-size: 16px; color: #fff; display:flex; align-items:center; gap: 8px;">
-          <span>🫧 Bubblemaps TON</span>
+          <span>ðŸ«§ Bubblemaps TON</span>
           <span class="badge badge-cyan" style="font-size: 10px; padding: 2px 8px;">LIVE CLUSTERS</span>
         </span>
         <input type="text" id="tokenSearchInput" class="search-input-box" placeholder="Search TON Memecoin (e.g. NOT, DOGS, GRAM, STON) or Address..." />
@@ -199,38 +199,38 @@
 
     <!-- Token Selector Bar (Real memecoins on TON & GRAM) -->
     <div class="token-selector-bar" id="tokenChipBar">
-      <div class="token-chip active" onclick="selectToken('GRAM', 'GRAM', '🪙', 0.0142, '+14.2%', 'EQC47093oX5Xhb0xuk2lCr2RhS8rj-VuOgr146Zq29YkE3gV')">
-        <span class="token-chip-icon">🪙</span>
+      <div class="token-chip active" onclick="selectToken('GRAM', 'GRAM', 'ðŸª™', 0.0142, '+14.2%', 'EQCQZTiG26BNV0bNO9VhP3bjMjJcccugrgs7CFV7f4dpWz2c')">
+        <span class="token-chip-icon">ðŸª™</span>
         <span>GRAM</span>
         <span class="token-chip-price">$0.0142 (+14.2%)</span>
       </div>
-      <div class="token-chip" onclick="selectToken('NOT', 'Notcoin', '⚫', 0.0084, '+5.8%', 'EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_')">
-        <span class="token-chip-icon">⚫</span>
+      <div class="token-chip" onclick="selectToken('NOT', 'Notcoin', 'âš«', 0.0084, '+5.8%', 'EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW')">
+        <span class="token-chip-icon">âš«</span>
         <span>NOT (Notcoin)</span>
         <span class="token-chip-price">$0.0084 (+5.8%)</span>
       </div>
-      <div class="token-chip" onclick="selectToken('DOGS', 'Dogs', '🐶', 0.00065, '+8.1%', 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A')">
-        <span class="token-chip-icon">🐶</span>
+      <div class="token-chip" onclick="selectToken('DOGS', 'Dogs', 'ðŸ¶', 0.00065, '+8.1%', 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD')">
+        <span class="token-chip-icon">ðŸ¶</span>
         <span>DOGS</span>
         <span class="token-chip-price">$0.00065 (+8.1%)</span>
       </div>
-      <div class="token-chip" onclick="selectToken('REDO', 'Resistance Dog', '🛡️', 0.482, '+22.4%', 'EQBz_9m3b9x3jP3p8_w8_w8_w8_w8_w8_w8_w8_w8_w8_w8')">
-        <span class="token-chip-icon">🛡️</span>
+      <div class="token-chip" onclick="selectToken('REDO', 'Resistance Dog', 'ðŸ›¡ï¸', 0.482, '+22.4%', 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs')">
+        <span class="token-chip-icon">ðŸ›¡ï¸</span>
         <span>REDO</span>
         <span class="token-chip-price">$0.482 (+22.4%)</span>
       </div>
-      <div class="token-chip" onclick="selectToken('STON', 'Ston.fi Token', '💎', 3.18, '+3.2%', 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO')">
-        <span class="token-chip-icon">💎</span>
+      <div class="token-chip" onclick="selectToken('STON', 'Ston.fi Token', 'ðŸ’Ž', 3.18, '+3.2%', 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO')">
+        <span class="token-chip-icon">ðŸ’Ž</span>
         <span>STON</span>
         <span class="token-chip-price">$3.18 (+3.2%)</span>
       </div>
-      <div class="token-chip" onclick="selectToken('MEW', 'cat in a dogs world', '🐱', 0.0091, '-1.4%', 'EQB_mew_token_ton_address_live_mainnet_placeholder')">
-        <span class="token-chip-icon">🐱</span>
+      <div class="token-chip" onclick="selectToken('MEW', 'cat in a dogs world', 'ðŸ±', 0.0091, '-1.4%', 'EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t')">
+        <span class="token-chip-icon">ðŸ±</span>
         <span>MEW</span>
         <span class="token-chip-price">$0.0091 (-1.4%)</span>
       </div>
-      <div class="token-chip" onclick="selectToken('TON', 'Toncoin Native', '⚡', 6.84, '+1.9%', 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N')">
-        <span class="token-chip-icon">⚡</span>
+      <div class="token-chip" onclick="selectToken('TON', 'Toncoin Native', 'âš¡', 6.84, '+1.9%', 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N')">
+        <span class="token-chip-icon">âš¡</span>
         <span>TON</span>
         <span class="token-chip-price">$6.84 (+1.9%)</span>
       </div>
@@ -244,13 +244,13 @@
         <div class="viz-panel animate-fade-down">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
             <div style="display:flex; align-items:center; gap: 10px;">
-              <span id="activeTokenIcon" style="font-size:24px;">🪙</span>
+              <span id="activeTokenIcon" style="font-size:24px;">ðŸª™</span>
               <div>
                 <div id="activeTokenName" style="font-weight:700; font-size:16px; color:#fff;">GRAM</div>
                 <div id="activeTokenPrice" style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#00e676;">$0.0142</div>
               </div>
             </div>
-            <span class="score-badge score-good" id="decentScoreBadge">🛡️ 86/100 Safe</span>
+            <span class="score-badge score-good" id="decentScoreBadge">ðŸ›¡ï¸ 86/100 Safe</span>
           </div>
 
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
@@ -273,7 +273,7 @@
           </div>
 
           <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08); font-size:11px; color:#777; line-height:1.4;">
-            💡 <strong style="color:#fff;">Tip:</strong> Click any bubble to inspect live wallet balance, transfers & TON Explorer link.
+            ðŸ’¡ <strong style="color:#fff;">Tip:</strong> Click any bubble to inspect live wallet balance, transfers & TON Explorer link.
           </div>
         </div>
       </div>
@@ -301,7 +301,7 @@
           <div style="font-size:11px; color:#888; margin-bottom:4px;">TON Wallet Address</div>
           <div style="display:flex; align-items:center; justify-content:space-between;">
             <span id="panelAddress" style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#00f0ff;">EQC...x8Kp</span>
-            <a id="panelExplorerLink" href="#" target="_blank" style="font-size:11px; color:#00e676; text-decoration:none; font-weight:600;">Tonviewer ↗</a>
+            <a id="panelExplorerLink" href="#" target="_blank" style="font-size:11px; color:#00e676; text-decoration:none; font-weight:600;">Tonviewer â†—</a>
           </div>
         </div>
 
@@ -327,7 +327,7 @@
         </div>
 
         <div style="margin-top:auto; padding-top:10px;">
-          <button class="btn btn-primary" style="width:100%; font-weight:700;" onclick="monitorThisHolder()">🔔 Set Alert on This Holder</button>
+          <button class="btn btn-primary" style="width:100%; font-weight:700;" onclick="monitorThisHolder()">ðŸ”” Set Alert on This Holder</button>
         </div>
       </div>
 
@@ -336,9 +336,9 @@
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // ANLGRAM TON Memecoin & Token Bubblemaps Engine (v2.bubblemaps style)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 let currentTokenSymbol = 'GRAM';
 let currentTokenPrice = 0.0142;
@@ -349,26 +349,26 @@ let allLinks = [];
 
 const tokenConfigs = {
   'GRAM': {
-    name: 'GRAM', icon: '🪙', price: 0.0142, change: '+14.2%', top10: '34.2%', insider: '12.8%', score: '🛡️ 86/100 Safe', scoreClass: 'score-good',
+    name: 'GRAM', icon: 'ðŸª™', price: 0.0142, change: '+14.2%', top10: '34.2%', insider: '12.8%', score: 'ðŸ›¡ï¸ 86/100 Safe', scoreClass: 'score-good',
     holders: [
-      { id: 'h1', label: 'Whale #1', share: 8.4, type: 'Whale 🐋', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$119,280' },
-      { id: 'h2', label: 'Ston.fi Pool', share: 6.8, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$96,560' },
-      { id: 'h3', label: 'DeDust LP', share: 5.5, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$78,100' },
-      { id: 'h4', label: 'Whale #2', share: 4.2, type: 'Whale 🐋', group: 'whale', addr: 'EQC47093oX5Xhb0xuk2lCr2RhS8rj-VuOgr146Zq29YkE3gV', val: '$59,640' },
-      { id: 'h5', label: 'Bybit Hot Wallet', share: 3.8, type: 'Exchange 🏦', group: 'cex', addr: 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A', val: '$53,960' },
-      { id: 'h6', label: 'Insider Wallet A', share: 3.1, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_', val: '$44,020' },
-      { id: 'h7', label: 'Insider Wallet B', share: 2.9, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQB3ncyBUTjZSI5iAoGy1MMGctAT26QZ12C_mJ-K3rZ4L0XW', val: '$41,180' },
-      { id: 'h8', label: 'Whale #3', share: 2.5, type: 'Whale 🐋', group: 'whale', addr: 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XMQxfRv205', val: '$35,500' },
-      { id: 'h9', label: 'OKX Wallet', share: 2.2, type: 'Exchange 🏦', group: 'cex', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$31,240' },
-      { id: 'h10', label: 'Whale #4', share: 1.9, type: 'Whale 🐋', group: 'whale', addr: 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A', val: '$26,980' },
-      { id: 'h11', label: 'Insider Wallet C', share: 1.8, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_', val: '$25,560' },
-      { id: 'h12', label: 'Whale #5', share: 1.5, type: 'Whale 🐋', group: 'whale', addr: 'EQC47093oX5Xhb0xuk2lCr2RhS8rj-VuOgr146Zq29YkE3gV', val: '$21,300' },
-      { id: 'h13', label: 'Whale #6', share: 1.4, type: 'Whale 🐋', group: 'whale', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$19,880' },
-      { id: 'h14', label: 'MEXC Hot Wallet', share: 1.3, type: 'Exchange 🏦', group: 'cex', addr: 'EQB3ncyBUTjZSI5iAoGy1MMGctAT26QZ12C_mJ-K3rZ4L0XW', val: '$18,460' },
-      { id: 'h15', label: 'Whale #7', share: 1.2, type: 'Whale 🐋', group: 'whale', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$17,040' },
-      { id: 'h16', label: 'Whale #8', share: 1.1, type: 'Whale 🐋', group: 'whale', addr: 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XMQxfRv205', val: '$15,620' },
-      { id: 'h17', label: 'Whale #9', share: 1.0, type: 'Whale 🐋', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$14,200' },
-      { id: 'h18', label: 'Whale #10', share: 0.9, type: 'Whale 🐋', group: 'whale', addr: 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A', val: '$12,780' }
+      { id: 'h1', label: 'Whale #1', share: 8.4, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$119,280' },
+      { id: 'h2', label: 'Ston.fi Pool', share: 6.8, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$96,560' },
+      { id: 'h3', label: 'DeDust LP', share: 5.5, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$78,100' },
+      { id: 'h4', label: 'Whale #2', share: 4.2, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCQZTiG26BNV0bNO9VhP3bjMjJcccugrgs7CFV7f4dpWz2c', val: '$59,640' },
+      { id: 'h5', label: 'Bybit Hot Wallet', share: 3.8, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD', val: '$53,960' },
+      { id: 'h6', label: 'Insider Wallet A', share: 3.1, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW', val: '$44,020' },
+      { id: 'h7', label: 'Insider Wallet B', share: 2.9, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQBvMWu9FBV39Ae8hGe71zCcwWUlEhBvU_0O_A7YeO7LW4ZH', val: '$41,180' },
+      { id: 'h8', label: 'Whale #3', share: 2.5, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQD7hWgBgKLOtD4kei7AjQhl9cJdaK9lyUwhAHgWcoDW03VY', val: '$35,500' },
+      { id: 'h9', label: 'OKX Wallet', share: 2.2, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$31,240' },
+      { id: 'h10', label: 'Whale #4', share: 1.9, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD', val: '$26,980' },
+      { id: 'h11', label: 'Insider Wallet C', share: 1.8, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW', val: '$25,560' },
+      { id: 'h12', label: 'Whale #5', share: 1.5, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCQZTiG26BNV0bNO9VhP3bjMjJcccugrgs7CFV7f4dpWz2c', val: '$21,300' },
+      { id: 'h13', label: 'Whale #6', share: 1.4, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$19,880' },
+      { id: 'h14', label: 'MEXC Hot Wallet', share: 1.3, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQBvMWu9FBV39Ae8hGe71zCcwWUlEhBvU_0O_A7YeO7LW4ZH', val: '$18,460' },
+      { id: 'h15', label: 'Whale #7', share: 1.2, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$17,040' },
+      { id: 'h16', label: 'Whale #8', share: 1.1, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQD7hWgBgKLOtD4kei7AjQhl9cJdaK9lyUwhAHgWcoDW03VY', val: '$15,620' },
+      { id: 'h17', label: 'Whale #9', share: 1.0, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$14,200' },
+      { id: 'h18', label: 'Whale #10', share: 0.9, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD', val: '$12,780' }
     ],
     links: [
       { source: 'h6', target: 'h7', val: 120 }, { source: 'h7', target: 'h11', val: 85 },
@@ -378,20 +378,20 @@ const tokenConfigs = {
     ]
   },
   'NOT': {
-    name: 'Notcoin', icon: '⚫', price: 0.0084, change: '+5.8%', top10: '48.5%', insider: '8.4%', score: '🛡️ 92/100 Safe', scoreClass: 'score-good',
+    name: 'Notcoin', icon: 'âš«', price: 0.0084, change: '+5.8%', top10: '48.5%', insider: '8.4%', score: 'ðŸ›¡ï¸ 92/100 Safe', scoreClass: 'score-good',
     holders: [
-      { id: 'n1', label: 'Binance Hot Wallet 1', share: 18.5, type: 'Exchange 🏦', group: 'cex', addr: 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A', val: '$1,554,000' },
-      { id: 'n2', label: 'Bybit Hot Wallet', share: 12.2, type: 'Exchange 🏦', group: 'cex', addr: 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XMQxfRv205', val: '$1,024,800' },
-      { id: 'n3', label: 'OKX Wallet', share: 8.4, type: 'Exchange 🏦', group: 'cex', addr: 'EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_', val: '$705,600' },
-      { id: 'n4', label: 'Ston.fi NOT Pool', share: 6.1, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$512,400' },
-      { id: 'n5', label: 'Notcoin Whale #1', share: 4.5, type: 'Whale 🐋', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$378,000' },
-      { id: 'n6', label: 'Notcoin Whale #2', share: 3.2, type: 'Whale 🐋', group: 'whale', addr: 'EQC47093oX5Xhb0xuk2lCr2RhS8rj-VuOgr146Zq29YkE3gV', val: '$268,800' },
-      { id: 'n7', label: 'Notcoin Whale #3', share: 2.8, type: 'Whale 🐋', group: 'whale', addr: 'EQB3ncyBUTjZSI5iAoGy1MMGctAT26QZ12C_mJ-K3rZ4L0XW', val: '$235,200' },
-      { id: 'n8', label: 'Insider Team Dev 1', share: 2.1, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$176,400' },
-      { id: 'n9', label: 'Insider Team Dev 2', share: 1.9, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XMQxfRv205', val: '$159,600' },
-      { id: 'n10', label: 'DeDust NOT LP', share: 1.8, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$151,200' },
-      { id: 'n11', label: 'Whale #4', share: 1.4, type: 'Whale 🐋', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$117,600' },
-      { id: 'n12', label: 'Whale #5', share: 1.2, type: 'Whale 🐋', group: 'whale', addr: 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A', val: '$100,800' }
+      { id: 'n1', label: 'Binance Hot Wallet 1', share: 18.5, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD', val: '$1,554,000' },
+      { id: 'n2', label: 'Bybit Hot Wallet', share: 12.2, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQD7hWgBgKLOtD4kei7AjQhl9cJdaK9lyUwhAHgWcoDW03VY', val: '$1,024,800' },
+      { id: 'n3', label: 'OKX Wallet', share: 8.4, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW', val: '$705,600' },
+      { id: 'n4', label: 'Ston.fi NOT Pool', share: 6.1, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$512,400' },
+      { id: 'n5', label: 'Notcoin Whale #1', share: 4.5, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$378,000' },
+      { id: 'n6', label: 'Notcoin Whale #2', share: 3.2, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCQZTiG26BNV0bNO9VhP3bjMjJcccugrgs7CFV7f4dpWz2c', val: '$268,800' },
+      { id: 'n7', label: 'Notcoin Whale #3', share: 2.8, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQBvMWu9FBV39Ae8hGe71zCcwWUlEhBvU_0O_A7YeO7LW4ZH', val: '$235,200' },
+      { id: 'n8', label: 'Insider Team Dev 1', share: 2.1, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$176,400' },
+      { id: 'n9', label: 'Insider Team Dev 2', share: 1.9, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQD7hWgBgKLOtD4kei7AjQhl9cJdaK9lyUwhAHgWcoDW03VY', val: '$159,600' },
+      { id: 'n10', label: 'DeDust NOT LP', share: 1.8, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$151,200' },
+      { id: 'n11', label: 'Whale #4', share: 1.4, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$117,600' },
+      { id: 'n12', label: 'Whale #5', share: 1.2, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD', val: '$100,800' }
     ],
     links: [
       { source: 'n1', target: 'n4', val: 500 }, { source: 'n2', target: 'n5', val: 420 },
@@ -400,18 +400,18 @@ const tokenConfigs = {
     ]
   },
   'DOGS': {
-    name: 'DOGS', icon: '🐶', price: 0.00065, change: '+8.1%', top10: '52.1%', insider: '14.5%', score: '⚠️ 78/100 Moderate', scoreClass: 'score-warn',
+    name: 'DOGS', icon: 'ðŸ¶', price: 0.00065, change: '+8.1%', top10: '52.1%', insider: '14.5%', score: 'âš ï¸ 78/100 Moderate', scoreClass: 'score-warn',
     holders: [
-      { id: 'd1', label: 'Binance Hot Wallet', share: 22.4, type: 'Exchange 🏦', group: 'cex', addr: 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A', val: '$1,456,000' },
-      { id: 'd2', label: 'OKX Hot Wallet', share: 14.1, type: 'Exchange 🏦', group: 'cex', addr: 'EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_', val: '$916,500' },
-      { id: 'd3', label: 'Bybit Wallet', share: 9.8, type: 'Exchange 🏦', group: 'cex', addr: 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XMQxfRv205', val: '$637,000' },
-      { id: 'd4', label: 'DOGS Whale #1', share: 5.2, type: 'Whale 🐋', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$338,000' },
-      { id: 'd5', label: 'DOGS Whale #2', share: 4.1, type: 'Whale 🐋', group: 'whale', addr: 'EQC47093oX5Xhb0xuk2lCr2RhS8rj-VuOgr146Zq29YkE3gV', val: '$266,500' },
-      { id: 'd6', label: 'Insider Cluster X', share: 3.8, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$247,000' },
-      { id: 'd7', label: 'Insider Cluster Y', share: 3.5, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQB3ncyBUTjZSI5iAoGy1MMGctAT26QZ12C_mJ-K3rZ4L0XW', val: '$227,500' },
-      { id: 'd8', label: 'Ston.fi DOGS Pool', share: 3.2, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$208,000' },
-      { id: 'd9', label: 'Whale #3', share: 2.5, type: 'Whale 🐋', group: 'whale', addr: 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XMQxfRv205', val: '$162,500' },
-      { id: 'd10', label: 'Whale #4', share: 2.1, type: 'Whale 🐋', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$136,500' }
+      { id: 'd1', label: 'Binance Hot Wallet', share: 22.4, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD', val: '$1,456,000' },
+      { id: 'd2', label: 'OKX Hot Wallet', share: 14.1, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW', val: '$916,500' },
+      { id: 'd3', label: 'Bybit Wallet', share: 9.8, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQD7hWgBgKLOtD4kei7AjQhl9cJdaK9lyUwhAHgWcoDW03VY', val: '$637,000' },
+      { id: 'd4', label: 'DOGS Whale #1', share: 5.2, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$338,000' },
+      { id: 'd5', label: 'DOGS Whale #2', share: 4.1, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCQZTiG26BNV0bNO9VhP3bjMjJcccugrgs7CFV7f4dpWz2c', val: '$266,500' },
+      { id: 'd6', label: 'Insider Cluster X', share: 3.8, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$247,000' },
+      { id: 'd7', label: 'Insider Cluster Y', share: 3.5, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQBvMWu9FBV39Ae8hGe71zCcwWUlEhBvU_0O_A7YeO7LW4ZH', val: '$227,500' },
+      { id: 'd8', label: 'Ston.fi DOGS Pool', share: 3.2, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$208,000' },
+      { id: 'd9', label: 'Whale #3', share: 2.5, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQD7hWgBgKLOtD4kei7AjQhl9cJdaK9lyUwhAHgWcoDW03VY', val: '$162,500' },
+      { id: 'd10', label: 'Whale #4', share: 2.1, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$136,500' }
     ],
     links: [
       { source: 'd6', target: 'd7', val: 350 }, { source: 'd1', target: 'd4', val: 620 },
@@ -419,17 +419,17 @@ const tokenConfigs = {
     ]
   },
   'REDO': {
-    name: 'Resistance Dog', icon: '🛡️', price: 0.482, change: '+22.4%', top10: '38.4%', insider: '6.2%', score: '🛡️ 94/100 Safe', scoreClass: 'score-good',
+    name: 'Resistance Dog', icon: 'ðŸ›¡ï¸', price: 0.482, change: '+22.4%', top10: '38.4%', insider: '6.2%', score: 'ðŸ›¡ï¸ 94/100 Safe', scoreClass: 'score-good',
     holders: [
-      { id: 'r1', label: 'Ston.fi REDO Pool', share: 14.5, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$698,900' },
-      { id: 'r2', label: 'DeDust REDO LP', share: 11.2, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$539,840' },
-      { id: 'r3', label: 'REDO Whale #1', share: 8.4, type: 'Whale 🐋', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$404,880' },
-      { id: 'r4', label: 'REDO Whale #2', share: 6.5, type: 'Whale 🐋', group: 'whale', addr: 'EQC47093oX5Xhb0xuk2lCr2RhS8rj-VuOgr146Zq29YkE3gV', val: '$313,300' },
-      { id: 'r5', label: 'REDO Whale #3', share: 5.1, type: 'Whale 🐋', group: 'whale', addr: 'EQB3ncyBUTjZSI5iAoGy1MMGctAT26QZ12C_mJ-K3rZ4L0XW', val: '$245,820' },
-      { id: 'r6', label: 'OKX Wallet', share: 4.2, type: 'Exchange 🏦', group: 'cex', addr: 'EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_', val: '$202,440' },
-      { id: 'r7', label: 'Insider Dev Fund', share: 3.5, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XMQxfRv205', val: '$168,700' },
-      { id: 'r8', label: 'Whale #4', share: 3.1, type: 'Whale 🐋', group: 'whale', addr: 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A', val: '$149,420' },
-      { id: 'r9', label: 'Whale #5', share: 2.8, type: 'Whale 🐋', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$134,960' }
+      { id: 'r1', label: 'Ston.fi REDO Pool', share: 14.5, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$698,900' },
+      { id: 'r2', label: 'DeDust REDO LP', share: 11.2, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$539,840' },
+      { id: 'r3', label: 'REDO Whale #1', share: 8.4, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$404,880' },
+      { id: 'r4', label: 'REDO Whale #2', share: 6.5, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCQZTiG26BNV0bNO9VhP3bjMjJcccugrgs7CFV7f4dpWz2c', val: '$313,300' },
+      { id: 'r5', label: 'REDO Whale #3', share: 5.1, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQBvMWu9FBV39Ae8hGe71zCcwWUlEhBvU_0O_A7YeO7LW4ZH', val: '$245,820' },
+      { id: 'r6', label: 'OKX Wallet', share: 4.2, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW', val: '$202,440' },
+      { id: 'r7', label: 'Insider Dev Fund', share: 3.5, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQD7hWgBgKLOtD4kei7AjQhl9cJdaK9lyUwhAHgWcoDW03VY', val: '$168,700' },
+      { id: 'r8', label: 'Whale #4', share: 3.1, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD', val: '$149,420' },
+      { id: 'r9', label: 'Whale #5', share: 2.8, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$134,960' }
     ],
     links: [
       { source: 'r1', target: 'r3', val: 380 }, { source: 'r2', target: 'r4', val: 290 },
@@ -437,15 +437,15 @@ const tokenConfigs = {
     ]
   },
   'STON': {
-    name: 'Ston.fi Token', icon: '💎', price: 3.18, change: '+3.2%', top10: '45.0%', insider: '18.4%', score: '🛡️ 88/100 Safe', scoreClass: 'score-good',
+    name: 'Ston.fi Token', icon: 'ðŸ’Ž', price: 3.18, change: '+3.2%', top10: '45.0%', insider: '18.4%', score: 'ðŸ›¡ï¸ 88/100 Safe', scoreClass: 'score-good',
     holders: [
-      { id: 's1', label: 'Ston.fi Treasury', share: 20.5, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$6,519,000' },
-      { id: 's2', label: 'Bybit Hot Wallet', share: 12.1, type: 'Exchange 🏦', group: 'cex', addr: 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XMQxfRv205', val: '$3,847,800' },
-      { id: 's3', label: 'STON Whale #1', share: 8.5, type: 'Whale 🐋', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$2,703,000' },
-      { id: 's4', label: 'STON Dev Team A', share: 6.8, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQB3ncyBUTjZSI5iAoGy1MMGctAT26QZ12C_mJ-K3rZ4L0XW', val: '$2,162,400' },
-      { id: 's5', label: 'STON Dev Team B', share: 5.5, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$1,749,000' },
-      { id: 's6', label: 'STON Whale #2', share: 4.2, type: 'Whale 🐋', group: 'whale', addr: 'EQC47093oX5Xhb0xuk2lCr2RhS8rj-VuOgr146Zq29YkE3gV', val: '$1,335,600' },
-      { id: 's7', label: 'OKX Wallet', share: 3.8, type: 'Exchange 🏦', group: 'cex', addr: 'EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_', val: '$1,208,400' }
+      { id: 's1', label: 'Ston.fi Treasury', share: 20.5, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$6,519,000' },
+      { id: 's2', label: 'Bybit Hot Wallet', share: 12.1, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQD7hWgBgKLOtD4kei7AjQhl9cJdaK9lyUwhAHgWcoDW03VY', val: '$3,847,800' },
+      { id: 's3', label: 'STON Whale #1', share: 8.5, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$2,703,000' },
+      { id: 's4', label: 'STON Dev Team A', share: 6.8, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQBvMWu9FBV39Ae8hGe71zCcwWUlEhBvU_0O_A7YeO7LW4ZH', val: '$2,162,400' },
+      { id: 's5', label: 'STON Dev Team B', share: 5.5, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$1,749,000' },
+      { id: 's6', label: 'STON Whale #2', share: 4.2, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCQZTiG26BNV0bNO9VhP3bjMjJcccugrgs7CFV7f4dpWz2c', val: '$1,335,600' },
+      { id: 's7', label: 'OKX Wallet', share: 3.8, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW', val: '$1,208,400' }
     ],
     links: [
       { source: 's4', target: 's5', val: 650 }, { source: 's1', target: 's3', val: 820 },
@@ -453,28 +453,28 @@ const tokenConfigs = {
     ]
   },
   'MEW': {
-    name: 'cat in a dogs world', icon: '🐱', price: 0.0091, change: '-1.4%', top10: '41.2%', insider: '9.5%', score: '🛡️ 85/100 Safe', scoreClass: 'score-good',
+    name: 'cat in a dogs world', icon: 'ðŸ±', price: 0.0091, change: '-1.4%', top10: '41.2%', insider: '9.5%', score: 'ðŸ›¡ï¸ 85/100 Safe', scoreClass: 'score-good',
     holders: [
-      { id: 'm1', label: 'Bybit Wallet', share: 16.2, type: 'Exchange 🏦', group: 'cex', addr: 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XMQxfRv205', val: '$1,474,200' },
-      { id: 'm2', label: 'MEW Whale #1', share: 10.5, type: 'Whale 🐋', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$955,500' },
-      { id: 'm3', label: 'Ston.fi MEW Pool', share: 8.4, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$764,400' },
-      { id: 'm4', label: 'MEW Whale #2', share: 6.1, type: 'Whale 🐋', group: 'whale', addr: 'EQC47093oX5Xhb0xuk2lCr2RhS8rj-VuOgr146Zq29YkE3gV', val: '$555,100' },
-      { id: 'm5', label: 'MEW Insider Dev', share: 5.2, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQB3ncyBUTjZSI5iAoGy1MMGctAT26QZ12C_mJ-K3rZ4L0XW', val: '$473,200' }
+      { id: 'm1', label: 'Bybit Wallet', share: 16.2, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQD7hWgBgKLOtD4kei7AjQhl9cJdaK9lyUwhAHgWcoDW03VY', val: '$1,474,200' },
+      { id: 'm2', label: 'MEW Whale #1', share: 10.5, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$955,500' },
+      { id: 'm3', label: 'Ston.fi MEW Pool', share: 8.4, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$764,400' },
+      { id: 'm4', label: 'MEW Whale #2', share: 6.1, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCQZTiG26BNV0bNO9VhP3bjMjJcccugrgs7CFV7f4dpWz2c', val: '$555,100' },
+      { id: 'm5', label: 'MEW Insider Dev', share: 5.2, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQBvMWu9FBV39Ae8hGe71zCcwWUlEhBvU_0O_A7YeO7LW4ZH', val: '$473,200' }
     ],
     links: [
       { source: 'm1', target: 'm2', val: 340 }, { source: 'm3', target: 'm4', val: 280 }
     ]
   },
   'TON': {
-    name: 'Toncoin Native', icon: '⚡', price: 6.84, change: '+1.9%', top10: '28.4%', insider: '5.1%', score: '🛡️ 98/100 Highly Safe', scoreClass: 'score-good',
+    name: 'Toncoin Native', icon: 'âš¡', price: 6.84, change: '+1.9%', top10: '28.4%', insider: '5.1%', score: 'ðŸ›¡ï¸ 98/100 Highly Safe', scoreClass: 'score-good',
     holders: [
-      { id: 't1', label: 'TON Foundation', share: 14.2, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$97,128,000' },
-      { id: 't2', label: 'Binance Hot Wallet', share: 11.5, type: 'Exchange 🏦', group: 'cex', addr: 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A', val: '$78,660,000' },
-      { id: 't3', label: 'OKX Hot Wallet', share: 8.8, type: 'Exchange 🏦', group: 'cex', addr: 'EQAvlWFDxGF2lXm67y4yzC17wYKDIG2a5D5220rS0K_7ZN6_', val: '$60,192,000' },
-      { id: 't4', label: 'Bybit Wallet', share: 7.2, type: 'Exchange 🏦', group: 'cex', addr: 'EQD0vdSA_NedR9uvbgN9EikRX-suesDxGeFg69XMQxfRv205', val: '$49,248,000' },
-      { id: 't5', label: 'Ston.fi Router Pool', share: 6.4, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$43,776,000' },
-      { id: 't6', label: 'TON Mega Whale #1', share: 5.1, type: 'Whale 🐋', group: 'whale', addr: 'EQC47093oX5Xhb0xuk2lCr2RhS8rj-VuOgr146Zq29YkE3gV', val: '$34,884,000' },
-      { id: 't7', label: 'DeDust Router LP', share: 4.8, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$32,832,000' }
+      { id: 't1', label: 'TON Foundation', share: 14.2, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$97,128,000' },
+      { id: 't2', label: 'Binance Hot Wallet', share: 11.5, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD', val: '$78,660,000' },
+      { id: 't3', label: 'OKX Hot Wallet', share: 8.8, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW', val: '$60,192,000' },
+      { id: 't4', label: 'Bybit Wallet', share: 7.2, type: 'Exchange ðŸ¦', group: 'cex', addr: 'EQD7hWgBgKLOtD4kei7AjQhl9cJdaK9lyUwhAHgWcoDW03VY', val: '$49,248,000' },
+      { id: 't5', label: 'Ston.fi Router Pool', share: 6.4, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$43,776,000' },
+      { id: 't6', label: 'TON Mega Whale #1', share: 5.1, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCQZTiG26BNV0bNO9VhP3bjMjJcccugrgs7CFV7f4dpWz2c', val: '$34,884,000' },
+      { id: 't7', label: 'DeDust Router LP', share: 4.8, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67', val: '$32,832,000' }
     ],
     links: [
       { source: 't1', target: 't5', val: 1200 }, { source: 't2', target: 't6', val: 950 },
@@ -613,7 +613,7 @@ window.selectToken = function(symbol, name, icon, price, change, address) {
   const panel = document.getElementById('entityPanel');
   if (panel) panel.classList.remove('open');
   renderTokenBubbles(symbol);
-  showWalletToast(`🫧 Loaded ${symbol} Bubblemaps`, `Displaying live holder clusters for ${name} on TON.`);
+  showWalletToast(`ðŸ«§ Loaded ${symbol} Bubblemaps`, `Displaying live holder clusters for ${name} on TON.`);
 };
 
 function openHolderDetail(holder) {
@@ -633,7 +633,7 @@ function openHolderDetail(holder) {
   addrEl.style.cursor = 'pointer';
   addrEl.onclick = () => {
     navigator.clipboard.writeText(fullAddr);
-    showWalletToast('📋 Address Copied!', `Copied full address to clipboard.`);
+    showWalletToast('ðŸ“‹ Address Copied!', `Copied full address to clipboard.`);
   };
 
   document.getElementById('panelExplorerLink').href = `https://tonviewer.com/${fullAddr}`;
@@ -683,7 +683,7 @@ window.monitorThisHolder = function() {
   const addrEl = document.getElementById('panelAddress');
   const addr = addrEl.getAttribute('data-full-addr') || addrEl.textContent;
   const name = document.getElementById('panelName').textContent;
-  showWalletToast('🔔 Alert Configured', `Redirecting to Alerts panel to monitor ${name}...`);
+  showWalletToast('ðŸ”” Alert Configured', `Redirecting to Alerts panel to monitor ${name}...`);
   setTimeout(() => {
     window.location.href = `alerts.html?target=${encodeURIComponent(addr)}`;
   }, 1200);
@@ -697,20 +697,20 @@ document.getElementById('tokenSearchInput').addEventListener('keydown', (e) => {
     if (tokenConfigs[val]) {
       selectToken(val, tokenConfigs[val].name, tokenConfigs[val].icon, tokenConfigs[val].price, tokenConfigs[val].change, '');
     } else {
-      showWalletToast('🔍 Tracing Token...', `Analyzing live on-chain holder distribution for "${val}" on TON.`);
+      showWalletToast('ðŸ” Tracing Token...', `Analyzing live on-chain holder distribution for "${val}" on TON.`);
       // Simulate real-time calculation for unknown tokens
       tokenConfigs[val] = {
-        name: val + ' Memecoin', icon: '⚡', price: 0.0025, change: '+18.5%', top10: '58.2%', insider: '24.1%', score: '⚠️ 64/100 Caution', scoreClass: 'score-warn',
+        name: val + ' Memecoin', icon: 'âš¡', price: 0.0025, change: '+18.5%', top10: '58.2%', insider: '24.1%', score: 'âš ï¸ 64/100 Caution', scoreClass: 'score-warn',
         holders: [
-          { id: 'u1', label: val + ' Creator', share: 22.5, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$450,000' },
-          { id: 'u2', label: 'Ston.fi ' + val + ' LP', share: 15.2, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$304,000' },
-          { id: 'u3', label: 'Whale Buyer #1', share: 8.4, type: 'Whale 🐋', group: 'whale', addr: 'EQCvxJy4eG8hyXBFN_BjhHP-Y7615bL_zNEwY-XC-C1_v0A', val: '$168,000' },
-          { id: 'u4', label: 'Whale Buyer #2', share: 6.1, type: 'Whale 🐋', group: 'whale', addr: 'EQC47093oX5Xhb0xuk2lCr2RhS8rj-VuOgr146Zq29YkE3gV', val: '$122,000' },
-          { id: 'u5', label: 'Insider Dev Wallet', share: 6.0, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQB3ncyBUTjZSI5iAoGy1MMGctAT26QZ12C_mJ-K3rZ4L0XW', val: '$120,000' }
+          { id: 'u1', label: val + ' Creator', share: 22.5, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$450,000' },
+          { id: 'u2', label: 'Ston.fi ' + val + ' LP', share: 15.2, type: 'DEX Pool ðŸ¤–', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$304,000' },
+          { id: 'u3', label: 'Whale Buyer #1', share: 8.4, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD', val: '$168,000' },
+          { id: 'u4', label: 'Whale Buyer #2', share: 6.1, type: 'Whale ðŸ‹', group: 'whale', addr: 'EQCQZTiG26BNV0bNO9VhP3bjMjJcccugrgs7CFV7f4dpWz2c', val: '$122,000' },
+          { id: 'u5', label: 'Insider Dev Wallet', share: 6.0, type: 'Insider ðŸ•µï¸â€â™‚ï¸', group: 'insider', addr: 'EQBvMWu9FBV39Ae8hGe71zCcwWUlEhBvU_0O_A7YeO7LW4ZH', val: '$120,000' }
         ],
         links: [{ source: 'u1', target: 'u5', val: 500 }, { source: 'u2', target: 'u3', val: 300 }]
       };
-      selectToken(val, val + ' Memecoin', '⚡', 0.0025, '+18.5%', '');
+      selectToken(val, val + ' Memecoin', 'âš¡', 0.0025, '+18.5%', '');
     }
   }
 });
