@@ -450,7 +450,7 @@ function loadAlertRulesForWallet(silent = false) {
   
   if (!silent && alertRules.length > 0 && localStorage.getItem('anlgram_wallet_addr')) {
     const short = typeof shortenAddress === 'function' ? shortenAddress(localStorage.getItem('anlgram_wallet_addr')) : 'wallet';
-    showToast('🔓 Alertas Sincronizadas', `Cargadas ${alertRules.length} alerta(s) configuradas para tu wallet.`);
+    showToast('✅ Alerts Synchronized', `Loaded ${alertRules.length} configured alert(s) for your wallet.`);
   }
 }
 
