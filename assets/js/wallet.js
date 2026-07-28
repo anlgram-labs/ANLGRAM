@@ -254,6 +254,42 @@
       document.body.appendChild(setDiv);
     }
 
+    if (!document.getElementById('notificationsModal')) {
+      const notifDiv = document.createElement('div');
+      notifDiv.id = 'notificationsModal';
+      notifDiv.style.cssText = 'display:none !important; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(16px); z-index:1000000; align-items:center; justify-content:center; padding:16px;';
+      notifDiv.innerHTML = `
+        <div style="background:#111116; border:1px solid #00CFFF; border-radius:24px; max-width:500px; width:100%; padding:24px; box-shadow:0 0 40px rgba(0,207,255,0.25); color:#fff; position:relative; max-height:85vh; display:flex; flex-direction:column; text-align:left;">
+          <button onclick="closeNotificationsModal()" style="position:absolute; top:20px; right:20px; background:transparent; border:none; color:#888; font-size:20px; cursor:pointer;">✕</button>
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px;">
+            <span style="font-size:24px;">📡</span>
+            <div>
+              <h2 style="font-size:18px; margin:0; font-weight:700; color:#00CFFF;">Centro de Notificaciones On-Chain</h2>
+              <span style="font-size:12px; color:#888;">Alertas en vivo sobre movimientos y transacciones en TON</span>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px;">
+            <button onclick="filterNotifications('all')" id="notif-tab-all" class="notif-tab-btn active" style="padding:6px 12px; border-radius:16px; background:rgba(0,207,255,0.2); border:1px solid #00CFFF; color:#00CFFF; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;">💠 Todas</button>
+            <button onclick="filterNotifications('whales')" id="notif-tab-whales" class="notif-tab-btn" style="padding:6px 12px; border-radius:16px; background:#1a1a24; border:1px solid #333; color:#aaa; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap;">🐋 Ballenas</button>
+            <button onclick="filterNotifications('defi')" id="notif-tab-defi" class="notif-tab-btn" style="padding:6px 12px; border-radius:16px; background:#1a1a24; border:1px solid #333; color:#aaa; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap;">💎 DeFi & Swaps</button>
+            <button onclick="filterNotifications('security')" id="notif-tab-security" class="notif-tab-btn" style="padding:6px 12px; border-radius:16px; background:#1a1a24; border:1px solid #333; color:#aaa; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap;">🛡️ Seguridad</button>
+          </div>
+
+          <div id="notifFeedList" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:12px; margin-bottom:18px; padding-right:4px;">
+            <!-- Notifications dynamically rendered here -->
+          </div>
+
+          <div style="display:flex; gap:10px; border-top:1px solid rgba(255,255,255,0.08); padding-top:16px;">
+            <button onclick="markAllNotifAsRead()" style="flex:1; background:rgba(0,136,204,0.2); color:#00CFFF; font-weight:700; padding:10px; border-radius:12px; border:1px solid #0088CC; cursor:pointer; font-size:12px;">✓ Marcar como leídas</button>
+            <button onclick="window.location.href='alerts.html'" style="flex:1; background:#00CFFF; color:#000; font-weight:700; padding:10px; border-radius:12px; border:none; cursor:pointer; font-size:12px; box-shadow:0 0 15px rgba(0,207,255,0.3);">💠 Configurar Alertas</button>
+            <button onclick="clearAllNotifications()" title="Borrar Historial" style="padding:10px 14px; background:rgba(255,255,255,0.05); color:#888; border:1px solid rgba(255,255,255,0.1); border-radius:12px; cursor:pointer; font-size:14px;">🗑️</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(notifDiv);
+    }
+
     // Auto-inject Connect Wallet button into topbar if missing
     const topbarActions = document.querySelector('.topbar-actions');
     if (topbarActions && !document.getElementById('topbarWalletBtn')) {
@@ -289,6 +325,42 @@
 
     document.querySelectorAll('button[title="Settings"], button[title="Ajustes"], #topbarSettingsBtn').forEach(b => {
       b.onclick = (e) => { e.preventDefault(); window.openSettingsModal(); };
+    });
+
+    // Auto-inject or bind Notifications button in topbar
+    if (topbarActions && !document.getElementById('topbarNotifBtn')) {
+      let notifBtn = topbarActions.querySelector('button[title="Notifications"]') || topbarActions.querySelector('button[title="Notificaciones"]');
+      if (!notifBtn) {
+        notifBtn = document.createElement('button');
+        notifBtn.className = 'topbar-btn';
+        notifBtn.title = 'Notifications';
+        notifBtn.style.position = 'relative';
+        notifBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`;
+        const settingsBtnRef = document.getElementById('topbarSettingsBtn') || topbarActions.querySelector('button[title="Settings"]') || topbarActions.querySelector('button[title="Ajustes"]');
+        if (settingsBtnRef && settingsBtnRef.parentNode === topbarActions) {
+          topbarActions.insertBefore(notifBtn, settingsBtnRef);
+        } else {
+          topbarActions.appendChild(notifBtn);
+        }
+      }
+      notifBtn.id = 'topbarNotifBtn';
+    }
+
+    // Bind click handlers and badge to all notifications buttons across all pages
+    document.querySelectorAll('button[title="Notifications"], button[title="Notificaciones"], #topbarNotifBtn').forEach(b => {
+      b.style.position = 'relative';
+      if (!b.querySelector('#topbarNotifBadge') && !b.querySelector('.nav-badge')) {
+        let notifs = JSON.parse(localStorage.getItem('anlgram_notifications') || 'null');
+        const unreadCount = notifs ? notifs.filter(n => !n.read).length : 3;
+        if (unreadCount > 0) {
+          const badge = document.createElement('span');
+          badge.id = 'topbarNotifBadge';
+          badge.style.cssText = 'position:absolute;top:-4px;right:-4px;background:#00CFFF;color:#000;font-size:9px;font-weight:800;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 8px #00CFFF;pointer-events:none;';
+          badge.textContent = unreadCount;
+          b.appendChild(badge);
+        }
+      }
+      b.onclick = (e) => { e.preventDefault(); window.openNotificationsModal(); };
     });
 
     // Auto-inject Universal Mobile Bottom Navigation Bar
@@ -611,6 +683,92 @@
     closeSettingsModal();
     showWalletToast('⚙️ Ajustes Guardados', 'Tu configuración personalizada ha sido aplicada exitosamente.');
     playAnlgramSound('bleep');
+  };
+
+  window.openNotificationsModal = function() {
+    initWalletManager();
+    const modal = document.getElementById('notificationsModal');
+    if (modal) {
+      modal.style.setProperty('display', 'flex', 'important');
+      renderNotificationsList('all');
+      playAnlgramSound('bleep');
+    }
+  };
+
+  window.closeNotificationsModal = function() {
+    const modal = document.getElementById('notificationsModal');
+    if (modal) modal.style.setProperty('display', 'none', 'important');
+  };
+
+  window.filterNotifications = function(cat) {
+    document.querySelectorAll('.notif-tab-btn').forEach(b => {
+      b.style.background = '#1a1a24';
+      b.style.borderColor = '#333';
+      b.style.color = '#aaa';
+      b.classList.remove('active');
+    });
+    const activeBtn = document.getElementById('notif-tab-' + cat);
+    if (activeBtn) {
+      activeBtn.style.background = 'rgba(0,207,255,0.2)';
+      activeBtn.style.borderColor = '#00CFFF';
+      activeBtn.style.color = '#00CFFF';
+      activeBtn.classList.add('active');
+    }
+    renderNotificationsList(cat);
+  };
+
+  window.renderNotificationsList = function(cat = 'all') {
+    const feed = document.getElementById('notifFeedList');
+    if (!feed) return;
+
+    let notifs = JSON.parse(localStorage.getItem('anlgram_notifications') || 'null');
+    if (!notifs || !notifs.length) {
+      notifs = [
+        { id: 1, type: 'whales', title: '🐋 Movimiento de Ballena GRAM', text: 'Transferencia masiva de 500,000 GRAM ($1.25M USD) hacia Binance Hot Wallet 7.', time: 'Hace 3 min', read: false, url: 'explorer.html?q=Binance' },
+        { id: 2, type: 'defi', title: '💎 Pico de Volumen en Ston.fi Pool', text: 'El par GRAM/TON superó los $850,000 USD en volumen continuo en 15 min.', time: 'Hace 18 min', read: false, url: 'visualizer.html' },
+        { id: 3, type: 'security', title: '🛡️ Auditoría de Seguridad On-Chain', text: 'Los contratos de liquidez en DeDust Router han sido verificados y sin anomalías.', time: 'Hace 45 min', read: false, url: 'intel-exchange.html' },
+        { id: 4, type: 'whales', title: '🐋 Alerta de Custodia Institucional', text: 'Bybit Institutional Hot Wallet acumuló +120,000 TON en reserva de staking.', time: 'Hace 2 horas', read: true, url: 'explorer.html?q=Bybit' }
+      ];
+      localStorage.setItem('anlgram_notifications', JSON.stringify(notifs));
+    }
+
+    const filtered = cat === 'all' ? notifs : notifs.filter(n => n.type === cat);
+
+    if (filtered.length === 0) {
+      feed.innerHTML = `<div style="text-align:center; padding:30px; color:#666; font-size:13px;">No hay notificaciones en esta categoría.</div>`;
+      return;
+    }
+
+    feed.innerHTML = filtered.map(n => `
+      <div onclick="${n.url ? `window.location.href='${n.url}'` : ''}" style="background: ${n.read ? 'rgba(255,255,255,0.02)' : 'rgba(0,136,204,0.1)'}; border: 1px solid ${n.read ? 'rgba(255,255,255,0.06)' : 'rgba(0,207,255,0.3)'}; border-radius: 14px; padding: 14px; display:flex; gap: 12px; align-items:flex-start; cursor:pointer; transition:all 0.2s;">
+        <div style="font-size:20px; background:rgba(0,207,255,0.1); width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${n.title.split(' ')[0]}</div>
+        <div style="flex:1;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span style="font-size:13px; font-weight:700; color:${n.read ? '#ccc' : '#00CFFF'};">${n.title.substring(n.title.indexOf(' ')+1)}</span>
+            <span style="font-size:11px; color:#666;">${n.time}</span>
+          </div>
+          <div style="font-size:12px; color:#94a3b8; line-height:1.4;">${n.text}</div>
+        </div>
+        ${!n.read ? `<div style="width:8px; height:8px; border-radius:50%; background:#00CFFF; box-shadow:0 0 8px #00CFFF; align-self:center;"></div>` : ''}
+      </div>
+    `).join('');
+  };
+
+  window.markAllNotifAsRead = function() {
+    let notifs = JSON.parse(localStorage.getItem('anlgram_notifications') || '[]');
+    notifs.forEach(n => n.read = true);
+    localStorage.setItem('anlgram_notifications', JSON.stringify(notifs));
+    renderNotificationsList('all');
+    document.querySelectorAll('#topbarNotifBadge, .nav-badge').forEach(b => b.style.display = 'none');
+    showWalletToast('✅ Leídas', 'Todas las alertas y notificaciones marcadas como leídas.');
+    playAnlgramSound('bleep');
+  };
+
+  window.clearAllNotifications = function() {
+    localStorage.setItem('anlgram_notifications', '[]');
+    renderNotificationsList('all');
+    document.querySelectorAll('#topbarNotifBadge, .nav-badge').forEach(b => b.style.display = 'none');
+    showWalletToast('🗑️ Historial Limpio', 'Se han eliminado todas las notificaciones.');
   };
 
   window.playAnlgramSound = function(type = 'bleep') {

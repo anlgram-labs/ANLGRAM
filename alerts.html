@@ -735,6 +735,13 @@ async function triggerAlert(alert) {
     '<div class="alert-desc">' + alert.desc + '</div>' +
     '<div class="alert-channels-sent">' + sent.join('') + '</div></div>';
   document.getElementById('feedBody').insertBefore(card, document.getElementById('feedBody').firstChild);
+  try {
+    let notifs = JSON.parse(localStorage.getItem('anlgram_notifications') || '[]');
+    notifs.unshift({ id: Date.now(), type: alert.type.includes('Large') ? 'whales' : alert.type.includes('DEX') ? 'defi' : 'security', title: emoji + ' ' + alert.title, text: alert.plainDesc || alert.desc, time: 'Ahora mismo', read: false, url: alert.address ? 'explorer.html?q=' + alert.address : 'alerts.html' });
+    localStorage.setItem('anlgram_notifications', JSON.stringify(notifs.slice(0, 30)));
+    const topBadge = document.getElementById('topbarNotifBadge');
+    if (topBadge) { topBadge.style.display = 'flex'; topBadge.textContent = notifs.filter(n => !n.read).length; }
+  } catch (e) {}
   showToast('📡 ' + alert.title, alert.plainDesc);
 }
 
