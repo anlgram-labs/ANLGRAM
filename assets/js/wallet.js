@@ -659,23 +659,23 @@
     } else if (theme === 'glacier' || theme === 'gold') {
       settings.theme = 'cyberpunk';
       localStorage.setItem('anlgram_user_settings', JSON.stringify(settings));
-      root.style.removeProperty('--bg-void');
-      root.style.removeProperty('--bg-primary');
-      root.style.removeProperty('--bg-secondary');
-      root.style.removeProperty('--bg-sidebar');
-      root.style.removeProperty('--bg-card');
-      root.style.removeProperty('--cyan');
-      root.style.removeProperty('--ton-blue');
-      root.style.removeProperty('--border-cyan');
+      root.style.setProperty('--bg-void', '#030712');
+      root.style.setProperty('--bg-primary', '#050c1e');
+      root.style.setProperty('--bg-secondary', '#08142c');
+      root.style.setProperty('--bg-sidebar', '#040918');
+      root.style.setProperty('--bg-card', '#0a1836');
+      root.style.setProperty('--cyan', '#00CFFF');
+      root.style.setProperty('--ton-blue', '#0088CC');
+      root.style.setProperty('--border-cyan', 'rgba(0, 207, 255, 0.4)');
     } else {
-      root.style.removeProperty('--bg-void');
-      root.style.removeProperty('--bg-primary');
-      root.style.removeProperty('--bg-secondary');
-      root.style.removeProperty('--bg-sidebar');
-      root.style.removeProperty('--bg-card');
-      root.style.removeProperty('--cyan');
-      root.style.removeProperty('--ton-blue');
-      root.style.removeProperty('--border-cyan');
+      root.style.setProperty('--bg-void', '#030712');
+      root.style.setProperty('--bg-primary', '#050c1e');
+      root.style.setProperty('--bg-secondary', '#08142c');
+      root.style.setProperty('--bg-sidebar', '#040918');
+      root.style.setProperty('--bg-card', '#0a1836');
+      root.style.setProperty('--cyan', '#00CFFF');
+      root.style.setProperty('--ton-blue', '#0088CC');
+      root.style.setProperty('--border-cyan', 'rgba(0, 207, 255, 0.4)');
     }
 
     const currency = settings.currency || 'USD';

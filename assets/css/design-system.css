@@ -7,22 +7,22 @@
 
 /* ── CSS Custom Properties ────────────────────────────────── */
 :root {
-  /* Backgrounds */
-  --bg-void:           #060608;
-  --bg-primary:        #0a0a0c;
-  --bg-secondary:      #0f0f12;
-  --bg-sidebar:        #0d0d10;
-  --bg-card:           #141418;
-  --bg-card-hover:     #1a1a1f;
-  --bg-input:          #0f0f12;
-  --bg-overlay:        rgba(6,6,8,0.85);
+  /* Backgrounds (TON Navy Blue Aesthetic) */
+  --bg-void:           #030712;
+  --bg-primary:        #050c1e;
+  --bg-secondary:      #08142c;
+  --bg-sidebar:        #040918;
+  --bg-card:           #0a1836;
+  --bg-card-hover:     #0f224a;
+  --bg-input:          #08142c;
+  --bg-overlay:        rgba(3,7,18,0.85);
 
-  /* Borders */
-  --border-subtle:     #1e1e24;
-  --border-default:    #252530;
-  --border-strong:     #32323f;
-  --border-accent:     rgba(0,136,204,0.35);
-  --border-cyan:       rgba(0,207,255,0.4);
+  /* Borders (Sleek Blue Tinted) */
+  --border-subtle:     #122442;
+  --border-default:    #1b325c;
+  --border-strong:     #26457a;
+  --border-accent:     rgba(0,136,204,0.45);
+  --border-cyan:       rgba(0,207,255,0.5);
 
   /* Text */
   --text-primary:      #e8e8ec;
