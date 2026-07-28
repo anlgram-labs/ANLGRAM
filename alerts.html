@@ -258,7 +258,7 @@
         <!-- ════════ CONFIG PANEL ════════ -->
         <div class="alerts-config animate-fade-up delay-1">
           <div class="config-header">
-            <div style="font-weight:600;">🔔 Create Alert</div>
+            <div style="font-weight:600;">📡 Create Alert</div>
           </div>
           <div class="config-body">
 
@@ -292,7 +292,7 @@
               <!-- Browser Push -->
               <div class="channel-toggle active" id="togglePush" onclick="this.classList.toggle('active')">
                 <div class="channel-toggle-left">
-                  <span class="channel-toggle-icon">🔔</span>
+                  <span class="channel-toggle-icon">📡</span>
                   <div>
                     <div class="channel-toggle-label">Browser Notification</div>
                     <div class="channel-toggle-sub">Pop-up alerts while page is open</div>
@@ -534,7 +534,7 @@ function updateTgStatus() {
 window.connectTelegram = async function() {
   const a = getAdminConfig();
   if (!a.botToken || !a.botUsername) {
-    showToast('⚠️ Bot Not Configured', 'Ask the platform admin to set up the Telegram bot in Admin Setup.');
+    showToast('🛡️ Bot Not Configured', 'Ask the platform admin to set up the Telegram bot in Admin Setup.');
     return;
   }
 
@@ -633,20 +633,20 @@ document.getElementById('saveRuleBtn').addEventListener('click', () => {
   const addr = document.getElementById('targetEntity').value.trim();
   const minAmt = parseFloat(document.getElementById('minAmount').value) || 1;
   
-  if (!addr) { showToast('⚠️ Missing Wallet', 'Paste the TON wallet address to monitor.'); return; }
+  if (!addr) { showToast('🛡️ Missing Wallet', 'Paste the TON wallet address to monitor.'); return; }
   
   const channels = [];
   if (document.getElementById('togglePush').classList.contains('active')) channels.push('push');
   if (document.getElementById('toggleTelegram').classList.contains('active')) {
-    if (!tgChatId) { showToast('⚠️ Telegram Not Connected', 'Click "Connect Telegram" first.'); return; }
+    if (!tgChatId) { showToast('🛡️ Telegram Not Connected', 'Click "Connect Telegram" first.'); return; }
     channels.push('telegram');
   }
   if (document.getElementById('toggleEmail').classList.contains('active')) {
     const em = document.getElementById('userEmail').value.trim();
-    if (!em || !em.includes('@')) { showToast('⚠️ Invalid Email', 'Enter a valid email address.'); return; }
+    if (!em || !em.includes('@')) { showToast('🛡️ Invalid Email', 'Enter a valid email address.'); return; }
     channels.push({ type: 'email', value: em });
   }
-  if (channels.length === 0) { showToast('⚠️ No Channel', 'Select at least one notification channel.'); return; }
+  if (channels.length === 0) { showToast('🛡️ No Channel', 'Select at least one notification channel.'); return; }
 
   alertRules.push({
     id: Date.now(), type: selectedType, minAmount: minAmt,
@@ -709,12 +709,12 @@ async function triggerAlert(alert) {
   if (em) em.style.display = 'none';
 
   const iconClass = alert.type.includes('Large') ? 'icon-whale' : alert.type.includes('Entity') ? 'icon-danger' : alert.type.includes('DEX') ? 'icon-info' : 'icon-success';
-  const emoji = alert.type.includes('Large') ? '🐋' : alert.type.includes('Entity') ? '⚠️' : alert.type.includes('DEX') ? '🔄' : '🌉';
+  const emoji = alert.type.includes('Large') ? '🐋' : alert.type.includes('Entity') ? '🛡️' : alert.type.includes('DEX') ? '🔄' : '🌉';
   const sent = [];
 
   if (alert.channels.some(c => c === 'push') && 'Notification' in window && Notification.permission === 'granted') {
     new Notification('ANLGRAM: ' + alert.title, { body: alert.plainDesc });
-    sent.push('<span class="badge badge-green" style="font-size:9px;padding:1px 4px;">🔔 push ✓</span>');
+    sent.push('<span class="badge badge-green" style="font-size:9px;padding:1px 4px;">📡 push ✓</span>');
   }
   if (alert.channels.some(c => c === 'telegram')) {
     const ok = await sendTelegram('🚨 <b>' + alert.title + '</b>\n\n' + alert.plainDesc + '\n\n⏰ ' + new Date().toLocaleTimeString());
@@ -735,7 +735,7 @@ async function triggerAlert(alert) {
     '<div class="alert-desc">' + alert.desc + '</div>' +
     '<div class="alert-channels-sent">' + sent.join('') + '</div></div>';
   document.getElementById('feedBody').insertBefore(card, document.getElementById('feedBody').firstChild);
-  showToast('🔔 ' + alert.title, alert.plainDesc);
+  showToast('📡 ' + alert.title, alert.plainDesc);
 }
 
 document.getElementById('clearFeedBtn').addEventListener('click', () => {
@@ -827,7 +827,7 @@ if (targetParam) {
     targetInputEl.style.borderColor = 'var(--cyan)';
     setTimeout(() => {
       if (typeof showWalletToast === 'function') {
-        showWalletToast('🔔 Holder Loaded', 'Target address pre-filled from Flow Visualizer.');
+        showWalletToast('📡 Holder Loaded', 'Target address pre-filled from Flow Visualizer.');
       }
     }, 500);
   }

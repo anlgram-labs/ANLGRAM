@@ -199,8 +199,8 @@
 
     <!-- Token Selector Bar (Real memecoins on TON & GRAM) -->
     <div class="token-selector-bar" id="tokenChipBar">
-      <div class="token-chip active" onclick="selectToken('GRAM', 'GRAM', '🪙', 0.0142, '+14.2%', 'EQCQZTiG26BNV0bNO9VhP3bjMjJcccugrgs7CFV7f4dpWz2c')">
-        <span class="token-chip-icon">🪙</span>
+      <div class="token-chip active" onclick="selectToken('GRAM', 'GRAM', '💎', 0.0142, '+14.2%', 'EQCQZTiG26BNV0bNO9VhP3bjMjJcccugrgs7CFV7f4dpWz2c')">
+        <span class="token-chip-icon">💎</span>
         <span>GRAM</span>
         <span class="token-chip-price">$0.0142 (+14.2%)</span>
       </div>
@@ -229,8 +229,8 @@
         <span>MEW</span>
         <span class="token-chip-price">$0.0091 (-1.4%)</span>
       </div>
-      <div class="token-chip" onclick="selectToken('TON', 'Toncoin Native', '⚡', 6.84, '+1.9%', 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N')">
-        <span class="token-chip-icon">⚡</span>
+      <div class="token-chip" onclick="selectToken('TON', 'Toncoin Native', '💠', 6.84, '+1.9%', 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N')">
+        <span class="token-chip-icon">💠</span>
         <span>TON</span>
         <span class="token-chip-price">$6.84 (+1.9%)</span>
       </div>
@@ -244,7 +244,7 @@
         <div class="viz-panel animate-fade-down">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
             <div style="display:flex; align-items:center; gap: 10px;">
-              <span id="activeTokenIcon" style="font-size:24px;">🪙</span>
+              <span id="activeTokenIcon" style="font-size:24px;">💎</span>
               <div>
                 <div id="activeTokenName" style="font-weight:700; font-size:16px; color:#fff;">GRAM</div>
                 <div id="activeTokenPrice" style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#00e676;">$0.0142</div>
@@ -267,13 +267,13 @@
           <div style="font-size:12px; font-weight:600; color:#ccc; margin-bottom:8px;">Holder Cluster Legend</div>
           <div style="display:flex; flex-direction:column; gap:6px; font-size:12px; color:#aaa;">
             <div><span class="legend-dot" style="background:#00f0ff; box-shadow:0 0 8px #00f0ff;"></span> Top Whales & Investors (44.5%)</div>
-            <div><span class="legend-dot" style="background:#a855f7; box-shadow:0 0 8px #a855f7;"></span> Team & Insider Cluster (12.8%)</div>
+            <div><span class="legend-dot" style="background:#0088CC; box-shadow:0 0 8px #0088CC;"></span> Team & Insider Cluster (12.8%)</div>
             <div><span class="legend-dot" style="background:#0088CC; box-shadow:0 0 8px #0088CC;"></span> Exchanges & CEXs (24.1%)</div>
             <div><span class="legend-dot" style="background:#00e676; box-shadow:0 0 8px #00e676;"></span> DeDust & Ston.fi Pools (18.6%)</div>
           </div>
 
           <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08); font-size:11px; color:#777; line-height:1.4;">
-            💡 <strong style="color:#fff;">Tip:</strong> Click any bubble to inspect live wallet balance, transfers & TON Explorer link.
+            🔷 <strong style="color:#fff;">Tip:</strong> Click any bubble to inspect live wallet balance, transfers & TON Explorer link.
           </div>
         </div>
       </div>
@@ -327,7 +327,7 @@
         </div>
 
         <div style="margin-top:auto; padding-top:10px;">
-          <button class="btn btn-primary" style="width:100%; font-weight:700;" onclick="monitorThisHolder()">🔔 Set Alert on This Holder</button>
+          <button class="btn btn-primary" style="width:100%; font-weight:700;" onclick="monitorThisHolder()">📡 Set Alert on This Holder</button>
         </div>
       </div>
 
@@ -349,7 +349,7 @@ let allLinks = [];
 
 const tokenConfigs = {
   'GRAM': {
-    name: 'GRAM', icon: '🪙', price: 0.0142, change: '+14.2%', top10: '34.2%', insider: '12.8%', score: '🛡️ 86/100 Safe', scoreClass: 'score-good',
+    name: 'GRAM', icon: '💎', price: 0.0142, change: '+14.2%', top10: '34.2%', insider: '12.8%', score: '🛡️ 86/100 Safe', scoreClass: 'score-good',
     holders: [
       { id: 'h1', label: 'Whale #1', share: 8.4, type: 'Whale 🐋', group: 'whale', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$119,280' },
       { id: 'h2', label: 'Ston.fi Pool', share: 6.8, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$96,560' },
@@ -400,7 +400,7 @@ const tokenConfigs = {
     ]
   },
   'DOGS': {
-    name: 'DOGS', icon: '🐶', price: 0.00065, change: '+8.1%', top10: '52.1%', insider: '14.5%', score: '⚠️ 78/100 Moderate', scoreClass: 'score-warn',
+    name: 'DOGS', icon: '🐶', price: 0.00065, change: '+8.1%', top10: '52.1%', insider: '14.5%', score: '🛡️ 78/100 Moderate', scoreClass: 'score-warn',
     holders: [
       { id: 'd1', label: 'Binance Hot Wallet', share: 22.4, type: 'Exchange 🏦', group: 'cex', addr: 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD', val: '$1,456,000' },
       { id: 'd2', label: 'OKX Hot Wallet', share: 14.1, type: 'Exchange 🏦', group: 'cex', addr: 'EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW', val: '$916,500' },
@@ -466,7 +466,7 @@ const tokenConfigs = {
     ]
   },
   'TON': {
-    name: 'Toncoin Native', icon: '⚡', price: 6.84, change: '+1.9%', top10: '28.4%', insider: '5.1%', score: '🛡️ 98/100 Highly Safe', scoreClass: 'score-good',
+    name: 'Toncoin Native', icon: '💠', price: 6.84, change: '+1.9%', top10: '28.4%', insider: '5.1%', score: '🛡️ 98/100 Highly Safe', scoreClass: 'score-good',
     holders: [
       { id: 't1', label: 'TON Foundation', share: 14.2, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$97,128,000' },
       { id: 't2', label: 'Binance Hot Wallet', share: 11.5, type: 'Exchange 🏦', group: 'cex', addr: 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD', val: '$78,660,000' },
@@ -485,7 +485,7 @@ const tokenConfigs = {
 
 const bubbleColors = {
   whale: '#00f0ff',   // Cyan
-  insider: '#a855f7', // Purple
+  insider: '#0088CC', // Purple
   cex: '#0088CC',     // Blue
   pool: '#00e676'     // Green
 };
@@ -683,7 +683,7 @@ window.monitorThisHolder = function() {
   const addrEl = document.getElementById('panelAddress');
   const addr = addrEl.getAttribute('data-full-addr') || addrEl.textContent;
   const name = document.getElementById('panelName').textContent;
-  showWalletToast('🔔 Alert Configured', `Redirecting to Alerts panel to monitor ${name}...`);
+  showWalletToast('📡 Alert Configured', `Redirecting to Alerts panel to monitor ${name}...`);
   setTimeout(() => {
     window.location.href = `alerts.html?target=${encodeURIComponent(addr)}`;
   }, 1200);
@@ -700,7 +700,7 @@ document.getElementById('tokenSearchInput').addEventListener('keydown', (e) => {
       showWalletToast('🔍 Tracing Token...', `Analyzing live on-chain holder distribution for "${val}" on TON.`);
       // Simulate real-time calculation for unknown tokens
       tokenConfigs[val] = {
-        name: val + ' Memecoin', icon: '⚡', price: 0.0025, change: '+18.5%', top10: '58.2%', insider: '24.1%', score: '⚠️ 64/100 Caution', scoreClass: 'score-warn',
+        name: val + ' Memecoin', icon: '💠', price: 0.0025, change: '+18.5%', top10: '58.2%', insider: '24.1%', score: '🛡️ 64/100 Caution', scoreClass: 'score-warn',
         holders: [
           { id: 'u1', label: val + ' Creator', share: 22.5, type: 'Insider 🕵️‍♂️', group: 'insider', addr: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', val: '$450,000' },
           { id: 'u2', label: 'Ston.fi ' + val + ' LP', share: 15.2, type: 'DEX Pool 🤖', group: 'pool', addr: 'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO', val: '$304,000' },
@@ -710,7 +710,7 @@ document.getElementById('tokenSearchInput').addEventListener('keydown', (e) => {
         ],
         links: [{ source: 'u1', target: 'u5', val: 500 }, { source: 'u2', target: 'u3', val: 300 }]
       };
-      selectToken(val, val + ' Memecoin', '⚡', 0.0025, '+18.5%', '');
+      selectToken(val, val + ' Memecoin', '💠', 0.0025, '+18.5%', '');
     }
   }
 });

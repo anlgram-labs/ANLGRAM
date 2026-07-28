@@ -101,7 +101,7 @@
           </button>
           <div id="walletStepList">
             <h2 style="font-size:20px;margin-bottom:6px;color:white;display:flex;align-items:center;gap:8px;">
-              <span>⚡ Connect TON Wallet</span>
+              <span>💠 Connect TON Wallet</span>
             </h2>
             <p style="color:#aaa;margin-bottom:20px;font-size:13px;line-height:1.5;">Select your wallet to monitor your real transactions on ANLGRAM.</p>
             
@@ -128,9 +128,9 @@
                 <span class="wallet-badge">IN-APP</span>
               </div>
 
-              <div class="wallet-item" onclick="selectWallet('MyTonWallet', '#6C5CE7', '⚡', 'https://mytonwallet.io/')">
+              <div class="wallet-item" onclick="selectWallet('MyTonWallet', '#6C5CE7', '💠', 'https://mytonwallet.io/')">
                 <div class="wallet-info">
-                  <div class="wallet-icon" style="background:#6C5CE7;">⚡</div>
+                  <div class="wallet-icon" style="background:#6C5CE7;">💠</div>
                   <div>
                     <div class="wallet-name">MyTonWallet</div>
                     <div class="wallet-type">Fast browser extension</div>
@@ -173,7 +173,7 @@
               <span style="font-size:12px;color:#888;display:block;">Paste your true address below so ANLGRAM monitors ONLY your wallet.</span>
               <input type="text" id="realWalletAddressInput" class="real-wallet-input" placeholder="Paste your address here (EQ... or UQ... or .ton)" />
               
-              <button onclick="confirmRealWalletConnection()" style="width:100%;background:#00f0ff;color:#000;font-weight:700;padding:14px;border-radius:12px;border:none;cursor:pointer;font-size:14px;margin-bottom:8px;box-shadow:0 0 20px rgba(0,240,255,0.3);transition:all 0.2s;">⚡ Connect & Monitor My Wallet</button>
+              <button onclick="confirmRealWalletConnection()" style="width:100%;background:#00f0ff;color:#000;font-weight:700;padding:14px;border-radius:12px;border:none;cursor:pointer;font-size:14px;margin-bottom:8px;box-shadow:0 0 20px rgba(0,240,255,0.3);transition:all 0.2s;">💠 Connect & Monitor My Wallet</button>
               <button onclick="cancelConnectStep()" style="width:100%;background:transparent;color:#888;padding:10px;border-radius:10px;border:none;cursor:pointer;font-size:13px;">← Back to wallet list</button>
             </div>
           </div>
@@ -231,8 +231,8 @@
           <div style="margin-bottom:18px;">
             <label style="font-size:13px; font-weight:600; color:#fff; display:block; margin-bottom:8px;">⏱️ Actualización en Vivo (Polling):</label>
             <select id="setting-polling" onchange="setPolling(this.value)" style="width:100%; padding:10px; border-radius:10px; background:#1a1a24; border:1px solid #333; color:#fff; font-size:13px; outline:none;">
-              <option value="5">⚡ 5 segundos (Tiempo Real Rápido)</option>
-              <option value="15">🔥 15 segundos (Estándar Recomendado)</option>
+              <option value="5">💠 5 segundos (Tiempo Real Rápido)</option>
+              <option value="15">💠 15 segundos (Estándar Recomendado)</option>
               <option value="60">🌱 60 segundos (Ahorro de Batería/Datos)</option>
             </select>
           </div>
@@ -518,7 +518,7 @@
     const input = document.getElementById('realWalletAddressInput');
     const addr = input ? input.value.trim() : '';
     if (!addr || addr.length < 6) {
-      showWalletToast('⚠️ Invalid Address', 'Please enter your true TON wallet address (e.g. EQ... or UQ...).');
+      showWalletToast('🛡️ Invalid Address', 'Please enter your true TON wallet address (e.g. EQ... or UQ...).');
       return;
     }
     const name = localStorage.getItem('anlgram_pending_wallet_name') || 'TON Wallet';
