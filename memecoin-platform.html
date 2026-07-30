@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Memecoin Platform (Enterprise) — ANLGRAM</title>
+  <meta name="description" content="Enterprise-grade TON/GRAM Memecoin Platform"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"/>
+  <link rel="shortcut icon" href="favicon.ico?v=2"/>
+  <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
+  <link rel="stylesheet" href="assets/css/animations.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* Enterprise Platform Specific Styles */
+    :root {
+      --enterprise-bg: #0a0a0c;
+      --glass-bg: rgba(255, 255, 255, 0.03);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --accent-cyan: #00f0ff;
+      --accent-blue: #0088cc;
+      --neon-glow: 0 0 20px rgba(0, 240, 255, 0.15);
+    }
+
+    body { background: var(--enterprise-bg); }
+
+    /* Platform Header */
+    .platform-header {
+      padding: var(--space-6) var(--space-6) var(--space-4);
+      background: radial-gradient(ellipse at top left, rgba(0, 240, 255, 0.05), transparent 50%);
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .platform-title-row {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      margin-bottom: var(--space-5);
+    }
+
+    .platform-title {
+      font-size: 32px; font-weight: 700; letter-spacing: -1px;
+      background: linear-gradient(90deg, #fff, #a0aec0);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .platform-subtitle {
+      color: var(--text-secondary); font-size: var(--text-sm);
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px; background: var(--green);
+      border-radius: 50%; box-shadow: 0 0 10px var(--green);
+    }
+
+    /* Inner Tabs */
+    .platform-tabs {
+      display: flex; gap: var(--space-2);
+      background: rgba(0,0,0,0.3); padding: 4px;
+      border-radius: 12px; border: 1px solid var(--glass-border);
+      width: fit-content;
+    }
+
+    .platform-tab {
+      padding: 8px 16px; border-radius: 8px;
+      font-size: 13px; font-weight: 500; color: var(--text-muted);
+      cursor: pointer; transition: all 0.3s ease;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .platform-tab:hover { color: #fff; background: rgba(255,255,255,0.05); }
+    .platform-tab.active {
+      background: rgba(255,255,255,0.1); color: #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    /* Glass Cards */
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px; padding: var(--space-5);
+      transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+    
+    .glass-card:hover {
+      border-color: rgba(0, 240, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .glass-card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: var(--space-4);
+    }
+
+    .glass-card-title {
+      font-size: 16px; font-weight: 600; color: #fff;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* Grid Layouts */
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-5); margin-bottom: var(--space-5); }
+    .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-5); margin-bottom: var(--space-5); }
+    
+    @media (max-width: 1100px) {
+      .grid-3 { grid-template-columns: 1fr; }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    /* Token Search Input */
+    .token-search-wrap {
+      position: relative; width: 100%; max-width: 600px;
+      margin: 0 auto var(--space-6);
+    }
+
+    .token-search-input {
+      width: 100%; padding: 16px 20px 16px 48px;
+      background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border);
+      border-radius: 24px; color: #fff; font-size: 16px;
+      transition: all 0.3s ease;
+    }
+    .token-search-input:focus {
+      outline: none; border-color: var(--accent-cyan);
+      box-shadow: var(--neon-glow); background: rgba(0,240,255,0.02);
+    }
+    .token-search-icon {
+      position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    /* Value Displays */
+    .stat-value {
+      font-size: 28px; font-weight: 700; font-family: var(--font-mono);
+      color: #fff; margin: 8px 0;
+    }
+    .stat-change.up { color: var(--green); font-size: 12px; font-weight: 600; }
+    .stat-change.down { color: var(--red); font-size: 12px; font-weight: 600; }
+
+    /* Tables Enterprise */
+    .ent-table { width: 100%; border-collapse: collapse; }
+    .ent-table th {
+      text-align: left; padding: 12px 16px;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text-muted); border-bottom: 1px solid var(--glass-border);
+    }
+    .ent-table td {
+      padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.02);
+      font-size: 14px; color: #e2e8f0;
+    }
+    .ent-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .token-cell { display: flex; align-items: center; gap: 12px; }
+    .token-icon {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; color: #000;
+    }
+
+    /* Buttons */
+    .btn-ent {
+      background: linear-gradient(90deg, rgba(0,136,204,0.2), rgba(0,240,255,0.2));
+      border: 1px solid rgba(0,240,255,0.4); color: var(--accent-cyan);
+      padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.3s ease;
+    }
+    .btn-ent:hover {
+      background: linear-gradient(90deg, rgba(0,136,204,0.4), rgba(0,240,255,0.4));
+      box-shadow: var(--neon-glow); transform: translateY(-1px);
+    }
+
+    .btn-solid {
+      background: #fff; color: #000; border: none;
+      padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.3s ease;
+    }
+    .btn-solid:hover { background: #e2e8f0; }
+
+    /* Sections */
+    .tab-content { display: none; padding: var(--space-6); animation: fadeUp 0.4s ease forwards; }
+    .tab-content.active { display: block; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <a href="index.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon"><img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Crystal"/></div>
+      <span class="sidebar-logo-text">ANLGRAM</span>
+    </a>
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Analytics</div>
+      <a href="dashboard.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="explorer.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Entity Explorer
+      </a>
+      <a href="visualizer.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49"/></svg>
+        Flow Visualizer
+      </a>
+
+      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Enterprise</div>
+      <a href="memecoin-platform.html" class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>
+        Memecoin Platform
+      </a>
+
+      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Intelligence</div>
+      <a href="intel-exchange.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Exchange Intel Hub
+      </a>
+      <a href="alerts.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Alerts
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-network-badge">
+        <span class="dot-live"></span>
+        Enterprise Node · Active
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content" style="padding:0; overflow-y:auto; overflow-x:hidden;">
+    
+    <div class="platform-header">
+      <div class="platform-title-row">
+        <div>
+          <h1 class="platform-title">Memecoin Platform</h1>
+          <p class="platform-subtitle">
+            <span class="status-dot"></span>
+            Enterprise Edition · Real-time TON Token Infrastructure
+          </p>
+        </div>
+        <div style="display:flex; gap:12px;">
+          <button class="btn-solid" onclick="alert('Launchpad Opening Soon')">Launch Jetton</button>
+          <button class="btn-ent">Connect Wallet</button>
+        </div>
+      </div>
+
+      <div class="platform-tabs">
+        <div class="platform-tab active" onclick="switchTab('explorer')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Token Explorer
+        </div>
+        <div class="platform-tab" onclick="switchTab('wallet')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          Wallet Manager
+        </div>
+        <div class="platform-tab" onclick="switchTab('campaign')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Campaigns
+        </div>
+        <div class="platform-tab" onclick="switchTab('analytics')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Advanced Analytics
+        </div>
+      </div>
+    </div>
+
+    <!-- Token Explorer Tab -->
+    <div id="tab-explorer" class="tab-content active">
+      
+      <div class="token-search-wrap">
+        <svg class="token-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="token-search-input" placeholder="Search Jettons by name, ticker, or contract address..."/>
+      </div>
+
+      <div class="grid-3">
+        <div class="glass-card">
+          <div class="glass-card-header"><span class="glass-card-title">Total Market Cap (Tokens)</span></div>
+          <div class="stat-value">$1.24B</div>
+          <div class="stat-change up">▲ +12.4% vs last week</div>
+        </div>
+        <div class="glass-card">
+          <div class="glass-card-header"><span class="glass-card-title">24h Trading Volume</span></div>
+          <div class="stat-value">$342M</div>
+          <div class="stat-change up">▲ +5.2% vs yesterday</div>
+        </div>
+        <div class="glass-card">
+          <div class="glass-card-header"><span class="glass-card-title">New Jettons (24h)</span></div>
+          <div class="stat-value">1,482</div>
+          <div class="stat-change down">▼ -2.1% vs yesterday</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="glass-card" style="padding:0; overflow:hidden;">
+          <div class="glass-card-header" style="padding: 24px 24px 0;"><span class="glass-card-title">Trending Tokens</span></div>
+          <table class="ent-table">
+            <thead>
+              <tr>
+                <th>Token</th>
+                <th>Price</th>
+                <th>24h Vol</th>
+                <th>Liquidity</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="token-cell">
+                    <div class="token-icon">REDO</div>
+                    <div>
+                      <div style="font-weight:600;">Resistance Dog</div>
+                      <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);">EQC...9fB2</div>
+                    </div>
+                  </div>
+                </td>
+                <td style="font-family:var(--font-mono);">$0.842</td>
+                <td style="font-family:var(--font-mono);">$12.4M</td>
+                <td style="font-family:var(--font-mono);">$4.2M</td>
+                <td><button class="btn-ent" style="padding:4px 12px;font-size:11px;">Analyze</button></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="token-cell">
+                    <div class="token-icon" style="background:linear-gradient(135deg, #f59e0b, #ef4444);">NOT</div>
+                    <div>
+                      <div style="font-weight:600;">Notcoin</div>
+                      <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);">EQA...1xZ8</div>
+                    </div>
+                  </div>
+                </td>
+                <td style="font-family:var(--font-mono);">$0.012</td>
+                <td style="font-family:var(--font-mono);">$88.2M</td>
+                <td style="font-family:var(--font-mono);">$21.5M</td>
+                <td><button class="btn-ent" style="padding:4px 12px;font-size:11px;">Analyze</button></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="token-cell">
+                    <div class="token-icon" style="background:linear-gradient(135deg, #10b981, #3b82f6);">FISH</div>
+                    <div>
+                      <div style="font-weight:600;">Ton Fish</div>
+                      <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);">EQD...4rQ1</div>
+                    </div>
+                  </div>
+                </td>
+                <td style="font-family:var(--font-mono);">$0.000045</td>
+                <td style="font-family:var(--font-mono);">$3.1M</td>
+                <td style="font-family:var(--font-mono);">$1.8M</td>
+                <td><button class="btn-ent" style="padding:4px 12px;font-size:11px;">Analyze</button></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="token-cell">
+                    <div class="token-icon" style="background:linear-gradient(135deg, #8b5cf6, #ec4899);">DOGS</div>
+                    <div>
+                      <div style="font-weight:600;">DOGS</div>
+                      <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);">EQV...8mL5</div>
+                    </div>
+                  </div>
+                </td>
+                <td style="font-family:var(--font-mono);">$0.0031</td>
+                <td style="font-family:var(--font-mono);">$45.6M</td>
+                <td style="font-family:var(--font-mono);">$12.4M</td>
+                <td><button class="btn-ent" style="padding:4px 12px;font-size:11px;">Analyze</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="glass-card">
+          <div class="glass-card-header">
+            <span class="glass-card-title">Token Ecosystem Growth</span>
+          </div>
+          <div style="height: 250px; position:relative; width:100%;">
+            <canvas id="growthChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wallet Manager Tab -->
+    <div id="tab-wallet" class="tab-content">
+      <div class="glass-card" style="margin-bottom:var(--space-5); text-align:center; padding: 40px 20px;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="1.5" style="margin-bottom:16px;"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+        <h2 style="color:#fff; font-size:24px; margin-bottom:12px;">Enterprise Wallet Management</h2>
+        <p style="color:var(--text-muted); max-width:500px; margin:0 auto 24px;">Securely generate, import, and manage thousands of TON wallets with hardware-grade encryption and mass-export capabilities.</p>
+        <div style="display:flex; justify-content:center; gap:16px;">
+          <button class="btn-solid">Generate Wallets</button>
+          <button class="btn-ent">Import CSV</button>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="glass-card" style="padding:0;">
+          <div class="glass-card-header" style="padding: 24px;"><span class="glass-card-title">Managed Wallets</span></div>
+          <table class="ent-table">
+            <thead><tr><th>Label</th><th>Address</th><th>Balance</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span style="font-weight:600;">Treasury Alpha</span></td>
+                <td style="font-family:var(--font-mono); color:var(--text-muted);">UQDK...4bA1</td>
+                <td style="font-family:var(--font-mono); color:var(--green);">45,210 GRAM</td>
+                <td><span style="background:rgba(0,255,100,0.1); color:#00ff66; padding:2px 8px; border-radius:12px; font-size:11px;">Active</span></td>
+              </tr>
+              <tr>
+                <td><span style="font-weight:600;">Airdrop Dist #1</span></td>
+                <td style="font-family:var(--font-mono); color:var(--text-muted);">UQC8...9vL4</td>
+                <td style="font-family:var(--font-mono);">1,050 GRAM</td>
+                <td><span style="background:rgba(0,255,100,0.1); color:#00ff66; padding:2px 8px; border-radius:12px; font-size:11px;">Active</span></td>
+              </tr>
+              <tr>
+                <td><span style="font-weight:600;">Marketing Reserve</span></td>
+                <td style="font-family:var(--font-mono); color:var(--text-muted);">UQZ1...0mM9</td>
+                <td style="font-family:var(--font-mono);">12,400 GRAM</td>
+                <td><span style="background:rgba(0,255,100,0.1); color:#00ff66; padding:2px 8px; border-radius:12px; font-size:11px;">Active</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="glass-card">
+          <div class="glass-card-header"><span class="glass-card-title">Portfolio Distribution</span></div>
+          <div style="height:200px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:13px; text-align:center;">
+            [Interactive Donut Chart Rendered via Canvas]<br>GRAM 65% | USDT 20% | NOT 15%
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Campaign Tab -->
+    <div id="tab-campaign" class="tab-content">
+      <div class="grid-3">
+        <div class="glass-card" style="border-top: 3px solid var(--accent-blue);">
+          <div style="font-size:24px; margin-bottom:12px;">🚀</div>
+          <div style="font-weight:600; font-size:18px; color:#fff; margin-bottom:8px;">Airdrop Campaigns</div>
+          <p style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">Automate and track large-scale airdrops to active community members.</p>
+          <button class="btn-ent" style="width:100%;">Create Campaign</button>
+        </div>
+        <div class="glass-card" style="border-top: 3px solid var(--accent-cyan);">
+          <div style="font-size:24px; margin-bottom:12px;">🛡️</div>
+          <div style="font-weight:600; font-size:18px; color:#fff; margin-bottom:8px;">Sybil Protection</div>
+          <p style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">AI-driven analysis to filter out bots and sybil attackers from claims.</p>
+          <button class="btn-ent" style="width:100%;">Configure Rules</button>
+        </div>
+        <div class="glass-card" style="border-top: 3px solid #a855f7;">
+          <div style="font-size:24px; margin-bottom:12px;">💎</div>
+          <div style="font-weight:600; font-size:18px; color:#fff; margin-bottom:8px;">Staking & Vesting</div>
+          <p style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">Deploy customizable staking contracts and team token vesting schedules.</p>
+          <button class="btn-ent" style="width:100%;">Deploy Contract</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics Tab -->
+    <div id="tab-analytics" class="tab-content">
+      <div class="glass-card" style="height:400px; display:flex; align-items:center; justify-content:center; flex-direction:column;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom:16px;"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        <div style="font-weight:600; color:#fff; margin-bottom:8px;">Advanced Analytics Engine</div>
+        <p style="color:var(--text-muted); font-size:14px; max-width:400px; text-align:center;">
+          Connect your API keys or upgrade to Enterprise Tier 2 to unlock real-time liquidity flow analysis and predictive memecoin modeling.
+        </p>
+        <button class="btn-solid" style="margin-top:16px;">Upgrade Plan</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function switchTab(tabId) {
+    // Update tabs
+    document.querySelectorAll('.platform-tab').forEach(t => t.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    
+    // Update content
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+  }
+
+  // Render dummy chart for Token Growth
+  const ctx = document.getElementById('growthChart');
+  if(ctx) {
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [{
+          label: 'New Tokens',
+          data: [120, 190, 150, 220, 310, 480, 520],
+          backgroundColor: '#00f0ff',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#8a8a9a' } },
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8a8a9a' } }
+        }
+      }
+    });
+  }
+</script>
+</body>
+</html>
