@@ -193,7 +193,7 @@
     }
 
     // Auto-inject Connect Wallet button into topbar if missing
-    const topbarActions = document.querySelector('.topbar-actions');
+    const topbarActions = document.querySelector('.topbar-actions') || document.querySelector('.nav-cta');
     if (topbarActions && !document.getElementById('topbarWalletBtn')) {
       const btn = document.createElement('button');
       btn.id = 'topbarWalletBtn';
