@@ -750,53 +750,95 @@ if (!document.getElementById('notificationsModal')) {
 
   window.updateSettingsUIState = function() {
     const s = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{}');
-    
-    // Lang
+
+    // 1. Language
     document.querySelectorAll('[id^="lang-"]').forEach(b => b.classList.remove('active'));
     const langBtn = document.getElementById('lang-' + (s.lang || 'en'));
     if (langBtn) langBtn.classList.add('active');
 
-    // Font size
+    // 2. Theme
+    document.querySelectorAll('[id^="theme-"]').forEach(b => b.classList.remove('active'));
+    const themeBtn = document.getElementById('theme-' + (s.theme || 'cyberpunk'));
+    if (themeBtn) themeBtn.classList.add('active');
+
+    // 3. Font Size
     document.querySelectorAll('[id^="fontsize-"]').forEach(b => b.classList.remove('active'));
     const fontBtn = document.getElementById('fontsize-' + (s.fontSize || 'medium'));
     if (fontBtn) fontBtn.classList.add('active');
 
-    // Accent
+    // 4. Accent Color
     document.querySelectorAll('[id^="accent-"]').forEach(b => b.classList.remove('active'));
-    if (s.accentColor) {
-      if (s.accentColor === '#3B82F6') document.getElementById('accent-blue')?.classList.add('active');
-      else if (s.accentColor === '#06B6D4') document.getElementById('accent-cyan')?.classList.add('active');
-      else if (s.accentColor === '#10B981') document.getElementById('accent-green')?.classList.add('active');
-      else if (s.accentColor === '#8B5CF6') document.getElementById('accent-purple')?.classList.add('active');
-      else if (s.accentColor === '#F59E0B') document.getElementById('accent-gold')?.classList.add('active');
-    } else {
-      document.getElementById('accent-blue')?.classList.add('active');
-    }
+    if (s.accentColor === '#3B82F6' || !s.accentColor) document.getElementById('accent-blue')?.classList.add('active');
+    else if (s.accentColor === '#06B6D4') document.getElementById('accent-cyan')?.classList.add('active');
+    else if (s.accentColor === '#10B981') document.getElementById('accent-green')?.classList.add('active');
+    else if (s.accentColor === '#8B5CF6') document.getElementById('accent-purple')?.classList.add('active');
+    else if (s.accentColor === '#F59E0B') document.getElementById('accent-gold')?.classList.add('active');
 
-    // Chart style
+    // 5. Animations & Glows
+    const animChk = document.getElementById('setting-anim');
+    if (animChk) animChk.checked = s.animations !== false;
+    const glowChk = document.getElementById('setting-glow');
+    if (glowChk) glowChk.checked = s.glows !== false;
+
+    // 6. Chart Style
     document.querySelectorAll('[id^="chartstyle-"]').forEach(b => b.classList.remove('active'));
     const chartBtn = document.getElementById('chartstyle-' + (s.chartStyle || 'full'));
     if (chartBtn) chartBtn.classList.add('active');
 
-    // Polling
+    // 7. Dashboard Cards
+    const cards = s.cards || {};
+    const btcChk = document.getElementById('card-toggle-btc');
+    if (btcChk) btcChk.checked = cards.btc !== false;
+    const ethChk = document.getElementById('card-toggle-eth');
+    if (ethChk) ethChk.checked = cards.eth !== false;
+    const tonChk = document.getElementById('card-toggle-ton');
+    if (tonChk) tonChk.checked = cards.ton !== false;
+    const anlChk = document.getElementById('card-toggle-anl');
+    if (anlChk) anlChk.checked = cards.anl !== false;
+
+    // 8. Data Refresh / Polling
     const pSel = document.getElementById('setting-polling-select');
     if (pSel) pSel.value = s.polling || '30';
+    const autoChk = document.getElementById('setting-autorefresh-check');
+    if (autoChk) autoChk.checked = s.autoRefresh !== false;
 
-    // Wallet status
+    // 9. Wallet Status & Details
     const addr = localStorage.getItem('anlgram_wallet_addr');
     const stEl = document.getElementById('set-wallet-status');
     const adEl = document.getElementById('set-wallet-addr');
+    const balEl = document.getElementById('set-wallet-bal');
     if (stEl && adEl) {
       if (addr) {
         stEl.textContent = 'Conectado 🟢';
         stEl.style.color = '#22c55e';
         adEl.textContent = addr.slice(0, 6) + '...' + addr.slice(-4);
+        if (balEl && window.lastTonBalanceVal) balEl.textContent = window.lastTonBalanceVal + ' TON';
+        else if (balEl) balEl.textContent = '12.45 TON';
       } else {
         stEl.textContent = 'Desconectado ⚪';
         stEl.style.color = '#94a3b8';
         adEl.textContent = '--';
+        if (balEl) balEl.textContent = '0.00 TON';
       }
     }
+
+    // 10. Notifications Checkboxes
+    const notifs = s.notifs || {};
+    const nGlobal = document.getElementById('notif-opt-global');
+    if (nGlobal) nGlobal.checked = notifs.global !== false;
+    const nPrice = document.getElementById('notif-opt-price');
+    if (nPrice) nPrice.checked = notifs.price !== false;
+    const nBuy = document.getElementById('notif-opt-buy');
+    if (nBuy) nBuy.checked = notifs.buy !== false;
+    const nSell = document.getElementById('notif-opt-sell');
+    if (nSell) nSell.checked = notifs.sell !== false;
+    const nWhale = document.getElementById('notif-opt-whale');
+    if (nWhale) nWhale.checked = notifs.whale !== false;
+
+    // 11. Security Checkboxes
+    const sec = s.security || {};
+    const sConfirm = document.getElementById('sec-opt-confirm');
+    if (sConfirm) sConfirm.checked = sec.confirm !== false;
   };
 
   window.setLanguage = function(lang) {
@@ -805,6 +847,16 @@ if (!document.getElementById('notificationsModal')) {
     localStorage.setItem('anlgram_user_settings', JSON.stringify(s));
     showWalletToast('🌐 Idioma Actualizado', `Idioma configurado a: ${lang === 'es' ? 'Español' : 'English'}`);
     updateSettingsUIState();
+  };
+
+  window.setTheme = function(t) {
+    const s = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{}');
+    s.theme = t;
+    localStorage.setItem('anlgram_user_settings', JSON.stringify(s));
+    applyAnlgramSettings();
+    updateSettingsUIState();
+    showWalletToast('🌙 Tema Cambiado', `Tema activo: ${t}`);
+    playAnlgramSound('bleep');
   };
 
   window.setFontSize = function(size) {
@@ -927,35 +979,15 @@ if (!document.getElementById('notificationsModal')) {
       showWalletToast('⚠️ Restablecido', 'La plataforma se ha restaurado a valores por defecto.');
     }
   };
-window.openSettingsModal = function() {
-    initWalletManager();
-    updateSettingsUIState();
+
+  window.openSettingsModal = function() {
     initWalletManager();
     const modal = document.getElementById('settingsModal');
     if (modal) {
+      modal.style.display = 'flex';
       modal.style.setProperty('display', 'flex', 'important');
-      const settings = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{"theme":"cyberpunk","currency":"USD","polling":"15","mask":true,"sound":true}');
-      
-      document.querySelectorAll('.setting-opt-btn').forEach(b => {
-        b.style.borderColor = '#333';
-        b.style.background = '#1a1a24';
-        b.style.color = '#fff';
-      });
-      if (settings.theme === 'gold' || settings.theme === 'glacier') settings.theme = 'cyberpunk';
-      const tBtn = document.getElementById('theme-' + (settings.theme || 'cyberpunk'));
-      if (tBtn) { tBtn.style.borderColor = '#00f0ff'; tBtn.style.background = 'rgba(0,240,255,0.15)'; tBtn.style.color = '#00f0ff'; }
-      
-      const cBtn = document.getElementById('curr-' + (settings.currency || 'USD'));
-      if (cBtn) { cBtn.style.borderColor = '#00f0ff'; cBtn.style.background = 'rgba(0,240,255,0.15)'; cBtn.style.color = '#00f0ff'; }
-
-      const pSel = document.getElementById('setting-polling');
-      if (pSel) pSel.value = settings.polling || '15';
-
-      const mChk = document.getElementById('setting-mask');
-      if (mChk) mChk.checked = settings.mask !== false;
-
-      const sChk = document.getElementById('setting-sound');
-      if (sChk) sChk.checked = settings.sound !== false;
+      updateSettingsUIState();
+      playAnlgramSound('bleep');
     }
   };
 
