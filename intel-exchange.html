@@ -213,48 +213,8 @@
           <span class="badge" style="background:rgba(255,255,255,0.05); color:#cbd5e1;">New Pools</span>
         </div>
 
-        <div style="flex:1; overflow-y:auto;">
-          <div class="token-list-item" onclick="setToken('GRAM', 'GRAM', '0.0025')">
-            <div style="display:flex; align-items:center; gap:12px;">
-              <div class="t-icon" style="background:#0088cc; font-size:14px;">G</div>
-              <div>
-                <div style="font-weight:700; font-size:14px; color:#fff;">GRAM</div>
-                <div style="font-size:11px; color:#64748b;">DeDust Pool</div>
-              </div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-family:var(--font-mono); font-size:13px; color:#fff;">$0.0025</div>
-              <div style="font-size:11px; color:var(--neon-green);">+14.2%</div>
-            </div>
-          </div>
-
-          <div class="token-list-item" onclick="setToken('REDO', 'REDO', '1.14')">
-            <div style="display:flex; align-items:center; gap:12px;">
-              <div class="t-icon" style="background:#ff007f; font-size:14px;">R</div>
-              <div>
-                <div style="font-weight:700; font-size:14px; color:#fff;">REDO</div>
-                <div style="font-size:11px; color:#64748b;">Ston.fi Pool</div>
-              </div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-family:var(--font-mono); font-size:13px; color:#fff;">$1.14</div>
-              <div style="font-size:11px; color:var(--neon-green);">+5.1%</div>
-            </div>
-          </div>
-          
-          <div class="token-list-item">
-            <div style="display:flex; align-items:center; gap:12px;">
-              <div class="t-icon" style="background:#f3ba2f; font-size:14px;">D</div>
-              <div>
-                <div style="font-weight:700; font-size:14px; color:#fff;">DUREV</div>
-                <div style="font-size:11px; color:#64748b;">DeDust Pool</div>
-              </div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-family:var(--font-mono); font-size:13px; color:#fff;">$0.045</div>
-              <div style="font-size:11px; color:var(--neon-pink);">-2.4%</div>
-            </div>
-          </div>
+        <div id="tokenListContainer" style="flex:1; overflow-y:auto;">
+          <!-- JS Injects Tokens Here -->
         </div>
       </div>
 
