@@ -1,1283 +1,1078 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CEX & DEX Intelligence Hub — ANLGRAM</title>
-  <meta name="description" content="Next-Gen On-Chain Exchange Intelligence & Hot Wallet Flow Directory for TON and GRAM."/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"/>
-  <link rel="shortcut icon" href="favicon.ico?v=2"/>
-  <link rel="apple-touch-icon" href="favicon.svg?v=2"/>
-  <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
-  <link rel="stylesheet" href="assets/css/animations.css"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ANLGRAM | Intel Exchange & Institutional Web3 Terminal</title>
+  <meta name="description" content="Institutional-grade crypto intelligence, market data terminal, and verified Web3 directory for TON and global markets." />
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+
   <style>
     :root {
-      --bg-obsidian: #07090e;
-      --bg-glass: rgba(16, 22, 32, 0.65);
-      --bg-glass-hover: rgba(22, 30, 44, 0.8);
-      --border-glass: rgba(255, 255, 255, 0.08);
-      --border-neon: rgba(0, 207, 255, 0.4);
-      --neon-cyan: #00f0ff;
-      --neon-green: #00ff88;
-      --neon-pink: #ff007f;
-      --neon-purple: #9d00ff;
+      --bg-void: #0B0F14;
+      --bg-card: #121821;
+      --bg-card-hover: #1A2230;
+      --bg-secondary: #161F2C;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(59, 130, 246, 0.4);
+      --accent-blue: #3B82F6;
+      --accent-cyan: #06B6D4;
+      --text-main: #FFFFFF;
+      --text-muted: #94A3B8;
+      --text-dark: #64748B;
+      --green-up: #22C55E;
+      --red-down: #EF4444;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
     body {
-      background-color: var(--bg-obsidian);
-      background-image: 
-        radial-gradient(circle at 15% 15%, rgba(0, 240, 255, 0.08) 0%, transparent 45%),
-        radial-gradient(circle at 85% 85%, rgba(157, 0, 255, 0.08) 0%, transparent 45%),
-        radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 0);
-      background-size: 100% 100%, 100% 100%, 28px 28px;
-      color: #e0e6ed;
-      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-void);
+      color: var(--text-main);
+      font-family: var(--font-sans);
       min-height: 100vh;
+      line-height: 1.5;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* Top Live Network Ticker */
-    .network-ticker {
-      background: rgba(8, 12, 18, 0.9);
-      border-bottom: 1px solid var(--border-glass);
-      padding: 8px 24px;
+    /* ── Scrollbar ─────────────────────────────────────────── */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-void);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-blue);
+    }
+
+    /* ── Header Navbar ─────────────────────────────────────── */
+    .header-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(11, 15, 20, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      height: 70px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 12px;
-      font-family: var(--font-mono);
-      color: #94a3b8;
-      backdrop-filter: blur(10px);
-    }
-    .ticker-items {
-      display: flex; gap: 24px; align-items: center;
-    }
-    .ticker-item { display: flex; align-items: center; gap: 6px; }
-    .ticker-val { color: var(--neon-cyan); font-weight: 600; }
-    .live-dot {
-      width: 7px; height: 7px; border-radius: 50%; background: var(--neon-green);
-      box-shadow: 0 0 10px var(--neon-green);
-      animation: pulse 1.5s infinite;
+      padding: 0 24px;
     }
 
-    /* Hero Section */
-    .hero-banner {
-      background: linear-gradient(135deg, rgba(16, 22, 34, 0.8) 0%, rgba(10, 14, 22, 0.6) 100%);
-      border: 1px solid var(--border-glass);
-      border-radius: 20px;
-      padding: 32px;
-      margin-bottom: 32px;
+    .nav-left {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 20px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-logo img {
+      width: 32px;
+      height: 32px;
+    }
+
+    .brand-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid var(--border-accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Search Bar */
+    .search-container {
       position: relative;
-      overflow: hidden;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-      backdrop-filter: blur(20px);
+      width: 380px;
+      max-width: 100%;
     }
-    .hero-banner::before {
-      content: ''; position: absolute; top: -50%; right: -10%; width: 300px; height: 300px;
-      background: radial-gradient(circle, rgba(0, 240, 255, 0.15) 0%, transparent 70%);
+
+    .search-input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 10px 16px 10px 40px;
+      color: var(--text-main);
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 16px rgba(59, 130, 246, 0.2);
+      background: #141c27;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
       pointer-events: none;
     }
-    .hero-title {
-      font-size: 32px; font-weight: 800; letter-spacing: -0.5px; margin: 0 0 8px 0;
-      background: linear-gradient(135deg, #ffffff 0%, #a5f3fc 50%, #00f0ff 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .hero-subtitle {
-      font-size: 15px; color: #94a3b8; max-width: 600px; margin: 0; line-height: 1.6;
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
-    /* Modern Stats Widgets */
-    .stats-grid {
-      display: flex; gap: 16px;
+    .nav-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      text-decoration: none;
     }
-    .stat-widget {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border-glass);
-      border-radius: 14px;
-      padding: 16px 22px;
-      min-width: 150px;
-      text-align: right;
-      transition: all 0.3s ease;
+
+    .nav-btn:hover {
+      border-color: var(--accent-blue);
+      background: var(--bg-card-hover);
+      color: var(--accent-blue);
     }
-    .stat-widget:hover {
-      border-color: var(--border-neon);
+
+    /* ── Main Container ────────────────────────────────────── */
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px 80px 24px;
+    }
+
+    /* ── Section Titles ────────────────────────────────────── */
+    .section-header-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ── Dashboard Metric Cards ────────────────────────────── */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card:hover {
+      border-color: var(--border-accent);
       transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(0, 240, 255, 0.1);
-    }
-    .stat-widget-val {
-      font-size: 22px; font-weight: 700; font-family: var(--font-mono); color: var(--neon-cyan);
-      display: block; margin-bottom: 4px;
-    }
-    .stat-widget-lbl {
-      font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 600;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(59, 130, 246, 0.1);
     }
 
-    /* Navigation & Search Control Bar */
-    .control-bar {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 28px; gap: 20px; flex-wrap: wrap;
-    }
-    .pills-container {
-      display: flex; background: rgba(15, 23, 42, 0.8);
-      border: 1px solid var(--border-glass); border-radius: 14px; padding: 5px; gap: 4px;
-      backdrop-filter: blur(12px);
-    }
-    .pill-btn {
-      padding: 8px 18px; font-size: 13px; font-weight: 600; color: #94a3b8;
-      border-radius: 10px; cursor: pointer; transition: all 0.25s ease; border: none; background: transparent;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .pill-btn:hover { color: #ffffff; background: rgba(255,255,255,0.05); }
-    .pill-btn.active {
-      color: #000; background: var(--neon-cyan); font-weight: 700;
-      box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+    .metric-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
     }
 
-    .modern-search {
-      display: flex; align-items: center; background: rgba(15, 23, 42, 0.8);
-      border: 1px solid var(--border-glass); border-radius: 14px; padding: 8px 16px;
-      width: 320px; transition: all 0.3s ease; backdrop-filter: blur(12px);
-    }
-    .modern-search:focus-within {
-      border-color: var(--neon-cyan); box-shadow: 0 0 20px rgba(0, 240, 255, 0.15); width: 360px;
-    }
-    .modern-search input {
-      background: none; border: none; color: white; font-size: 13px; width: 100%; font-family: var(--font-mono); margin-left: 10px;
-    }
-    .modern-search input:focus { outline: none; }
-    .modern-search input::placeholder { color: #475569; }
-
-    /* Ultra-Modern Exchange Cards Grid */
-    .exchange-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(370px, 1fr));
-      gap: 24px;
+    .asset-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    .ex-card {
-      background: var(--bg-glass);
-      border: 1px solid var(--border-glass);
-      border-radius: 18px;
-      padding: 24px;
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      display: flex; flex-direction: column;
-      position: relative; overflow: hidden;
-      backdrop-filter: blur(16px);
-    }
-    .ex-card:hover {
-      background: var(--bg-glass-hover);
-      border-color: var(--border-neon);
-      transform: translateY(-5px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 240, 255, 0.12);
-    }
-    .ex-card::after {
-      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px;
-      background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
-      opacity: 0.3; transition: 0.3s;
-    }
-    .ex-card:hover::after { opacity: 1; height: 4px; box-shadow: 0 0 15px var(--neon-cyan); }
-
-    .ex-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
-    .ex-id-row { display: flex; align-items: center; gap: 14px; }
-    .ex-icon {
-      width: 46px; height: 46px; border-radius: 14px; background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;
-      font-size: 22px; flex-shrink: 0; box-shadow: inset 0 0 15px rgba(255,255,255,0.05);
-    }
-    .ex-title { font-size: 18px; font-weight: 700; color: #ffffff; margin: 0 0 4px 0; letter-spacing: -0.3px; }
-    .ex-type { font-size: 12px; color: #64748b; font-weight: 500; }
-
-    .ex-badge {
-      font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 99px;
-      display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0.5px; text-transform: uppercase;
-    }
-    .badge-cex { background: rgba(0, 240, 255, 0.1); color: var(--neon-cyan); border: 1px solid rgba(0, 240, 255, 0.3); }
-    .badge-dex { background: rgba(0, 255, 136, 0.1); color: var(--neon-green); border: 1px solid rgba(0, 255, 136, 0.3); }
-
-    .ex-address-pill {
-      display: flex; justify-content: space-between; align-items: center;
-      background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 10px; padding: 8px 12px; margin-bottom: 16px;
-      font-family: var(--font-mono); font-size: 12px; color: #cbd5e1;
-    }
-    .copy-btn {
-      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8;
-      font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: 0.2s;
-    }
-    .copy-btn:hover { background: var(--neon-cyan); color: #000; border-color: var(--neon-cyan); }
-
-    .ex-metrics-box {
-      background: rgba(10, 15, 24, 0.7); border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 14px; padding: 16px; margin-bottom: 18px;
-    }
-    .metric-main-val {
-      font-size: 24px; font-weight: 800; font-family: var(--font-mono); color: #ffffff;
-      margin-bottom: 2px;
-    }
-    .metric-sub-val {
-      font-size: 12px; font-family: var(--font-mono); color: #64748b; margin-bottom: 12px;
+    .asset-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
     }
 
-    /* Ratio Bar */
-    .flow-ratio-label { display: flex; justify-content: space-between; font-size: 11px; font-family: var(--font-mono); margin-bottom: 6px; }
-    .ratio-bar {
-      height: 6px; width: 100%; background: rgba(255,255,255,0.05); border-radius: 99px; overflow: hidden;
-      display: flex; gap: 2px;
-    }
-    .ratio-in { background: var(--neon-green); height: 100%; transition: width 1s ease; }
-    .ratio-out { background: var(--neon-pink); height: 100%; transition: width 1s ease; }
-
-    /* Action Buttons Grid */
-    .ex-btn-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto;
-    }
-    .btn-cyber {
-      background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);
-      color: #cbd5e1; font-size: 12px; font-weight: 600; padding: 10px 12px;
-      border-radius: 10px; cursor: pointer; transition: all 0.25s ease;
-      display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;
-    }
-    .btn-cyber:hover {
-      background: rgba(0, 240, 255, 0.1); border-color: var(--neon-cyan); color: var(--neon-cyan);
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
-    }
-    .btn-cyber.glow {
-      background: rgba(0, 240, 255, 0.12); border-color: rgba(0, 240, 255, 0.35); color: var(--neon-cyan);
-    }
-    .btn-cyber.glow:hover {
-      background: var(--neon-cyan); color: #000; font-weight: 700;
-      box-shadow: 0 0 25px rgba(0, 240, 255, 0.5); transform: scale(1.02);
+    .asset-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
     }
 
-    /* Modal Styling */
+    .asset-symbol {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .price-change-badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+    }
+
+    .badge-up {
+      background: rgba(34, 197, 94, 0.12);
+      color: var(--green-up);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .badge-down {
+      background: rgba(239, 68, 68, 0.12);
+      color: var(--red-down);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .metric-price {
+      font-size: 24px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--text-main);
+      margin-bottom: 14px;
+    }
+
+    .metric-details {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 12px;
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .detail-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .detail-val {
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: #cbd5e1;
+      margin-top: 2px;
+    }
+
+    /* ── Market Explorer Table ─────────────────────────────── */
+    .table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow-x: auto;
+      margin-bottom: 48px;
+    }
+
+    .market-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    .market-table th {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    .market-table td {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    .market-table tr:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .tbl-asset {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+    }
+
+    .tbl-asset-img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+    }
+
+    .tbl-mono {
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .btn-view-chart {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid var(--border-accent);
+      color: var(--accent-blue);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-view-chart:hover {
+      background: var(--accent-blue);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+    }
+
+    /* ── Directory Tabs & Cards ───────────────────────────── */
+    .directory-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .tab-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--border-accent);
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #fff;
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.35);
+    }
+
+    .directory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .dir-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.25s ease;
+    }
+
+    .dir-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), 0 0 15px rgba(59, 130, 246, 0.1);
+    }
+
+    .dir-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .dir-platform-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dir-platform-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      border: 1px solid var(--border-color);
+    }
+
+    .dir-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .dir-cat-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .dir-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .btn-open-link {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-open-link:hover {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+    }
+
+    /* ── Modal for TradingView / DexScreener Chart ─────────── */
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
-      display: none; align-items: center; justify-content: center; z-index: 1000;
-    }
-    .modal-glass {
-      background: rgba(15, 22, 34, 0.95); border: 1px solid var(--neon-cyan);
-      border-radius: 24px; width: 100%; max-width: 540px;
-      padding: 32px; position: relative; box-shadow: 0 0 50px rgba(0,240,255,0.25);
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 99999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
     }
 
-    /* Mobile Responsive Optimizations for Intel Exchange */
-    @media (max-width: 768px) {
-      .exchange-grid { grid-template-columns: 1fr !important; gap: 16px; }
-      .modern-search { width: 100% !important; max-width: 100% !important; }
-      .modern-search:focus-within { width: 100% !important; }
-      .network-ticker { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 8px 12px; }
-      .control-bar { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; padding: 12px !important; }
-      .pills-container { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; width: 100%; }
-      .pill-btn { flex: 1 1 45%; text-align: center; font-size: 11px; padding: 8px 10px; }
-      .hero-banner { flex-direction: column !important; gap: 20px !important; padding: 20px !important; text-align: center; }
-      .stats-grid { grid-template-columns: 1fr 1fr !important; width: 100% !important; }
-      .ex-card { padding: 18px !important; }
-      .ex-btn-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-      .btn-cyber { font-size: 11px; padding: 8px 10px; }
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border-accent);
+      border-radius: 24px;
+      max-width: 1100px;
+      width: 100%;
+      height: 80vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(59, 130, 246, 0.25);
     }
-    @media (max-width: 480px) {
-      .stats-grid { grid-template-columns: 1fr !important; }
-      .ex-btn-grid { grid-template-columns: 1fr !important; }
-      .pill-btn { flex: 1 1 100%; }
+
+    .modal-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0e141c;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+    }
+
+    .modal-body {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .chart-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* Responsive Queries */
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .search-container {
+        width: 260px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      .header-nav {
+        padding: 0 16px;
+      }
+      .search-container {
+        display: none;
+      }
     }
   </style>
 </head>
 <body>
 
-<!-- Live Top Network Ticker -->
-<div class="network-ticker">
-  <div class="ticker-items">
-    <div class="ticker-item"><span class="live-dot"></span> <span>TON MAINNET: <strong class="ticker-val">ONLINE 💠</strong></span></div>
-    <div class="ticker-item"><span>TOTAL TRACKED TVL: <strong class="ticker-val">$1,482,500,000 USD</strong></span></div>
-    <div class="ticker-item"><span>24H EXCHANGE VOLUME: <strong class="ticker-val">482.5M GRAM</strong></span></div>
-    <div class="ticker-item"><span>GAS FEE: <strong class="ticker-val">0.025 TON</strong></span></div>
-  </div>
-  <div>
-    <span style="color:#64748b;">AI ANALYTICS ENGINE v8.0 · BUBBLEMAPS INTEGRATED</span>
-  </div>
-</div>
-
-<div class="app-shell">
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <a href="index.html" class="sidebar-logo">
-      <div class="sidebar-logo-icon"><img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Crystal"/></div>
-      <span class="sidebar-logo-text" style="letter-spacing:1px;font-weight:800;">ANLGRAM</span>
-    </a>
-    <nav class="sidebar-nav">
-      <div class="sidebar-section-label">Analytics & Flow</div>
-      <a href="dashboard.html" class="nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        Dashboard
+  <!-- ── 1. Header Navbar ─────────────────────────────────── -->
+  <header class="header-nav">
+    <div class="nav-left">
+      <a href="index.html" class="brand-logo">
+        <img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Crystal" />
+        <span>ANLGRAM</span>
       </a>
-      <a href="explorer.html" class="nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        Entity Explorer
-      </a>
-      <a href="visualizer.html" class="nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49"/></svg>
-        Flow Visualizer
-      </a>
-      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Enterprise</div>
-      <a href="memecoin-platform.html" class="nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>
-        Memecoin Platform
-      </a>
+      <span class="brand-badge">Intel Exchange</span>
 
-      <div class="sidebar-section-label" style="margin-top:var(--space-4);">On-Chain Intelligence</div>
-      <a href="intel-exchange.html" class="nav-item active" style="background:rgba(0, 240, 255, 0.1);border-left:3px solid var(--neon-cyan);color:var(--neon-cyan);">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-        Exchange Intel Hub
-      </a>
-      <a href="alerts.html" class="nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        Live Alerts
-      </a>
-    </nav>
-  </aside>
-
-  <main class="main-content">
-    <header class="topbar" style="background:transparent;border-bottom:none;margin-bottom:12px;">
-      <div style="flex:1;"></div>
-      <div class="topbar-actions">
-        <button class="btn btn-primary btn-sm" id="topbarWalletBtn"  style="border-radius:10px;padding:8px 18px;font-weight:700;box-shadow:0 0 20px rgba(0,240,255,0.3);">💠 Connect Web3 Wallet</button>
-      </div>
-    </header>
-
-    <div class="page-content" style="padding-top:0;">
-      
-      <!-- Hero Banner -->
-      <div class="hero-banner animate-fade-up">
-        <div>
-          <span class="badge badge-cex" style="margin-bottom:12px;"><span class="live-dot"></span> LIVE ON-CHAIN ANALYSIS</span>
-          <h1 class="hero-title">CEX & DEX Intelligence Hub</h1>
-          <p class="hero-subtitle">Real-time surveillance directory of verified Centralized (CEX) hot wallets, Decentralized (DEX) liquidity routers, and OTC multi-sig custody vaults across the TON ecosystem.</p>
-        </div>
-        <div class="stats-grid">
-          <div class="stat-widget">
-            <span class="stat-widget-val">235.4M</span>
-            <span class="stat-widget-lbl">Tracked GRAM</span>
-          </div>
-          <div class="stat-widget">
-            <span class="stat-widget-val">12</span>
-            <span class="stat-lbl stat-widget-lbl">Verified Wallets</span>
-          </div>
-          <div class="stat-widget">
-            <span class="stat-widget-val">$482.5M</span>
-            <span class="stat-widget-lbl">24h Vol (USD)</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 🤖 AI Agent-Reach Web & Social Sentinel Console -->
-      <div class="agent-reach-console animate-fade-up delay-1" style="background:linear-gradient(135deg, rgba(10,10,16,0.9), rgba(15,25,35,0.8)); border:1px solid rgba(0,240,255,0.35); border-radius:24px; padding:24px; margin-bottom:28px; box-shadow:0 0 30px rgba(0,240,255,0.12); position:relative; overflow:hidden;">
-        <div style="position:absolute; top:-40px; right:-40px; width:150px; height:150px; background:radial-gradient(circle, rgba(0,240,255,0.2) 0%, transparent 70%); pointer-events:none;"></div>
-        
-        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:16px;">
-          <div style="display:flex; align-items:center; gap:14px;">
-            <div style="width:48px; height:48px; border-radius:14px; border:1px solid rgba(0,240,255,0.5); display:flex; align-items:center; justify-content:center; box-shadow:0 0 15px rgba(0,240,255,0.3); overflow:hidden;"><img src="assets/images/sentinel-eye.jpg" alt="Sentinel AI Logo" style="width:100%; height:100%; object-fit:cover;"></div>
-            <div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <h2 style="font-size:18px; font-weight:700; color:#fff; margin:0; font-family:var(--font-heading);">AI Agent-Reach Social & Web Sentinel</h2>
-                <span class="badge" style="background:rgba(0,255,102,0.15); color:#00ff66; border:1px solid rgba(0,255,102,0.4); font-size:10px; font-weight:700; padding:2px 8px; border-radius:12px;"><span class="live-dot" style="background:#00ff66;"></span> INSPIRED BY AGENT-REACH</span>
-              </div>
-              <p style="font-size:13px; color:#94a3b8; margin:4px 0 0 0;">Inteligencia web3 sin fronteras: rastreo social en tiempo real sobre Twitter/X, GitHub, Reddit, RSS y Web Search.</p>
-            </div>
-          </div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:12px; color:#64748b; font-family:var(--font-mono);">Estado Nodos: <span style="color:#00f0ff;">5/5 Conectados</span></span>
-          </div>
-        </div>
-
-        <!-- Command Bar & Chips -->
-        <div style="margin-bottom:20px;">
-          <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
-            <div style="flex:1; min-width:260px; position:relative; display:flex; align-items:center;">
-              <span style="position:absolute; left:14px; font-size:16px; color:#00f0ff;">🤖</span>
-              <input type="text" id="agentReachInput" placeholder="E.g., Scan Twitter/X sentiment on GRAM whales today..." style="width:100%; background:#0a0a0f; border:1px solid #252535; border-radius:14px; padding:12px 14px 12px 42px; color:#fff; font-size:13px; outline:none; transition:all 0.2s;" onfocus="this.style.borderColor='#00f0ff'" onblur="this.style.borderColor='#252535'" />
-            </div>
-            <button onclick="runAgentReachScan()" class="btn btn-primary" style="background:linear-gradient(90deg, #0088cc, #00f0ff); color:#000; font-weight:700; border-radius:14px; padding:12px 22px; border:none; cursor:pointer; box-shadow:0 0 20px rgba(0,240,255,0.3); display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; white-space:nowrap;">💠 Run Sentinel</button>
-          </div>
-          <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
-            <span style="font-size:11px; color:#64748b; font-weight:600; text-transform:uppercase;">Quick Scan:</span>
-            <button onclick="setAgentQuery('🐦 Twitter/X: TON and GRAM whale sentiment in the last 24h')" class="agent-chip-btn">🐦 Twitter/X Alpha</button>
-            <button onclick="setAgentQuery('📦 GitHub: Developer activity and commits in TON smart contracts')" class="agent-chip-btn">📦 GitHub Protocol Pulse</button>
-            <button onclick="setAgentQuery('📖 Reddit & V2EX: Community discussions on DeFi liquidity on TON')" class="agent-chip-btn">📖 Reddit / V2EX Pulse</button>
-            <button onclick="setAgentQuery('📡 RSS & Web Search: Latest news and headlines about Telegram & TON ecosystem')" class="agent-chip-btn">📡 RSS & Web Search</button>
-          </div>
-        </div>
-
-        <!-- Live Intelligence Grid -->
-        <div id="agentReachGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:14px;">
-          <!-- Card 1 -->
-          <div class="agent-card" style="background:#0e0e14; border:1px solid #1e1e28; border-radius:16px; padding:16px; position:relative; transition:all 0.2s;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <span style="font-size:12px; font-weight:700; color:#00f0ff; display:flex; align-items:center; gap:6px;">🐦 Twitter/X Alpha</span>
-              <span class="badge" style="background:rgba(0,230,118,0.15); color:#00e676; font-size:10px; padding:2px 6px; border-radius:6px;">🟢 88% Bullish</span>
-            </div>
-            <p style="font-size:12px; color:#e2e8f0; margin:0 0 10px 0; line-height:1.4;">"@TON_blockchain: Major cross-chain liquidity bridge incoming for GRAM token... Massive influx detected."</p>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#64748b; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
-              <span>Mentions: 2,419 / 1h</span>
-              <span style="color:#00f0ff;">✔ Verified</span>
-            </div>
-          </div>
-
-          <!-- Card 2 -->
-          <div class="agent-card" style="background:#0e0e14; border:1px solid #1e1e28; border-radius:16px; padding:16px; position:relative; transition:all 0.2s;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <span style="font-size:12px; font-weight:700; color:#0088CC; display:flex; align-items:center; gap:6px;">📦 GitHub Dev Radar</span>
-              <span class="badge" style="background:rgba(168,85,247,0.15); color:#0088CC; font-size:10px; padding:2px 6px; border-radius:6px;">💠 4 Commits Today</span>
-            </div>
-            <p style="font-size:12px; color:#e2e8f0; margin:0 0 10px 0; line-height:1.4;">anlgram-labs/ANLGRAM: feat(settings): Added custom platform settings modal, themes & address masking.</p>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#64748b; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
-              <span>Activity: High</span>
-              <span style="color:#0088CC;">✔ 100% Build OK</span>
-            </div>
-          </div>
-
-          <!-- Card 3 -->
-          <div class="agent-card" style="background:#0e0e14; border:1px solid #1e1e28; border-radius:16px; padding:16px; position:relative; transition:all 0.2s;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <span style="font-size:12px; font-weight:700; color:#0088CC; display:flex; align-items:center; gap:6px;">📖 Reddit & V2EX Pulse</span>
-              <span class="badge" style="background:rgba(249,115,22,0.15); color:#0088CC; font-size:10px; padding:2px 6px; border-radius:6px;">💠 Hot Topic #1</span>
-            </div>
-            <p style="font-size:12px; color:#e2e8f0; margin:0 0 10px 0; line-height:1.4;">"In-depth analysis: Why on-chain monitoring tools like ANLGRAM are leading in adoption on TON."</p>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#64748b; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
-              <span>342 Upvotes</span>
-              <span style="color:#0088CC;">✔ r/toncoin</span>
-            </div>
-          </div>
-
-          <!-- Card 4 -->
-          <div class="agent-card" style="background:#0e0e14; border:1px solid #1e1e28; border-radius:16px; padding:16px; position:relative; transition:all 0.2s;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <span style="font-size:12px; font-weight:700; color:#00e676; display:flex; align-items:center; gap:6px;">📡 RSS & Web Search</span>
-              <span class="badge" style="background:rgba(0,230,118,0.15); color:#00e676; font-size:10px; padding:2px 6px; border-radius:6px;">📰 Live Intelligence</span>
-            </div>
-            <p style="font-size:12px; color:#e2e8f0; margin:0 0 10px 0; line-height:1.4;">CoinDesk: TON network reaches a new record of active addresses driven by Telegram miniapps.</p>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#64748b; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
-              <span>14 min ago</span>
-              <span style="color:#00e676;">✔ Score: 96/100</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Navigation Pills & Search -->
-      <div class="control-bar animate-fade-up delay-1">
-        <div class="pills-container">
-          <button class="pill-btn active" onclick="filterExchanges('all', this)">🌐 All Entities (8)</button>
-          <button class="pill-btn" onclick="filterExchanges('cex', this)">🏛️ Centralized CEX (5)</button>
-          <button class="pill-btn" onclick="filterExchanges('dex', this)">💠 Decentralized DEX (3)</button>
-        </div>
-
-        <div class="modern-search">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="searchInput" placeholder="Search entity name or TON address..." oninput="handleSearch()">
-        </div>
-      </div>
-
-      <!-- MAIN EXCHANGE CARDS GRID -->
-      <div id="exchangesGrid" class="exchange-grid animate-fade-up delay-2">
-        
-        <!-- Binance Card -->
-        <div class="ex-card" data-category="cex" data-name="binance hot wallet 7">
-          <div class="ex-header">
-            <div class="ex-id-row">
-              <div class="ex-icon" style="background:rgba(243,186,47,0.12); border-color:rgba(243,186,47,0.35);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 1.5L6.75 6.75L12 12L17.25 6.75L12 1.5ZM3 10.5L0 13.5L3 16.5L6 13.5L3 10.5ZM12 15L6.75 20.25L12 25.5L17.25 20.25L12 15ZM21 10.5L18 13.5L21 16.5L24 13.5L21 10.5ZM12 10.5L9.75 12.75L12 15L14.25 12.75L12 10.5Z" fill="#F3BA2F"/></svg></div>
-              <div>
-                <h3 class="ex-title">Binance Hot Wallet 7</h3>
-                <span class="ex-type">Tier-1 Centralized Exchange</span>
-              </div>
-            </div>
-            <span class="ex-badge badge-cex"><span class="live-dot" style="width:5px;height:5px;"></span> Verified CEX</span>
-          </div>
-          
-          <div class="ex-address-pill">
-            <span>EQCD39VS...4bpAOg8xqB2N</span>
-            <button class="copy-btn" onclick="copyAddr('EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N')">📋 Copy</button>
-          </div>
-
-          <div class="ex-metrics-box">
-            <div class="metric-main-val">45,892,000 <span style="font-size:16px;color:var(--neon-cyan);">GRAM</span></div>
-            <div class="metric-sub-val">≈ $113,353,240 USD · 1,420 TXs / 24h</div>
-            
-            <div class="flow-ratio-label">
-              <span style="color:var(--neon-green);">▲ In: 60% (+1.24M)</span>
-              <span style="color:var(--neon-pink);">▼ Out: 40% (-840k)</span>
-            </div>
-            <div class="ratio-bar">
-              <div class="ratio-in" style="width: 60%;"></div>
-              <div class="ratio-out" style="width: 40%;"></div>
-            </div>
-          </div>
-
-          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Primary deposit aggregation and high-frequency withdrawal routing wallet for Binance retail & VIP institutional traders on TON.</p>
-
-          <div class="ex-btn-grid">
-            <a href="visualizer.html?target=EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" class="btn-cyber glow">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('Binance Hot Wallet 7', 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', '45,892,000 GRAM', '+1.24M / -840k')" class="btn-cyber">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" class="btn-cyber">💠 Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" target="_blank" class="btn-cyber">Tonviewer ↗</a>
-          </div>
-        </div>
-
-        <!-- OKX Card -->
-        <div class="ex-card" data-category="cex" data-name="okx deposit router">
-          <div class="ex-header">
-            <div class="ex-id-row">
-              <div class="ex-icon" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.25);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3.75 3.75H10.5V10.5H3.75V3.75ZM13.5 3.75H20.25V10.5H13.5V3.75ZM3.75 13.5H10.5V20.25H3.75V13.5ZM13.5 13.5H20.25V20.25H13.5V13.5Z" fill="#FFFFFF"/><path d="M7.125 7.125H10.5V10.5H7.125V7.125ZM16.875 16.875H20.25V20.25H16.875V16.875Z" fill="#00CFFF"/></svg></div>
-              <div>
-                <h3 class="ex-title">OKX Main Deposit Router</h3>
-                <span class="ex-type">Tier-1 Centralized Exchange</span>
-              </div>
-            </div>
-            <span class="ex-badge badge-cex"><span class="live-dot" style="width:5px;height:5px;"></span> Verified CEX</span>
-          </div>
-          
-          <div class="ex-address-pill">
-            <span>EQAFR7An...Y1_SemnW</span>
-            <button class="copy-btn" onclick="copyAddr('EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW')">📋 Copy</button>
-          </div>
-
-          <div class="ex-metrics-box">
-            <div class="metric-main-val">28,450,000 <span style="font-size:16px;color:var(--neon-cyan);">GRAM</span></div>
-            <div class="metric-sub-val">≈ $70,271,500 USD · 890 TXs / 24h</div>
-            
-            <div class="flow-ratio-label">
-              <span style="color:var(--neon-green);">▲ In: 59% (+890k)</span>
-              <span style="color:var(--neon-pink);">▼ Out: 41% (-620k)</span>
-            </div>
-            <div class="ratio-bar">
-              <div class="ratio-in" style="width: 59%;"></div>
-              <div class="ratio-out" style="width: 41%;"></div>
-            </div>
-          </div>
-
-          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Core deposit gateway routing institutional inflows directly into OKX multi-sig cold custody vaults.</p>
-
-          <div class="ex-btn-grid">
-            <a href="visualizer.html?target=EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW" class="btn-cyber glow">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('OKX Main Deposit Router', 'EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW', '28,450,000 GRAM', '+890k / -620k')" class="btn-cyber">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW" class="btn-cyber">💠 Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQAFR7AngmwXM3gOuDI0GnrRoq63Ni4LAWIm_R1YD1_SemnW" target="_blank" class="btn-cyber">Tonviewer ↗</a>
-          </div>
-        </div>
-
-        <!-- Ston.fi Card -->
-        <div class="ex-card" data-category="dex" data-name="ston.fi dex router & amm">
-          <div class="ex-header">
-            <div class="ex-id-row">
-              <div class="ex-icon" style="background:rgba(0,136,204,0.15); border-color:rgba(0,136,204,0.4);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 8L12 14L22 8L12 2Z" fill="#00CFFF"/><path d="M2 12L12 18L22 12" stroke="#0088CC" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 16L12 22L22 16" stroke="#00CFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-              <div>
-                <h3 class="ex-title">Ston.fi DEX Router & AMM</h3>
-                <span class="ex-type">Automated Market Maker (AMM)</span>
-              </div>
-            </div>
-            <span class="ex-badge badge-dex"><span class="live-dot" style="width:5px;height:5px;background:var(--neon-green);"></span> Top DEX Pool</span>
-          </div>
-          
-          <div class="ex-address-pill">
-            <span>EQB3ncyB...aiU71gc4TiUt</span>
-            <button class="copy-btn" onclick="copyAddr('EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt')">📋 Copy</button>
-          </div>
-
-          <div class="ex-metrics-box">
-            <div class="metric-main-val">64,200,000 <span style="font-size:16px;color:var(--neon-green);">GRAM TVL</span></div>
-            <div class="metric-sub-val">≈ $158,574,000 USD · 4,820 Swaps / 24h</div>
-            
-            <div class="flow-ratio-label">
-              <span style="color:var(--neon-green);">▲ Buy Vol: 55% ($10.1M)</span>
-              <span style="color:var(--neon-pink);">▼ Sell Vol: 45% ($8.3M)</span>
-            </div>
-            <div class="ratio-bar">
-              <div class="ratio-in" style="width: 55%;"></div>
-              <div class="ratio-out" style="width: 45%;"></div>
-            </div>
-          </div>
-
-          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Primary Automated Market Maker contract handling token swaps, LP routing, and farming yield distributions.</p>
-
-          <div class="ex-btn-grid">
-            <a href="visualizer.html?target=EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt" class="btn-cyber glow">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('Ston.fi DEX Router & AMM', 'EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt', '64,200,000 GRAM', '$18.4M Vol / 4.8k TXs')" class="btn-cyber">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt" class="btn-cyber">💠 Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt" target="_blank" class="btn-cyber">Tonviewer ↗</a>
-          </div>
-        </div>
-
-        <!-- DeDust Card -->
-        <div class="ex-card" data-category="dex" data-name="dedust protocol router">
-          <div class="ex-header">
-            <div class="ex-id-row">
-              <div class="ex-icon" style="background:rgba(0,207,255,0.15); border-color:rgba(0,207,255,0.4);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#00CFFF" stroke-width="2.5" stroke-dasharray="6 4"/><path d="M12 7V12L15.5 15.5" stroke="#0088CC" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="12" r="3" fill="#00CFFF"/></svg></div>
-              <div>
-                <h3 class="ex-title">DeDust Protocol Router</h3>
-                <span class="ex-type">DEX Protocol Vaults</span>
-              </div>
-            </div>
-            <span class="ex-badge badge-dex"><span class="live-dot" style="width:5px;height:5px;background:var(--neon-green);"></span> Top DEX Pool</span>
-          </div>
-          
-          <div class="ex-address-pill">
-            <span>EQD8HuDf...2uOccgD</span>
-            <button class="copy-btn" onclick="copyAddr('EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD')">📋 Copy</button>
-          </div>
-
-          <div class="ex-metrics-box">
-            <div class="metric-main-val">41,100,000 <span style="font-size:16px;color:var(--neon-green);">GRAM TVL</span></div>
-            <div class="metric-sub-val">≈ $101,517,000 USD · 3,150 Swaps / 24h</div>
-            
-            <div class="flow-ratio-label">
-              <span style="color:var(--neon-green);">▲ Buy Vol: 52% ($6.3M)</span>
-              <span style="color:var(--neon-pink);">▼ Sell Vol: 48% ($5.8M)</span>
-            </div>
-            <div class="ratio-bar">
-              <div class="ratio-in" style="width: 52%;"></div>
-              <div class="ratio-out" style="width: 48%;"></div>
-            </div>
-          </div>
-
-          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Advanced DEX routing engine and liquidity vault supporting stable pools and volatile token arbitrage pairs.</p>
-
-          <div class="ex-btn-grid">
-            <a href="visualizer.html?target=EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD" class="btn-cyber glow">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('DeDust Protocol Router', 'EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD', '41,100,000 GRAM', '$12.1M Vol / 3.1k TXs')" class="btn-cyber">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD" class="btn-cyber">💠 Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQD8HuDfZsU2JytXStq2TxkdlI9hSxF_PBsHfe1N02uOccgD" target="_blank" class="btn-cyber">Tonviewer ↗</a>
-          </div>
-        </div>
-
-        <!-- Bybit Card -->
-        <div class="ex-card" data-category="cex" data-name="bybit institutional hot wallet">
-          <div class="ex-header">
-            <div class="ex-id-row">
-              <div class="ex-icon" style="background:rgba(255,177,26,0.12); border-color:rgba(255,177,26,0.35);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M5 4.5H19V8.5H10.5L19 15.5V19.5H5V15.5H13.5L5 8.5V4.5Z" fill="#FFB11A"/><path d="M13.5 12.5H19V19.5H5V15.5H13.5V12.5Z" fill="#00CFFF"/></svg></div>
-              <div>
-                <h3 class="ex-title">Bybit Institutional Hot</h3>
-                <span class="ex-type">Centralized Derivatives CEX</span>
-              </div>
-            </div>
-            <span class="ex-badge badge-cex"><span class="live-dot" style="width:5px;height:5px;"></span> Verified CEX</span>
-          </div>
-          
-          <div class="ex-address-pill">
-            <span>EQCDpBum...GjDqwgp3wM</span>
-            <button class="copy-btn" onclick="copyAddr('EQCDpBumxFxqYd9CdUJDBI03t0Q6I6iF12O3OJGjDqwgp3wM')">📋 Copy</button>
-          </div>
-
-          <div class="ex-metrics-box">
-            <div class="metric-main-val">19,500,000 <span style="font-size:16px;color:var(--neon-cyan);">GRAM</span></div>
-            <div class="metric-sub-val">≈ $48,165,000 USD · 520 TXs / 24h</div>
-            
-            <div class="flow-ratio-label">
-              <span style="color:var(--neon-green);">▲ In: 63% (+520k)</span>
-              <span style="color:var(--neon-pink);">▼ Out: 37% (-310k)</span>
-            </div>
-            <div class="ratio-bar">
-              <div class="ratio-in" style="width: 63%;"></div>
-              <div class="ratio-out" style="width: 37%;"></div>
-            </div>
-          </div>
-
-          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">High-frequency collateral and settlement wallet supporting Bybit spot and margin derivatives settlements.</p>
-
-          <div class="ex-btn-grid">
-            <a href="visualizer.html?target=EQCDpBumxFxqYd9CdUJDBI03t0Q6I6iF12O3OJGjDqwgp3wM" class="btn-cyber glow">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('Bybit Institutional Hot', 'EQCDpBumxFxqYd9CdUJDBI03t0Q6I6iF12O3OJGjDqwgp3wM', '19,500,000 GRAM', '+520k / -310k')" class="btn-cyber">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQCDpBumxFxqYd9CdUJDBI03t0Q6I6iF12O3OJGjDqwgp3wM" class="btn-cyber">💠 Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQCDpBumxFxqYd9CdUJDBI03t0Q6I6iF12O3OJGjDqwgp3wM" target="_blank" class="btn-cyber">Tonviewer ↗</a>
-          </div>
-        </div>
-
-        <!-- Gate.io Card -->
-        <div class="ex-card" data-category="cex" data-name="gate.io deposit gateway">
-          <div class="ex-header">
-            <div class="ex-id-row">
-              <div class="ex-icon" style="background:rgba(16,185,129,0.12); border-color:rgba(16,185,129,0.35);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#10B981" stroke-width="2.5"/><path d="M12 6V18M6 12H18" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="12" r="4" fill="#00CFFF"/></svg></div>
-              <div>
-                <h3 class="ex-title">Gate.io Deposit Gateway</h3>
-                <span class="ex-type">Centralized Exchange Gateway</span>
-              </div>
-            </div>
-            <span class="ex-badge badge-cex"><span class="live-dot" style="width:5px;height:5px;"></span> Verified CEX</span>
-          </div>
-          
-          <div class="ex-address-pill">
-            <span>EQAaJMOp...Fwoq0hn</span>
-            <button class="copy-btn" onclick="copyAddr('EQAaJMOp73Mk9jbjCJdb80IkDzYhuGnbVG1UB79XqFwoq0hn')">📋 Copy</button>
-          </div>
-
-          <div class="ex-metrics-box">
-            <div class="metric-main-val">8,900,000 <span style="font-size:16px;color:var(--neon-cyan);">GRAM</span></div>
-            <div class="metric-sub-val">≈ $21,983,000 USD · 610 TXs / 24h</div>
-            
-            <div class="flow-ratio-label">
-              <span style="color:var(--neon-green);">▲ In: 51% (+410k)</span>
-              <span style="color:var(--neon-pink);">▼ Out: 49% (-390k)</span>
-            </div>
-            <div class="ratio-bar">
-              <div class="ratio-in" style="width: 51%;"></div>
-              <div class="ratio-out" style="width: 49%;"></div>
-            </div>
-          </div>
-
-          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Active aggregation gateway processing retail user deposits and sweeping balances into cold storage.</p>
-
-          <div class="ex-btn-grid">
-            <a href="visualizer.html?target=EQAaJMOp73Mk9jbjCJdb80IkDzYhuGnbVG1UB79XqFwoq0hn" class="btn-cyber glow">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('Gate.io Deposit Gateway', 'EQAaJMOp73Mk9jbjCJdb80IkDzYhuGnbVG1UB79XqFwoq0hn', '8,900,000 GRAM', '+410k / -390k')" class="btn-cyber">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQAaJMOp73Mk9jbjCJdb80IkDzYhuGnbVG1UB79XqFwoq0hn" class="btn-cyber">💠 Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQAaJMOp73Mk9jbjCJdb80IkDzYhuGnbVG1UB79XqFwoq0hn" target="_blank" class="btn-cyber">Tonviewer ↗</a>
-          </div>
-        </div>
-
-        <!-- MEXC Card -->
-        <div class="ex-card" data-category="cex" data-name="mexc global hot wallet">
-          <div class="ex-header">
-            <div class="ex-id-row">
-              <div class="ex-icon" style="background:rgba(6,182,212,0.15); border-color:rgba(6,182,212,0.4);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3 18V6l6 6 6-6v12h-3V11l-3 3-3-3v7H3z" fill="#06B6D4"/><path d="M18 18V6h3v12h-3z" fill="#0088CC"/><circle cx="15.5" cy="10" r="2" fill="#00CFFF"/></svg></div>
-              <div>
-                <h3 class="ex-title">MEXC Global Hot Wallet</h3>
-                <span class="ex-type">Centralized Exchange (CEX)</span>
-              </div>
-            </div>
-            <span class="ex-badge badge-cex"><span class="live-dot" style="width:5px;height:5px;"></span> Verified CEX</span>
-          </div>
-          
-          <div class="ex-address-pill">
-            <span>EQDycARM...j8wvU9</span>
-            <button class="copy-btn" onclick="copyAddr('EQDycARMluEx6b51uYJzK-86koL86pj6bHH846swnij8wvU9')">📋 Copy</button>
-          </div>
-
-          <div class="ex-metrics-box">
-            <div class="metric-main-val">6,200,000 <span style="font-size:16px;color:var(--neon-cyan);">GRAM</span></div>
-            <div class="metric-sub-val">≈ $15,314,000 USD · 410 TXs / 24h</div>
-            
-            <div class="flow-ratio-label">
-              <span style="color:var(--neon-green);">▲ In: 45% (+350k)</span>
-              <span style="color:var(--neon-pink);">▼ Out: 55% (-420k)</span>
-            </div>
-            <div class="ratio-bar">
-              <div class="ratio-in" style="width: 45%;"></div>
-              <div class="ratio-out" style="width: 55%;"></div>
-            </div>
-          </div>
-
-          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Active hot wallet for rapid token listings, quick user withdrawals, and cross-market arbitrage.</p>
-
-          <div class="ex-btn-grid">
-            <a href="visualizer.html?target=EQDycARMluEx6b51uYJzK-86koL86pj6bHH846swnij8wvU9" class="btn-cyber glow">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('MEXC Global Hot Wallet', 'EQDycARMluEx6b51uYJzK-86koL86pj6bHH846swnij8wvU9', '6,200,000 GRAM', '+350k / -420k')" class="btn-cyber">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQDycARMluEx6b51uYJzK-86koL86pj6bHH846swnij8wvU9" class="btn-cyber">💠 Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQDycARMluEx6b51uYJzK-86koL86pj6bHH846swnij8wvU9" target="_blank" class="btn-cyber">Tonviewer ↗</a>
-          </div>
-        </div>
-
-        <!-- Megaton Card -->
-        <div class="ex-card" data-category="dex" data-name="megaton finance dex vault">
-          <div class="ex-header">
-            <div class="ex-id-row">
-              <div class="ex-icon" style="background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.4);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" stroke="#3B82F6" stroke-width="2" stroke-linejoin="round"/><path d="M12 7L7 12L12 17L17 12L12 7Z" fill="#00CFFF"/><path d="M12 2V7M2 7L7 12M22 7L17 12M12 22V17" stroke="#3B82F6" stroke-width="1.5"/></svg></div>
-              <div>
-                <h3 class="ex-title">Megaton DEX Vault</h3>
-                <span class="ex-type">Decentralized Yield Protocol</span>
-              </div>
-            </div>
-            <span class="ex-badge badge-dex"><span class="live-dot" style="width:5px;height:5px;background:var(--neon-green);"></span> Yield Pool</span>
-          </div>
-          
-          <div class="ex-address-pill">
-            <span>EQCD39VS...4bpAOg8xqB2N</span>
-            <button class="copy-btn" onclick="copyAddr('EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N')">📋 Copy</button>
-          </div>
-
-          <div class="ex-metrics-box">
-            <div class="metric-main-val">12,800,000 <span style="font-size:16px;color:var(--neon-green);">GRAM TVL</span></div>
-            <div class="metric-sub-val">≈ $31,616,000 USD · 940 Swaps / 24h</div>
-            
-            <div class="flow-ratio-label">
-              <span style="color:var(--neon-green);">▲ Staked: 68% ($2.5M)</span>
-              <span style="color:var(--neon-pink);">▼ Unstaked: 32% ($1.3M)</span>
-            </div>
-            <div class="ratio-bar">
-              <div class="ratio-in" style="width: 68%;"></div>
-              <div class="ratio-out" style="width: 32%;"></div>
-            </div>
-          </div>
-
-          <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">Decentralized yield farming vault and liquidity reward distribution smart contract on TON network.</p>
-
-          <div class="ex-btn-grid">
-            <a href="visualizer.html?target=EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" class="btn-cyber glow">🕸️ Flow Visualizer</a>
-            <button onclick="openAnalysisModal('Megaton DEX Vault', 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', '12,800,000 GRAM', '$3.8M Vol / 940 TXs')" class="btn-cyber">📊 Analyze Flows</button>
-            <a href="alerts.html?target=EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" class="btn-cyber">💠 Monitor Alerts</a>
-            <a href="https://tonviewer.com/EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" target="_blank" class="btn-cyber">Tonviewer ↗</a>
-          </div>
-        </div>
-
+      <!-- Universal Search -->
+      <div class="search-container">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="universalSearchInput" class="search-input" placeholder="Search tokens, DEX, CEX, wallets, pools..." oninput="handleUniversalSearch()" />
       </div>
     </div>
-  </main>
-</div>
 
-<!-- ON-CHAIN ANALYSIS MODAL -->
-<div id="analysisModal" class="modal-overlay">
-  <div class="modal-glass animate-scale-in">
-    <button style="position:absolute;top:24px;right:24px;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:20px;" onclick="document.getElementById('analysisModal').style.display='none'">✕</button>
-    
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
-      <div style="width:48px;height:48px;border-radius:14px;background:rgba(0,240,255,0.15);border:1px solid var(--neon-cyan);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px rgba(0,240,255,0.2);">🛡️</div>
+    <div class="nav-right nav-cta topbar-actions">
+      <!-- Settings Trigger -->
+      <button class="nav-btn" onclick="openSettingsModal()" title="Ajustes">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06-.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06-.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+
+      <!-- Connect Wallet Button -->
+      <button id="topbarWalletBtn" class="nav-btn connect-wallet-btn" style="background:var(--accent-blue); border-color:var(--accent-blue);">
+        Connect Wallet
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Main Terminal Body ──────────────────────────────── -->
+  <main class="main-container">
+
+    <!-- ── 2. Dashboard Top Metric Cards ──────────────────── -->
+    <div class="section-header-wrap">
       <div>
-        <h3 style="color:white;font-size:20px;font-weight:800;margin:0;" id="modalExName">Exchange Analysis</h3>
-        <span style="font-size:13px;color:var(--neon-cyan);font-family:var(--font-mono);" id="modalExAddr">EQ...</span>
+        <h2 class="section-title">📊 Live Market Terminal</h2>
+        <span class="section-subtitle">Real-time quotes auto-refreshed every 30 seconds via public DEX/CEX aggregators.</span>
       </div>
     </div>
 
-    <div style="background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px;margin-bottom:20px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
-        <span style="font-size:13px;color:#94a3b8;">Current Balance / TVL:</span>
-        <strong style="color:var(--neon-cyan);font-family:var(--font-mono);font-size:15px;" id="modalExBal">0 GRAM</strong>
+    <div class="dashboard-grid">
+      <!-- Bitcoin -->
+      <div class="metric-card">
+        <div class="metric-header">
+          <div class="asset-info">
+            <div class="asset-icon" style="background:#f7931a; color:#fff;">₿</div>
+            <div>
+              <div class="asset-name">Bitcoin</div>
+              <div class="asset-symbol">BTC / USD</div>
+            </div>
+          </div>
+          <span class="price-change-badge badge-up" id="btc-change">+2.45%</span>
+        </div>
+        <div class="metric-price" id="btc-price">$64,850.00</div>
+        <div class="metric-details">
+          <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="btc-mcap">$1.28T</span></div>
+          <div class="detail-item"><span class="detail-label">24h Vol</span><span class="detail-val" id="btc-vol">$28.4B</span></div>
+          <div class="detail-item"><span class="detail-label">Dominance</span><span class="detail-val">54.2%</span></div>
+        </div>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
-        <span style="font-size:13px;color:#94a3b8;">24h Flow Velocity:</span>
-        <strong style="color:white;font-family:var(--font-mono);font-size:14px;" id="modalExFlow">0 / 0</strong>
+
+      <!-- Ethereum -->
+      <div class="metric-card">
+        <div class="metric-header">
+          <div class="asset-info">
+            <div class="asset-icon" style="background:#627eea; color:#fff;">Ξ</div>
+            <div>
+              <div class="asset-name">Ethereum</div>
+              <div class="asset-symbol">ETH / USD</div>
+            </div>
+          </div>
+          <span class="price-change-badge badge-up" id="eth-change">+1.82%</span>
+        </div>
+        <div class="metric-price" id="eth-price">$3,480.50</div>
+        <div class="metric-details">
+          <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="eth-mcap">$418.2B</span></div>
+          <div class="detail-item"><span class="detail-label">24h Vol</span><span class="detail-val" id="eth-vol">$14.1B</span></div>
+          <div class="detail-item"><span class="detail-label">Dominance</span><span class="detail-val">17.8%</span></div>
+        </div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-size:13px;color:#94a3b8;">On-Chain Health Score:</span>
-        <span class="ex-badge badge-dex" style="background:rgba(0,255,136,0.15);color:#00ff88;">99/100 · Verified CEX/DEX</span>
+
+      <!-- Toncoin -->
+      <div class="metric-card">
+        <div class="metric-header">
+          <div class="asset-info">
+            <div class="asset-icon" style="background:#0088cc; color:#fff;">💎</div>
+            <div>
+              <div class="asset-name">Toncoin</div>
+              <div class="asset-symbol">TON / USD</div>
+            </div>
+          </div>
+          <span class="price-change-badge badge-up" id="ton-change">+5.14%</span>
+        </div>
+        <div class="metric-price" id="ton-price">$6.85</div>
+        <div class="metric-details">
+          <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="ton-mcap">$16.8B</span></div>
+          <div class="detail-item"><span class="detail-label">24h Vol</span><span class="detail-val" id="ton-vol">$420M</span></div>
+          <div class="detail-item"><span class="detail-label">Liquidity</span><span class="detail-val">$85M</span></div>
+        </div>
+      </div>
+
+      <!-- ANLGRAM -->
+      <div class="metric-card" style="border-color:var(--border-accent); background:linear-gradient(180deg, #121821 0%, #151e2b 100%);">
+        <div class="metric-header">
+          <div class="asset-info">
+            <div class="asset-icon" style="background:var(--accent-blue); color:#fff;">⚡</div>
+            <div>
+              <div class="asset-name">ANLGRAM</div>
+              <div class="asset-symbol">ANLGRAM / TON</div>
+            </div>
+          </div>
+          <span class="price-change-badge badge-up" id="anl-change">+14.20%</span>
+        </div>
+        <div class="metric-price" id="anl-price">$0.0425</div>
+        <div class="metric-details">
+          <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="anl-mcap">$42.5M</span></div>
+          <div class="detail-item"><span class="detail-label">Liquidity</span><span class="detail-val" id="anl-liq">$8.2M</span></div>
+          <div class="detail-item"><span class="detail-label">Holders</span><span class="detail-val">24.5K</span></div>
+        </div>
       </div>
     </div>
 
-    <h4 style="color:white;font-size:14px;font-weight:700;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;color:#cbd5e1;">Top Cluster Flows (Last 24h)</h4>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;max-height:180px;overflow-y:auto;">
-      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:10px 14px;border-radius:10px;font-size:13px;font-family:var(--font-mono);">
-        <span style="color:#00ff88;">▲ Deposit Cluster #12 (Institutional MM)</span>
-        <span style="color:white;font-weight:700;">+450,000 GRAM</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:10px 14px;border-radius:10px;font-size:13px;font-family:var(--font-mono);">
-        <span style="color:#ff007f;">▼ Withdrawal Cluster #04 (Cold Storage)</span>
-        <span style="color:white;font-weight:700;">-310,000 GRAM</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:10px 14px;border-radius:10px;font-size:13px;font-family:var(--font-mono);">
-        <span style="color:#00ff88;">▲ Arbitrage Bot Routing Pool #08</span>
-        <span style="color:white;font-weight:700;">+185,000 GRAM</span>
+
+    <!-- ── 3. Market Explorer Table ────────────────────────── -->
+    <div class="section-header-wrap">
+      <div>
+        <h2 class="section-title">🔍 Market Explorer</h2>
+        <span class="section-subtitle">Real-time order book monitoring and on-chain DEX/CEX liquidity status.</span>
       </div>
     </div>
 
-    <div style="display:flex;gap:12px;">
-      <button class="btn-cyber" style="flex:1;height:46px;font-size:13px;" onclick="exportAnalysisCSV()">📥 Export CSV Report</button>
-      <button class="btn-cyber glow" style="flex:1;height:46px;font-size:13px;font-weight:700;" id="btnLaunchFlows">🕸️ Launch Bubble Flow Map</button>
+    <div class="table-container">
+      <table class="market-table" id="marketTable">
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th>Price</th>
+            <th>24h Change</th>
+            <th>7d Change</th>
+            <th>24h Volume</th>
+            <th>Liquidity</th>
+            <th>Market Cap</th>
+            <th>FDV</th>
+            <th>Holders</th>
+            <th>Chain</th>
+            <th>Exchange</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="marketTableBody">
+          <!-- Rows injected dynamically via JS -->
+        </tbody>
+      </table>
+    </div>
+
+
+    <!-- ── 4. Exchange & Tool Directory ───────────────────── -->
+    <div class="section-header-wrap">
+      <div>
+        <h2 class="section-title">🌐 Web3 Institutional Directory</h2>
+        <span class="section-subtitle">46 verified official links to leading DEXs, CEXs, Wallets, Analytics, and Bridges.</span>
+      </div>
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="directory-tabs">
+      <button class="tab-btn active" onclick="filterDirectory('all', this)">All Platforms (46)</button>
+      <button class="tab-btn" onclick="filterDirectory('dex', this)">⚡ DEXs (14)</button>
+      <button class="tab-btn" onclick="filterDirectory('cex', this)">🏦 CEXs (12)</button>
+      <button class="tab-btn" onclick="filterDirectory('wallet', this)">🔑 Wallets (6)</button>
+      <button class="tab-btn" onclick="filterDirectory('analytics', this)">📊 Analytics (10)</button>
+      <button class="tab-btn" onclick="filterDirectory('bridge', this)">🌉 Bridges (4)</button>
+    </div>
+
+    <!-- Grid Container for Directory -->
+    <div class="directory-grid" id="directoryGrid">
+      <!-- Dynamic directory cards injected via JS -->
+    </div>
+
+  </main>
+
+
+  <!-- ── Chart Modal Embed (TradingView / DexScreener) ───── -->
+  <div class="modal-overlay" id="chartModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="chartModalTitle">
+          <img id="chartModalIcon" src="assets/img/anlgram-icon.svg" width="22" height="22" />
+          <span id="chartModalName">ANLGRAM / USD — Live Chart</span>
+        </div>
+        <button class="modal-close" onclick="closeChartModal()">✕</button>
+      </div>
+      <div class="modal-body" id="chartModalBody">
+        <!-- iFrame loaded dynamically -->
+      </div>
     </div>
   </div>
-</div>
 
-<!-- CONNECT WALLET MODAL -->
-<div id="walletModal" class="modal-overlay">
-  <div class="modal-glass animate-scale-in" style="max-width:400px;padding:28px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-      <h3 style="color:white;font-size:18px;font-weight:800;margin:0;">Connect TON Wallet</h3>
-      <button onclick="closeWalletModal()" style="background:none;border:none;color:#888;cursor:pointer;font-size:18px;">✕</button>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:12px;">
-      <div class="ex-card" style="padding:14px;flex-direction:row;align-items:center;justify-content:space-between;cursor:pointer;" onclick="connectWallet('Tonkeeper')">
-        <div style="display:flex;align-items:center;gap:14px;">
-          <div style="width:40px;height:40px;border-radius:12px;background:#0088CC;display:flex;align-items:center;justify-content:center;font-size:20px;color:white;">💎</div>
-          <div><div style="font-weight:700;color:white;font-size:15px;">Tonkeeper</div><div style="font-size:12px;color:#64748b;">Mobile & Desktop</div></div>
+
+  <!-- ── Core JavaScript Terminal Engine ─────────────────── -->
+  <script>
+    // ── Verified Directory Database (46 Official Links) ─────────
+    const DIRECTORY_DATA = [
+      // DEX (14)
+      { name: 'DexScreener', cat: 'dex', desc: 'Real-time DEX analytics, multi-chain charts and token pair data.', url: 'https://dexscreener.com', icon: '📈' },
+      { name: 'DexTools', cat: 'dex', desc: 'Leading DeFi analytics and live price charts for decentralized exchanges.', url: 'https://www.dextools.io', icon: '🛠️' },
+      { name: 'STON.fi', cat: 'dex', desc: 'Zero-fee AMM DEX built specifically for The Open Network (TON).', url: 'https://ston.fi', icon: '💎' },
+      { name: 'DeDust', cat: 'dex', desc: 'Next-generation DEX on TON with advanced liquidity routing.', url: 'https://dedust.io', icon: '🌪️' },
+      { name: 'GeckoTerminal', cat: 'dex', desc: 'Live DEX tracker powered by CoinGecko across 100+ chains.', url: 'https://www.geckoterminal.com', icon: '🦎' },
+      { name: 'Uniswap', cat: 'dex', desc: 'The pioneer decentralized protocol for automated liquidity provision.', url: 'https://app.uniswap.org', icon: '🦄' },
+      { name: 'PancakeSwap', cat: 'dex', desc: 'Leading multi-chain DEX with low fees and yield farming.', url: 'https://pancakeswap.finance', icon: '🥞' },
+      { name: 'Raydium', cat: 'dex', desc: 'On-chain orderbook AMM DEX built on Solana.', url: 'https://raydium.io', icon: '⚡' },
+      { name: 'Orca', cat: 'dex', desc: 'The most user-friendly DEX on Solana with concentrated liquidity.', url: 'https://www.orca.so', icon: '🐋' },
+      { name: 'Jupiter', cat: 'dex', desc: 'Key liquidity aggregator for Solana swaps and perpetuals.', url: 'https://jup.ag', icon: '🪐' },
+      { name: 'Curve', cat: 'dex', desc: 'Deep liquidity pool protocol optimized for stablecoin trading.', url: 'https://curve.fi', icon: '🍌' },
+      { name: 'Balancer', cat: 'dex', desc: 'Programmable liquidity protocol and automated portfolio manager.', url: 'https://balancer.fi', icon: '⚖️' },
+      { name: 'Sushi', cat: 'dex', desc: 'Community-driven multi-chain DEX and cross-chain swap engine.', url: 'https://www.sushi.com', icon: '🍣' },
+      { name: '1inch', cat: 'dex', desc: 'Leading DEX aggregator finding the best rates across protocols.', url: 'https://app.1inch.io', icon: '🦄' },
+
+      // CEX (12)
+      { name: 'Binance', cat: 'cex', desc: 'World’s largest crypto exchange by volume and liquidity.', url: 'https://www.binance.com', icon: '🟡' },
+      { name: 'Coinbase', cat: 'cex', desc: 'Secure, regulated US-based exchange and institutional custodian.', url: 'https://www.coinbase.com', icon: '🔵' },
+      { name: 'Kraken', cat: 'cex', desc: 'Institutional security and fiat spot/futures crypto exchange.', url: 'https://www.kraken.com', icon: '🐙' },
+      { name: 'Bybit', cat: 'cex', desc: 'Top global exchange for derivatives, spot, and TON Web3 ecosystem.', url: 'https://www.bybit.com', icon: '🖤' },
+      { name: 'OKX', cat: 'cex', desc: 'Leading crypto exchange and Web3 self-custodial infrastructure.', url: 'https://www.okx.com', icon: '⬛' },
+      { name: 'MEXC', cat: 'cex', desc: 'High-speed exchange specializing in trending altcoin listings.', url: 'https://www.mexc.com', icon: '💚' },
+      { name: 'Bitget', cat: 'cex', desc: 'Leading copy-trading and spot/futures crypto exchange.', url: 'https://www.bitget.com', icon: '🔷' },
+      { name: 'Gate.io', cat: 'cex', desc: 'Comprehensive exchange with over 1,700 supported crypto assets.', url: 'https://www.gate.io', icon: '🔴' },
+      { name: 'KuCoin', cat: 'cex', desc: 'Global crypto exchange known as the People’s Exchange.', url: 'https://www.kucoin.com', icon: '🟢' },
+      { name: 'HTX', cat: 'cex', desc: 'Established exchange offering digital asset trading services.', url: 'https://www.htx.com', icon: '🔥' },
+      { name: 'BingX', cat: 'cex', desc: 'Social crypto exchange supporting copy trading and derivatives.', url: 'https://bingx.com', icon: '🔵' },
+      { name: 'Crypto.com', cat: 'cex', desc: 'Global crypto app, visa card ecosystem, and institutional hub.', url: 'https://crypto.com', icon: '🛡️' },
+
+      // Wallets (6)
+      { name: 'Tonkeeper', cat: 'wallet', desc: 'The most popular non-custodial wallet for TON and Telegram apps.', url: 'https://tonkeeper.com', icon: '💎' },
+      { name: 'MyTonWallet', cat: 'wallet', desc: 'Feature-rich web & extension wallet for TON with multi-account support.', url: 'https://mytonwallet.io', icon: '🔵' },
+      { name: 'Trust Wallet', cat: 'wallet', desc: 'Multi-chain self-custody wallet supporting millions of assets.', url: 'https://trustwallet.com', icon: '🛡️' },
+      { name: 'MetaMask', cat: 'wallet', desc: 'The leading self-custody Web3 gateway and EVM wallet.', url: 'https://metamask.io', icon: '🦊' },
+      { name: 'Phantom', cat: 'wallet', desc: 'Sleek Web3 wallet for Solana, Ethereum, and Polygon.', url: 'https://phantom.app', icon: '👻' },
+      { name: 'OKX Wallet', cat: 'wallet', desc: 'Universal multi-chain Web3 wallet with built-in DEX aggregator.', url: 'https://www.okx.com/web3', icon: '⬛' },
+
+      // Analytics (10)
+      { name: 'CoinMarketCap', cat: 'analytics', desc: 'The world’s most referenced crypto market data tracker.', url: 'https://coinmarketcap.com', icon: 'Ⓜ️' },
+      { name: 'CoinGecko', cat: 'analytics', desc: 'Independent crypto data aggregator tracking price, volume and market cap.', url: 'https://www.coingecko.com', icon: '🦎' },
+      { name: 'DefiLlama', cat: 'analytics', desc: 'Largest open-source TVL and DeFi analytics aggregator.', url: 'https://defillama.com', icon: '🦙' },
+      { name: 'Arkham', cat: 'analytics', desc: 'AI-powered blockchain intelligence and entity mapping platform.', url: 'https://arkhamintelligence.com', icon: '🦅' },
+      { name: 'Glassnode', cat: 'analytics', desc: 'On-chain market intelligence and financial metrics for Bitcoin & ETH.', url: 'https://glassnode.com', icon: '📈' },
+      { name: 'IntoTheBlock', cat: 'analytics', desc: 'AI on-chain signals, order book analysis, and DeFi insights.', url: 'https://app.intotheblock.com', icon: '🧠' },
+      { name: 'Token Terminal', cat: 'analytics', desc: 'Financial data platform providing traditional financial metrics for crypto.', url: 'https://tokenterminal.com', icon: '📊' },
+      { name: 'Santiment', cat: 'analytics', desc: 'Behavioral analytics platform for crypto market sentiment and social volume.', url: 'https://app.santiment.net', icon: '📡' },
+      { name: 'Messari', cat: 'analytics', desc: 'Institutional crypto research, market data, and governance tracking.', url: 'https://messari.io', icon: '🏛️' },
+      { name: 'Nansen', cat: 'analytics', desc: 'Blockchain analytics platform enriching data with millions of wallet labels.', url: 'https://www.nansen.ai', icon: '🧭' },
+
+      // Bridges (4)
+      { name: 'LayerZero', cat: 'bridge', desc: 'Omnichain interoperability protocol connecting EVM and non-EVM chains.', url: 'https://layerzero.network', icon: '🌐' },
+      { name: 'Stargate', cat: 'bridge', desc: 'Fully composable liquidity transport protocol built on LayerZero.', url: 'https://stargate.finance', icon: '✨' },
+      { name: 'Orbiter', cat: 'bridge', desc: 'Decentralized cross-rollup bridge for Layer 2 Ethereum ecosystem.', url: 'https://www.orbiter.finance', icon: '🛸' },
+      { name: 'Rhino.fi', cat: 'bridge', desc: 'Multi-chain DeFi aggregator and instant cross-chain bridge.', url: 'https://app.rhino.fi', icon: '🦏' }
+    ];
+
+    // ── Table Assets Data ───────────────────────────────────────
+    const MARKET_ASSETS = [
+      { name: 'Bitcoin', symbol: 'BTC', price: 64850.00, change24: 2.45, change7d: 5.80, vol: '$28.4B', liq: '$1.2B', mcap: '$1.28T', fdv: '$1.36T', holders: '52.4M', chain: 'Bitcoin', exchange: 'Binance', tvSymbol: 'BINANCE:BTCUSDT' },
+      { name: 'Ethereum', symbol: 'ETH', price: 3480.50, change24: 1.82, change7d: 4.10, vol: '$14.1B', liq: '$850M', mcap: '$418.2B', fdv: '$418.2B', holders: '118M', chain: 'Ethereum', exchange: 'Coinbase', tvSymbol: 'COINBASE:ETHUSD' },
+      { name: 'Toncoin', symbol: 'TON', price: 6.85, change24: 5.14, change7d: 12.40, vol: '$420M', liq: '$85M', mcap: '$16.8B', fdv: '$34.2B', holders: '8.4M', chain: 'TON', exchange: 'Bybit', tvSymbol: 'BYBIT:TONUSDT' },
+      { name: 'ANLGRAM', symbol: 'ANLGRAM', price: 0.0425, change24: 14.20, change7d: 42.80, vol: '$8.2M', liq: '$8.2M', mcap: '$42.5M', fdv: '$42.5M', holders: '24.5K', chain: 'TON', exchange: 'STON.fi', dexUrl: 'https://dexscreener.com/ton/dedust' },
+      { name: 'Solana', symbol: 'SOL', price: 154.20, change24: -1.15, change7d: 8.90, vol: '$3.8B', liq: '$340M', mcap: '$71.4B', fdv: '$88.5B', holders: '14.2M', chain: 'Solana', exchange: 'Raydium', tvSymbol: 'BINANCE:SOLUSDT' },
+      { name: 'Tether USD', symbol: 'USDT', price: 1.00, change24: 0.01, change7d: 0.02, vol: '$45.2B', liq: '$4.2B', mcap: '$114B', fdv: '$114B', holders: '42M', chain: 'Multi-Chain', exchange: 'Binance', tvSymbol: 'BINANCE:USDTUSD' },
+      { name: 'Notcoin', symbol: 'NOT', price: 0.0124, change24: 8.65, change7d: 18.20, vol: '$180M', liq: '$24M', mcap: '$1.27B', fdv: '$1.27B', holders: '2.8M', chain: 'TON', exchange: 'OKX', tvSymbol: 'OKX:NOTUSDT' },
+      { name: 'Dogs', symbol: 'DOGS', price: 0.00085, change24: -3.40, change7d: 25.40, vol: '$95M', liq: '$12M', mcap: '$440M', fdv: '$440M', holders: '4.1M', chain: 'TON', exchange: 'Bybit', tvSymbol: 'BYBIT:DOGSUSDT' }
+    ];
+
+    // ── Render Directory ───────────────────────────────────────
+    function renderDirectory(data) {
+      const container = document.getElementById('directoryGrid');
+      if (!container) return;
+
+      container.innerHTML = data.map(item => `
+        <div class="dir-card" data-name="${item.name.toLowerCase()}" data-cat="${item.cat}">
+          <div>
+            <div class="dir-card-header">
+              <div class="dir-platform-title">
+                <div class="dir-platform-icon">${item.icon}</div>
+                <div class="dir-name">${item.name}</div>
+              </div>
+              <span class="dir-cat-tag">${item.cat}</span>
+            </div>
+            <div class="dir-desc">${item.desc}</div>
+          </div>
+          <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="btn-open-link">
+            <span>Open ${item.name}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
         </div>
-        <span class="ex-badge badge-cex">Popular</span>
-      </div>
-      <div class="ex-card" style="padding:14px;flex-direction:row;align-items:center;justify-content:space-between;cursor:pointer;" onclick="connectWallet('MyTonWallet')">
-        <div style="display:flex;align-items:center;gap:14px;">
-          <div style="width:40px;height:40px;border-radius:12px;background:#111;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:20px;color:white;">🛰️</div>
-          <div><div style="font-weight:700;color:white;font-size:15px;">MyTonWallet</div><div style="font-size:12px;color:#64748b;">Extension</div></div>
-        </div>
-        <span class="ex-badge badge-dex">Fast</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-function filterExchanges(category, tabEl) {
-  document.querySelectorAll('.pill-btn').forEach(t => t.classList.remove('active'));
-  tabEl.classList.add('active');
-
-  const grid = document.getElementById('exchangesGrid');
-  grid.style.display = 'grid';
-
-  document.querySelectorAll('.ex-card').forEach(card => {
-    if (category === 'all' || card.getAttribute('data-category') === category) {
-      card.style.display = 'flex';
-    } else {
-      card.style.display = 'none';
+      `).join('');
     }
-  });
-}
 
-function handleSearch() {
-  const query = document.getElementById('searchInput').value.toLowerCase().trim();
-  document.querySelectorAll('.ex-card').forEach(card => {
-    const name = card.getAttribute('data-name');
-    const text = card.textContent.toLowerCase();
-    if (name.includes(query) || text.includes(query)) {
-      card.style.display = 'flex';
-    } else {
-      card.style.display = 'none';
+    // ── Render Market Table ────────────────────────────────────
+    function renderMarketTable(assets) {
+      const tbody = document.getElementById('marketTableBody');
+      if (!tbody) return;
+
+      tbody.innerHTML = assets.map(a => {
+        const isUp24 = a.change24 >= 0;
+        const isUp7d = a.change7d >= 0;
+        return `
+          <tr>
+            <td>
+              <div class="tbl-asset">
+                <span>${a.symbol === 'BTC' ? '₿' : a.symbol === 'ETH' ? 'Ξ' : a.symbol === 'TON' ? '💎' : a.symbol === 'ANLGRAM' ? '⚡' : '🪙'}</span>
+                <div>
+                  <div>${a.name}</div>
+                  <div style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">${a.symbol}</div>
+                </div>
+              </div>
+            </td>
+            <td class="tbl-mono">$${a.price < 1 ? a.price.toFixed(4) : a.price.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+            <td class="tbl-mono" style="color: ${isUp24 ? 'var(--green-up)' : 'var(--red-down)'}">${isUp24 ? '▲ +' : '▼ '}${a.change24.toFixed(2)}%</td>
+            <td class="tbl-mono" style="color: ${isUp7d ? 'var(--green-up)' : 'var(--red-down)'}">${isUp7d ? '▲ +' : '▼ '}${a.change7d.toFixed(2)}%</td>
+            <td class="tbl-mono">${a.vol}</td>
+            <td class="tbl-mono">${a.liq}</td>
+            <td class="tbl-mono">${a.mcap}</td>
+            <td class="tbl-mono">${a.fdv}</td>
+            <td class="tbl-mono">${a.holders}</td>
+            <td><span class="dir-cat-tag">${a.chain}</span></td>
+            <td style="color:var(--text-muted);">${a.exchange}</td>
+            <td>
+              <button class="btn-view-chart" onclick="openChartModal('${a.name}', '${a.symbol}', '${a.tvSymbol || ''}', '${a.dexUrl || ''}')">
+                📈 View
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
-  });
-}
 
-function copyAddr(addr) {
-  navigator.clipboard.writeText(addr);
-  if (typeof showWalletToast === 'function') {
-    showWalletToast('📋 Address Copied!', `Copied ${addr.slice(0,12)}... to clipboard.`);
-  } else {
-    alert('Address copied to clipboard!');
-  }
-}
+    // ── Filter Directory by Category ───────────────────────────
+    function filterDirectory(cat, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
 
-function openAnalysisModal(name, addr, bal, flow) {
-  document.getElementById('modalExName').textContent = name;
-  document.getElementById('modalExAddr').textContent = addr;
-  document.getElementById('modalExBal').textContent = bal;
-  document.getElementById('modalExFlow').textContent = flow;
-  
-  const btn = document.getElementById('btnLaunchFlows');
-  btn.onclick = () => window.location.href = `visualizer.html?target=${addr}`;
-  
-  document.getElementById('analysisModal').style.display = 'flex';
-}
-
-function exportAnalysisCSV() {
-  const name = document.getElementById('modalExName').textContent;
-  const addr = document.getElementById('modalExAddr').textContent;
-  const csvContent = "data:text/csv;charset=utf-8," 
-    + "Exchange Entity,Address,Status,Risk Score,Verified\n"
-    + `"${name}","${addr}","Active",99/100,"Yes"`;
-    
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `${name.replace(/\s+/g, '_')}_onchain_report.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  if (typeof showWalletToast === 'function') {
-    showWalletToast('📥 CSV Report Exported', `Downloaded full on-chain report for ${name}.`);
-  }
-}
-
-function setAgentQuery(q) {
-  const inp = document.getElementById('agentReachInput');
-  if (inp) {
-    inp.value = q;
-    runAgentReachScan();
-  }
-}
-
-function runAgentReachScan() {
-  const inp = document.getElementById('agentReachInput');
-  const q = inp ? inp.value.trim() : '';
-  if (typeof playAnlgramSound === 'function') playAnlgramSound('bleep');
-  
-  if (typeof showWalletToast === 'function') {
-    showWalletToast('💠 AI Agent-Reach Scanning...', 'Connecting to Twitter/X, GitHub and Web3 RSS APIs...');
-  } else if (typeof showToast === 'function') {
-    showToast('💠 AI Agent-Reach Scanning...', 'Connecting to Twitter/X, GitHub and Web3 RSS APIs...');
-  }
-
-  const grid = document.getElementById('agentReachGrid');
-  if (!grid) return;
-
-  grid.style.opacity = '0.4';
-  
-  setTimeout(() => {
-    grid.style.opacity = '1';
-    if (typeof playAnlgramSound === 'function') playAnlgramSound('bleep');
-    
-    if (q.includes('Twitter') || q.includes('🐦')) {
-      grid.innerHTML = `
-        <div class="agent-card" style="background:#0e0e14; border:1px solid #00f0ff; border-radius:16px; padding:16px; box-shadow:0 0 20px rgba(0,240,255,0.2);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size:12px; font-weight:700; color:#00f0ff;">🐦 Twitter/X Alpha Sentinel</span>
-            <span class="badge" style="background:rgba(0,230,118,0.15); color:#00e676; font-size:10px; padding:2px 6px; border-radius:6px;">🟢 94% Bullish Alpha</span>
-          </div>
-          <p style="font-size:13px; color:#fff; margin:0 0 10px 0; font-weight:600;">"Mentions of #TON and #GRAM increased by +340% in the last 4 hours among verified X whales."</p>
-          <div style="font-size:11px; color:#94a3b8; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; display:flex; justify-content:space-between;">
-            <span>Analyzed: 4,500 Tweets</span>
-            <span style="color:#00f0ff;">💠 Agent-Reach Live</span>
-          </div>
-        </div>
-        <div class="agent-card" style="background:#0e0e14; border:1px solid #1e1e28; border-radius:16px; padding:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size:12px; font-weight:700; color:#00f0ff;">🐦 Influencer Radar</span>
-            <span class="badge" style="background:rgba(0,240,255,0.15); color:#00f0ff; font-size:10px; padding:2px 6px; border-radius:6px;">💎 VIP Alert</span>
-          </div>
-          <p style="font-size:12px; color:#e2e8f0; margin:0 0 10px 0;">3 institutional accounts have added GRAM to their liquidity portfolios according to public feeds.</p>
-          <div style="font-size:11px; color:#64748b; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
-            <span>AI Confidence: 99%</span>
-          </div>
-        </div>
-      `;
-    } else if (q.includes('GitHub') || q.includes('📦')) {
-      grid.innerHTML = `
-        <div class="agent-card" style="background:#0e0e14; border:1px solid #0088CC; border-radius:16px; padding:16px; box-shadow:0 0 20px rgba(168,85,247,0.2);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size:12px; font-weight:700; color:#0088CC;">📦 GitHub Ecosystem Audit</span>
-            <span class="badge" style="background:rgba(168,85,247,0.15); color:#0088CC; font-size:10px; padding:2px 6px; border-radius:6px;">💠 Repo Pulse</span>
-          </div>
-          <p style="font-size:13px; color:#fff; margin:0 0 10px 0; font-weight:600;">anlgram-labs/ANLGRAM — Record commit activity and real-time optimization on Web3 architecture.</p>
-          <div style="font-size:11px; color:#94a3b8; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; display:flex; justify-content:space-between;">
-            <span>Status: 100% Synced</span>
-            <span style="color:#0088CC;">💠 gh-cli agent</span>
-          </div>
-        </div>
-        <div class="agent-card" style="background:#0e0e14; border:1px solid #1e1e28; border-radius:16px; padding:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size:12px; font-weight:700; color:#0088CC;">📦 TON Smart Contracts</span>
-            <span class="badge" style="background:rgba(0,230,118,0.15); color:#00e676; font-size:10px; padding:2px 6px; border-radius:6px;">✔ Secure</span>
-          </div>
-          <p style="font-size:12px; color:#e2e8f0; margin:0 0 10px 0;">No vulnerabilities or backdoors were detected in the DEX routers monitored by the agent.</p>
-          <div style="font-size:11px; color:#64748b; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
-            <span>Continuous audit active</span>
-          </div>
-        </div>
-      `;
-    } else {
-      if (typeof showWalletToast === 'function') {
-        showWalletToast('✅ Smart Scan Completed', '4 social and on-chain sources have been updated in real-time.');
-      } else if (typeof showToast === 'function') {
-        showToast('✅ Smart Scan Completed', '4 social and on-chain sources have been updated in real-time.');
+      if (cat === 'all') {
+        renderDirectory(DIRECTORY_DATA);
+      } else {
+        const filtered = DIRECTORY_DATA.filter(d => d.cat === cat);
+        renderDirectory(filtered);
       }
     }
-  }, 800);
-}
-</script>
-<style>
-  .agent-chip-btn {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.15);
-    <div style="display:flex;gap:12px;">
-      <button class="btn-cyber" style="flex:1;height:46px;font-size:13px;" onclick="exportAnalysisCSV()">📥 Export CSV Report</button>
-      <button class="btn-cyber glow" style="flex:1;height:46px;font-size:13px;font-weight:700;" id="btnLaunchFlows">🕸️ Launch Bubble Flow Map</button>
-    </div>
-  </div>
-</div>
 
-<!-- CONNECT WALLET MODAL -->
-<div id="walletModal" class="modal-overlay">
-  <div class="modal-glass animate-scale-in" style="max-width:400px;padding:28px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-      <h3 style="color:white;font-size:18px;font-weight:800;margin:0;">Connect TON Wallet</h3>
-      <button onclick="closeWalletModal()" style="background:none;border:none;color:#888;cursor:pointer;font-size:18px;">✕</button>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:12px;">
-      <div class="ex-card" style="padding:14px;flex-direction:row;align-items:center;justify-content:space-between;cursor:pointer;" onclick="connectWallet('Tonkeeper')">
-        <div style="display:flex;align-items:center;gap:14px;">
-          <div style="width:40px;height:40px;border-radius:12px;background:#0088CC;display:flex;align-items:center;justify-content:center;font-size:20px;color:white;">💎</div>
-          <div><div style="font-weight:700;color:white;font-size:15px;">Tonkeeper</div><div style="font-size:12px;color:#64748b;">Mobile & Desktop</div></div>
-        </div>
-        <span class="ex-badge badge-cex">Popular</span>
-      </div>
-      <div class="ex-card" style="padding:14px;flex-direction:row;align-items:center;justify-content:space-between;cursor:pointer;" onclick="connectWallet('MyTonWallet')">
-        <div style="display:flex;align-items:center;gap:14px;">
-          <div style="width:40px;height:40px;border-radius:12px;background:#111;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:20px;color:white;">🛰️</div>
-          <div><div style="font-weight:700;color:white;font-size:15px;">MyTonWallet</div><div style="font-size:12px;color:#64748b;">Extension</div></div>
-        </div>
-        <span class="ex-badge badge-dex">Fast</span>
-      </div>
-    </div>
-  </div>
-</div>
+    // ── Universal Real-Time Search Filter ───────────────────────
+    function handleUniversalSearch() {
+      const q = document.getElementById('universalSearchInput').value.toLowerCase().trim();
 
-<script>
-function filterExchanges(category, tabEl) {
-  document.querySelectorAll('.pill-btn').forEach(t => t.classList.remove('active'));
-  tabEl.classList.add('active');
+      // Filter Directory Cards
+      document.querySelectorAll('.dir-card').forEach(card => {
+        const name = card.getAttribute('data-name') || '';
+        const text = card.textContent.toLowerCase();
+        if (name.includes(q) || text.includes(q)) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
 
-  const grid = document.getElementById('exchangesGrid');
-  grid.style.display = 'grid';
-
-  document.querySelectorAll('.ex-card').forEach(card => {
-    if (category === 'all' || card.getAttribute('data-category') === category) {
-      card.style.display = 'flex';
-    } else {
-      card.style.display = 'none';
+      // Filter Table Rows
+      const filteredAssets = MARKET_ASSETS.filter(a => 
+        a.name.toLowerCase().includes(q) || 
+        a.symbol.toLowerCase().includes(q) || 
+        a.chain.toLowerCase().includes(q) || 
+        a.exchange.toLowerCase().includes(q)
+      );
+      renderMarketTable(filteredAssets);
     }
-  });
-}
 
-function handleSearch() {
-  const query = document.getElementById('searchInput').value.toLowerCase().trim();
-  document.querySelectorAll('.ex-card').forEach(card => {
-    const name = card.getAttribute('data-name');
-    const text = card.textContent.toLowerCase();
-    if (name.includes(query) || text.includes(query)) {
-      card.style.display = 'flex';
-    } else {
-      card.style.display = 'none';
+    // ── Chart Modal (TradingView / DexScreener) ─────────────────
+    function openChartModal(name, symbol, tvSymbol, dexUrl) {
+      const modal = document.getElementById('chartModal');
+      const modalName = document.getElementById('chartModalName');
+      const body = document.getElementById('chartModalBody');
+
+      if (modalName) modalName.textContent = `${name} (${symbol}) — Live Market Chart`;
+
+      if (dexUrl) {
+        body.innerHTML = `<iframe src="${dexUrl}?embed=1&theme=dark" class="chart-iframe"></iframe>`;
+      } else {
+        const sym = tvSymbol || `BINANCE:${symbol}USDT`;
+        body.innerHTML = `
+          <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_widget&symbol=${encodeURIComponent(sym)}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=0B0F14&theme=dark&style=1&timezone=Etc%2FUTC" class="chart-iframe"></iframe>
+        `;
+      }
+
+      modal.style.display = 'flex';
     }
-  });
-}
 
-function copyAddr(addr) {
-  navigator.clipboard.writeText(addr);
-  if (typeof showWalletToast === 'function') {
-    showWalletToast('📋 Address Copied!', `Copied ${addr.slice(0,12)}... to clipboard.`);
-  } else {
-    alert('Address copied to clipboard!');
-  }
-}
+    function closeChartModal() {
+      const modal = document.getElementById('chartModal');
+      const body = document.getElementById('chartModalBody');
+      if (body) body.innerHTML = '';
+      if (modal) modal.style.display = 'none';
+    }
 
-function openAnalysisModal(name, addr, bal, flow) {
-  document.getElementById('modalExName').textContent = name;
-  document.getElementById('modalExAddr').textContent = addr;
-  document.getElementById('modalExBal').textContent = bal;
-  document.getElementById('modalExFlow').textContent = flow;
-  
-  const btn = document.getElementById('btnLaunchFlows');
-  btn.onclick = () => window.location.href = `visualizer.html?target=${addr}`;
-  
-  document.getElementById('analysisModal').style.display = 'flex';
-}
+    // ── Live Crypto Prices Auto-Fetcher ────────────────────────
+    async function fetchLivePrices() {
+      try {
+        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,the-open-network&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true');
+        if (!res.ok) return;
+        const data = await res.json();
 
-function exportAnalysisCSV() {
-  const name = document.getElementById('modalExName').textContent;
-  const addr = document.getElementById('modalExAddr').textContent;
-  const csvContent = "data:text/csv;charset=utf-8," 
-    + "Exchange Entity,Address,Status,Risk Score,Verified\n"
-    + `"${name}","${addr}","Active",99/100,"Yes"`;
-    
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `${name.replace(/\s+/g, '_')}_onchain_report.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  if (typeof showWalletToast === 'function') {
-    showWalletToast('📥 CSV Report Exported', `Downloaded full on-chain report for ${name}.`);
-  }
-}
+        if (data.bitcoin) {
+          document.getElementById('btc-price').textContent = `$${data.bitcoin.usd.toLocaleString()}`;
+          const change = data.bitcoin.usd_24h_change || 2.45;
+          const changeEl = document.getElementById('btc-change');
+          changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+          changeEl.className = `price-change-badge ${change >= 0 ? 'badge-up' : 'badge-down'}`;
+        }
 
-function setAgentQuery(q) {
-  const inp = document.getElementById('agentReachInput');
-  if (inp) {
-    inp.value = q;
-    runAgentReachScan();
-  }
-}
+        if (data.ethereum) {
+          document.getElementById('eth-price').textContent = `$${data.ethereum.usd.toLocaleString()}`;
+          const change = data.ethereum.usd_24h_change || 1.82;
+          const changeEl = document.getElementById('eth-change');
+          changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+          changeEl.className = `price-change-badge ${change >= 0 ? 'badge-up' : 'badge-down'}`;
+        }
 
-function runAgentReachScan() {
-  const inp = document.getElementById('agentReachInput');
-  const q = inp ? inp.value.trim() : '';
-  if (typeof playAnlgramSound === 'function') playAnlgramSound('bleep');
-  
-  if (typeof showWalletToast === 'function') {
-    showWalletToast('💠 AI Agent-Reach Scanning...', 'Connecting to Twitter/X, GitHub and Web3 RSS APIs...');
-  } else if (typeof showToast === 'function') {
-    showToast('💠 AI Agent-Reach Scanning...', 'Connecting to Twitter/X, GitHub and Web3 RSS APIs...');
-  }
-
-  const grid = document.getElementById('agentReachGrid');
-  if (!grid) return;
-
-  grid.style.opacity = '0.4';
-  
-  setTimeout(() => {
-    grid.style.opacity = '1';
-    if (typeof playAnlgramSound === 'function') playAnlgramSound('bleep');
-    
-    if (q.includes('Twitter') || q.includes('🐦')) {
-      grid.innerHTML = `
-        <div class="agent-card" style="background:#0e0e14; border:1px solid #00f0ff; border-radius:16px; padding:16px; box-shadow:0 0 20px rgba(0,240,255,0.2);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size:12px; font-weight:700; color:#00f0ff;">🐦 Twitter/X Alpha Sentinel</span>
-            <span class="badge" style="background:rgba(0,230,118,0.15); color:#00e676; font-size:10px; padding:2px 6px; border-radius:6px;">🟢 94% Bullish Alpha</span>
-          </div>
-          <p style="font-size:13px; color:#fff; margin:0 0 10px 0; font-weight:600;">"Mentions of #TON and #GRAM increased by +340% in the last 4 hours among verified X whales."</p>
-          <div style="font-size:11px; color:#94a3b8; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; display:flex; justify-content:space-between;">
-            <span>Analyzed: 4,500 Tweets</span>
-            <span style="color:#00f0ff;">💠 Agent-Reach Live</span>
-          </div>
-        </div>
-        <div class="agent-card" style="background:#0e0e14; border:1px solid #1e1e28; border-radius:16px; padding:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size:12px; font-weight:700; color:#00f0ff;">🐦 Influencer Radar</span>
-            <span class="badge" style="background:rgba(0,240,255,0.15); color:#00f0ff; font-size:10px; padding:2px 6px; border-radius:6px;">💎 VIP Alert</span>
-          </div>
-          <p style="font-size:12px; color:#e2e8f0; margin:0 0 10px 0;">3 institutional accounts have added GRAM to their liquidity portfolios according to public feeds.</p>
-          <div style="font-size:11px; color:#64748b; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
-            <span>AI Confidence: 99%</span>
-          </div>
-        </div>
-      `;
-    } else if (q.includes('GitHub') || q.includes('📦')) {
-      grid.innerHTML = `
-        <div class="agent-card" style="background:#0e0e14; border:1px solid #0088CC; border-radius:16px; padding:16px; box-shadow:0 0 20px rgba(168,85,247,0.2);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size:12px; font-weight:700; color:#0088CC;">📦 GitHub Ecosystem Audit</span>
-            <span class="badge" style="background:rgba(168,85,247,0.15); color:#0088CC; font-size:10px; padding:2px 6px; border-radius:6px;">💠 Repo Pulse</span>
-          </div>
-          <p style="font-size:13px; color:#fff; margin:0 0 10px 0; font-weight:600;">anlgram-labs/ANLGRAM — Record commit activity and real-time optimization on Web3 architecture.</p>
-          <div style="font-size:11px; color:#94a3b8; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; display:flex; justify-content:space-between;">
-            <span>Status: 100% Synced</span>
-            <span style="color:#0088CC;">💠 gh-cli agent</span>
-          </div>
-        </div>
-        <div class="agent-card" style="background:#0e0e14; border:1px solid #1e1e28; border-radius:16px; padding:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size:12px; font-weight:700; color:#0088CC;">📦 TON Smart Contracts</span>
-            <span class="badge" style="background:rgba(0,230,118,0.15); color:#00e676; font-size:10px; padding:2px 6px; border-radius:6px;">✔ Secure</span>
-          </div>
-          <p style="font-size:12px; color:#e2e8f0; margin:0 0 10px 0;">No vulnerabilities or backdoors were detected in the DEX routers monitored by the agent.</p>
-          <div style="font-size:11px; color:#64748b; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
-            <span>Continuous audit active</span>
-          </div>
-        </div>
-      `;
-    } else {
-      if (typeof showWalletToast === 'function') {
-        showWalletToast('✅ Smart Scan Completed', '4 social and on-chain sources have been updated in real-time.');
-      } else if (typeof showToast === 'function') {
-        showToast('✅ Smart Scan Completed', '4 social and on-chain sources have been updated in real-time.');
+        if (data['the-open-network']) {
+          document.getElementById('ton-price').textContent = `$${data['the-open-network'].usd.toFixed(2)}`;
+          const change = data['the-open-network'].usd_24h_change || 5.14;
+          const changeEl = document.getElementById('ton-change');
+          changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+          changeEl.className = `price-change-badge ${change >= 0 ? 'badge-up' : 'badge-down'}`;
+        }
+      } catch (e) {
+        console.warn('Coingecko live fetch silent fallback', e);
       }
     }
-  }, 800);
-}
-</script>
-<style>
-  .agent-chip-btn {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.15);
-    color: #cbd5e1;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 6px 12px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .agent-chip-btn:hover {
-    background: rgba(0,240,255,0.15);
-    border-color: #00f0ff;
-    color: #00f0ff;
-    transform: translateY(-1px);
-  }
-  .agent-card:hover {
-    border-color: #00f0ff !important;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(0,240,255,0.1);
-  }
-</style>
-<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
-<script src="assets/js/wallet-connect.js?v=2026.10"></script>
+
+    // Initialize Terminal
+    document.addEventListener('DOMContentLoaded', () => {
+      renderDirectory(DIRECTORY_DATA);
+      renderMarketTable(MARKET_ASSETS);
+      fetchLivePrices();
+      setInterval(fetchLivePrices, 30000); // 30s auto-refresh
+    });
+  </script>
+
+  <!-- Platform & TON Connect Scripts -->
+  <script src="assets/js/platform.js?v=2026.10"></script>
+  <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+  <script src="assets/js/wallet-connect.js?v=2026.10"></script>
 </body>
 </html>
