@@ -1,5 +1,7 @@
 {
   "url": "https://anlgram-labs.github.io/ANLGRAM/",
-  "name": "ANLGRAM",
-  "iconUrl": "https://anlgram-labs.github.io/ANLGRAM/logo.svg"
+  "name": "ANLGRAM Web3 Terminal",
+  "iconUrl": "https://anlgram-labs.github.io/ANLGRAM/assets/images/sentinel-eye.jpg",
+  "termsOfUseUrl": "https://anlgram-labs.github.io/ANLGRAM/terms",
+  "privacyPolicyUrl": "https://anlgram-labs.github.io/ANLGRAM/privacy"
 }
