@@ -1360,9 +1360,12 @@ if (!document.getElementById('notificationsModal')) {
       appleIco.href = 'favicon.svg?v=2';
     }
 
-    // 3. Enforce Contract Address Label text
-    const labelEl = document.getElementById('official-contract-label');
-    if (labelEl) labelEl.textContent = 'Official Contract Address (ANLGRAM)';
+    // 3. Enforce Contract Address Label text globally across all elements
+    document.querySelectorAll('*').forEach(el => {
+      if (el.children.length === 0 && el.textContent.toUpperCase().includes('CONTRACT ADDRESS')) {
+        el.textContent = 'Official Contract Address (ANLGRAM)';
+      }
+    });
   };
 
   if (document.readyState === 'loading') {
