@@ -1360,16 +1360,9 @@ if (!document.getElementById('notificationsModal')) {
       appleIco.href = 'favicon.svg?v=2';
     }
 
-    // 2. Transform all nav-logo-icon and sidebar-logo-icon elements into TON Crystal emblems
-    const logoIcons = document.querySelectorAll('.nav-logo-icon, .sidebar-logo-icon');
-    logoIcons.forEach(icon => {
-      if (!icon.querySelector('img')) {
-        icon.style.background = 'transparent';
-        icon.style.boxShadow = 'none';
-        icon.style.padding = '0';
-        icon.innerHTML = `<img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Crystal" style="width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 0 8px rgba(0,207,255,0.4)); transition:transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;">`;
-      }
-    });
+    // 3. Enforce Contract Address Label text
+    const labelEl = document.getElementById('official-contract-label');
+    if (labelEl) labelEl.textContent = 'Official Contract Address (ANLGRAM)';
   };
 
   if (document.readyState === 'loading') {
