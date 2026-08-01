@@ -639,8 +639,9 @@
       else priceEl.textContent = '$' + window.lastTonPriceVal.toFixed(2);
     }
 
-    if (typeof updateWalletUI === 'function') 
-  };
+    if (typeof updateWalletUI === 'function') {
+        // Do nothing, preserved for compatibility
+    }
 
   // Universal TON/GRAM Crystal Branding & Favicon Injector
   window.applyAnlgramBranding = function() {

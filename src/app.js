@@ -3,7 +3,7 @@ import { Toast } from './components/Toast.js';
 import { Loader } from './components/Loader.js';
 import { API } from './services/api.js';
 
-document.addEventListener("DOMContentLoaded", () => {
+function initializeApp() {
     // 1. Initialize Wallet
     WalletManager.init();
 
@@ -22,7 +22,13 @@ document.addEventListener("DOMContentLoaded", () => {
         // Generic page init
         setupPlaceholderButtons();
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener("DOMContentLoaded", initializeApp);
+} else {
+    initializeApp();
+}
 
 function updateWalletUI(walletInfo) {
     const btns = document.querySelectorAll('.connect-wallet-btn, #topbarWalletBtn');
@@ -48,6 +54,8 @@ function bindGlobalButtons() {
         const walletBtn = e.target.closest('.connect-wallet-btn') || e.target.closest('#topbarWalletBtn');
         if (walletBtn) {
             e.preventDefault();
+            console.log("Wallet button clicked", walletBtn);
+            Toast.info("Connecting...");
             WalletManager.connect();
         }
 
