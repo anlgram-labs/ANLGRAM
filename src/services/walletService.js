@@ -132,3 +132,4 @@ export class WalletService {
 }
 
 export const WalletManager = new WalletService();
+window.WalletManager = WalletManager;

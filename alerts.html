@@ -237,7 +237,7 @@
           <span class="topbar-price-label">GRAM</span>
           <span class="topbar-price-value" id="topbar-price">$—</span>
         </div>
-        <button class="btn btn-primary btn-sm" id="topbarWalletBtn" class="connect-wallet-btn" style="margin-left:12px;">Connect Wallet</button>
+        <button id="topbarWalletBtn" class="btn btn-primary btn-sm connect-wallet-btn" style="margin-left:12px;">Connect Wallet</button>
       </div>
     </header>
 
@@ -802,7 +802,7 @@ setInterval(async () => { const p = await getTonPrice(); if (p) document.getElem
 monitorBlockchain();
 setInterval(monitorBlockchain, 15000);
 </script>
-<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+
 <script src="assets/js/platform.js?v=2026.3"></script>
 <script type="module" src="src/app.js?v=2026.5"></script>
 </body>
