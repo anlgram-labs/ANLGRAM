@@ -1,0 +1,538 @@
+/* ==========================================================================
+   Bubblemaps v2 UI Replica CSS
+   ========================================================================== */
+
+/* --- Google Fonts --- */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Reddit+Mono:wght@400;500;600&display=swap');
+
+/* --- CSS Variables --- */
+:root {
+  /* Colors */
+  --bg-main: #04040B;
+  --bg-panel: rgba(18, 18, 25, 0.7);
+  --bg-panel-solid: #121219;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --text-primary: #FFFFFF;
+  --text-secondary: #9BA1A6;
+  --accent: #2E87FF; /* Typical blue accent, adjust if needed */
+  --accent-hover: #1A70E0;
+  
+  --border-color: rgba(255, 255, 255, 0.1);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
+  /* Typography */
+  --font-ui: 'Montserrat', sans-serif;
+  --font-data: 'Reddit Mono', monospace;
+
+  /* Spacing & Radii */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+}
+
+/* --- Global Reset & Basics --- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden; /* Prevent scrolling for the full-screen map app */
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+
+/* --- Typography --- */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+}
+
+.data-text {
+  font-family: var(--font-data);
+}
+
+.text-muted {
+  color: var(--text-secondary);
+}
+
+/* --- Topbar --- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background-color: var(--bg-main);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 100;
+  height: 70px;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  width: 250px; /* fixed width for logo area */
+}
+
+.logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.topbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-panel-solid);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 0 var(--spacing-md);
+  width: 100%;
+  max-width: 600px;
+  height: 40px;
+  transition: border-color 0.2s;
+}
+
+.search-bar:focus-within {
+  border-color: var(--accent);
+}
+
+.search-input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  width: 100%;
+  padding: var(--spacing-sm);
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  width: 250px;
+}
+
+.chain-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background-color: var(--bg-panel-solid);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.chain-selector:hover {
+  background-color: var(--bg-hover);
+}
+
+/* --- Main Layout --- */
+.app-container {
+  display: flex;
+  flex: 1;
+  position: relative;
+  height: calc(100vh - 70px);
+}
+
+/* --- Map View Area --- */
+.map-canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+/* Canvas would typically go here */
+#bubble-map-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* --- Floating Panels (Glassmorphism) --- */
+.panel {
+  position: absolute;
+  z-index: 10;
+  background: var(--bg-panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  box-shadow: var(--glass-shadow);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* --- Left Panel: Token Info --- */
+.panel-left {
+  top: var(--spacing-lg);
+  left: var(--spacing-lg);
+  width: 300px;
+}
+
+.token-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.token-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--bg-panel-solid);
+}
+
+.token-title {
+  font-size: 1.1rem;
+}
+
+.token-ticker {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-family: var(--font-data);
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: var(--text-secondary);
+}
+
+.info-value {
+  font-weight: 500;
+  font-family: var(--font-data);
+}
+
+.color-legend {
+  margin-top: var(--spacing-sm);
+}
+
+.legend-title {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 0.85rem;
+  margin-bottom: var(--spacing-xs);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+/* --- Right Panel: Wallet Info --- */
+.panel-right {
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
+  width: 320px;
+  display: none; /* Hidden by default */
+}
+
+.panel-right.active {
+  display: flex;
+}
+
+.wallet-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.wallet-address {
+  font-size: 1rem;
+  font-family: var(--font-data);
+  word-break: break-all;
+}
+
+.wallet-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background-color: rgba(255, 255, 255, 0.1);
+  width: fit-content;
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+
+.btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: var(--bg-panel-solid);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.btn-primary {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+/* --- Controls (Bottom Center) --- */
+.controls-panel {
+  position: absolute;
+  bottom: var(--spacing-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  gap: 2px;
+  background: var(--bg-panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: var(--glass-border);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  box-shadow: var(--glass-shadow);
+}
+
+.control-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  transition: background 0.2s;
+}
+
+.control-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* --- Homepage List / Trending Tokens --- */
+/* (Used when not in map view, or layered above) */
+.trending-container {
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 800px;
+  background: var(--bg-main); /* solid back for lists */
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  z-index: 20;
+  display: none; /* Toggle based on app state */
+}
+
+.trending-header {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.trending-list {
+  list-style: none;
+}
+
+.trending-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.trending-item:last-child {
+  border-bottom: none;
+}
+
+.trending-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.item-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.item-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #333;
+}
+
+.item-name-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.item-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.item-ticker {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-family: var(--font-data);
+}
+
+.item-right {
+  text-align: right;
+}
+
+.item-volume {
+  font-family: var(--font-data);
+  font-weight: 500;
+}
+
+.item-volume-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* --- Utilities --- */
+.d-none { display: none !important; }
+.text-success { color: #00C853; }
+.text-danger { color: #FF3D00; }
+
+/* --- Responsive Design --- */
+@media (max-width: 1024px) {
+  .topbar-left, .topbar-right {
+    width: auto;
+  }
+  .search-bar {
+    max-width: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm);
+  }
+  
+  .topbar-center {
+    order: 3;
+    width: 100%;
+    flex: 0 0 100%;
+  }
+
+  .search-bar {
+    max-width: 100%;
+  }
+
+  .app-container {
+    height: calc(100vh - 120px);
+  }
+
+  .panel-left, .panel-right {
+    width: calc(100% - var(--spacing-lg) * 2);
+    left: var(--spacing-lg);
+    right: var(--spacing-lg);
+  }
+
+  .panel-right {
+    top: auto;
+    bottom: 80px; /* above controls */
+  }
+
+  .controls-panel {
+    bottom: var(--spacing-sm);
+  }
+}
