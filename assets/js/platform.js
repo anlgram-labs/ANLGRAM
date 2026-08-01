@@ -515,6 +515,7 @@ if (!document.getElementById('notificationsModal')) {
 
           <div style="display:flex; gap:6px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px;">
             <button onclick="filterNotifications('all')" id="notif-tab-all" class="notif-tab-btn active" style="padding:6px 12px; border-radius:16px; background:rgba(0,207,255,0.2); border:1px solid #00CFFF; color:#00CFFF; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;">💠 Todas</button>
+            <button onclick="filterNotifications('news')" id="notif-tab-news" class="notif-tab-btn" style="padding:6px 12px; border-radius:16px; background:#1a1a24; border:1px solid #333; color:#aaa; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap;">📰 Noticias GRAM</button>
             <button onclick="filterNotifications('whales')" id="notif-tab-whales" class="notif-tab-btn" style="padding:6px 12px; border-radius:16px; background:#1a1a24; border:1px solid #333; color:#aaa; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap;">🐋 Ballenas</button>
             <button onclick="filterNotifications('defi')" id="notif-tab-defi" class="notif-tab-btn" style="padding:6px 12px; border-radius:16px; background:#1a1a24; border:1px solid #333; color:#aaa; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap;">💎 DeFi & Swaps</button>
             <button onclick="filterNotifications('security')" id="notif-tab-security" class="notif-tab-btn" style="padding:6px 12px; border-radius:16px; background:#1a1a24; border:1px solid #333; color:#aaa; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap;">🛡️ Seguridad</button>
@@ -1046,12 +1047,68 @@ window.openSettingsModal = function() {
     if (!feed) return;
 
     let notifs = JSON.parse(localStorage.getItem('anlgram_notifications') || 'null');
-    if (!notifs || !notifs.length) {
+    if (!notifs || !notifs.length || !notifs.some(n => n.type === 'news')) {
       notifs = [
-        { id: 1, type: 'whales', title: '🐋 Movimiento de Ballena GRAM', text: 'Transferencia masiva de 500,000 GRAM ($1.25M USD) hacia Binance Hot Wallet 7.', time: 'Hace 3 min', read: false, url: 'explorer.html?q=Binance' },
-        { id: 2, type: 'defi', title: '💎 Pico de Volumen en Ston.fi Pool', text: 'El par GRAM/TON superó los $850,000 USD en volumen continuo en 15 min.', time: 'Hace 18 min', read: false, url: 'visualizer.html' },
-        { id: 3, type: 'security', title: '🛡️ Auditoría de Seguridad On-Chain', text: 'Los contratos de liquidez en DeDust Router han sido verificados y sin anomalías.', time: 'Hace 45 min', read: false, url: 'intel-exchange.html' },
-        { id: 4, type: 'whales', title: '🐋 Alerta de Custodia Institucional', text: 'Bybit Institutional Hot Wallet acumuló +120,000 TON en reserva de staking.', time: 'Hace 2 horas', read: true, url: 'explorer.html?q=Bybit' }
+        {
+          id: 'news-gram-1',
+          type: 'news',
+          title: '📰 Red GRAM: Distribución PoW Completada al 100%',
+          text: 'La red GRAM finalizó la fase histórica de minado Proof-of-Work en TON. Todos los smart contracts de smart-givers se cerraron exitosamente y la emisión total de 5,000,000,000 GRAM fue distribuida entre mineros descentralizados.',
+          time: 'Hace 5 min',
+          read: false,
+          badge: 'NOTICIA',
+          url: 'https://ton.org'
+        },
+        {
+          id: 'news-gram-2',
+          type: 'defi',
+          title: '💎 STON.fi Lanza Pool Recomendado GRAM/TON v2',
+          text: 'El exchange descentralizado STON.fi ha activado el nuevo pool de liquidez con recompensas de rendimiento multiplicadas para los proveedores de liquidez GRAM/TON con APY dinámico.',
+          time: 'Hace 15 min',
+          read: false,
+          badge: 'DEFI',
+          url: 'https://ston.fi'
+        },
+        {
+          id: 'news-gram-3',
+          type: 'whales',
+          title: '🐋 Alerta Whale: Transferencia de 1,500,000 GRAM',
+          text: 'Una billetera custodia en TON Blockchain transfirió 1.5M GRAM ($3.7M USD) hacia la bóveda fría institucional de Bybit.',
+          time: 'Hace 32 min',
+          read: false,
+          badge: 'WHALE',
+          url: 'explorer.html?q=Bybit'
+        },
+        {
+          id: 'news-gram-4',
+          type: 'news',
+          title: '📱 Integración Directa con Telegram @wallet & Mini Apps',
+          text: 'GRAM ya es totalmente compatible con la pasarela Web3 TON Connect 2.0 y Telegram Mini Apps, permitiendo micropagos instantáneos en la red TON.',
+          time: 'Hace 1 hora',
+          read: false,
+          badge: 'NOTICIA',
+          url: 'https://mytonwallet.io'
+        },
+        {
+          id: 'news-gram-5',
+          type: 'defi',
+          title: '⚡ DeDust.io Registra Record de Volumen en Par GRAM/USDT',
+          text: 'El DEX DeDust reporta más de $1.4M USD en volumen acumulado en las últimas 24 horas para el par GRAM/USDT con cero deslizamiento.',
+          time: 'Hace 2 horas',
+          read: true,
+          badge: 'DEFI',
+          url: 'https://dedust.io'
+        },
+        {
+          id: 'news-gram-6',
+          type: 'security',
+          title: '🛡️ Auditoría de Smart Contracts Verificada',
+          text: 'Los contratos inteligentes del protocolo ANLGRAM y TON Connect UI han superado las pruebas de penetración y verificación formal sin vulnerabilidades.',
+          time: 'Hace 4 horas',
+          read: true,
+          badge: 'SEGURIDAD',
+          url: 'intel-exchange.html'
+        }
       ];
       localStorage.setItem('anlgram_notifications', JSON.stringify(notifs));
     }
@@ -1064,18 +1121,57 @@ window.openSettingsModal = function() {
     }
 
     feed.innerHTML = filtered.map(n => `
-      <div onclick="${n.url ? `window.location.href='${n.url}'` : ''}" style="background: ${n.read ? 'rgba(255,255,255,0.02)' : 'rgba(0,136,204,0.1)'}; border: 1px solid ${n.read ? 'rgba(255,255,255,0.06)' : 'rgba(0,207,255,0.3)'}; border-radius: 14px; padding: 14px; display:flex; gap: 12px; align-items:flex-start; cursor:pointer; transition:all 0.2s;">
-        <div style="font-size:20px; background:rgba(0,207,255,0.1); width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${n.title.split(' ')[0]}</div>
+      <div onclick="openNotifItemLink('${n.url || ''}', '${n.id}')" style="background: ${n.read ? 'rgba(255,255,255,0.02)' : 'rgba(0,136,204,0.1)'}; border: 1px solid ${n.read ? 'rgba(255,255,255,0.06)' : 'rgba(0,207,255,0.35)'}; border-radius: 14px; padding: 14px; display:flex; gap: 12px; align-items:flex-start; cursor:pointer; transition:all 0.2s ease; box-shadow:${n.read ? 'none' : '0 0 15px rgba(0,207,255,0.15)'};">
+        <div style="font-size:20px; background:rgba(0,207,255,0.12); width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${n.title.split(' ')[0]}</div>
         <div style="flex:1;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
             <span style="font-size:13px; font-weight:700; color:${n.read ? '#ccc' : '#00CFFF'};">${n.title.substring(n.title.indexOf(' ')+1)}</span>
-            <span style="font-size:11px; color:#666;">${n.time}</span>
+            <span style="font-size:11px; color:#64748b;">${n.time}</span>
           </div>
-          <div style="font-size:12px; color:#94a3b8; line-height:1.4;">${n.text}</div>
+          <div style="font-size:12px; color:#94a3b8; line-height:1.45; margin-bottom:6px;">${n.text}</div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px; background:rgba(59,130,246,0.2); color:#3b82f6; border:1px solid rgba(59,130,246,0.3);">${n.badge || 'NOTICIA'}</span>
+            ${n.url ? `<span style="font-size:10px; color:#06b6d4; font-weight:600;">🔗 Ver fuente oficial ↗</span>` : ''}
+          </div>
         </div>
         ${!n.read ? `<div style="width:8px; height:8px; border-radius:50%; background:#00CFFF; box-shadow:0 0 8px #00CFFF; align-self:center;"></div>` : ''}
       </div>
     `).join('');
+
+    // Update notification badge on topbar
+    const unreadCount = notifs.filter(n => !n.read).length;
+    document.querySelectorAll('#topbarNotifBtn').forEach(btn => {
+      let badge = btn.querySelector('.notif-badge');
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'notif-badge';
+        badge.style.cssText = 'position:absolute; top:-4px; right:-4px; background:#ef4444; color:#fff; font-size:10px; font-weight:700; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #0b0f14; box-shadow:0 0 8px #ef4444;';
+        btn.appendChild(badge);
+      }
+      if (unreadCount > 0) {
+        badge.style.display = 'flex';
+        badge.textContent = unreadCount;
+      } else {
+        badge.style.display = 'none';
+      }
+    });
+  };
+
+  window.openNotifItemLink = function(url, id) {
+    if (id) {
+      let notifs = JSON.parse(localStorage.getItem('anlgram_notifications') || '[]');
+      const target = notifs.find(n => n.id === id);
+      if (target) target.read = true;
+      localStorage.setItem('anlgram_notifications', JSON.stringify(notifs));
+      renderNotificationsList();
+    }
+    if (url) {
+      if (url.startsWith('http')) {
+        window.open(url, '_blank');
+      } else {
+        window.location.href = url;
+      }
+    }
   };
 
   window.markAllNotifAsRead = function() {
