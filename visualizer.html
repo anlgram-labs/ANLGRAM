@@ -13,9 +13,10 @@
   <link rel="shortcut icon" href="favicon.ico?v=2"/>
   <link rel="apple-touch-icon" href="favicon.svg?v=2"/>
   
-  <link rel="stylesheet" href="assets/css/gram-terminal-v2.css?v=2026.37"/>
+  <link rel="stylesheet" href="assets/css/gram-terminal-v2.css?v=2026.38"/>
   
   <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
   
@@ -115,23 +116,34 @@
           </div>
         </div>
 
-        <!-- Center Panel: Chart -->
-        <div class="detail-panel panel-center">
+        <!-- Center Panel: Chart & Bubblemap -->
+        <div class="detail-panel panel-center" style="position:relative; display:flex; flex-direction:column;">
           <div class="chart-toolbar">
-            <div class="toolbar-tabs">
+            <div class="toolbar-tabs" id="view-toggle-btns">
+              <button class="toolbar-btn active" id="btn-show-chart">📈 Price Chart</button>
+              <button class="toolbar-btn" id="btn-show-bubbles">🫧 Bubble Map</button>
+            </div>
+            <div class="toolbar-tabs" id="chart-timeframes">
               <button class="toolbar-btn">1H</button>
               <button class="toolbar-btn active">4H</button>
               <button class="toolbar-btn">1D</button>
               <button class="toolbar-btn">1W</button>
             </div>
-            <div class="toolbar-tabs">
-              <button class="toolbar-btn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                Indicators
-              </button>
+          </div>
+          
+          <div id="main-chart-container" class="main-chart" style="flex:1; width:100%;"></div>
+          
+          <div id="bubble-map-container" class="bubble-map" style="display:none; flex:1; width:100%; position:relative; overflow:hidden; cursor:grab;">
+            <!-- D3 injects SVG here -->
+            <div id="bubble-tooltip" class="bubble-tooltip" style="display:none; position:absolute; pointer-events:none; z-index:100;"></div>
+            
+            <!-- Zoom controls for map -->
+            <div class="bubble-controls">
+              <button id="btn-zoom-in" class="toolbar-btn">+</button>
+              <button id="btn-zoom-out" class="toolbar-btn">-</button>
+              <button id="btn-zoom-reset" class="toolbar-btn">R</button>
             </div>
           </div>
-          <div id="main-chart-container" class="main-chart"></div>
         </div>
 
         <!-- Right Panel: Activity -->
@@ -155,6 +167,6 @@
     
   </div>
 
-  <script src="assets/js/gram-terminal-v2.js?v=2026.37"></script>
+  <script src="assets/js/gram-terminal-v2.js?v=2026.38"></script>
 </body>
 </html>
