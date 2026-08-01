@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ANLGRAM Intelligence — Deanonymizing The Open Network</title>
-  <meta name="description" content="Professional on-chain analytics platform for TON/GRAM blockchain. Track wallets, trace funds, and unmask entities."/>
-  <meta property="og:title" content="ANLGRAM Intelligence"/>
-  <meta property="og:description" content="Deanonymizing The Open Network"/>
+  <title>ANLGRAM — Powered by Community. Built on TON.</title>
+  <meta name="description" content="ANLGRAM is the premier memecoin built on the TON blockchain. Community driven, transparent, and ultra-fast."/>
+  <meta property="og:title" content="ANLGRAM - The Memecoin of TON"/>
+  <meta property="og:description" content="Powered by Community. Built on TON."/>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"/>
   <link rel="shortcut icon" href="favicon.ico?v=2"/>
   <link rel="apple-touch-icon" href="favicon.svg?v=2"/>
@@ -16,536 +16,358 @@
   <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
   <style>
-    /* ── Landing Specific ────────────────────── */
-    body { background: var(--bg-void); }
+    /* ── Web3 Landing Specific ────────────────────── */
+    :root {
+      --bg-void: #030305;
+      --glass-bg: rgba(255, 255, 255, 0.02);
+      --glass-border: rgba(255, 255, 255, 0.05);
+      --neon-cyan: #00f0ff;
+      --neon-blue: #0088cc;
+      --ton-blue: #0088cc;
+    }
+    
+    body { 
+      background: var(--bg-void); 
+      color: var(--text-primary);
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
 
-    /* Navbar */
+    /* Navbar (Glass) */
     .navbar {
       position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 var(--space-8); height: 60px;
-      background: rgba(6,6,8,0.8);
-      border-bottom: 1px solid var(--border-subtle);
-      backdrop-filter: blur(20px);
+      padding: 0 var(--space-8); height: 70px;
+      background: rgba(3, 3, 5, 0.6);
+      border-bottom: 1px solid var(--glass-border);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
     }
 
     .nav-logo {
       display: flex; align-items: center; gap: var(--space-2);
       text-decoration: none;
     }
-
     .nav-logo-icon {
-      width: 34px; height: 34px;
-      background: transparent;
-      border-radius: var(--radius-md);
+      width: 38px; height: 38px;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: none;
     }
     .nav-logo-icon img {
       width: 100%; height: 100%; object-fit: contain;
-      filter: drop-shadow(0 0 8px rgba(0,207,255,0.4));
+      filter: drop-shadow(0 0 10px rgba(0,207,255,0.5));
       transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
     }
     .nav-logo:hover .nav-logo-icon img {
-      transform: scale(1.15) rotate(6deg);
-      filter: drop-shadow(0 0 14px rgba(0,207,255,0.8));
+      transform: scale(1.1) rotate(5deg);
+      filter: drop-shadow(0 0 16px rgba(0,207,255,0.9));
     }
-
     .nav-logo-text {
-      font-size: var(--text-lg);
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      background: linear-gradient(135deg, #fff 30%, var(--cyan));
+      font-size: 22px; font-weight: 800; letter-spacing: -0.04em;
+      background: linear-gradient(135deg, #fff 30%, var(--neon-cyan));
       -webkit-background-clip: text; background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
-    .nav-links {
-      display: flex; align-items: center; gap: var(--space-1);
-    }
-
+    .nav-links { display: flex; align-items: center; gap: var(--space-2); }
     .nav-link {
       padding: var(--space-2) var(--space-4);
       color: var(--text-secondary);
-      font-size: var(--text-sm); font-weight: 500;
+      font-size: 14px; font-weight: 600;
       border-radius: var(--radius-md);
       transition: var(--transition-fast);
       text-decoration: none;
     }
+    .nav-link:hover { color: #fff; background: rgba(255,255,255,0.05); }
 
-    .nav-link:hover { color: var(--text-primary); background: var(--bg-card); }
+    .nav-cta { display: flex; align-items: center; gap: var(--space-3); }
 
-    .nav-cta {
-      display: flex; align-items: center; gap: var(--space-2);
+    /* Buttons */
+    .btn-premium {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 0 24px; height: 44px;
+      background: linear-gradient(90deg, var(--ton-blue), var(--neon-cyan));
+      color: #000; border-radius: 12px;
+      font-size: 14px; font-weight: 700;
+      border: none; cursor: pointer; text-decoration: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 207, 255, 0.3);
+    }
+    .btn-premium:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 207, 255, 0.5);
+      filter: brightness(1.1);
     }
 
-    /* Hero */
+    .btn-glass {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 0 24px; height: 44px;
+      background: rgba(255,255,255,0.03); color: #fff;
+      border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+      font-size: 14px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+    .btn-glass:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.2);
+      transform: translateY(-2px);
+    }
+
+    /* Hero Section */
     .hero {
-      min-height: calc(100vh - 60px);
-      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
       position: relative; overflow: hidden;
-      padding: 90px var(--space-8) 40px;
+      padding: 120px var(--space-8) 60px;
     }
-
-    /* Animated Canvas Background */
     #hero-canvas {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      opacity: 0.6;
+      position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.5; z-index: 0;
     }
-
     .hero-glow {
-      position: absolute; top: -10%; left: 50%;
-      transform: translateX(-50%);
-      width: 800px; height: 500px;
-      background: radial-gradient(ellipse at center, rgba(0,136,204,0.15) 0%, rgba(0,207,255,0.05) 40%, transparent 70%);
-      pointer-events: none;
+      position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%);
+      width: 60vw; height: 60vw; max-width: 800px; max-height: 800px;
+      background: radial-gradient(circle, rgba(0,207,255,0.15) 0%, transparent 70%);
+      pointer-events: none; z-index: 1;
     }
-
     .hero-content {
-      position: relative; z-index: 10;
-      text-align: center; max-width: 800px;
-      animation: fadeUp 0.8s ease forwards;
+      position: relative; z-index: 10; text-align: center; max-width: 900px;
+      animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
+    
+    .hero-logo-large {
+      width: 120px; height: 120px; margin: 0 auto 30px;
+      animation: float 6s ease-in-out infinite;
+      filter: drop-shadow(0 0 30px rgba(0,207,255,0.6));
+    }
+    .hero-logo-large img { width: 100%; height: 100%; object-fit: contain; }
 
     .hero-eyebrow {
-      display: inline-flex; align-items: center; gap: var(--space-2);
-      padding: 5px var(--space-4);
-      background: var(--ton-blue-dim);
-      border: 1px solid var(--border-accent);
-      border-radius: var(--radius-full);
-      font-size: var(--text-xs); font-weight: 600;
-      color: var(--cyan); letter-spacing: 0.08em; text-transform: uppercase;
-      margin-bottom: var(--space-6);
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; background: rgba(0, 136, 204, 0.1);
+      border: 1px solid rgba(0, 207, 255, 0.2); border-radius: 30px;
+      font-size: 13px; font-weight: 700; color: var(--neon-cyan);
+      letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 24px;
     }
 
     .hero-title {
-      font-size: clamp(28px, 3.2vw, 44px);
-      font-weight: 800;
-      line-height: 1.2;
-      letter-spacing: -0.02em;
-      color: var(--text-primary);
-      margin-bottom: 20px;
+      font-size: clamp(40px, 6vw, 72px); font-weight: 800; line-height: 1.1;
+      letter-spacing: -0.03em; color: #fff; margin-bottom: 24px;
     }
-
-    .hero-title .gradient-text {
-      background: var(--grad-primary);
+    .hero-title span {
+      background: linear-gradient(135deg, var(--neon-cyan), var(--ton-blue));
       -webkit-background-clip: text; background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .hero-subtitle {
-      font-size: clamp(16px, 2vw, 20px);
-      color: var(--text-secondary);
-      line-height: 1.6;
-      max-width: 560px;
-      margin: 0 auto var(--space-8);
+      font-size: clamp(18px, 2vw, 24px); color: var(--text-secondary);
+      line-height: 1.5; max-width: 600px; margin: 0 auto 40px; font-weight: 400;
     }
 
     .hero-actions {
-      display: flex; align-items: center; justify-content: center;
-      gap: var(--space-3); flex-wrap: wrap;
-      margin-bottom: var(--space-8);
+      display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap;
     }
 
-    .btn-hero-primary {
-      display: inline-flex; align-items: center; gap: var(--space-2);
-      padding: 0 var(--space-8); height: 50px;
-      background: var(--ton-blue); color: #fff;
-      border-radius: var(--radius-lg);
-      font-size: var(--text-md); font-weight: 700;
-      transition: var(--transition-fast);
-      border: 1px solid var(--ton-blue);
-      text-decoration: none;
+    /* Glass Sections */
+    .section-container {
+      max-width: 1200px; margin: 0 auto; padding: 100px var(--space-8);
+      position: relative; z-index: 10;
     }
 
-    .btn-hero-primary:hover {
-      background: #0099e6;
-      box-shadow: 0 0 30px rgba(0,136,204,0.5);
-      transform: translateY(-2px);
+    .section-header {
+      text-align: center; margin-bottom: 60px;
+    }
+    .section-header h2 {
+      font-size: clamp(28px, 4vw, 42px); font-weight: 800; letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .section-header p {
+      font-size: 18px; color: var(--text-secondary); max-width: 600px; margin: 0 auto;
     }
 
-    .btn-hero-secondary {
-      display: inline-flex; align-items: center; gap: var(--space-2);
-      padding: 0 var(--space-8); height: 50px;
-      color: var(--text-primary);
-      border-radius: var(--radius-lg);
-      font-size: var(--text-md); font-weight: 600;
-      transition: var(--transition-fast);
-      border: 1px solid var(--border-default);
-      background: transparent;
-      text-decoration: none;
+    /* Stats Grid */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px;
     }
-
-    .btn-hero-secondary:hover {
-      border-color: var(--border-accent);
-      background: var(--ton-blue-dim);
-      color: var(--cyan);
+    .stat-card {
+      background: var(--glass-bg); backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border); border-radius: 20px;
+      padding: 30px; text-align: center;
+      transition: all 0.3s ease; position: relative; overflow: hidden;
     }
-
-    /* Stats Bar */
-    .hero-stats {
-      display: flex; align-items: center; justify-content: center;
-      gap: var(--space-8); flex-wrap: wrap;
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+      opacity: 0; transition: opacity 0.3s ease;
     }
+    .stat-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.1); }
+    .stat-card:hover::before { opacity: 1; }
+    
+    .stat-label { font-size: 14px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .stat-val { font-size: 32px; font-weight: 800; font-family: var(--font-mono); color: #fff; letter-spacing: -0.02em; }
 
-    .hero-stat { text-align: center; }
-
-    .hero-stat-value {
-      font-size: var(--text-2xl); font-weight: 700;
-      font-family: var(--font-mono);
-      color: var(--text-primary);
-      letter-spacing: -0.02em;
+    /* Tokenomics */
+    .tokenomics-wrap {
+      display: flex; align-items: center; justify-content: center; gap: 60px; flex-wrap: wrap;
     }
-
-    .hero-stat-label {
-      font-size: var(--text-xs); color: var(--text-muted);
-      margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em;
-    }
-
-    .stat-divider { width: 1px; height: 40px; background: var(--border-subtle); }
-
-    /* Live Stats Section */
-    .live-stats-section {
-      padding: var(--space-6) var(--space-8);
-      background: var(--bg-secondary);
-      border-top: 1px solid var(--border-subtle);
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .live-stats-grid {
-      max-width: var(--container-max);
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: var(--space-4);
-    }
-
-    .live-stat-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: var(--space-5);
-      display: flex; align-items: center; gap: var(--space-4);
-      transition: var(--transition-fast);
-      cursor: default;
-    }
-
-    .live-stat-card:hover { border-color: var(--border-accent); }
-
-    .live-stat-icon {
-      width: 40px; height: 40px; border-radius: var(--radius-md);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; flex-shrink: 0;
-    }
-
-    .live-stat-info { flex: 1; min-width: 0; }
-
-    .live-stat-label {
-      font-size: var(--text-xs); color: var(--text-muted);
-      font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
-    }
-
-    .live-stat-value {
-      font-size: var(--text-xl); font-weight: 700;
-      font-family: var(--font-mono); color: var(--text-primary);
-      letter-spacing: -0.02em; margin-top: 2px;
-    }
-
-    .live-stat-change {
-      font-size: var(--text-xs); font-family: var(--font-mono);
-      font-weight: 600; margin-top: 2px;
-    }
-
-    /* Features Section */
-    .features-section {
-      padding: var(--space-16) var(--space-8);
-      max-width: var(--container-max);
-      margin: 0 auto;
-    }
-
-    .section-label {
-      text-align: center;
-      font-size: var(--text-xs); font-weight: 700;
-      color: var(--cyan); letter-spacing: 0.12em; text-transform: uppercase;
-      margin-bottom: var(--space-3);
-    }
-
-    .section-title {
-      text-align: center;
-      font-size: clamp(22px, 2.5vw, 32px);
-      font-weight: 800; letter-spacing: -0.02em;
-      color: var(--text-primary);
-      margin-bottom: var(--space-4);
-    }
-
-    .section-subtitle {
-      text-align: center;
-      font-size: var(--text-lg); color: var(--text-secondary);
-      max-width: 560px; margin: 0 auto var(--space-12);
-      line-height: 1.6;
-    }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: var(--space-4);
-    }
-
-    .feature-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-xl);
-      padding: var(--space-8);
-      transition: var(--transition-base);
-      position: relative; overflow: hidden;
-    }
-
-    .feature-card::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0;
-      height: 1px;
-      background: var(--grad-primary);
-      opacity: 0;
-      transition: var(--transition-fast);
-    }
-
-    .feature-card:hover {
-      border-color: var(--border-accent);
-      transform: translateY(-3px);
-      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-    }
-
-    .feature-card:hover::before { opacity: 1; }
-
-    .feature-card.featured {
-      grid-column: span 2;
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: var(--space-8);
-      background: linear-gradient(135deg, var(--bg-card) 0%, rgba(0,136,204,0.05) 100%);
-      border-color: var(--border-accent);
-    }
-
-    .feature-icon {
-      width: 48px; height: 48px;
-      border-radius: var(--radius-lg);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px; margin-bottom: var(--space-5);
-      border: 1px solid;
-    }
-
-    .feature-icon-blue { background: var(--ton-blue-dim); border-color: var(--border-accent); }
-    .feature-icon-cyan { background: var(--cyan-dim); border-color: rgba(0,207,255,0.2); }
-    .feature-icon-green { background: var(--green-dim); border-color: rgba(34,197,94,0.2); }
-    .feature-icon-purple { background: var(--purple-dim); border-color: rgba(168,85,247,0.2); }
-
-    .feature-title {
-      font-size: var(--text-xl); font-weight: 700;
-      color: var(--text-primary); margin-bottom: var(--space-2);
-      letter-spacing: -0.02em;
-    }
-
-    .feature-desc {
-      font-size: var(--text-sm); color: var(--text-secondary);
-      line-height: 1.7;
-    }
-
-    .feature-tags {
-      display: flex; flex-wrap: wrap; gap: var(--space-2);
-      margin-top: var(--space-5);
-    }
-
-    .feature-tag {
-      display: inline-flex; align-items: center;
-      padding: 3px var(--space-2);
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      font-size: var(--text-xs); color: var(--text-secondary);
-      font-family: var(--font-mono);
-    }
-
-    /* Feature Preview (viz mockup) */
-    .feature-preview {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: var(--space-5);
-      position: relative; overflow: hidden;
-      min-height: 200px;
+    .token-chart {
+      width: 300px; height: 300px; border-radius: 50%;
+      background: conic-gradient(
+        var(--neon-cyan) 0% 50%,
+        var(--ton-blue) 50% 70%,
+        #a855f7 70% 85%,
+        #34d399 85% 95%,
+        #f43f5e 95% 100%
+      );
+      box-shadow: 0 0 40px rgba(0,207,255,0.2);
       display: flex; align-items: center; justify-content: center;
     }
+    .token-chart-inner {
+      width: 220px; height: 220px; border-radius: 50%;
+      background: var(--bg-void); display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .token-legend { display: flex; flex-direction: column; gap: 16px; }
+    .legend-item { display: flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 500; }
+    .legend-color { width: 16px; height: 16px; border-radius: 4px; }
 
-    /* Transaction Preview List */
-    .tx-preview-list { width: 100%; }
-    .tx-preview-row {
+    /* Roadmap */
+    .roadmap-timeline {
+      position: relative; max-width: 800px; margin: 0 auto;
+    }
+    .roadmap-timeline::before {
+      content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px;
+      background: var(--glass-border); transform: translateX(-50%);
+    }
+    .roadmap-item {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 40px; position: relative; width: 100%;
+    }
+    .roadmap-item:nth-child(even) { flex-direction: row-reverse; }
+    .roadmap-content {
+      width: 45%; background: var(--glass-bg); backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px;
+      transition: all 0.3s ease;
+    }
+    .roadmap-item:hover .roadmap-content { border-color: rgba(0,207,255,0.4); transform: translateY(-3px); }
+    .roadmap-dot {
+      width: 24px; height: 24px; background: var(--bg-void); border: 2px solid var(--glass-border);
+      border-radius: 50%; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      display: flex; align-items: center; justify-content: center; z-index: 2;
+    }
+    .roadmap-dot.done { border-color: var(--neon-cyan); background: rgba(0,207,255,0.2); box-shadow: 0 0 10px var(--neon-cyan); }
+    .roadmap-dot.done::after { content: ''; width: 10px; height: 10px; background: var(--neon-cyan); border-radius: 50%; }
+    .roadmap-phase { font-size: 14px; font-weight: 700; color: var(--neon-cyan); margin-bottom: 8px; text-transform: uppercase; }
+    .roadmap-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+    .roadmap-list { list-style: none; padding: 0; margin: 0; }
+    .roadmap-list li { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; }
+
+    /* Security & Transparency */
+    .security-card {
+      background: linear-gradient(145deg, rgba(255,255,255,0.03), rgba(0,207,255,0.05));
+      border: 1px solid var(--glass-border); border-radius: 24px; padding: 50px;
+      text-align: center; max-width: 800px; margin: 0 auto;
+    }
+    .contract-box {
       display: flex; align-items: center; justify-content: space-between;
-      padding: var(--space-2) 0;
-      border-bottom: 1px solid var(--border-subtle);
-      font-size: var(--text-xs);
+      background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);
+      padding: 16px 24px; border-radius: 16px; margin: 30px 0;
     }
-    .tx-preview-row:last-child { border-bottom: none; }
-    .tx-amount-in  { color: var(--green); font-family: var(--font-mono); font-weight: 600; }
-    .tx-amount-out { color: var(--red); font-family: var(--font-mono); font-weight: 600; }
-
-    /* How It Works */
-    .how-section {
-      padding: var(--space-16) var(--space-8);
-      background: var(--bg-secondary);
-      border-top: 1px solid var(--border-subtle);
-      border-bottom: 1px solid var(--border-subtle);
+    .contract-addr { font-family: var(--font-mono); font-size: 16px; color: #fff; word-break: break-all; }
+    
+    .audit-links { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+    .audit-badge {
+      display: flex; align-items: center; gap: 8px; padding: 10px 20px;
+      background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 30px;
+      font-size: 14px; font-weight: 600; color: #fff; text-decoration: none; transition: 0.3s;
     }
+    .audit-badge:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
 
-    .how-content { max-width: var(--container-max); margin: 0 auto; }
-
-    .steps-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: var(--space-6); margin-top: var(--space-12);
+    /* How to Buy */
+    .buy-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+    .buy-step {
+      background: var(--glass-bg); border: 1px solid var(--glass-border);
+      border-radius: 20px; padding: 40px 30px; text-align: center;
+      position: relative; transition: 0.3s;
     }
-
-    .step-card {
-      text-align: center; padding: var(--space-6);
-    }
-
-    .step-number {
-      width: 52px; height: 52px;
-      background: var(--ton-blue-dim);
-      border: 1px solid var(--border-accent);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: var(--text-xl); font-weight: 800;
-      color: var(--cyan);
-      font-family: var(--font-mono);
-      margin: 0 auto var(--space-4);
-      box-shadow: var(--shadow-glow-blue);
+    .buy-step:hover { transform: translateY(-5px); border-color: rgba(0,207,255,0.3); }
+    .step-num {
+      width: 50px; height: 50px; background: rgba(0,207,255,0.1); border: 1px solid var(--neon-cyan);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 800; color: var(--neon-cyan); margin: 0 auto 20px;
     }
 
-    .step-title {
-      font-size: var(--text-lg); font-weight: 700;
-      color: var(--text-primary); margin-bottom: var(--space-2);
+    /* Calculator & Chart */
+    .tools-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 30px; }
+    .calc-box {
+      background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 24px; padding: 30px;
     }
-
-    .step-desc {
-      font-size: var(--text-sm); color: var(--text-secondary);
-      line-height: 1.7;
+    .calc-input-group { margin-bottom: 20px; }
+    .calc-label { display: block; font-size: 14px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; }
+    .calc-input-wrap { position: relative; }
+    .calc-input {
+      width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+      padding: 16px 20px; border-radius: 12px; font-size: 18px; color: #fff; font-family: var(--font-mono);
+      outline: none; transition: 0.3s;
     }
-
-    /* Intel Exchange Preview */
-    .intel-section {
-      padding: var(--space-16) var(--space-8);
-      max-width: var(--container-max); margin: 0 auto;
-    }
-
-    .intel-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: var(--space-8); align-items: center;
-    }
-
-    .intel-bounty-list { display: flex; flex-direction: column; gap: var(--space-3); }
-
-    .intel-bounty-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: var(--space-4) var(--space-5);
-      display: flex; align-items: center; gap: var(--space-4);
-      transition: var(--transition-fast);
-    }
-
-    .intel-bounty-card:hover { border-color: var(--border-accent); }
-
-    .bounty-reward {
-      font-size: var(--text-lg); font-weight: 700;
-      font-family: var(--font-mono); color: var(--cyan);
-      white-space: nowrap;
-    }
-
-    .bounty-info { flex: 1; min-width: 0; }
-
-    .bounty-title {
-      font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);
-      margin-bottom: 3px;
-    }
-
-    .bounty-meta { font-size: var(--text-xs); color: var(--text-muted); }
-
-    /* CTA Section */
-    .cta-section {
-      padding: var(--space-16) var(--space-8);
-      text-align: center;
+    .calc-input:focus { border-color: var(--neon-cyan); box-shadow: 0 0 15px rgba(0,207,255,0.2); }
+    .calc-currency { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-secondary); }
+    
+    .chart-box {
+      background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 24px;
+      display: flex; align-items: center; justify-content: center; min-height: 400px;
       position: relative; overflow: hidden;
     }
-
-    .cta-glow {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 600px; height: 400px;
-      background: radial-gradient(ellipse, rgba(0,136,204,0.12) 0%, transparent 70%);
-      pointer-events: none;
+    
+    /* FAQ */
+    .faq-item {
+      background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px;
+      margin-bottom: 16px; overflow: hidden;
     }
-
-    .cta-content { position: relative; z-index: 2; max-width: 600px; margin: 0 auto; }
-
-    .cta-title {
-      font-size: clamp(24px, 2.8vw, 34px);
-      font-weight: 800; letter-spacing: -0.02em;
-      color: var(--text-primary); margin-bottom: var(--space-4);
+    .faq-q {
+      padding: 20px 24px; font-size: 18px; font-weight: 600; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
     }
-
-    .cta-desc {
-      font-size: var(--text-lg); color: var(--text-secondary);
-      margin-bottom: var(--space-8); line-height: 1.6;
-    }
+    .faq-q:hover { background: rgba(255,255,255,0.02); }
+    .faq-a { padding: 0 24px 24px; color: var(--text-secondary); line-height: 1.6; display: none; }
+    .faq-item.active .faq-a { display: block; }
+    .faq-item.active .faq-icon { transform: rotate(45deg); }
+    .faq-icon { transition: 0.3s; font-size: 24px; color: var(--neon-cyan); }
 
     /* Footer */
     .footer {
-      padding: var(--space-8);
-      border-top: 1px solid var(--border-subtle);
-      background: var(--bg-void);
-      display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: var(--space-4);
+      border-top: 1px solid var(--glass-border); padding: 60px var(--space-8) 40px;
+      background: rgba(0,0,0,0.5);
     }
-
-    .footer-left {
-      display: flex; align-items: center; gap: var(--space-4);
+    .footer-content {
+      max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 40px;
     }
-
-    .footer-links {
-      display: flex; gap: var(--space-5);
-    }
-
-    .footer-link {
-      font-size: var(--text-sm); color: var(--text-muted);
-      text-decoration: none; transition: var(--transition-fast);
-    }
-
-    .footer-link:hover { color: var(--text-secondary); }
-
-    .footer-right {
-      font-size: var(--text-sm); color: var(--text-muted);
+    .footer-col { flex: 1; min-width: 200px; }
+    .footer-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 20px; }
+    .footer-links-vert { display: flex; flex-direction: column; gap: 12px; }
+    .footer-links-vert a { color: var(--text-secondary); text-decoration: none; font-size: 14px; transition: 0.3s; }
+    .footer-links-vert a:hover { color: var(--neon-cyan); }
+    .footer-bottom {
+      max-width: 1200px; margin: 40px auto 0; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05);
+      display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-muted);
     }
 
     @media (max-width: 900px) {
-      .features-grid { grid-template-columns: 1fr; }
-      .feature-card.featured { grid-column: span 1; grid-template-columns: 1fr; }
-      .live-stats-grid { grid-template-columns: repeat(2, 1fr); }
-      .steps-grid { grid-template-columns: 1fr; }
-      .intel-grid { grid-template-columns: 1fr; }
-      .navbar { padding: 12px 16px; flex-wrap: wrap; gap: 10px; height: auto; }
+      .roadmap-timeline::before { left: 24px; }
+      .roadmap-item, .roadmap-item:nth-child(even) { flex-direction: column; align-items: flex-start; padding-left: 60px; }
+      .roadmap-dot { left: 24px; transform: translate(-50%, 0); top: 0; }
+      .roadmap-content { width: 100%; }
+      .buy-steps, .tools-grid { grid-template-columns: 1fr; }
       .nav-links { display: none; }
-      body { padding-bottom: 84px !important; }
     }
     @media (max-width: 600px) {
-      .nav-cta a[href="dashboard.html"]:first-child { display: none !important; }
-      .nav-cta button, .nav-cta a { padding: 0 12px !important; font-size: 11px !important; height: 32px !important; }
-      .hero-title { font-size: 32px !important; line-height: 1.2 !important; }
-      .hero-subtitle { font-size: 15px !important; padding: 0 10px; }
-      .live-stats-grid { grid-template-columns: 1fr !important; }
-      .section-header h2 { font-size: 26px !important; }
-      .cta-card { padding: 30px 16px !important; }
-      .footer { flex-direction: column !important; text-align: center; gap: 16px; }
-      .footer-left { flex-direction: column; }
+      .hero-title { font-size: 36px; }
+      .hero-subtitle { font-size: 16px; }
+      .contract-box { flex-direction: column; gap: 16px; text-align: center; }
     }
+    
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
   </style>
 </head>
 <body>
@@ -558,322 +380,386 @@
   </a>
 
   <div class="nav-links">
-    <a href="dashboard.html" class="nav-link">Dashboard</a>
-    <a href="explorer.html" class="nav-link">Explorer</a>
-    <a href="visualizer.html" class="nav-link">Visualizer</a>
-    <a href="intel-exchange.html" class="nav-link">Exchange Intel</a>
-    <a href="alerts.html" class="nav-link">Alerts</a>
-    <a href="memecoin-platform.html" class="nav-link">Memecoin Platform</a>
+    <a href="#about" class="nav-link">About</a>
+    <a href="#tokenomics" class="nav-link">Tokenomics</a>
+    <a href="#roadmap" class="nav-link">Roadmap</a>
+    <a href="#buy" class="nav-link">How to Buy</a>
+    <a href="dashboard.html" class="nav-link">Platform Demo</a>
   </div>
 
   <div class="nav-cta">
-    <a href="dashboard.html" class="btn-hero-secondary" style="height:36px;padding:0 20px;font-size:13px;">View Demo</a>
-    <button class="btn-hero-secondary" id="topbarWalletBtn" onclick="openWalletModal()" style="height:36px;padding:0 20px;font-size:13px;cursor:pointer;">Connect Wallet</button>
-    <a href="dashboard.html" class="btn-hero-primary" style="height:36px;padding:0 20px;font-size:13px;">Launch App →</a>
+    <button class="btn-glass" id="topbarWalletBtn" onclick="openWalletModal()">Connect Wallet</button>
   </div>
 </nav>
 
 <!-- ── Hero ──────────────────────────────────────────── -->
-<section class="hero">
+<section class="hero" id="about">
   <canvas id="hero-canvas"></canvas>
   <div class="hero-glow"></div>
 
   <div class="hero-content">
+    <div class="hero-logo-large">
+      <img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Token"/>
+    </div>
+    
     <div class="hero-eyebrow">
       <span class="dot-live"></span>
-      TON / GRAM Network · Live Analytics
+      The Premier TON Memecoin
     </div>
 
     <h1 class="hero-title">
-      Deanonymizing<br>
-      <span class="gradient-text">The Open Network</span>
+      Powered by Community.<br>
+      <span>Built on TON.</span>
     </h1>
 
     <p class="hero-subtitle">
-      Professional on-chain intelligence for the TON blockchain. Track wallets, trace fund flows, and unmask entities — powered by real-time data.
+      ANLGRAM combines meme culture with enterprise-grade analytics infrastructure. Join the most transparent and fastest-growing community on The Open Network.
     </p>
 
     <div class="hero-actions">
-      <a href="dashboard.html" class="btn-hero-primary">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        Launch App
+      <a href="#buy" class="btn-premium">
+        Buy ANLGRAM
       </a>
-      <a href="visualizer.html" class="btn-hero-secondary">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-        Live Demo
+      <a href="#chart" class="btn-glass">
+        View Chart
       </a>
-    </div>
-
-    <div class="hero-stats">
-      <div class="hero-stat">
-        <div class="hero-stat-value" id="stat-price">$2.47</div>
-        <div class="hero-stat-label">GRAM Price</div>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="hero-stat">
-        <div class="hero-stat-value" id="stat-txs">1.2M</div>
-        <div class="hero-stat-label">TXs Today</div>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="hero-stat">
-        <div class="hero-stat-value" id="stat-wallets">892K</div>
-        <div class="hero-stat-label">Active Wallets</div>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="hero-stat">
-        <div class="hero-stat-value" id="stat-entities">45.2K</div>
-        <div class="hero-stat-label">Labeled Entities</div>
-      </div>
+      <a href="https://t.me/ANLGRAM" target="_blank" class="btn-glass">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 4px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.46.93-4.12 2.73-.39.26-.74.39-1.06.38-.35-.01-1.02-.2-1.52-.36-.61-.2-1.1-.31-1.08-.66.01-.18.27-.36.78-.55 3.05-1.33 5.09-2.21 6.12-2.64 2.91-1.21 3.51-1.42 3.91-1.43.09 0 .28.02.4.11.1.08.13.19.14.28-.01.05.01.17 0 .2z"/></svg>
+        Join Telegram
+      </a>
     </div>
   </div>
 </section>
 
 <!-- ── Live Stats ─────────────────────────────────────── -->
-<section class="live-stats-section">
-  <div class="live-stats-grid animate-fade-up">
-    <div class="live-stat-card">
-      <div class="live-stat-icon feature-icon-blue">💎</div>
-      <div class="live-stat-info">
-        <div class="live-stat-label">GRAM Price</div>
-        <div class="live-stat-value">$2.47</div>
-        <div class="live-stat-change change-up">▲ +4.18% (24h)</div>
+<section class="section-container" style="padding-top:0; margin-top:-60px;">
+  <div class="stats-grid animate-fade-up">
+    <div class="stat-card">
+      <div class="stat-label">Current Price</div>
+      <div class="stat-val" id="stat-price">$0.042</div>
+      <div class="stat-change change-up" style="margin-top:8px; font-size:13px; color:var(--green);">▲ +14.2% (24h)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Market Cap</div>
+      <div class="stat-val" id="stat-mcap">$42.5M</div>
+      <div class="stat-change change-up" style="margin-top:8px; font-size:13px; color:var(--green);">Fully Diluted</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Liquidity (DEX)</div>
+      <div class="stat-val" id="stat-liquidity">$8.2M</div>
+      <div class="stat-change" style="margin-top:8px; font-size:13px; color:var(--neon-cyan);">Locked via DeDust</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Holders</div>
+      <div class="stat-val" id="stat-holders">24.5K</div>
+      <div class="stat-change change-up" style="margin-top:8px; font-size:13px; color:var(--green);">▲ +850 today</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Tokenomics ─────────────────────────────────────── -->
+<section id="tokenomics" class="section-container">
+  <div class="section-header">
+    <h2>Transparent Tokenomics</h2>
+    <p>Built for long-term sustainability and community rewards. Zero taxes on buys and sells.</p>
+  </div>
+  
+  <div class="tokenomics-wrap">
+    <div class="token-chart">
+      <div class="token-chart-inner">
+        <span style="font-size:14px; color:var(--text-muted);">Total Supply</span>
+        <span style="font-size:28px; font-weight:800; color:#fff; font-family:var(--font-mono);">1,000,000,000</span>
+        <span style="font-size:16px; color:var(--neon-cyan); margin-top:4px;">ANLGRAM</span>
       </div>
     </div>
-    <div class="live-stat-card">
-      <div class="live-stat-icon feature-icon-cyan">💠</div>
-      <div class="live-stat-info">
-        <div class="live-stat-label">Network TPS</div>
-        <div class="live-stat-value">142</div>
-        <div class="live-stat-change change-up">▲ +12% from avg</div>
+    
+    <div class="token-legend">
+      <div class="legend-item"><div class="legend-color" style="background:var(--neon-cyan);"></div> 50% - DEX Liquidity (Locked)</div>
+      <div class="legend-item"><div class="legend-color" style="background:var(--ton-blue);"></div> 20% - Community Airdrops</div>
+      <div class="legend-item"><div class="legend-color" style="background:#a855f7;"></div> 15% - Marketing & Partnerships</div>
+      <div class="legend-item"><div class="legend-color" style="background:#34d399;"></div> 10% - Ecosystem Development</div>
+      <div class="legend-item"><div class="legend-color" style="background:#f43f5e;"></div> 5% - Team (Vested 2 Years)</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Security & Transparency ────────────────────────── -->
+<section class="section-container">
+  <div class="security-card">
+    <h2 style="font-size:32px; font-weight:800; margin-bottom:16px;">Security & Transparency</h2>
+    <p style="color:var(--text-secondary); font-size:16px; margin-bottom:30px;">
+      Smart contract audited, liquidity permanently locked, and ownership renounced.
+    </p>
+    
+    <div style="font-size:14px; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Official Contract Address (TON)</div>
+    <div class="contract-box">
+      <div class="contract-addr" id="contract-address">EQC_anlgram_token_address_example_hash_9fB2</div>
+      <button class="btn-glass" onclick="copyContract()" style="height:36px; padding:0 16px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy
+      </button>
+    </div>
+    
+    <div class="audit-links">
+      <a href="#" class="audit-badge">🔍 View on Tonviewer</a>
+      <a href="#" class="audit-badge">💧 STON.fi Pool</a>
+      <a href="#" class="audit-badge">🌪 DeDust Pool</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Roadmap ────────────────────────────────────────── -->
+<section id="roadmap" class="section-container">
+  <div class="section-header">
+    <h2>Project Roadmap</h2>
+    <p>Our journey to becoming the leading memecoin on The Open Network.</p>
+  </div>
+  
+  <div class="roadmap-timeline">
+    <!-- Phase 1 -->
+    <div class="roadmap-item">
+      <div class="roadmap-dot done"></div>
+      <div class="roadmap-content">
+        <div class="roadmap-phase">Phase 1: Genesis</div>
+        <h3 class="roadmap-title">Launch & Foundation</h3>
+        <ul class="roadmap-list">
+          <li>✅ Token Deployment on TON</li>
+          <li>✅ DEX Liquidity Pool Creation</li>
+          <li>✅ Website & Socials Launch</li>
+          <li>✅ First Community Airdrop</li>
+        </ul>
       </div>
     </div>
-    <div class="live-stat-card">
-      <div class="live-stat-icon feature-icon-green">🔄</div>
-      <div class="live-stat-info">
-        <div class="live-stat-label">24h Volume</div>
-        <div class="live-stat-value">$892M</div>
-        <div class="live-stat-change change-down">▼ -2.1% vs yesterday</div>
+    
+    <!-- Phase 2 -->
+    <div class="roadmap-item">
+      <div class="roadmap-dot done"></div>
+      <div class="roadmap-content">
+        <div class="roadmap-phase">Phase 2: Expansion</div>
+        <h3 class="roadmap-title">Growth & Tracking</h3>
+        <ul class="roadmap-list">
+          <li>✅ 10,000 Holders Reached</li>
+          <li>✅ CoinGecko & CMC Listings</li>
+          <li>⬜ Trending on DEX Screener</li>
+          <li>⬜ CEX Tier-2 Listings (MEXC, Gate)</li>
+        </ul>
       </div>
     </div>
-    <div class="live-stat-card">
-      <div class="live-stat-icon feature-icon-purple">🏛️</div>
-      <div class="live-stat-info">
-        <div class="live-stat-label">Total Value Locked</div>
-        <div class="live-stat-value">$4.2B</div>
-        <div class="live-stat-change change-up">▲ +8.3% (7d)</div>
+    
+    <!-- Phase 3 -->
+    <div class="roadmap-item">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-content">
+        <div class="roadmap-phase">Phase 3: Utility</div>
+        <h3 class="roadmap-title">Ecosystem Integration</h3>
+        <ul class="roadmap-list">
+          <li>⬜ ANLGRAM Platform Beta</li>
+          <li>⬜ Staking Dashboard</li>
+          <li>⬜ Exclusive Telegram Mini-App</li>
+          <li>⬜ Tier-1 CEX Listings</li>
+        </ul>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Features ───────────────────────────────────────── -->
-<section class="features-section">
-  <div class="section-label">Platform Capabilities</div>
-  <h2 class="section-title">Intelligence at Every Level</h2>
-  <p class="section-subtitle">Everything you need to navigate, analyze, and understand the TON/GRAM blockchain ecosystem.</p>
+<!-- ── How to Buy ─────────────────────────────────────── -->
+<section id="buy" class="section-container">
+  <div class="section-header">
+    <h2>How to Buy ANLGRAM</h2>
+    <p>Join the movement in three simple steps.</p>
+  </div>
+  
+  <div class="buy-steps">
+    <div class="buy-step">
+      <div class="step-num">1</div>
+      <h3 style="font-size:20px; font-weight:700; margin-bottom:12px;">Get a Wallet</h3>
+      <p style="color:var(--text-secondary); font-size:15px; line-height:1.6;">
+        Download Tonkeeper or use the native Telegram Wallet (@wallet) to store your TON and ANLGRAM.
+      </p>
+    </div>
+    <div class="buy-step">
+      <div class="step-num">2</div>
+      <h3 style="font-size:20px; font-weight:700; margin-bottom:12px;">Acquire TON</h3>
+      <p style="color:var(--text-secondary); font-size:15px; line-height:1.6;">
+        Purchase TON directly in your wallet using a card, or buy on a centralized exchange and send it to your wallet.
+      </p>
+    </div>
+    <div class="buy-step">
+      <div class="step-num">3</div>
+      <h3 style="font-size:20px; font-weight:700; margin-bottom:12px;">Swap for ANLGRAM</h3>
+      <p style="color:var(--text-secondary); font-size:15px; line-height:1.6;">
+        Go to STON.fi or DeDust, connect your wallet, paste the ANLGRAM contract address, and swap your TON.
+      </p>
+    </div>
+  </div>
+</section>
 
-  <div class="features-grid">
-    <!-- Featured: Entity Explorer -->
-    <div class="feature-card featured animate-fade-up">
-      <div>
-        <div class="feature-icon feature-icon-blue">🔍</div>
-        <h3 class="feature-title">Entity Explorer</h3>
-        <p class="feature-desc">Search any TON wallet address and instantly see the entity behind it. Our intelligence database labels exchanges, DeFi protocols, whales, and known actors — so you always know who you're dealing with.</p>
-        <div class="feature-tags">
-          <span class="feature-tag">Address Lookup</span>
-          <span class="feature-tag">Entity Labels</span>
-          <span class="feature-tag">Balance History</span>
-          <span class="feature-tag">Counterparties</span>
-        </div>
-        <div style="margin-top: var(--space-6);">
-          <a href="explorer.html" class="btn btn-primary btn-sm">Open Explorer →</a>
-        </div>
-      </div>
-      <div class="feature-preview">
-        <div class="tx-preview-list">
-          <div style="font-size:var(--text-xs);color:var(--text-muted);margin-bottom:var(--space-3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;">Recent Transactions</div>
-          <div class="tx-preview-row">
-            <span style="color:var(--text-secondary);font-family:var(--font-mono);">Binance Hot W...</span>
-            <span class="tx-amount-in">+2,500,000 GRAM</span>
-          </div>
-          <div class="tx-preview-row">
-            <span style="color:var(--text-secondary);font-family:var(--font-mono);">OKX Wallet 3</span>
-            <span class="tx-amount-out">-890,000 GRAM</span>
-          </div>
-          <div class="tx-preview-row">
-            <span style="color:var(--text-secondary);font-family:var(--font-mono);">Unknown 0xF4...</span>
-            <span class="tx-amount-in">+45,200 GRAM</span>
-          </div>
-          <div class="tx-preview-row">
-            <span style="color:var(--text-secondary);font-family:var(--font-mono);">DeDust LP</span>
-            <span class="tx-amount-out">-120,500 GRAM</span>
-          </div>
-          <div class="tx-preview-row">
-            <span style="color:var(--text-secondary);font-family:var(--font-mono);">Whale #447</span>
-            <span class="tx-amount-in">+8,900,000 GRAM</span>
-          </div>
+<!-- ── Tools (Calc & Chart) ───────────────────────────── -->
+<section id="chart" class="section-container">
+  <div class="tools-grid">
+    <!-- Calculator -->
+    <div class="calc-box">
+      <h3 style="font-size:22px; font-weight:700; margin-bottom:24px;">Swap Estimator</h3>
+      
+      <div class="calc-input-group">
+        <label class="calc-label">You Pay</label>
+        <div class="calc-input-wrap">
+          <input type="number" id="calc-ton" class="calc-input" value="100" oninput="calculateSwap()">
+          <span class="calc-currency">TON</span>
         </div>
       </div>
+      
+      <div style="text-align:center; margin:10px 0; color:var(--neon-cyan);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+      </div>
+      
+      <div class="calc-input-group">
+        <label class="calc-label">You Receive (Est.)</label>
+        <div class="calc-input-wrap">
+          <input type="text" id="calc-anl" class="calc-input" value="11,428" readonly style="background:rgba(0,207,255,0.05); color:var(--neon-cyan);">
+          <span class="calc-currency">ANLGRAM</span>
+        </div>
+      </div>
+      
+      <a href="#" class="btn-premium" style="width:100%; justify-content:center; margin-top:20px;">Swap Now</a>
     </div>
-
-    <!-- Flow Visualizer -->
-    <div class="feature-card animate-fade-up delay-1">
-      <div class="feature-icon feature-icon-cyan">🕸️</div>
-      <h3 class="feature-title">Flow Visualizer</h3>
-      <p class="feature-desc">Interactive D3.js network graph that maps fund flows between entities in real-time. Trace where GRAM moves — from exchanges to DeFi, wallets to smart contracts.</p>
-      <div class="feature-tags">
-        <span class="feature-tag">D3.js Graph</span>
-        <span class="feature-tag">Real-time</span>
-        <span class="feature-tag">Whale Tracking</span>
-      </div>
-      <div style="margin-top: var(--space-5);">
-        <a href="visualizer.html" class="btn btn-ghost btn-sm">Open Visualizer →</a>
-      </div>
-    </div>
-
-    <!-- Exchange Intel Hub -->
-    <div class="feature-card animate-fade-up delay-2">
-      <div class="feature-icon feature-icon-green">🏛️</div>
-      <h3 class="feature-title">Exchange Intel Hub</h3>
-      <p class="feature-desc">Monitor real-time hot wallets, liquidity pools, and entity balances across major TON centralized (CEX) and decentralized (DEX) exchanges with live ratio tracking.</p>
-      <div class="feature-tags">
-        <span class="feature-tag">CEX Wallets</span>
-        <span class="feature-tag">DEX Liquidity</span>
-        <span class="feature-tag">On-Chain Flow</span>
-      </div>
-      <div style="margin-top: var(--space-5);">
-        <a href="intel-exchange.html" class="btn btn-ghost btn-sm">Open Intel Hub →</a>
-      </div>
-    </div>
-
-    <!-- Smart Alerts -->
-    <div class="feature-card animate-fade-up delay-3">
-      <div class="feature-icon feature-icon-purple">📡</div>
-      <h3 class="feature-title">Smart Alerts</h3>
-      <p class="feature-desc">Configure custom alerts for whale movements, large transactions, entity activity and suspicious patterns. Never miss critical on-chain events again.</p>
-      <div class="feature-tags">
-        <span class="feature-tag">Whale Alerts</span>
-        <span class="feature-tag">Custom Rules</span>
-        <span class="feature-tag">Real-time Feed</span>
-      </div>
-      <div style="margin-top: var(--space-5);">
-        <a href="alerts.html" class="btn btn-ghost btn-sm">Set Alerts →</a>
+    
+    <!-- Chart Placeholder -->
+    <div class="chart-box">
+      <div style="position:absolute; top:20px; left:24px; font-size:18px; font-weight:700;">Live Chart</div>
+      <div style="text-align:center; color:var(--text-muted);">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:16px; opacity:0.5;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <p>TradingView Integration / DexScreener Embed</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── How It Works ───────────────────────────────────── -->
-<section class="how-section">
-  <div class="how-content">
-    <div class="section-label">How It Works</div>
-    <h2 class="section-title" style="text-align:center;">From Raw Data to Intelligence</h2>
-    <div class="steps-grid">
-      <div class="step-card animate-fade-up">
-        <div class="step-number">01</div>
-        <h3 class="step-title">Search Any Address</h3>
-        <p class="step-desc">Enter any TON wallet address, transaction hash, or known entity name to start your investigation.</p>
-      </div>
-      <div class="step-card animate-fade-up delay-2">
-        <div class="step-number">02</div>
-        <h3 class="step-title">Unmask the Entity</h3>
-        <p class="step-desc">ANLGRAM's intelligence database cross-references addresses with known entities, labeling exchanges, funds, and whales automatically.</p>
-      </div>
-      <div class="step-card animate-fade-up delay-4">
-        <div class="step-number">03</div>
-        <h3 class="step-title">Trace Fund Flows</h3>
-        <p class="step-desc">Follow the money through the interactive Visualizer to see exactly how funds move across the TON/GRAM network.</p>
-      </div>
-    </div>
+<!-- ── FAQ ────────────────────────────────────────────── -->
+<section class="section-container">
+  <div class="section-header">
+    <h2>Frequently Asked Questions</h2>
   </div>
-</section>
-
-<!-- ── Exchange Intelligence Preview ─────────────────────────── -->
-<section class="intel-section">
-  <div class="intel-grid">
-    <div>
-      <div class="section-label">Exchange Intel Hub</div>
-      <h2 class="section-title" style="text-align:left;">Real-Time CEX & DEX Intelligence</h2>
-      <p class="section-subtitle" style="text-align:left;margin:0 0 var(--space-6);">Monitor institutional exchange hot wallets, track net inflow/outflow ratios, and analyze liquidity pool depths across the entire TON ecosystem in real time.</p>
-      <a href="intel-exchange.html" class="btn-hero-primary" style="font-size:14px;height:42px;padding:0 24px;">Explore Exchange Hub →</a>
-    </div>
-    <div class="intel-bounty-list">
-      <div class="intel-bounty-card animate-fade-up">
-        <div class="bounty-reward" style="color:var(--neon-cyan);">Binance Hot Wallet #1</div>
-        <div class="bounty-info">
-          <div class="bounty-title">EQB5...9aB2 · Centralized Exchange (CEX)</div>
-          <div class="bounty-meta">Balance: 45,200,000 TON · Net Flow: +14.2% Inflow</div>
-        </div>
-        <span class="badge badge-green">ACTIVE</span>
+  
+  <div style="max-width:800px; margin:0 auto;">
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('active')">
+        What is ANLGRAM?
+        <span class="faq-icon">+</span>
       </div>
-      <div class="intel-bounty-card animate-fade-up delay-1">
-        <div class="bounty-reward" style="color:var(--neon-cyan);">OKX Institutional Reserve</div>
-        <div class="bounty-info">
-          <div class="bounty-title">EQC8...4mK9 · Centralized Exchange (CEX)</div>
-          <div class="bounty-meta">Balance: 28,450,000 TON · Net Flow: +8.5% Inflow</div>
-        </div>
-        <span class="badge badge-green">ACTIVE</span>
-      </div>
-      <div class="intel-bounty-card animate-fade-up delay-2">
-        <div class="bounty-reward" style="color:var(--neon-purple);">Ston.fi Router & LP Pool</div>
-        <div class="bounty-info">
-          <div class="bounty-title">EQD2...7vL3 · Decentralized DEX (AMM)</div>
-          <div class="bounty-meta">TVL: $142,500,000 USD · 24h Vol: $45.2M USD</div>
-        </div>
-        <span class="badge" style="background:rgba(168,85,247,0.15);color:#00CFFF;border:1px solid rgba(168,85,247,0.3);">DEX ROUTER</span>
-      </div>
-      <div class="intel-bounty-card animate-fade-up delay-3">
-        <div class="bounty-reward" style="color:var(--neon-purple);">DeDust Vault & AMM Core</div>
-        <div class="bounty-info">
-          <div class="bounty-title">EQE5...1xR8 · Decentralized DEX (AMM)</div>
-          <div class="bounty-meta">TVL: $98,400,000 USD · 24h Vol: $31.8M USD</div>
-        </div>
-        <span class="badge" style="background:rgba(168,85,247,0.15);color:#00CFFF;border:1px solid rgba(168,85,247,0.3);">DEX VAULT</span>
+      <div class="faq-a">
+        ANLGRAM is the premier memecoin built on the TON blockchain. It originated as an intelligence and analytics platform and has evolved into a community-driven token that empowers the TON ecosystem.
       </div>
     </div>
-  </div>
-</section>
-
-<!-- ── CTA ────────────────────────────────────────────── -->
-<section class="cta-section">
-  <div class="cta-glow"></div>
-  <div class="cta-content animate-fade-up">
-    <h2 class="cta-title">Start Investigating the TON Network</h2>
-    <p class="cta-desc">Access the most powerful on-chain intelligence platform built exclusively for TON/GRAM. No login required for the demo.</p>
-    <div style="display:flex;gap:var(--space-3);justify-content:center;flex-wrap:wrap;">
-      <a href="dashboard.html" class="btn-hero-primary">Launch App →</a>
-      <a href="visualizer.html" class="btn-hero-secondary">View Visualizer</a>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('active')">
+        Is the liquidity locked?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        Yes! 100% of the initial DEX liquidity is permanently locked to ensure a safe trading environment for all our holders. The smart contract ownership has also been renounced.
+      </div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('active')">
+        What blockchain does ANLGRAM use?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        ANLGRAM is exclusively built on The Open Network (TON), ensuring lightning-fast transactions and incredibly low fees.
+      </div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('active')">
+        How can I contact the team?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        The best way to reach out is through our official Telegram community or via X (Twitter). Our moderators are active 24/7.
+      </div>
     </div>
   </div>
 </section>
 
 <!-- ── Footer ─────────────────────────────────────────── -->
 <footer class="footer">
-  <div class="footer-left">
-    <a href="index.html" class="nav-logo">
-      <div class="nav-logo-icon" style="width:26px;height:26px;background:transparent;box-shadow:none;"><img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Crystal"/></div>
-      <span class="nav-logo-text" style="font-size:14px;">ANLGRAM</span>
-    </a>
-    <div class="footer-links">
-      <a href="dashboard.html" class="footer-link">Dashboard</a>
-      <a href="explorer.html" class="footer-link">Explorer</a>
-      <a href="visualizer.html" class="footer-link">Visualizer</a>
-      <a href="intel-exchange.html" class="footer-link">Exchange</a>
+  <div class="footer-content">
+    <div class="footer-col" style="flex:2;">
+      <a href="index.html" class="nav-logo" style="margin-bottom:20px;">
+        <div class="nav-logo-icon" style="width:32px;height:32px;"><img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Crystal"/></div>
+        <span class="nav-logo-text" style="font-size:18px;">ANLGRAM</span>
+      </a>
+      <p style="color:var(--text-secondary); font-size:14px; max-width:300px; line-height:1.6;">
+        The premier memecoin on The Open Network. Powered by community, transparency, and speed.
+      </p>
+    </div>
+    
+    <div class="footer-col">
+      <div class="footer-title">Ecosystem</div>
+      <div class="footer-links-vert">
+        <a href="#buy">How to Buy</a>
+        <a href="#tokenomics">Tokenomics</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="dashboard.html">Platform Demo</a>
+      </div>
+    </div>
+    
+    <div class="footer-col">
+      <div class="footer-title">Community</div>
+      <div class="footer-links-vert">
+        <a href="#">Telegram Group</a>
+        <a href="#">Telegram Channel</a>
+        <a href="#">X (Twitter)</a>
+        <a href="#">GitHub</a>
+      </div>
+    </div>
+    
+    <div class="footer-col">
+      <div class="footer-title">Trading</div>
+      <div class="footer-links-vert">
+        <a href="#">STON.fi</a>
+        <a href="#">DeDust</a>
+        <a href="#">Tonviewer</a>
+        <a href="#">GeckoTerminal</a>
+      </div>
     </div>
   </div>
-  <div class="footer-right">
-    <div style="display:flex;align-items:center;gap:var(--space-2);">
-      <span class="dot-live" style="width:5px;height:5px;"></span>
-      TON Network · Live ·
-      <span style="color:var(--ton-blue);">GRAM $2.47</span>
+  
+  <div class="footer-bottom">
+    <div>© 2026 ANLGRAM. All rights reserved.</div>
+    <div style="display:flex;gap:16px;">
+      <a href="#" style="color:var(--text-muted);text-decoration:none;">Privacy Policy</a>
+      <a href="#" style="color:var(--text-muted);text-decoration:none;">Terms of Service</a>
     </div>
   </div>
 </footer>
 
-<!-- ── Hero Canvas Animation ──────────────────────────── -->
+<!-- ── Scripts ────────────────────────────────────────── -->
 <script>
+// Calculator Logic
+function calculateSwap() {
+  const tonInput = document.getElementById('calc-ton').value;
+  const anlInput = document.getElementById('calc-anl');
+  // Dummy conversion rate: 1 TON = 114.28 ANLGRAM
+  const rate = 114.28;
+  if(tonInput && !isNaN(tonInput)) {
+    const total = (tonInput * rate).toFixed(0);
+    anlInput.value = Number(total).toLocaleString();
+  } else {
+    anlInput.value = "0";
+  }
+}
+
+function copyContract() {
+  navigator.clipboard.writeText('EQC_anlgram_token_address_example_hash_9fB2');
+  alert('Contract Address Copied!');
+}
+
+// Hero Canvas Animation (Preserved)
 (function() {
   const canvas = document.getElementById('hero-canvas');
+  if(!canvas) return;
   const ctx = canvas.getContext('2d');
   let nodes = [], edges = [], raf;
   let mouse = { x: 0, y: 0 };
@@ -887,14 +773,14 @@
     resize();
     nodes = [];
     edges = [];
-    const count = Math.floor((canvas.width * canvas.height) / 18000);
+    const count = Math.floor((canvas.width * canvas.height) / 15000); // Slightly more dense for memecoin
 
     for (let i = 0; i < count; i++) {
       nodes.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
         r: Math.random() * 2.5 + 1,
         type: Math.random() > 0.85 ? 'exchange' : Math.random() > 0.5 ? 'wallet' : 'unknown',
         pulse: Math.random() * Math.PI * 2,
@@ -904,21 +790,19 @@
   }
 
   function getNodeColor(node) {
-    if (node.type === 'exchange') return '#0088CC';
-    if (node.type === 'wallet')   return '#00CFFF';
-    return '#4a4a6a';
+    if (node.type === 'exchange') return '#00f0ff';
+    if (node.type === 'wallet')   return '#0088cc';
+    return '#333344';
   }
 
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Move nodes
     for (let n of nodes) {
       n.x += n.vx;
       n.y += n.vy;
       n.pulse += n.pulseSpeed;
 
-      // Slight mouse attraction
       const dx = mouse.x - n.x, dy = mouse.y - n.y;
       const dist = Math.sqrt(dx*dx + dy*dy);
       if (dist < 200) {
@@ -926,7 +810,6 @@
         n.vy += dy * 0.00005;
       }
 
-      // Damping & bounce
       n.vx *= 0.999;
       n.vy *= 0.999;
       if (n.x < 0) { n.x = 0; n.vx *= -1; }
@@ -935,7 +818,6 @@
       if (n.y > canvas.height) { n.y = canvas.height; n.vy *= -1; }
     }
 
-    // Draw edges
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
         const dx = nodes[j].x - nodes[i].x;
@@ -945,7 +827,7 @@
           const alpha = (1 - dist/120) * 0.3;
           const gradient = ctx.createLinearGradient(nodes[i].x, nodes[i].y, nodes[j].x, nodes[j].y);
           gradient.addColorStop(0, `rgba(0,136,204,${alpha})`);
-          gradient.addColorStop(1, `rgba(0,207,255,${alpha})`);
+          gradient.addColorStop(1, `rgba(0,240,255,${alpha})`);
           ctx.beginPath();
           ctx.moveTo(nodes[i].x, nodes[i].y);
           ctx.lineTo(nodes[j].x, nodes[j].y);
@@ -956,16 +838,14 @@
       }
     }
 
-    // Draw nodes
     for (let n of nodes) {
       const pulseR = n.r + Math.sin(n.pulse) * 0.5;
       const color = getNodeColor(n);
 
       if (n.type === 'exchange') {
-        // Glow for exchange nodes
         const grd = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, pulseR * 4);
-        grd.addColorStop(0, 'rgba(0,136,204,0.3)');
-        grd.addColorStop(1, 'rgba(0,136,204,0)');
+        grd.addColorStop(0, 'rgba(0,240,255,0.3)');
+        grd.addColorStop(1, 'rgba(0,240,255,0)');
         ctx.beginPath();
         ctx.arc(n.x, n.y, pulseR * 4, 0, Math.PI * 2);
         ctx.fillStyle = grd;
@@ -977,7 +857,6 @@
       ctx.fillStyle = color;
       ctx.fill();
     }
-
     raf = requestAnimationFrame(draw);
   }
 
@@ -988,13 +867,13 @@
   draw();
 })();
 
-// Live price animation
+// Live price animation (Preserved logic, adapted for ANLGRAM)
 function animateStats() {
   const stats = [
-    { el: 'stat-price',    base: 2.47, format: v => '$' + v.toFixed(2) },
-    { el: 'stat-txs',      base: 1.2,  format: v => v.toFixed(1) + 'M' },
-    { el: 'stat-wallets',  base: 892,  format: v => Math.round(v) + 'K' },
-    { el: 'stat-entities', base: 45.2, format: v => v.toFixed(1) + 'K' }
+    { el: 'stat-price',    base: 0.042, format: v => '$' + v.toFixed(3) },
+    { el: 'stat-mcap',     base: 42.5,  format: v => '$' + v.toFixed(1) + 'M' },
+    { el: 'stat-liquidity',base: 8.2,   format: v => '$' + v.toFixed(1) + 'M' },
+    { el: 'stat-holders',  base: 24.5,  format: v => v.toFixed(1) + 'K' }
   ];
   setInterval(() => {
     stats.forEach(s => {
