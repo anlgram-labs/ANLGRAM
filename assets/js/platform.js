@@ -418,7 +418,7 @@
                 </div>
 
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
-                  <button onclick="window.openWalletModal()" class="set-btn-primary">⚡ Conectar Billetera</button>
+                  <button onclick="closeSettingsModal(); window.openWalletModal();" class="set-btn-primary connect-wallet-btn">⚡ Conectar Billetera</button>
                   <button onclick="window.disconnectWallet()" class="set-btn-danger">🚫 Desconectar</button>
                 </div>
 

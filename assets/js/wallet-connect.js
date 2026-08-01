@@ -41,7 +41,7 @@
     if (document.getElementById('anlgram-wallet-modal-overlay')) return;
 
     const modalHTML = `
-      <div id="anlgram-wallet-modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); z-index:999999; align-items:center; justify-content:center; padding:16px;">
+      <div id="anlgram-wallet-modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); z-index:2000000; align-items:center; justify-content:center; padding:16px;">
         <div style="background:#0d0e15; border:1px solid rgba(0, 240, 255, 0.35); border-radius:24px; max-width:440px; width:100%; padding:28px; box-shadow:0 0 50px rgba(0, 240, 255, 0.2); color:#fff; position:relative; font-family:'Inter', system-ui, sans-serif; text-align:center; box-sizing:border-box;">
           
           <button id="anlgram-modal-close" style="position:absolute; top:20px; right:20px; background:none; border:none; color:#888; font-size:20px; cursor:pointer; padding:4px;">✕</button>
