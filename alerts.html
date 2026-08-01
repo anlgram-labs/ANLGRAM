@@ -193,19 +193,7 @@
       background: var(--bg-secondary);
     }
 
-    /* Admin panel toggle */
-    .admin-toggle {
-      font-size: 10px; color: var(--text-muted); cursor: pointer;
-      text-decoration: underline; margin-top: var(--space-2); display: block; text-align: center;
-    }
-    .admin-panel {
-      max-height: 0; overflow: hidden; transition: max-height 0.4s ease;
-      background: var(--bg-secondary); border-radius: var(--radius-lg);
-      border: 1px solid var(--border-subtle); margin-bottom: var(--space-4);
-    }
-    .admin-panel.open { max-height: 600px; padding: var(--space-4); }
-    .admin-panel .form-input { margin-bottom: var(--space-2); font-size: 11px; }
-    .admin-title { font-size: var(--text-xs); font-weight: 700; color: var(--orange); margin-bottom: var(--space-3); }
+
 
     @media (max-width: 900px) { .alerts-layout { grid-template-columns: 1fr !important; } }
     @media (max-width: 768px) {
@@ -349,22 +337,7 @@
               </div>
             </div>
 
-            <!-- Admin panel (hidden, only for platform owner setup) -->
-            <span class="admin-toggle" onclick="document.getElementById('adminPanel').classList.toggle('open')">⚙ Admin Setup (platform owner only)</span>
-            <div class="admin-panel" id="adminPanel">
-              <div class="admin-title">🔐 One-time setup by platform owner</div>
-              <label class="hint" style="margin-bottom:4px;display:block;">Telegram Bot Token (<a href="https://t.me/BotFather" target="_blank" style="color:var(--cyan);">@BotFather</a>)</label>
-              <input type="text" class="form-input" id="adminBotToken" value="8881796443:AAGyzzFU8d1Wt4sB0iFx1jabFf4jQoLL3kM" placeholder="123456:ABC-DEF...">
-              <label class="hint" style="margin-bottom:4px;display:block;margin-top:8px;">Telegram Bot Username (without @)</label>
-              <input type="text" class="form-input" id="adminBotUsername" value="ANLGRAM_bot" placeholder="e.g. ANLGRAMAlertBot">
-              <label class="hint" style="margin-bottom:4px;display:block;margin-top:8px;">EmailJS Public Key</label>
-              <input type="text" class="form-input" id="adminEjsPK" placeholder="Public key">
-              <label class="hint" style="margin-bottom:4px;display:block;margin-top:8px;">EmailJS Service ID</label>
-              <input type="text" class="form-input" id="adminEjsSvc" placeholder="service_xxx">
-              <label class="hint" style="margin-bottom:4px;display:block;margin-top:8px;">EmailJS Template ID</label>
-              <input type="text" class="form-input" id="adminEjsTpl" placeholder="template_xxx">
-              <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:var(--space-3);" onclick="saveAdminSettings()">Save Admin Settings</button>
-            </div>
+
 
           </div>
           <div style="padding:var(--space-4);border-top:1px solid var(--border-subtle);background:var(--bg-card-hover);">
@@ -475,48 +448,17 @@ function showToast(title, desc, dur = 2500) {
   setTimeout(() => document.getElementById('toast').classList.remove('show'), dur);
 }
 
-// ── Admin Settings (Platform owner does this ONCE) ───────────
+// ── Admin Settings (Hardcoded Configuration) ───────────
 function getAdminConfig() {
-  const defaults = {
+  return {
     botToken: '8881796443:AAGyzzFU8d1Wt4sB0iFx1jabFf4jQoLL3kM',
     botUsername: 'ANLGRAM_bot',
     ejsPK: '',
     ejsSvc: '',
     ejsTpl: ''
   };
-  const stored = JSON.parse(localStorage.getItem('anlgram_admin') || '{}');
-  return {
-    botToken: stored.botToken || defaults.botToken,
-    botUsername: stored.botUsername || defaults.botUsername,
-    ejsPK: stored.ejsPK || defaults.ejsPK,
-    ejsSvc: stored.ejsSvc || defaults.ejsSvc,
-    ejsTpl: stored.ejsTpl || defaults.ejsTpl
-  };
 }
-
-function loadAdmin() {
-  const a = getAdminConfig();
-  if (a.botToken) document.getElementById('adminBotToken').value = a.botToken;
-  if (a.botUsername) document.getElementById('adminBotUsername').value = a.botUsername;
-  if (a.ejsPK) document.getElementById('adminEjsPK').value = a.ejsPK;
-  if (a.ejsSvc) document.getElementById('adminEjsSvc').value = a.ejsSvc;
-  if (a.ejsTpl) document.getElementById('adminEjsTpl').value = a.ejsTpl;
-  return a;
-}
-const adminConfig = loadAdmin();
-
-window.saveAdminSettings = function() {
-  const cfg = {
-    botToken: document.getElementById('adminBotToken').value.trim(),
-    botUsername: document.getElementById('adminBotUsername').value.trim(),
-    ejsPK: document.getElementById('adminEjsPK').value.trim(),
-    ejsSvc: document.getElementById('adminEjsSvc').value.trim(),
-    ejsTpl: document.getElementById('adminEjsTpl').value.trim()
-  };
-  localStorage.setItem('anlgram_admin', JSON.stringify(cfg));
-  Object.assign(adminConfig, cfg);
-  showToast('✅ Admin Settings Saved', 'Bot and Email settings saved.');
-};
+const adminConfig = getAdminConfig();
 
 // ── Telegram: Simple Connect Flow ────────────────────────────
 function updateTgStatus() {
