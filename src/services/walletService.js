@@ -8,10 +8,9 @@ export class WalletService {
         this.walletInfo = null;
     }
 
-    init() {
+    async init() {
         if (typeof window.TON_CONNECT_UI === 'undefined') {
-            console.error('TON Connect UI library not found.');
-            return;
+            await this.loadScript('https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js');
         }
 
         try {
@@ -35,7 +34,23 @@ export class WalletService {
         }
     }
 
+    loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
     async connect() {
+        if (!this.tonConnectUI) {
+            Toast.warning('Initializing wallet interface...');
+            await this.init();
+            if (!this.tonConnectUI) return Toast.error('Failed to load wallet interface.');
+        }
+
         try {
             if(this.tonConnectUI.connected) {
                 await this.disconnect();
