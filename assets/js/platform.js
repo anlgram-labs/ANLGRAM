@@ -200,7 +200,7 @@
       btn.className = 'btn btn-primary btn-sm';
       btn.style.marginLeft = '12px';
       btn.textContent = 'Connect Wallet';
-      btn.onclick = window.openWalletModal;
+      // Wallet click handled by wallet-connect.js
       topbarActions.appendChild(btn);
     }
 
@@ -385,10 +385,7 @@
         btn.style.border = 'none';
         btn.style.fontWeight = '600';
         btn.title = 'Click to connect your TON wallet';
-        btn.onclick = (e) => {
-          e.preventDefault();
-          window.openWalletModal();
-        };
+        // Wallet click handled by wallet-connect.js
       }
     });
   };
@@ -639,9 +636,7 @@
       else priceEl.textContent = '$' + window.lastTonPriceVal.toFixed(2);
     }
 
-    if (typeof updateWalletUI === 'function') {
-        // Do nothing, preserved for compatibility
-    }
+    if (typeof updateWalletUI === 'function') 
   };
 
   // Universal TON/GRAM Crystal Branding & Favicon Injector
