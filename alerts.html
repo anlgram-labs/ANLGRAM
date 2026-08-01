@@ -485,7 +485,7 @@ function updateTgStatus() {
 window.connectTelegram = async function() {
   const a = getAdminConfig();
   if (!a.botToken || !a.botUsername) {
-    showToast('🛡️ Bot Not Configured', 'Ask the platform admin to set up the Telegram bot in Admin Setup.');
+    showToast('🛡️ Bot Not Configured', 'The Telegram bot configuration is missing or invalid.');
     return;
   }
 
