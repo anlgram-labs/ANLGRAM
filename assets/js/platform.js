@@ -225,8 +225,16 @@
       document.getElementById('topbarSettingsBtn').onclick = (e) => { e.preventDefault(); window.openSettingsModal(); };
     }
 
-    document.querySelectorAll('button[title="Settings"], button[title="Ajustes"], #topbarSettingsBtn').forEach(b => {
+    document.querySelectorAll('button[title="Settings"], button[title="Ajustes"], #topbarSettingsBtn, .settings-btn').forEach(b => {
       b.onclick = (e) => { e.preventDefault(); window.openSettingsModal(); };
+    });
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[title="Settings"], button[title="Ajustes"], #topbarSettingsBtn, .settings-btn');
+      if (btn) {
+        e.preventDefault();
+        window.openSettingsModal();
+      }
     });
 
     // Auto-inject or bind Notifications button in topbar
