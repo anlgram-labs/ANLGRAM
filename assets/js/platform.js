@@ -98,7 +98,7 @@
     if (!document.getElementById('settingsModal')) {
       const setDiv = document.createElement('div');
       setDiv.id = 'settingsModal';
-      setDiv.style.cssText = 'display:none !important; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(16px); z-index:1000000; align-items:center; justify-content:center; padding:16px;';
+      setDiv.style.cssText = 'display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(16px); z-index:1000000; align-items:center; justify-content:center; padding:16px;';
       setDiv.innerHTML = `
         <div style="background:#111116; border:1px solid #00f0ff; border-radius:24px; max-width:460px; width:100%; padding:24px; box-shadow:0 0 40px rgba(0,240,255,0.25); color:#fff; position:relative; max-height:90vh; overflow-y:auto; text-align:left;">
           <button onclick="closeSettingsModal()" style="position:absolute; top:20px; right:20px; background:transparent; border:none; color:#888; font-size:20px; cursor:pointer;">✕</button>
@@ -159,7 +159,7 @@
     if (!document.getElementById('notificationsModal')) {
       const notifDiv = document.createElement('div');
       notifDiv.id = 'notificationsModal';
-      notifDiv.style.cssText = 'display:none !important; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(16px); z-index:1000000; align-items:center; justify-content:center; padding:16px;';
+      notifDiv.style.cssText = 'display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(16px); z-index:1000000; align-items:center; justify-content:center; padding:16px;';
       notifDiv.innerHTML = `
         <div style="background:#111116; border:1px solid #00CFFF; border-radius:24px; max-width:500px; width:100%; padding:24px; box-shadow:0 0 40px rgba(0,207,255,0.25); color:#fff; position:relative; max-height:85vh; display:flex; flex-direction:column; text-align:left;">
           <button onclick="closeNotificationsModal()" style="position:absolute; top:20px; right:20px; background:transparent; border:none; color:#888; font-size:20px; cursor:pointer;">✕</button>
