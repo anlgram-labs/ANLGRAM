@@ -165,6 +165,19 @@
     }, 1200);
   };
 
+  window.connectWallet = function(walletName) {
+    if (walletName) {
+      window.connectSpecificWallet(walletName);
+    } else {
+      window.openWalletModal();
+    }
+  };
+
+  window.closeWalletModal = function() {
+    const overlay = document.getElementById('anlgram-wallet-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
+  };
+
   window.connectManualAddress = function() {
     const input = document.getElementById('anlgram-manual-addr-input');
     const addr = input ? input.value.trim() : '';
