@@ -1,0 +1,1160 @@
+/* ==========================================================================
+   GRAM Intelligence Terminal Stylesheet
+   Bloomberg Terminal-inspired institutional dark theme
+   ========================================================================== */
+
+:root {
+  /* Backgrounds */
+  --bg-main: #0a0e14;
+  --bg-panel: #111820;
+  --bg-table-header: #0d1117;
+  
+  /* Borders */
+  --border-panel: 1px solid rgba(255, 255, 255, 0.06);
+  --border-panel-hover: 1px solid rgba(255, 255, 255, 0.12);
+  
+  /* Typography */
+  --text-primary: #e8eaed;
+  --text-secondary: #8b949e;
+  --text-muted: #484f58;
+  
+  /* Status Colors */
+  --accent-blue: #58a6ff;
+  --color-positive: #3fb950;
+  --color-negative: #f85149;
+  --color-warning-yellow: #d29922;
+  --color-warning-orange: #db6d28;
+  
+  /* Entity Colors */
+  --color-whale: #e3b341;
+  --color-smart: #bc8cff;
+  --color-exchange: #79c0ff;
+  
+  /* Fonts */
+  --font-data: 'JetBrains Mono', monospace;
+  --font-label: 'Inter', sans-serif;
+  
+  /* Base spacings */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+}
+
+/* ==========================================================================
+   Base & Resets
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-label);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==========================================================================
+   1. Terminal Main Layout
+   ========================================================================== */
+
+.terminal-main {
+  height: 100vh;
+  width: 100%;
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+  margin-left: 240px; /* Assuming a 240px sidebar */
+  background-color: var(--bg-main);
+}
+
+@media (max-width: 768px) {
+  .terminal-main {
+    margin-left: 0;
+    padding: var(--spacing-md);
+  }
+}
+
+/* ==========================================================================
+   2. View System
+   ========================================================================== */
+
+.view-container {
+  display: none;
+  opacity: 0;
+}
+
+.view-container.view-active {
+  display: block;
+  animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   3. Rankings Toolbar
+   ========================================================================== */
+
+.rankings-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.rankings-title {
+  font-family: var(--font-label);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+.sort-group {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.sort-btn {
+  background: var(--bg-panel);
+  border: var(--border-panel);
+  color: var(--text-secondary);
+  font-family: var(--font-data);
+  font-size: 12px;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.sort-btn:hover {
+  border: var(--border-panel-hover);
+  color: var(--text-primary);
+}
+
+.sort-btn.sort-active {
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.terminal-search {
+  background-color: var(--bg-panel);
+  border: var(--border-panel);
+  color: var(--text-primary);
+  font-family: var(--font-data);
+  font-size: 13px;
+  padding: 8px 12px 8px 32px;
+  border-radius: 4px;
+  width: 250px;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.terminal-search:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 1px var(--accent-blue);
+}
+
+.search-container::before {
+  content: '⚲'; /* Search icon representation */
+  position: absolute;
+  left: 12px;
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+/* ==========================================================================
+   4. Bloomberg-Style Data Table
+   ========================================================================== */
+
+.terminal-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--bg-panel);
+  border: var(--border-panel);
+  border-radius: 8px;
+}
+
+.terminal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-data);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.terminal-table thead {
+  position: sticky;
+  top: 0;
+  background-color: var(--bg-table-header);
+  z-index: 10;
+}
+
+.terminal-table th {
+  text-align: right;
+  text-transform: uppercase;
+  font-family: var(--font-label);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: var(--border-panel);
+  user-select: none;
+  font-weight: 500;
+}
+
+.terminal-table th:first-child { text-align: left; }
+.terminal-table th:nth-child(2) { text-align: left; }
+
+.terminal-table th:hover {
+  color: var(--text-primary);
+}
+
+.terminal-table th.sorted-asc::after {
+  content: ' ▲';
+  font-size: 9px;
+}
+
+.terminal-table th.sorted-desc::after {
+  content: ' ▼';
+  font-size: 9px;
+}
+
+.terminal-table td {
+  font-size: 13px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  vertical-align: middle;
+}
+
+.terminal-table td:first-child { text-align: left; }
+.terminal-table td:nth-child(2) { text-align: left; }
+
+.terminal-table tbody tr {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 2px solid transparent;
+}
+
+.terminal-table tbody tr:hover {
+  background-color: rgba(88, 166, 255, 0.04);
+  border-left-color: var(--accent-blue);
+}
+
+.terminal-table tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+.token-row-rank {
+  color: var(--text-muted);
+  font-size: 11px;
+  width: 30px;
+  display: inline-block;
+}
+
+.token-info-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.token-row-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-main);
+}
+
+.token-row-name-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.token-row-name {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-family: var(--font-label);
+  line-height: 1.2;
+}
+
+.token-row-ticker {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.price-positive {
+  color: var(--color-positive);
+}
+
+.price-negative {
+  color: var(--color-negative);
+}
+
+.score-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #000;
+  text-align: center;
+  min-width: 32px;
+}
+
+.score-high { background-color: var(--color-positive); }
+.score-medium { background-color: var(--color-warning-yellow); }
+.score-low { background-color: var(--color-negative); }
+
+/* ==========================================================================
+   5. Token Detail Header
+   ========================================================================== */
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg) 0;
+  border-bottom: var(--border-panel);
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.detail-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.detail-back-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-label);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+}
+
+.detail-back-btn:hover {
+  color: var(--text-primary);
+}
+
+.detail-back-btn::before {
+  content: '←';
+  font-size: 16px;
+}
+
+.detail-token-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.detail-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+.detail-name-group {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+}
+
+.detail-name {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.detail-ticker {
+  background: var(--bg-panel);
+  border: var(--border-panel);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.detail-contract {
+  font-family: var(--font-data);
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-contract-copy {
+  background: transparent;
+  border: 1px solid var(--text-muted);
+  color: var(--text-muted);
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.detail-contract-copy:hover {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+.detail-price-section {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.detail-price-main {
+  font-family: var(--font-data);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail-price-change {
+  font-size: 14px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(63, 185, 80, 0.1);
+  color: var(--color-positive);
+}
+
+.detail-price-change.negative {
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--color-negative);
+}
+
+.detail-price-ranges {
+  font-family: var(--font-data);
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: 4px;
+}
+
+/* ==========================================================================
+   6. Detail Grid Layout
+   ========================================================================== */
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+@media (max-width: 1024px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detail-panel {
+  background-color: var(--bg-panel);
+  border: var(--border-panel);
+  border-radius: 8px;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-panel.full-width {
+  grid-column: 1 / -1;
+}
+
+.detail-panel-title {
+  font-family: var(--font-label);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--text-muted);
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.detail-panel-title.accent-blue { border-bottom-color: var(--accent-blue); }
+.detail-panel-title.accent-purple { border-bottom-color: var(--color-smart); }
+.detail-panel-title.accent-gold { border-bottom-color: var(--color-whale); }
+
+/* ==========================================================================
+   7. Overview Metrics
+   ========================================================================== */
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-lg);
+}
+
+@media (max-width: 600px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-label {
+  font-family: var(--font-label);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.metric-value {
+  font-family: var(--font-data);
+  font-size: 16px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metric-tag {
+  font-family: var(--font-label);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.metric-tag.positive { background: rgba(63, 185, 80, 0.15); color: var(--color-positive); }
+.metric-tag.negative { background: rgba(248, 81, 73, 0.15); color: var(--color-negative); }
+.metric-tag.neutral { background: rgba(139, 148, 158, 0.15); color: var(--text-secondary); }
+
+/* ==========================================================================
+   8. Holder Distribution Table
+   ========================================================================== */
+
+.holder-filter-bar {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.holder-filter-btn {
+  background: transparent;
+  border: 1px solid var(--text-muted);
+  color: var(--text-secondary);
+  font-family: var(--font-data);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.holder-filter-btn.active {
+  background: var(--text-muted);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.holder-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-data);
+  font-size: 12px;
+}
+
+.holder-table th {
+  text-align: right;
+  color: var(--text-secondary);
+  font-weight: normal;
+  padding: 8px;
+  border-bottom: 1px solid var(--text-muted);
+}
+
+.holder-table th:first-child,
+.holder-table th:nth-child(2) {
+  text-align: left;
+}
+
+.holder-table td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  text-align: right;
+}
+
+.holder-table td:first-child,
+.holder-table td:nth-child(2) {
+  text-align: left;
+}
+
+.wallet-address {
+  font-family: var(--font-data);
+  color: var(--text-primary);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.wallet-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  text-transform: uppercase;
+  font-family: var(--font-label);
+  font-weight: 600;
+  margin-left: 8px;
+  color: #000;
+}
+
+.badge-whale { background-color: var(--color-whale); }
+.badge-exchange { background-color: var(--color-exchange); }
+.badge-team { background-color: var(--color-smart); color: #fff; }
+.badge-burn { background-color: var(--color-negative); color: #fff; text-decoration: line-through; }
+.badge-lp { background-color: #00bcd4; }
+.badge-treasury { background-color: var(--color-warning-orange); color: #fff; }
+.badge-smart { background-color: var(--color-positive); }
+.badge-unknown { background-color: var(--text-muted); color: #fff; }
+
+/* ==========================================================================
+   9. Risk Analysis Panel
+   ========================================================================== */
+
+.risk-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: var(--border-panel);
+}
+
+.risk-overall {
+  font-size: 36px;
+  font-weight: 700;
+  font-family: var(--font-data);
+}
+
+.risk-overall.high { color: var(--color-positive); } /* Low risk = high score = green */
+.risk-overall.medium { color: var(--color-warning-yellow); }
+.risk-overall.low { color: var(--color-negative); }
+
+.risk-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md) var(--spacing-lg);
+}
+
+@media (max-width: 600px) {
+  .risk-grid { grid-template-columns: 1fr; }
+}
+
+.risk-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.risk-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.risk-item-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.risk-item-value {
+  font-family: var(--font-data);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.risk-item-bar {
+  width: 100%;
+  height: 4px;
+  background-color: var(--text-muted);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.risk-item-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.risk-green { background-color: var(--color-positive); }
+.risk-yellow { background-color: var(--color-warning-yellow); }
+.risk-orange { background-color: var(--color-warning-orange); }
+.risk-red { background-color: var(--color-negative); }
+
+/* ==========================================================================
+   10. Health Score Ring
+   ========================================================================== */
+
+.health-score-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--spacing-lg);
+  position: relative;
+}
+
+.health-score-svg {
+  width: 120px;
+  height: 120px;
+  transform: rotate(-90deg);
+}
+
+.health-score-bg {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 8;
+}
+
+.health-score-progress {
+  fill: none;
+  stroke: var(--color-positive);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dasharray 1s ease-out;
+}
+
+.health-score-number {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-data);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.health-factors {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.health-factor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.health-factor-name { color: var(--text-secondary); }
+.health-factor-score { font-family: var(--font-data); color: var(--text-primary); }
+
+/* ==========================================================================
+   11. Smart Money Panel
+   ========================================================================== */
+
+.smart-money-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+}
+
+.smart-money-stat {
+  background: rgba(188, 140, 255, 0.05);
+  border: 1px solid rgba(188, 140, 255, 0.2);
+  padding: var(--spacing-md);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.smart-money-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--color-smart);
+  letter-spacing: 0.5px;
+}
+
+.smart-money-value {
+  font-family: var(--font-data);
+  font-size: 20px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trend-up {
+  color: var(--color-positive);
+  font-size: 14px;
+}
+.trend-up::before { content: '↑'; }
+
+.trend-down {
+  color: var(--color-negative);
+  font-size: 14px;
+}
+.trend-down::before { content: '↓'; }
+
+/* ==========================================================================
+   12. Live Transaction Feed
+   ========================================================================== */
+
+.tx-feed {
+  max-height: 500px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tx-feed-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 100px 80px;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.01);
+  font-family: var(--font-data);
+  font-size: 12px;
+  border-left: 3px solid transparent;
+  transition: background 0.2s;
+  animation: slideInTx 0.3s ease-out forwards;
+}
+
+@keyframes slideInTx {
+  from { transform: translateX(-10px); opacity: 0; background: rgba(255,255,255,0.1); }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.tx-feed-row:hover { background: rgba(255,255,255,0.04); }
+
+.tx-buy { border-left-color: var(--color-positive); }
+.tx-sell { border-left-color: var(--color-negative); }
+.tx-whale { border-left-color: var(--color-whale); background: rgba(227, 179, 65, 0.05); }
+.tx-dev { border-left-color: var(--color-smart); }
+.tx-exchange { border-left-color: var(--color-exchange); }
+
+.tx-type-badge {
+  font-size: 10px;
+  font-family: var(--font-label);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.tx-buy .tx-type-badge { color: var(--color-positive); }
+.tx-sell .tx-type-badge { color: var(--color-negative); }
+
+.tx-amount {
+  color: var(--text-primary);
+  text-align: right;
+  padding-right: var(--spacing-md);
+}
+
+.tx-address {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-time {
+  color: var(--text-muted);
+  text-align: right;
+  font-size: 11px;
+}
+
+/* ==========================================================================
+   13. Token Insights
+   ========================================================================== */
+
+.insights-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.insight-card {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: rgba(255,255,255,0.02);
+  border: var(--border-panel);
+  border-radius: 6px;
+  border-left-width: 3px;
+}
+
+.insight-positive { border-left-color: var(--color-positive); }
+.insight-negative { border-left-color: var(--color-negative); }
+.insight-neutral { border-left-color: var(--accent-blue); }
+
+.insight-icon {
+  font-size: 16px;
+  margin-top: 2px;
+}
+
+.insight-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.insight-text {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.insight-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-data);
+}
+
+/* ==========================================================================
+   14. Wallet Drilldown
+   ========================================================================== */
+
+.wallet-header {
+  background: var(--bg-panel);
+  border: var(--border-panel);
+  padding: var(--spacing-lg);
+  border-radius: 8px;
+  margin-bottom: var(--spacing-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.wallet-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wallet-address-large {
+  font-family: var(--font-data);
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+.wallet-summary-stats {
+  display: flex;
+  gap: var(--spacing-xl);
+}
+
+.wallet-portfolio-grid {
+  display: grid;
+  gap: 2px;
+  background: var(--border-panel); /* acts as gap color */
+  border: var(--border-panel);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.wallet-holding-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  background: var(--bg-panel);
+  padding: 12px var(--spacing-md);
+  align-items: center;
+}
+
+.wallet-holding-row:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+.wallet-tx-history {
+  width: 100%;
+  margin-top: var(--spacing-xl);
+}
+
+/* ==========================================================================
+   15. Skeleton Loaders
+   ========================================================================== */
+
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite linear;
+}
+
+.skeleton-text {
+  height: 14px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.skeleton-text.short { width: 50%; }
+.skeleton-text.medium { width: 75%; }
+
+.skeleton-block {
+  height: 40px;
+  border-radius: 6px;
+  width: 100%;
+}
+
+.skeleton-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.skeleton-table-row {
+  height: 40px;
+  margin-bottom: 2px;
+  border-radius: 2px;
+  width: 100%;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ==========================================================================
+   16. Status Indicators
+   ========================================================================== */
+
+.status-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-online {
+  background-color: var(--color-positive);
+  box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.4);
+  animation: pulse-green 2s infinite;
+}
+
+.status-offline {
+  background-color: var(--color-negative);
+}
+
+.status-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@keyframes pulse-green {
+  0% { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(63, 185, 80, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0); }
+}
+
+/* ==========================================================================
+   17. Scrollbar Styling
+   ========================================================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-muted) var(--bg-main);
+}
+
+/* ==========================================================================
+   18. Print & Accessibility
+   ========================================================================== */
+
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .terminal-main {
+    margin-left: 0;
+  }
+  /* Hide non-printable elements */
+  .rankings-toolbar, .detail-back-btn {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
