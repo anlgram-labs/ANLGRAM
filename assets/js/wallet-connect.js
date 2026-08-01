@@ -1,10 +1,9 @@
 // ═══════════════════════════════════════════════════════════════
-// ANLGRAM TON Connect Real Wallet Integration
+// ANLGRAM TON Connect Real Wallet Integration (v2.0 - Fully Functional)
 // ═══════════════════════════════════════════════════════════════
 
 (function() {
   let tonConnectUI = null;
-  let tonPrice = 0; // Cached TON price for calculating USD balance
 
   function formatAddress(address) {
     if (!address) return '';
@@ -13,72 +12,112 @@
 
   async function fetchTonBalance(address) {
     try {
-      // Using tonapi.io v2 to get the balance
       const response = await fetch(`https://tonapi.io/v2/accounts/${address}`);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
-      const balance = data.balance; // balance in nanoTON
-      return balance / 1000000000; // Convert to TON
+      const balance = data.balance; // nanoTON
+      return balance / 1000000000;
     } catch (error) {
       console.error('Error fetching TON balance:', error);
       return 0;
     }
   }
 
+  function getWalletButtons() {
+    const list = new Set();
+    document.querySelectorAll('#topbarWalletBtn, .connect-wallet-btn, button[title="Connect Wallet"], button[title="Connect Web3 Wallet"]').forEach(btn => list.add(btn));
+    
+    document.querySelectorAll('button, a.btn').forEach(btn => {
+      const text = (btn.textContent || '').trim().toLowerCase();
+      if (text.includes('connect wallet') || text.includes('connect web3 wallet')) {
+        list.add(btn);
+      }
+    });
+    return Array.from(list);
+  }
+
+  window.openWalletModal = async function() {
+    if (!tonConnectUI) {
+      console.warn('TON Connect UI is not initialized yet');
+      return;
+    }
+
+    if (tonConnectUI.wallet) {
+      try {
+        await tonConnectUI.disconnect();
+        if (typeof window.showWalletToast === 'function') {
+          window.showWalletToast('Desconectado', 'Billetera desconectada correctamente.', 3000);
+        }
+      } catch (e) {
+        console.error('Error disconnecting wallet:', e);
+      }
+    } else {
+      try {
+        await tonConnectUI.openModal();
+      } catch (e) {
+        console.error('Error opening TON Connect modal:', e);
+      }
+    }
+  };
+
   async function updateWalletUI(wallet) {
-    const buttons = document.querySelectorAll('#topbarWalletBtn, button[title="Connect Wallet"], button[title="Connect Web3 Wallet"], button:contains("Connect Wallet")');
+    const buttons = getWalletButtons();
     const isMobile = window.innerWidth <= 768;
 
     if (wallet) {
-      // Get friendly user-friendly address representation (Base64url bounceable or non-bounceable)
-      // TonConnect UI exposes `wallet.account.address`. We can convert it or just format the raw address for display.
-      const rawAddress = wallet.account.address;
-      
-      // Let's use a simple format first
+      const rawAddress = wallet.account ? wallet.account.address : '';
       const shortAddress = formatAddress(rawAddress);
 
-      // Fetch balance
-      const balance = await fetchTonBalance(rawAddress);
+      localStorage.setItem('anlgram_wallet_addr', rawAddress);
+      localStorage.setItem('anlgram_wallet_name', (wallet.device && wallet.device.appName) ? wallet.device.appName : 'TON Wallet');
+      
+      window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: rawAddress, wallet } }));
+
+      let balanceStr = '';
+      if (rawAddress) {
+        try {
+          const balance = await fetchTonBalance(rawAddress);
+          balanceStr = ` | ${balance.toFixed(2)} TON`;
+        } catch (e) {
+          console.error(e);
+        }
+      }
 
       buttons.forEach(btn => {
-        btn.innerHTML = `<span style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#00e676;box-shadow:0 0 8px #00e676;"></span>${shortAddress} | ${balance.toFixed(2)} TON</span>`;
-        btn.onclick = async (e) => {
+        btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#00e676;box-shadow:0 0 8px #00e676;"></span>${shortAddress}${balanceStr}</span>`;
+        btn.title = `Conectado: ${rawAddress} (Clic para desconectar)`;
+        btn.onclick = (e) => {
           e.preventDefault();
-          try {
-            await tonConnectUI.disconnect();
-            window.showWalletToast('Desconectado', 'Billetera desconectada correctamente.', 3000);
-          } catch (e) {
-            console.error(e);
-          }
+          window.openWalletModal();
         };
       });
 
-      window.showWalletToast('Conexión Exitosa', `Billetera conectada: ${shortAddress}`, 3000);
+      if (typeof window.showWalletToast === 'function') {
+        window.showWalletToast('Conexión Exitosa', `Billetera conectada: ${shortAddress}`, 3000);
+      }
 
     } else {
-      // Not connected
+      localStorage.removeItem('anlgram_wallet_addr');
+      window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: null, wallet: null } }));
+
       buttons.forEach(btn => {
         btn.innerHTML = isMobile ? 'Connect' : 'Connect Wallet';
-        btn.onclick = async (e) => {
+        btn.title = 'Click to connect your TON wallet';
+        btn.onclick = (e) => {
           e.preventDefault();
-          try {
-            await tonConnectUI.connectWallet();
-          } catch (error) {
-            console.error('Error connecting wallet', error);
-            // Ignore user-rejected errors silently or show a generic error
-            if (error.message && !error.message.includes('reject')) {
-              window.showWalletToast('Error de Conexión', 'No se pudo conectar la billetera.', 3000);
-            }
-          }
+          window.openWalletModal();
         };
       });
     }
   }
 
-  function initTonConnect() {
-    // Make sure we have the TON_CONNECT_UI global
-    if (typeof window.TON_CONNECT_UI === 'undefined') {
-      console.error('TON_CONNECT_UI is not loaded. Ensure tonconnect-ui.min.js is included.');
+  function initTonConnect(retries = 0) {
+    if (typeof window.TON_CONNECT_UI === 'undefined' || !window.TON_CONNECT_UI.TonConnectUI) {
+      if (retries < 20) {
+        setTimeout(() => initTonConnect(retries + 1), 150);
+      } else {
+        console.error('TON_CONNECT_UI library failed to load.');
+      }
       return;
     }
 
@@ -87,60 +126,46 @@
         manifestUrl: 'https://anlgram-labs.github.io/ANLGRAM/tonconnect-manifest.json',
       });
 
-      // Customizing UI (Optional but requested for "Premium" look)
       tonConnectUI.uiOptions = {
         twaReturnUrl: 'https://t.me/AnlgramBot/app',
-        theme: window.TON_CONNECT_UI.THEME.DARK,
-        colorsSet: {
-          [window.TON_CONNECT_UI.THEME.DARK]: {
-            connectButton: {
-              background: '#00f0ff'
-            },
-            accent: '#00f0ff',
-            telegramButton: '#0088CC',
-            background: {
-              primary: '#0f0f16',
-              secondary: '#1a1a24',
-              segment: '#1a1a24',
-              tint: '#1a1a24'
-            }
-          }
-        }
+        theme: window.TON_CONNECT_UI.THEME.DARK
       };
 
-      // Subscribe to wallet changes
       tonConnectUI.onStatusChange(wallet => {
         updateWalletUI(wallet);
       });
 
-      // Initial check if already connected
-      if (tonConnectUI.wallet) {
-        updateWalletUI(tonConnectUI.wallet);
-      } else {
-        updateWalletUI(null);
-      }
+      updateWalletUI(tonConnectUI.wallet || null);
 
     } catch (e) {
-      console.error('Failed to init TON Connect UI', e);
+      console.error('Failed to initialize TON Connect UI:', e);
     }
   }
 
-  // Inject styles for the button if needed to override
+  // Global event listener for any dynamically created connect wallet buttons
+  document.addEventListener('click', function(e) {
+    const target = e.target.closest('#topbarWalletBtn, .connect-wallet-btn');
+    if (target) {
+      e.preventDefault();
+      window.openWalletModal();
+    }
+  });
+
   const style = document.createElement('style');
   style.textContent = `
-    #topbarWalletBtn {
+    #topbarWalletBtn, .connect-wallet-btn {
       transition: all 0.3s ease;
+      cursor: pointer !important;
     }
-    #topbarWalletBtn:hover {
+    #topbarWalletBtn:hover, .connect-wallet-btn:hover {
       box-shadow: 0 0 20px rgba(0,240,255,0.4) !important;
       transform: translateY(-1px);
     }
   `;
   document.head.appendChild(style);
 
-  // Initialize once the DOM is fully ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initTonConnect);
+    document.addEventListener('DOMContentLoaded', () => initTonConnect());
   } else {
     initTonConnect();
   }
