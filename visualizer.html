@@ -3,170 +3,158 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ANLGRAM Intelligence Terminal | Premium Institutional Analytics</title>
-  <meta name="description" content="Institutional-grade analytics platform for the GRAM ecosystem. Bloomberg Terminal, Arkham Intelligence, and TradingView merged into one seamless experience."/>
+  <title>ANLGRAM | Bubblemaps v2 TON Edition</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
   
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"/>
-  <link rel="shortcut icon" href="favicon.ico?v=2"/>
-  <link rel="apple-touch-icon" href="favicon.svg?v=2"/>
-  
-  <link rel="stylesheet" href="assets/css/gram-terminal-v2.css?v=2026.38"/>
-  
-  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+  <link rel="stylesheet" href="assets/css/gram-terminal-v2.css?v=2026.39"/>
   <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
-  
-  <!-- CSS Animated Background Element -->
-  <div class="v3-bg"></div>
 
-  <!-- Header -->
-  <header class="v3-header">
+  <!-- Fixed Header -->
+  <header class="app-header">
     <div class="header-left">
-      <a href="index.html" style="display:flex; align-items:center; gap:12px;">
-        <img src="assets/img/anlgram-icon.svg" alt="ANLGRAM" width="28" height="28">
-        <span class="logo-text">ANLGRAM Terminal</span>
+      <a href="index.html" class="logo-link">
+        <img src="assets/img/anlgram-icon.svg" alt="Logo" width="28" height="28">
+        <span class="logo-text">ANLGRAM</span>
       </a>
-      <div class="network-badge">
-        <span class="dot-live"></span> GRM Mainnet
-      </div>
     </div>
     
     <div class="header-center">
       <div class="search-bar">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" placeholder="Search token, address, or Tx hash...">
-        <div class="keyboard-shortcut">/</div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="Search token or contract address on TON...">
       </div>
     </div>
     
     <div class="header-right">
-      <button class="icon-btn">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      </button>
-      <button class="icon-btn">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
+      <div class="network-selector">
+        <img src="assets/img/anlgram-icon.svg" width="16" height="16" alt="TON">
+        <span>TON</span>
+      </div>
       <button class="btn-connect">Connect Wallet</button>
     </div>
   </header>
 
-  <div class="v3-container">
+  <div class="app-container">
     
-    <!-- State A: Grid View -->
-    <div id="view-grid" class="animate-fade-in">
-      <div class="grid-header">
-        <h1 class="page-title">Top 30 GRM Network Tokens</h1>
-        <div class="view-controls">
-          <button class="filter-btn active">Overview</button>
-          <button class="filter-btn">Performance</button>
-          <button class="filter-btn">Smart Money</button>
-        </div>
-      </div>
-      
-      <div id="token-grid" class="token-grid">
-        <!-- JS injects .token-card here -->
-      </div>
-    </div>
-
-    <!-- State B: Token Detail View -->
-    <div id="view-detail" style="display: none;" class="animate-fade-in">
-      
-      <div class="detail-header-actions">
-        <button id="back-button" class="btn-back">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-          Back to Terminal
-        </button>
-      </div>
-
-      <div class="detail-view">
+    <!-- State A: Trending List (v2.bubblemaps.io/ton replica) -->
+    <div id="view-list" class="view-list">
+      <div class="list-container">
+        <h1 class="list-title">Explore TON Ecosystem</h1>
+        <p class="list-subtitle">Analyze top tokens and discover connections on the TON blockchain.</p>
         
-        <!-- Left Panel: Info -->
-        <div class="detail-panel panel-left">
-          <div class="detail-hero">
-            <h2 id="detail-symbol" class="detail-title">TOKEN</h2>
-            <div id="detail-price" class="detail-price data-font">$0.00</div>
-            <div id="detail-change" class="detail-change data-font">+0.00%</div>
+        <div class="table-container">
+          <div class="table-header">
+            <div class="col-rank">#</div>
+            <div class="col-token">Token</div>
+            <div class="col-price">Price</div>
+            <div class="col-24h">24h</div>
+            <div class="col-mcap">Market Cap</div>
+            <div class="col-vol">Volume (24h)</div>
+            <div class="col-action"></div>
+          </div>
+          <div id="token-list-body" class="table-body">
+            <!-- JS injects rows here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- State B: Fullscreen Map (v2.bubblemaps.io/map replica) -->
+    <div id="view-map" class="view-map" style="display: none;">
+      
+      <!-- D3 Canvas Container -->
+      <div id="bubble-map-container" class="bubble-map-canvas">
+        <!-- Tooltip -->
+        <div id="bubble-tooltip" class="bubble-tooltip" style="display: none;"></div>
+      </div>
+      
+      <!-- UI Controls Overlay -->
+      <div class="map-overlay">
+        
+        <!-- Top Left: Back Button -->
+        <button id="btn-back" class="btn-glass back-button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          Back to List
+        </button>
+
+        <!-- Left Panel: Token Context -->
+        <div class="panel-left floating-panel">
+          <div class="panel-token-header">
+            <img id="map-logo" src="" alt="Logo" class="panel-logo">
+            <div class="panel-token-titles">
+              <div id="map-name" class="panel-name">Token Name</div>
+              <div id="map-ticker" class="panel-ticker">TICKER</div>
+            </div>
           </div>
           
-          <div class="detail-stats-list">
+          <div class="panel-stats">
             <div class="stat-row">
-              <span class="stat-lbl">Market Cap</span>
-              <span id="detail-mcap" class="stat-val data-font">-</span>
+              <span>Price</span>
+              <span id="map-price" class="data-font">$0.00</span>
             </div>
             <div class="stat-row">
-              <span class="stat-lbl">Liquidity</span>
-              <span id="detail-liq" class="stat-val data-font">-</span>
+              <span>Market Cap</span>
+              <span id="map-mcap" class="data-font">$0.00</span>
             </div>
             <div class="stat-row">
-              <span class="stat-lbl">Volume (24H)</span>
-              <span id="detail-vol" class="stat-val data-font">-</span>
+              <span>Holders</span>
+              <span id="map-holders" class="data-font">0</span>
             </div>
-            <div class="stat-row">
-              <span class="stat-lbl">Holders</span>
-              <span id="detail-holders" class="stat-val data-font">-</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-lbl">Risk Score</span>
-              <span id="detail-risk" class="stat-val data-font">-</span>
-            </div>
+          </div>
+
+          <div class="panel-legend">
+            <div class="legend-title">Legend</div>
+            <div class="legend-item"><span class="color-dot" style="background:#E91E63;"></span> Top Holders</div>
+            <div class="legend-item"><span class="color-dot" style="background:#3F51B5;"></span> CEX</div>
+            <div class="legend-item"><span class="color-dot" style="background:#00BCD4;"></span> Liquidity Pools</div>
+            <div class="legend-item"><span class="color-dot" style="background:#FFC107;"></span> Insiders</div>
+            <div class="legend-item"><span class="color-dot" style="background:#9E9E9E;"></span> Retail</div>
           </div>
         </div>
 
-        <!-- Center Panel: Chart & Bubblemap -->
-        <div class="detail-panel panel-center" style="position:relative; display:flex; flex-direction:column;">
-          <div class="chart-toolbar">
-            <div class="toolbar-tabs" id="view-toggle-btns">
-              <button class="toolbar-btn active" id="btn-show-chart">📈 Price Chart</button>
-              <button class="toolbar-btn" id="btn-show-bubbles">🫧 Bubble Map</button>
+        <!-- Right Panel: Wallet Details (Hidden initially) -->
+        <div id="panel-wallet" class="panel-right floating-panel" style="display: none;">
+          <div class="wallet-type" id="wallet-badge">Wallet</div>
+          <div class="wallet-address data-font" id="wallet-address">EQ...</div>
+          
+          <div class="panel-stats mt-3">
+            <div class="stat-row">
+              <span>Balance</span>
+              <span id="wallet-balance" class="data-font">0</span>
             </div>
-            <div class="toolbar-tabs" id="chart-timeframes">
-              <button class="toolbar-btn">1H</button>
-              <button class="toolbar-btn active">4H</button>
-              <button class="toolbar-btn">1D</button>
-              <button class="toolbar-btn">1W</button>
+            <div class="stat-row">
+              <span>% of Supply</span>
+              <span id="wallet-supply" class="data-font text-electric">0.00%</span>
             </div>
           </div>
-          
-          <div id="main-chart-container" class="main-chart" style="flex:1; width:100%;"></div>
-          
-          <div id="bubble-map-container" class="bubble-map" style="display:none; flex:1; width:100%; position:relative; overflow:hidden; cursor:grab;">
-            <!-- D3 injects SVG here -->
-            <div id="bubble-tooltip" class="bubble-tooltip" style="display:none; position:absolute; pointer-events:none; z-index:100;"></div>
-            
-            <!-- Zoom controls for map -->
-            <div class="bubble-controls">
-              <button id="btn-zoom-in" class="toolbar-btn">+</button>
-              <button id="btn-zoom-out" class="toolbar-btn">-</button>
-              <button id="btn-zoom-reset" class="toolbar-btn">R</button>
-            </div>
+
+          <div class="wallet-actions">
+            <button class="btn-primary w-full">Copy Address</button>
+            <button class="btn-secondary w-full mt-2">View on Explorer</button>
           </div>
         </div>
 
-        <!-- Right Panel: Activity -->
-        <div class="detail-panel panel-right">
-          <div class="right-tabs">
-            <button class="right-tab active">Recent Trades</button>
-            <button class="right-tab">Whales</button>
-          </div>
-          <div class="trades-header">
-            <span>Time</span>
-            <span>Price</span>
-            <span>Amount</span>
-          </div>
-          <div id="recent-trades-list" class="recent-trades-list">
-            <!-- JS injects trades -->
-          </div>
+        <!-- Bottom Center: Zoom Controls -->
+        <div class="zoom-controls floating-panel">
+          <button id="zoom-in" title="Zoom In">+</button>
+          <div class="divider-vertical"></div>
+          <button id="zoom-out" title="Zoom Out">-</button>
+          <div class="divider-vertical"></div>
+          <button id="zoom-reset" title="Reset View">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
         </div>
 
       </div>
     </div>
-    
+
   </div>
 
-  <script src="assets/js/gram-terminal-v2.js?v=2026.38"></script>
+  <script src="assets/js/gram-terminal-v2.js?v=2026.39"></script>
 </body>
 </html>
