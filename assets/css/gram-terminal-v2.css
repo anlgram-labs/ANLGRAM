@@ -215,15 +215,18 @@
   
   /* D3 Nodes & Links */
   .node {
-    stroke: rgba(255,255,255,0.1); stroke-width: 1px;
-    transition: stroke-width 0.2s; cursor: pointer;
+    transition: stroke-width 0.2s, opacity 0.3s ease;
+    cursor: pointer;
   }
   .node:hover, .node.active {
-    stroke-width: 3px; stroke: var(--color-electric-blue);
+    stroke-width: 4px !important;
   }
   .link {
-    stroke: rgba(255,255,255,0.05); stroke-opacity: 0.6;
+    stroke: rgba(255,255,255,0.2); 
+    stroke-opacity: 0.6;
+    transition: stroke-opacity 0.3s ease;
   }
+
   
   /* D3 Tooltip */
   .bubble-tooltip {

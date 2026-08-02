@@ -143,14 +143,15 @@
 
         const nodes = [];
         const links = [];
-        const numNodes = 150 + Math.floor(rand() * 50);
+        const numNodes = 100 + Math.floor(rand() * 50);
 
+        // Advanced Arkham-style palette
         const clusters = [
-            { name: "Top Holders", color: "#E91E63", sizeMult: 12 },
-            { name: "CEX", color: "#3F51B5", sizeMult: 16 },
-            { name: "Liquidity Pools", color: "#00BCD4", sizeMult: 9 },
-            { name: "Insiders", color: "#FFC107", sizeMult: 6 },
-            { name: "Retail", color: "#9E9E9E", sizeMult: 2 }
+            { name: "Top Holders", color: "#d500f9", sizeMult: 12 }, // Deep purple/magenta
+            { name: "CEX", color: "#651fff", sizeMult: 16 }, // Deep violet
+            { name: "Liquidity Pools", color: "#00e5ff", sizeMult: 9 }, // Cyan
+            { name: "Insiders", color: "#ff9100", sizeMult: 6 }, // Orange
+            { name: "Retail", color: "#b388ff", sizeMult: 2 } // Light purple
         ];
 
         for (let i = 0; i < numNodes; i++) {
@@ -162,6 +163,7 @@
                 group: cluster.name,
                 color: cluster.color,
                 radius: size,
+                isHollow: rand() > 0.5, // 50% chance to be a hollow glowing ring
                 balance: (size * 1000).toFixed(0),
                 percent: ((size * 1000) / (token.marketCap / token.price) * 100).toFixed(2)
             });
@@ -179,42 +181,74 @@
             .attr("width", width)
             .attr("height", height);
 
+        // --- DEFINE FILTERS & MARKERS ---
+        const defs = svg.append("defs");
+
+        // Arrow marker for directed links
+        defs.append("marker")
+            .attr("id", "arrow")
+            .attr("viewBox", "0 -5 10 10")
+            .attr("refX", 20) // offset to prevent overlapping node
+            .attr("refY", 0)
+            .attr("markerWidth", 6)
+            .attr("markerHeight", 6)
+            .attr("orient", "auto")
+            .append("path")
+            .attr("fill", "rgba(255,255,255,0.4)")
+            .attr("d", "M0,-5L10,0L0,5");
+
+        // Glow filter
+        const filter = defs.append("filter").attr("id", "glow");
+        filter.append("feGaussianBlur").attr("stdDeviation", "3.5").attr("result", "coloredBlur");
+        const feMerge = filter.append("feMerge");
+        feMerge.append("feMergeNode").attr("in", "coloredBlur");
+        feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
         const g = svg.append("g");
 
         const zoom = d3.zoom()
-            .scaleExtent([0.1, 5])
+            .scaleExtent([0.05, 5])
             .on("zoom", (event) => g.attr("transform", event.transform));
         
         svg.call(zoom);
+        
+        // Initial zoom out slightly to see the wide network
+        svg.call(zoom.transform, d3.zoomIdentity.translate(width/2, height/2).scale(0.6).translate(-width/2, -height/2));
 
-        // Map controls
         document.getElementById('zoom-in').onclick = () => svg.transition().call(zoom.scaleBy, 1.3);
         document.getElementById('zoom-out').onclick = () => svg.transition().call(zoom.scaleBy, 0.7);
         document.getElementById('zoom-reset').onclick = () => svg.transition().call(zoom.transform, d3.zoomIdentity);
 
+        // Network Physics (Arkham style: spread out, visible links)
         bubbleSim = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(links).id(d => d.id).distance(60))
-            .force("charge", d3.forceManyBody().strength(-120))
+            .force("link", d3.forceLink(links).id(d => d.id).distance(120))
+            .force("charge", d3.forceManyBody().strength(-400)) // Strong repulsion
             .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collide", d3.forceCollide().radius(d => d.radius + 3));
+            .force("collide", d3.forceCollide().radius(d => d.radius + 10).iterations(2));
 
         const link = g.append("g")
+            .attr("class", "links")
             .selectAll("line")
             .data(links)
             .enter().append("line")
             .attr("class", "link")
-            .attr("stroke-width", d => Math.sqrt(d.value));
+            .attr("stroke-width", d => Math.max(1, Math.sqrt(d.value)))
+            .attr("marker-end", "url(#arrow)");
 
         const tooltip = d3.select("#bubble-tooltip");
         const panelWallet = document.getElementById('panel-wallet');
 
         const node = g.append("g")
+            .attr("class", "nodes")
             .selectAll("circle")
             .data(nodes)
             .enter().append("circle")
             .attr("class", "node")
             .attr("r", d => d.radius)
-            .attr("fill", d => d.color)
+            .attr("fill", d => d.isHollow ? "var(--bg-navy)" : d.color) // Hollow or filled
+            .attr("stroke", d => d.color)
+            .attr("stroke-width", d => d.isHollow ? 3 : 1)
+            .style("filter", "url(#glow)") // Glow effect
             .call(d3.drag()
                 .on("start", (event, d) => {
                     if (!event.active) bubbleSim.alphaTarget(0.3).restart();
@@ -226,14 +260,33 @@
                     d.fx = null; d.fy = null;
                 }))
             .on("mouseover", (event, d) => {
+                // Highlight connected nodes and dim others
+                const connected = new Set();
+                connected.add(d.id);
+                
+                link.style("stroke-opacity", l => {
+                    if (l.source.id === d.id || l.target.id === d.id) {
+                        connected.add(l.source.id);
+                        connected.add(l.target.id);
+                        return 1;
+                    }
+                    return 0.1;
+                });
+                
+                node.style("opacity", n => connected.has(n.id) ? 1 : 0.1);
+
                 tooltip.style("display", "block")
                        .html(`<strong>${d.group}</strong><br/>${d.address}`)
                        .style("left", (event.pageX + 15) + "px")
                        .style("top", (event.pageY - 15) + "px");
             })
-            .on("mouseout", () => tooltip.style("display", "none"))
+            .on("mouseout", () => {
+                // Restore all opacities
+                node.style("opacity", 1);
+                link.style("stroke-opacity", 0.6);
+                tooltip.style("display", "none");
+            })
             .on("click", (event, d) => {
-                // Show right panel
                 panelWallet.style.display = 'block';
                 document.getElementById('wallet-badge').textContent = d.group;
                 document.getElementById('wallet-badge').style.color = d.color;
@@ -243,17 +296,29 @@
             });
 
         bubbleSim.on("tick", () => {
+            // Update link positions
             link
                 .attr("x1", d => d.source.x)
                 .attr("y1", d => d.source.y)
                 .attr("x2", d => d.target.x)
                 .attr("y2", d => d.target.y);
+            
+            // Re-calculate refX for markers to stop exactly at the node's edge instead of center
+            link.attr("marker-end", d => {
+                // Math to put arrow on edge of target node instead of center
+                const dx = d.target.x - d.source.x;
+                const dy = d.target.y - d.source.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const r = d.target.radius + 3; // +3 for stroke
+                // We'll just let d3 marker refX handle it dynamically via a rough estimate, or set refX in defs.
+                return "url(#arrow)";
+            });
+
             node
                 .attr("cx", d => d.x)
                 .attr("cy", d => d.y);
         });
         
-        // Handle window resize for fullscreen map
         window.onresize = () => {
             if (document.getElementById('view-map').style.display === 'block') {
                 const w = container.clientWidth;
