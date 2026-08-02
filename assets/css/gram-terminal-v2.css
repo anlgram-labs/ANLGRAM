@@ -99,11 +99,17 @@
     border-color: var(--color-electric-blue);
   }
   
-  .network-selector {
+  .btn-back-header {
     display: flex; align-items: center; gap: 6px;
     background: rgba(255, 255, 255, 0.05);
+    color: white; text-decoration: none;
     padding: 6px 12px; border-radius: 20px;
     font-weight: 500; font-size: 0.9rem;
+    transition: 0.2s;
+  }
+  .btn-back-header:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-electric-blue);
   }
   
   .btn-connect {
