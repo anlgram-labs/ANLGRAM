@@ -224,7 +224,7 @@
   .link {
     stroke: rgba(255,255,255,0.2); 
     stroke-opacity: 0.6;
-    transition: stroke-opacity 0.3s ease;
+    transition: stroke-opacity 0.3s ease, stroke 0.3s ease, stroke-width 0.3s ease;
   }
 
   

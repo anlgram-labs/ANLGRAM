@@ -232,7 +232,8 @@
             .data(links)
             .enter().append("line")
             .attr("class", "link")
-            .attr("stroke-width", d => Math.max(1, Math.sqrt(d.value)))
+            .style("stroke", "rgba(255,255,255,0.3)")
+            .style("stroke-width", d => Math.max(1.5, Math.sqrt(d.value)))
             .attr("marker-end", "url(#arrow)");
 
         const tooltip = d3.select("#bubble-tooltip");
@@ -270,10 +271,17 @@
                         connected.add(l.target.id);
                         return 1;
                     }
-                    return 0.1;
-                });
+                    return 0.05;
+                })
+                .style("stroke", l => (l.source.id === d.id || l.target.id === d.id) ? "#ffffff" : "rgba(255,255,255,0.3)")
+                .style("stroke-width", l => (l.source.id === d.id || l.target.id === d.id) ? 3 : Math.max(1.5, Math.sqrt(l.value)));
                 
-                node.style("opacity", n => connected.has(n.id) ? 1 : 0.1);
+                node.style("opacity", n => connected.has(n.id) ? 1 : 0.05)
+                    .attr("stroke", n => connected.has(n.id) ? "#ffffff" : n.color)
+                    .attr("fill", n => {
+                        if (!connected.has(n.id)) return n.isHollow ? "var(--bg-navy)" : n.color;
+                        return n.isHollow ? "var(--bg-navy)" : "#ffffff";
+                    });
 
                 tooltip.style("display", "block")
                        .html(`<strong>${d.group}</strong><br/>${d.address}`)
@@ -282,8 +290,14 @@
             })
             .on("mouseout", () => {
                 // Restore all opacities
-                node.style("opacity", 1);
-                link.style("stroke-opacity", 0.6);
+                node.style("opacity", 1)
+                    .attr("stroke", n => n.color)
+                    .attr("fill", n => n.isHollow ? "var(--bg-navy)" : n.color);
+                    
+                link.style("stroke-opacity", 0.6)
+                    .style("stroke", "rgba(255,255,255,0.3)")
+                    .style("stroke-width", l => Math.max(1.5, Math.sqrt(l.value)));
+                    
                 tooltip.style("display", "none");
             })
             .on("click", (event, d) => {
