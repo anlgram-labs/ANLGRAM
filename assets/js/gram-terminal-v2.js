@@ -167,9 +167,12 @@
         for (let i = 0; i < numNodes; i++) {
             const cluster = clusters[Math.floor(rand() * clusters.length)];
             const size = (rand() * 5 + 2) * cluster.sizeMult;
+            const randChar = () => (Math.random().toString(36)[2] || 'A').toUpperCase();
+            const fullAddr = `EQ${Array.from({length: 46}, randChar).join('')}`;
             nodes.push({
                 id: i,
-                address: `EQ${Array.from({length:6}, ()=>Math.random().toString(36)[2]).join('')}...${Array.from({length:4}, ()=>Math.random().toString(36)[2]).join('')}`.toUpperCase(),
+                fullAddress: fullAddr,
+                address: `${fullAddr.substring(0, 8)}...${fullAddr.substring(44)}`,
                 group: cluster.name,
                 color: cluster.color,
                 radius: size,
@@ -317,6 +320,25 @@
                 document.getElementById('wallet-address').textContent = d.address;
                 document.getElementById('wallet-balance').textContent = `${parseFloat(d.balance).toLocaleString()} ${token.symbol}`;
                 document.getElementById('wallet-supply').textContent = `${d.percent}%`;
+                
+                const copyBtn = document.getElementById('btn-copy-address');
+                const expBtn = document.getElementById('btn-view-explorer');
+                
+                if (copyBtn) {
+                    copyBtn.onclick = () => {
+                        navigator.clipboard.writeText(d.fullAddress).then(() => {
+                            const originalText = copyBtn.textContent;
+                            copyBtn.textContent = 'Copied!';
+                            setTimeout(() => { copyBtn.textContent = originalText; }, 2000);
+                        }).catch(err => console.error('Copy failed', err));
+                    };
+                }
+                
+                if (expBtn) {
+                    expBtn.onclick = () => {
+                        window.open(`https://tonviewer.com/${d.fullAddress}`, '_blank');
+                    };
+                }
             });
 
         bubbleSim.on("tick", () => {
