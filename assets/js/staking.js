@@ -33,6 +33,7 @@ const STAKING_CONFIG = {
   ROWS_PER_PAGE:        20,
   FEATURE_REAL_TX:      true,    // Real TON transactions — do not set to false in production
   STAKING_RECEIVER_ADDRESS: 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd', // Configurable receiver address
+  MIN_STAKE_AMOUNT:     20,      // Configurable minimum staking amount
   VERSION:              '1.0.0',
 };
 
@@ -1787,7 +1788,8 @@ const StakeModalController = {
     document.getElementById('stake-val-name').textContent = v.name;
     document.getElementById('stake-val-apr').textContent = safeToFixed(v.apr, 2) + '% APR';
     document.getElementById('stake-val-commission').textContent = safeToFixed(v.commission, 1) + '%';
-    document.getElementById('stake-val-min').textContent = safeToFixed(v.minStake, 0) + ' TON';
+    const minStake = STAKING_CONFIG.MIN_STAKE_AMOUNT || 20;
+    document.getElementById('stake-val-min').textContent = safeToFixed(minStake, 0) + ' TON';
 
     const wallet = StakingState.get('wallet');
     const maxEl = document.getElementById('stake-max-display');
@@ -1830,7 +1832,8 @@ const StakeModalController = {
     const wallet = StakingState.get('wallet');
     const errEl = document.getElementById('stake-amount-error');
     let err = '';
-    if (amount > 0 && amount < v.minStake) err = `Minimum stake is ${v.minStake} TON`;
+    const minStake = STAKING_CONFIG.MIN_STAKE_AMOUNT || 20;
+    if (amount > 0 && amount < minStake) err = `Minimum staking amount is ${minStake} TON.`;
     else if (wallet.connected && amount > wallet.balance - 0.05) err = `Insufficient balance (need ${(0.05).toFixed(2)} TON for fees)`;
     if (errEl) errEl.textContent = err;
     return !err;
@@ -1877,7 +1880,8 @@ const StakeModalController = {
     try {
       const input  = document.getElementById('stake-amount-input');
       const amount = parseFloat(input?.value) || 0;
-      if (amount <= 0) throw new Error('Invalid staking amount.');
+      const minStake = STAKING_CONFIG.MIN_STAKE_AMOUNT || 20;
+      if (amount <= 0 || amount < minStake) throw new Error(`Minimum staking amount is ${minStake} TON.`);
 
       const v = this._currentValidator;
       if (!v || !v.address) throw new Error('No validator selected.');
@@ -1899,7 +1903,7 @@ const StakeModalController = {
       });
 
       // result.boc contains the signed BoC — derive hash for UI
-      const txHash = result?.boc ? _bocToDisplayHash(result.boc) : null;
+      const txHash = result?.boc ? await _bocToDisplayHash(result.boc) : null;
       StakingState.setDeep('ui.lastTxHash', txHash);
 
       // Show success step with tx hash
@@ -2614,7 +2618,7 @@ const UnstakeModalController = {
         }],
       });
 
-      const txHash = result?.boc ? _bocToDisplayHash(result.boc) : null;
+      const txHash = result?.boc ? await _bocToDisplayHash(result.boc) : null;
       StakingState.setDeep('ui.lastTxHash', txHash);
 
       NotificationService.push({
