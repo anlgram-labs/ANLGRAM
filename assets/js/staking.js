@@ -541,32 +541,42 @@ const PortfolioService = (() => {
 const AnalyticsService = (() => {
   async function getNetworkStats() {
     try {
-      const [stats, rate] = await Promise.allSettled([
-        ApiService.tonapi('/blockchain/masterchain/stats'),
-        ApiService.tonapi('/rates?tokens=ton&currencies=usd'),
+      const [poolsRes, rateRes] = await Promise.allSettled([
+        ApiService.tonapi('/staking/pools?available_for_withdrawal=false', 60000),
+        ApiService.tonapi('/rates?tokens=ton&currencies=usd', 60000)
       ]);
-      const s = stats.status === 'fulfilled' ? stats.value : {};
-      const r = rate.status === 'fulfilled' && rate.value?.rates?.TON ? rate.value.rates.TON.prices.USD : null;
+      
+      const pools = poolsRes.status === 'fulfilled' ? poolsRes.value.pools || [] : [];
+      let totalStaked = 0;
+      let delegators = 0;
+      let avgApr = 0;
+      let activeVal = pools.length;
+      
+      if (activeVal > 0) {
+        pools.forEach(p => {
+          totalStaked += (p.total_amount || 0) / 1e9;
+          delegators += p.current_nominators || 0;
+          avgApr += p.apy || 0;
+        });
+        avgApr = avgApr / activeVal;
+      }
+      
+      const tonPrice = rateRes.status === 'fulfilled' && rateRes.value?.rates?.TON ? rateRes.value.rates.TON.prices.USD : 5.42;
+
       return {
-        tps:           s.transactions_per_second || s.tx_per_second || _rand(100, 180),
-        blockTime:     s.average_block_time_ms ? (s.average_block_time_ms / 1000).toFixed(1) : '5.2',
-        lastBlock:     s.last_masterchain_seqno || _randInt(42000000, 42100000),
-        totalStaked:   _rand(580, 620),   // approx 600M TON staked
-        activeVal:     _randInt(340, 360),
-        delegators:    _randInt(520000, 540000),
-        tonPrice:      r || 5.42,
-        avgApr:        4.82,
+        tps: '--',
+        blockTime: '--',
+        lastBlock: '--',
+        totalStaked: totalStaked > 0 ? (totalStaked / 1e6) : 600, // in Millions
+        activeVal: activeVal || 350,
+        delegators: delegators || 520000,
+        tonPrice: tonPrice,
+        avgApr: avgApr || 4.82,
         networkStatus: 'Online',
       };
-    } catch {
-      return {
-        tps: _rand(100, 180), blockTime: '5.2',
-        lastBlock: _randInt(42000000, 42100000),
-        totalStaked: _rand(580, 620),
-        activeVal: _randInt(340, 360),
-        delegators: _randInt(520000, 540000),
-        tonPrice: 5.42, avgApr: 4.82, networkStatus: 'Online',
-      };
+    } catch (e) {
+      console.error(e);
+      return { tps:'--', blockTime:'--', lastBlock:'--', totalStaked:0, activeVal:0, delegators:0, tonPrice:0, avgApr:0, networkStatus:'Error' };
     }
   }
 
@@ -593,14 +603,14 @@ const AnalyticsService = (() => {
   }
 
   async function getTransactions(address) {
-    if (!address) return _generateDemoTransactions();
+    if (!address) return [];
     try {
       const data = await ApiService.tonapi(`/accounts/${encodeURIComponent(address)}/events?limit=25&event_type=ton_transfer`);
       if (data && Array.isArray(data.events) && data.events.length > 0) {
         return data.events.map(_normalizeTx);
       }
     } catch { /* fall through */ }
-    return _generateDemoTransactions();
+    return [];
   }
 
   function _normalizeTx(ev) {
@@ -618,21 +628,6 @@ const AnalyticsService = (() => {
     };
   }
 
-  function _generateDemoTransactions() {
-    const types = ['stake', 'claim', 'unstake', 'stake', 'stake', 'claim'];
-    const pools  = ['Bemo', 'Tonstakers', 'Hipo Finance', 'TON Whales', 'P2P Validator', 'Everstake'];
-    return Array.from({ length: 15 }, (_, i) => ({
-      hash: `${Math.random().toString(16).slice(2, 10)}${Math.random().toString(16).slice(2, 10)}`,
-      hash_short: Math.random().toString(16).slice(2, 10) + '...',
-      type: types[i % types.length],
-      validator: pools[i % pools.length],
-      amount: parseFloat((_rand(10, 5000)).toFixed(2)),
-      fee: 0.05,
-      status: i === 0 ? 'pending' : 'confirmed',
-      timestamp: new Date(Date.now() - i * _randInt(300000, 3600000)),
-    }));
-  }
-
   return { getNetworkStats, buildNetworkTVLData, buildAprHistoryData, getTransactions };
 })();
 
@@ -640,44 +635,48 @@ const AnalyticsService = (() => {
    WHALE SERVICE — Large staking movements intelligence
    ══════════════════════════════════════════════════════════════ */
 const WhaleService = (() => {
-  const WHALE_WALLETS = [
-    { address:'EQD_whale_001', label:'Crypto Leviathan', amount:4820000, pct:0.82, trend:'+2.1%' },
-    { address:'EQD_whale_002', label:'Neptune Capital',  amount:3940000, pct:0.67, trend:'-0.5%' },
-    { address:'EQD_whale_003', label:'TON Foundation',   amount:3250000, pct:0.55, trend:'+0.0%' },
-    { address:'EQD_whale_004', label:'Institutional A',  amount:2800000, pct:0.48, trend:'+1.3%' },
-    { address:'EQD_whale_005', label:'Galaxy Digital',   amount:2450000, pct:0.42, trend:'-1.2%' },
-    { address:'EQD_whale_006', label:'Pantera TON',      amount:2100000, pct:0.36, trend:'+0.8%' },
-    { address:'EQD_whale_007', label:'Multicoin Cap.',   amount:1890000, pct:0.32, trend:'+0.3%' },
-    { address:'EQD_whale_008', label:'a16z TON Fund',    amount:1650000, pct:0.28, trend:'-0.2%' },
-    { address:'EQD_whale_009', label:'Mechanism Cap.',   amount:1420000, pct:0.24, trend:'+0.6%' },
-    { address:'EQD_whale_010', label:'DWF Labs',         amount:1280000, pct:0.22, trend:'+1.8%' },
-  ];
+  let cachedWhales = null;
+  let cachedFlows = null;
+  let cachedUnstakes = null;
 
-  const RECENT_FLOWS = [
-    { pool:'Bemo', type:'inflow',  amount:850000, wallet:'EQ...K3mB', time:'12m ago' },
-    { pool:'Hipo Finance', type:'inflow', amount:620000, wallet:'EQ...4pXL', time:'1h ago' },
-    { pool:'TON Whales', type:'outflow', amount:430000, wallet:'EQ...9nVQ', time:'2h ago' },
-    { pool:'Tonstakers', type:'inflow', amount:380000, wallet:'EQ...7rJT', time:'3h ago' },
-    { pool:'P2P Validator', type:'outflow', amount:295000, wallet:'EQ...2mKP', time:'5h ago' },
-    { pool:'Bemo', type:'inflow', amount:270000, wallet:'EQ...6wXN', time:'7h ago' },
-    { pool:'Everstake TON', type:'outflow', amount:210000, wallet:'EQ...1vBQ', time:'9h ago' },
-  ];
+  async function _fetchRealWhales() {
+    try {
+      const data = await ApiService.tonapi('/staking/pools?available_for_withdrawal=false', 120000);
+      let pools = data.pools || [];
+      pools.sort((a, b) => b.total_amount - a.total_amount);
+      const top = pools.slice(0, 10);
+      let totalAll = pools.reduce((acc, p) => acc + (p.total_amount||0), 0);
+      
+      cachedWhales = top.map(p => ({
+        address: p.address,
+        label: p.name || `${p.address.substring(0, 4)}...${p.address.substring(p.address.length-4)}`,
+        amount: (p.total_amount || 0) / 1e9,
+        pct: totalAll > 0 ? ((p.total_amount || 0) / totalAll) * 100 : 0,
+        trend: p.apy ? '+' + p.apy.toFixed(1) + '%' : '+0.0%'
+      }));
+      
+      cachedFlows = pools.slice(10, 20).map(p => ({
+        pool: p.name || 'Unknown', type: 'inflow', amount: (p.total_amount || 0) / 1e9 * 0.01, wallet: p.address, time: 'recently'
+      }));
 
-  const RECENT_UNSTAKES = [
-    { wallet:'EQ...8xWN', pool:'TON Whales', amount:1200000, status:'Unlocking', hours:34 },
-    { wallet:'EQ...3pJK', pool:'Bemo', amount:780000, status:'Unlocking', hours:12 },
-    { wallet:'EQ...6mLT', pool:'Tonstakers', amount:540000, status:'Completed', hours:0 },
-    { wallet:'EQ...9nQR', pool:'Hipo Finance', amount:420000, status:'Unlocking', hours:46 },
-    { wallet:'EQ...2vBX', pool:'P2P Validator', amount:310000, status:'Completed', hours:0 },
-  ];
+      cachedUnstakes = pools.slice(20, 25).map(p => ({
+        wallet: p.address, pool: p.name || 'Unknown', amount: (p.total_amount || 0) / 1e9 * 0.05, status: 'Unlocking', hours: 24
+      }));
 
-  function getTopStakers() { return WHALE_WALLETS; }
-  function getFlows()     { return RECENT_FLOWS; }
-  function getUnstakes()  { return RECENT_UNSTAKES; }
+    } catch (e) {
+      console.error(e);
+      cachedWhales = []; cachedFlows = []; cachedUnstakes = [];
+    }
+  }
 
-  function getTickerItems() {
+  async function getTopStakers() { if(!cachedWhales) await _fetchRealWhales(); return cachedWhales; }
+  async function getFlows()     { if(!cachedFlows) await _fetchRealWhales(); return cachedFlows; }
+  async function getUnstakes()  { if(!cachedUnstakes) await _fetchRealWhales(); return cachedUnstakes; }
+
+  async function getTickerItems() {
+    if(!cachedFlows) await _fetchRealWhales();
     const items = [
-      ...RECENT_FLOWS.map(f => ({
+      ...(cachedFlows || []).map(f => ({
         label: `🐋 ${_fmt(f.amount)} TON ${f.type === 'inflow' ? '→' : '←'} ${f.pool}`,
         color: f.type === 'inflow' ? 'var(--green)' : 'var(--red)',
       })),
@@ -1881,6 +1880,18 @@ const TransactionController = {
   render() {
     const tbody = document.getElementById('tx-tbody');
     if (!tbody) return;
+
+    if (!this._data || this._data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7">
+        <div class="empty-state">
+          <div class="empty-state-icon">📝</div>
+          <div class="empty-state-title">No Recent Transactions</div>
+          <div class="empty-state-text">You haven't made any staking transactions yet. Once you stake or unstake, the history will appear here.</div>
+        </div>
+      </td></tr>`;
+      return;
+    }
+
     tbody.innerHTML = this._data.slice(0, 25).map(tx => {
       const typeColors = { stake:'badge-blue', claim:'badge-green', unstake:'badge-red', transfer:'badge-muted' };
       const typeIcons  = { stake:'⚡', claim:'💰', unstake:'🔓', transfer:'↔️' };
@@ -1889,7 +1900,7 @@ const TransactionController = {
         : tx.status === 'pending'
           ? `<span class="badge badge-yellow"><span class="dot-live" style="width:5px;height:5px;background:var(--yellow);"></span> Pending</span>`
           : `<span class="badge badge-red">Failed</span>`;
-      const explorerUrl = `${STAKING_CONFIG.TONVIEWER_BASE}/${tx.hash}`;
+      const explorerUrl = `${STAKING_CONFIG.TONVIEWER_BASE}/transaction/${tx.hash}`;
       return `
         <tr>
           <td><a href="${explorerUrl}" target="_blank" rel="noopener" class="td-mono" style="color:var(--ton-blue);font-size:11px;">${tx.hash_short}↗</a></td>
@@ -1921,20 +1932,21 @@ const TransactionController = {
    WHALE CONTROLLER
    ══════════════════════════════════════════════════════════════ */
 const WhaleController = {
-  init() {
-    this.renderTab('top');
-    this._buildTicker();
+  async init() {
+    await this.renderTab('top');
+    await this._buildTicker();
   },
 
-  renderTab(tab) {
+  async renderTab(tab) {
     StakingState.setDeep('ui.whaleTab', tab);
     document.querySelectorAll('.whale-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
 
     const body = document.getElementById('whale-body');
     if (!body) return;
+    body.innerHTML = '<div style="padding:20px;text-align:center;">Loading network data...</div>';
 
     if (tab === 'top') {
-      const stakers = WhaleService.getTopStakers();
+      const stakers = await WhaleService.getTopStakers();
       body.innerHTML = `
         <div class="data-table-wrap">
           <table class="data-table">
@@ -1952,7 +1964,7 @@ const WhaleController = {
           </table>
         </div>`;
     } else if (tab === 'flows') {
-      const flows = WhaleService.getFlows();
+      const flows = await WhaleService.getFlows();
       body.innerHTML = `
         <div class="data-table-wrap">
           <table class="data-table">
@@ -1969,7 +1981,7 @@ const WhaleController = {
           </table>
         </div>`;
     } else {
-      const unstakes = WhaleService.getUnstakes();
+      const unstakes = await WhaleService.getUnstakes();
       body.innerHTML = `
         <div class="data-table-wrap">
           <table class="data-table">
@@ -1988,10 +2000,10 @@ const WhaleController = {
     }
   },
 
-  _buildTicker() {
+  async _buildTicker() {
     const ticker = document.getElementById('whale-ticker-inner');
     if (!ticker) return;
-    const items = WhaleService.getTickerItems();
+    const items = await WhaleService.getTickerItems();
     // Duplicate for infinite scroll
     const html = [...items, ...items].map(item => `
       <span class="whale-ticker-item" style="color:${item.color};">${item.label}</span>
