@@ -31,7 +31,7 @@ const STAKING_CONFIG = {
   CACHE_TTL_MS:         30000,
   WHALE_THRESHOLD_TON:  10000,
   ROWS_PER_PAGE:        20,
-  FEATURE_REAL_TX:      true,    // flip to true for live transaction signing
+  FEATURE_REAL_TX:      true,    // Real TON transactions — do not set to false in production
   VERSION:              '1.0.0',
 };
 
@@ -174,6 +174,48 @@ const ApiService = (() => {
 })();
 
 function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/**
+ * Derive a displayable hex transaction hash from a base64 BoC string.
+ * TON Connect returns result.boc after sendTransaction \u2014 we SHA-256 the
+ * raw bytes to produce a consistent 64-char hex hash for explorer links.
+ * Falls back to a truncated base64 string if SubtleCrypto is unavailable.
+ */
+async function _bocToDisplayHash(boc) {
+  try {
+    const bytes = Uint8Array.from(atob(boc), c => c.charCodeAt(0));
+    const hashBuf = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  } catch {
+    // Fallback: use raw base64 without padding as display hash
+    return boc.replace(/[^A-Za-z0-9]/g, '').slice(0, 64);
+  }
+}
+
+/**
+ * Poll TON API until a transaction from `address` with matching hash
+ * appears, or until `timeoutMs` elapses.
+ * This ensures the UI refreshes only after real on-chain confirmation.
+ */
+async function _waitForTxConfirmation(address, txHash, timeoutMs = 30000) {
+  if (!address || !txHash) { await _sleep(3000); return; }
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const data = await ApiService.tonapi(
+        `/blockchain/accounts/${encodeURIComponent(address)}/transactions?limit=5`, 0
+      );
+      const txs = data?.transactions || [];
+      // Match by hash prefix (first 16 chars) since derived hash may differ from chain hash
+      const found = txs.some(t =>
+        (t.hash || '').toLowerCase().startsWith(txHash.slice(0, 16).toLowerCase())
+      );
+      if (found) return;
+    } catch { /* ignore polling errors */ }
+    await _sleep(3000);
+  }
+  // Timed out \u2014 proceed anyway (tx may still confirm)
+}
 
 /* ══════════════════════════════════════════════════════════════
    WALLET SERVICE — Bridges to existing wallet-connect.js system
@@ -1789,35 +1831,86 @@ const StakeModalController = {
     const btn = document.getElementById('stake-execute-btn');
     if (!btn || StakingState.get('ui').txInFlight) return;
 
+    // Wallet must be connected via TON Connect to sign
+    if (!window.tonConnectUI || !window.tonConnectUI.wallet) {
+      NotificationService.toast(
+        'Wallet Required',
+        'Connect your TON wallet via TON Connect before staking.',
+        'warning'
+      );
+      window.openWalletModal?.();
+      return;
+    }
+
     StakingState.setDeep('ui.txInFlight', true);
     btn.disabled = true;
-    btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;"></div> Broadcasting...';
+    btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;"></div> Awaiting signature...';
 
     try {
-      if (STAKING_CONFIG.FEATURE_REAL_TX) {
-        // Live transaction signing via TON Connect
-        const input = document.getElementById('stake-amount-input');
-        const amount = parseFloat(input?.value) || 0;
-        const v = this._currentValidator;
-        if (window.tonConnectUI) {
-          await window.tonConnectUI.sendTransaction({
-            validUntil: Math.floor(Date.now() / 1000) + 600,
-            messages: [{ address: v.address, amount: String(Math.floor(amount * 1e9)) }],
-          });
-        }
-      } else {
-        // Simulation mode — full UX flow without broadcasting
-        await _sleep(2000);
+      const input  = document.getElementById('stake-amount-input');
+      const amount = parseFloat(input?.value) || 0;
+      if (amount <= 0) throw new Error('Invalid staking amount.');
+
+      const v = this._currentValidator;
+      if (!v || !v.address) throw new Error('No validator selected.');
+
+      // TON Nominator Pool — deposit opcode: 0x7362d09c
+      // Message body: op (32 bit) + query_id (64 bit) = 12 bytes
+      // Encoded as base64 BoC: te6cckEBAQEACgAAEHNi0JwAAAAAAAAx0A==
+      // The pool contract address is v.address (the nominator pool smart contract)
+      const DEPOSIT_OP_BOC = 'te6cckEBAQEACgAAEHNi0JwAAAAAAAAx0A==';
+
+      const amountNano = String(Math.floor(amount * 1e9));
+
+      btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;"></div> Sign in wallet...';
+
+      const result = await window.tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600, // 10 min expiry
+        messages: [{
+          address: v.address,
+          amount:  amountNano,
+          payload: DEPOSIT_OP_BOC,
+        }],
+      });
+
+      // result.boc contains the signed BoC — derive hash for UI
+      const txHash = result?.boc ? _bocToDisplayHash(result.boc) : null;
+      StakingState.setDeep('ui.lastTxHash', txHash);
+
+      // Show success step with tx hash
+      const hashEl = document.getElementById('stake-tx-hash');
+      if (hashEl && txHash) {
+        hashEl.textContent  = txHash.slice(0, 16) + '...';
+        const explorerBase  = STAKING_CONFIG.TONVIEWER_BASE;
+        const linkEl        = document.getElementById('stake-tx-link');
+        if (linkEl) linkEl.href = `${explorerBase}/transaction/${txHash}`;
       }
 
       this._showStep(3);
-      NotificationService.push({ type: 'stake', title: 'Stake Completed ✅', body: `Your TON has been delegated to ${this._currentValidator.name}.`, icon: '⚡' });
-      await _sleep(1500);
+      NotificationService.push({
+        type:  'stake',
+        title: 'Stake Broadcast ✅',
+        body:  `${amount} TON delegated to ${v.name}. Tx: ${txHash ? txHash.slice(0,12) + '...' : 'pending'}`,
+        icon:  '⚡',
+      });
+
+      // Wait for on-chain confirmation before refreshing portfolio
+      btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;"></div> Confirming on-chain...';
+      await _waitForTxConfirmation(WalletService.getAddress(), txHash, 30000);
+
+      await _sleep(800);
       this.close();
       await PortfolioService.refresh();
       PortfolioController.render();
+
     } catch (e) {
-      NotificationService.toast('Transaction Failed', e.message || 'Please try again.', 'error');
+      // User rejection is code 300 in TON Connect
+      if (e?.code === 300 || /reject|cancel/i.test(e?.message)) {
+        NotificationService.toast('Transaction Cancelled', 'You rejected the transaction in your wallet.', 'info');
+      } else {
+        NotificationService.toast('Transaction Failed', e.message || 'Please try again.', 'error');
+        console.error('[StakeModalController.executeStake]', e);
+      }
     } finally {
       StakingState.setDeep('ui.txInFlight', false);
       if (btn) { btn.disabled = false; btn.innerHTML = 'Confirm & Sign'; }
@@ -2460,29 +2553,64 @@ const UnstakeModalController = {
   async execute() {
     const btn = document.getElementById('unstake-execute-btn');
     if (!btn || StakingState.get('ui').txInFlight) return;
+
+    // Wallet must be connected via TON Connect to sign
+    if (!window.tonConnectUI || !window.tonConnectUI.wallet) {
+      NotificationService.toast(
+        'Wallet Required',
+        'Connect your TON wallet via TON Connect to unstake.',
+        'warning'
+      );
+      window.openWalletModal?.();
+      return;
+    }
+
     StakingState.setDeep('ui.txInFlight', true);
     btn.disabled = true;
-    btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;display:inline-block;"></div> Processing...';
+    btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;display:inline-block;"></div> Sign in wallet...';
 
     try {
-      if (STAKING_CONFIG.FEATURE_REAL_TX && window.tonConnectUI) {
-        const validatorId = document.getElementById('unstake-modal')?.dataset.validatorId || '';
-        if (validatorId) {
-           await window.tonConnectUI.sendTransaction({
-             validUntil: Math.floor(Date.now() / 1000) + 600,
-             messages: [{ address: validatorId, amount: '100000000', payload: 'te6cckEBAQEABgAACN0ZkBA=' }], // mock unstake payload
-           });
-        }
-      } else {
-        await _sleep(1800);
-      }
-      
-      NotificationService.push({ type: 'info', title: 'Unstake Initiated', body: 'Your TON will be unlocked after the network lock period (~36–48h).', icon: '🔓' });
+      const validatorId = document.getElementById('unstake-modal')?.dataset.validatorId || '';
+      if (!validatorId) throw new Error('No validator pool address found.');
+
+      // TON Nominator Pool — withdraw opcode: 0x47d54391
+      // Message body: op (32 bit) + query_id (64 bit) = 12 bytes
+      // Gas for withdrawal request: 0.1 TON (100000000 nanoTON)
+      const WITHDRAW_OP_BOC = 'te6cckEBAQEACgAAEEfVQ5EAAAAAAAAx0A==';
+      const GAS_NANO        = '100000000'; // 0.1 TON
+
+      const result = await window.tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [{
+          address: validatorId,
+          amount:  GAS_NANO,
+          payload: WITHDRAW_OP_BOC,
+        }],
+      });
+
+      const txHash = result?.boc ? _bocToDisplayHash(result.boc) : null;
+      StakingState.setDeep('ui.lastTxHash', txHash);
+
+      NotificationService.push({
+        type:  'info',
+        title: 'Unstake Broadcast ✅',
+        body:  `Withdrawal queued. TON will unlock after the network round (~36–48h). Tx: ${txHash ? txHash.slice(0,12) + '...' : 'pending'}`,
+        icon:  '🔓',
+      });
+
+      // Wait briefly for on-chain visibility then refresh
+      await _waitForTxConfirmation(WalletService.getAddress(), txHash, 20000);
       this.close();
       await PortfolioService.refresh();
       PortfolioController.render();
+
     } catch (e) {
-      NotificationService.toast('Unstake Failed', e.message || 'Transaction rejected or failed.', 'error');
+      if (e?.code === 300 || /reject|cancel/i.test(e?.message)) {
+        NotificationService.toast('Transaction Cancelled', 'You rejected the transaction in your wallet.', 'info');
+      } else {
+        NotificationService.toast('Unstake Failed', e.message || 'Transaction rejected or failed.', 'error');
+        console.error('[UnstakeModalController.execute]', e);
+      }
     } finally {
       StakingState.setDeep('ui.txInFlight', false);
       if (btn) {

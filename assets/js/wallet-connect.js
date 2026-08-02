@@ -149,20 +149,23 @@
   };
 
   window.connectSpecificWallet = function(walletName) {
-    if (walletName === 'Tonkeeper') {
-      window.open(`https://app.tonkeeper.com/ton-connect?ret=https://anlgram-labs.github.io/ANLGRAM`, '_blank');
-    } else if (walletName === 'Telegram Wallet') {
-      window.open(`https://t.me/wallet`, '_blank');
-    } else if (walletName === 'MyTonWallet') {
-      window.open(`https://mytonwallet.io`, '_blank');
-    } else if (walletName === 'OpenMask') {
-      window.open(`https://openmask.app`, '_blank');
+    // Always use TON Connect UI for real wallet connection — never generate fake addresses
+    if (tonConnectUI) {
+      try {
+        tonConnectUI.openModal();
+        return;
+      } catch (e) {
+        console.warn('[ANLGRAM] TON Connect openModal failed:', e);
+      }
     }
-    
-    setTimeout(() => {
-      const mockAddr = 'UQBs' + Math.random().toString(36).substring(2, 10) + 'ANLGRAM' + Math.random().toString(36).substring(2, 6);
-      window.setConnectedWallet(mockAddr, walletName);
-    }, 1200);
+    // Fallback: direct deep-link to wallet app
+    const links = {
+      'Tonkeeper':        'https://app.tonkeeper.com/ton-connect?ret=' + encodeURIComponent(location.href),
+      'Telegram Wallet':  'https://t.me/wallet',
+      'MyTonWallet':      'https://mytonwallet.io',
+      'OpenMask':         'https://openmask.app',
+    };
+    if (links[walletName]) window.open(links[walletName], '_blank');
   };
 
   window.connectWallet = function(walletName) {
@@ -253,26 +256,42 @@
     injectWalletModal();
     updateAllButtons();
 
-    if (typeof window.TON_CONNECT_UI !== 'undefined' && window.TON_CONNECT_UI.TonConnectUI) {
+    // Try to initialise the TON Connect UI SDK (loaded from CDN before this script)
+    const SDK = window.TON_CONNECT_UI || window.TonConnectUI;
+    const UIClass = SDK?.TonConnectUI || SDK;
+    if (typeof UIClass === 'function') {
       try {
-        tonConnectUI = new window.TON_CONNECT_UI.TonConnectUI({
+        tonConnectUI = new UIClass({
           manifestUrl: 'https://anlgram-labs.github.io/ANLGRAM/tonconnect-manifest.json',
+          // Attach the built-in button to a hidden element so the SDK doesn't
+          // render its own floating button on top of our custom UI
+          buttonRootId: null,
         });
+
+        // Expose globally so staking.js can call sendTransaction
+        window.tonConnectUI = tonConnectUI;
 
         tonConnectUI.onStatusChange(wallet => {
           if (wallet && wallet.account) {
-            window.setConnectedWallet(wallet.account.address, wallet.device?.appName || 'TON Connect');
+            const addr = wallet.account.address || wallet.account.friendlyAddress;
+            window.setConnectedWallet(addr, wallet.device?.appName || 'TON Connect');
           } else if (!wallet && currentAddress) {
             window.disconnectWallet();
           }
         });
 
+        // Restore session if wallet was previously connected
         if (tonConnectUI.wallet && tonConnectUI.wallet.account) {
-          window.setConnectedWallet(tonConnectUI.wallet.account.address, tonConnectUI.wallet.device?.appName || 'TON Connect');
+          const addr = tonConnectUI.wallet.account.address || tonConnectUI.wallet.account.friendlyAddress;
+          window.setConnectedWallet(addr, tonConnectUI.wallet.device?.appName || 'TON Connect');
         }
+
+        console.log('[ANLGRAM] TON Connect UI initialised successfully.');
       } catch (e) {
-        console.warn('TonConnectUI init failed, fallback ready', e);
+        console.warn('[ANLGRAM] TonConnectUI init failed — manual address mode only:', e);
       }
+    } else {
+      console.warn('[ANLGRAM] TON Connect UI SDK not found. Wallet connection limited to manual address entry.');
     }
   }
 

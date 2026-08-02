@@ -1747,8 +1747,16 @@
     <div id="stake-step-3" style="display:none;">
       <div class="tx-success">
         <span class="tx-success-icon" aria-hidden="true">✅</span>
-        <div class="tx-success-title">Stake Submitted!</div>
-        <div class="tx-success-sub">Your TON delegation has been broadcast to the network.<br>It will be confirmed within the next block cycle.</div>
+        <div class="tx-success-title">Transaction Broadcast!</div>
+        <div class="tx-success-sub">Your TON delegation has been signed and broadcast to the TON blockchain.<br>It will be confirmed within the next block cycle (~5 seconds).</div>
+        <div style="margin-top:14px;background:var(--bg-secondary);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 14px;text-align:left;">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">TRANSACTION HASH</div>
+          <div style="font-family:monospace;font-size:11px;color:var(--cyan);word-break:break-all;" id="stake-tx-hash">Confirming on-chain...</div>
+          <a id="stake-tx-link" href="#" target="_blank" rel="noopener"
+             style="display:inline-block;margin-top:6px;font-size:11px;color:var(--accent);text-decoration:none;">
+            🔗 View on Tonviewer →
+          </a>
+        </div>
         <button class="btn btn-primary" style="margin-top:20px;" onclick="StakeModalController.close()">Done</button>
       </div>
     </div>
@@ -1962,6 +1970,7 @@
      SCRIPTS
 ════════════════════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
 <script src="assets/js/api.js"></script>
 <script src="assets/js/wallet-connect.js"></script>
 <script src="assets/js/staking.js"></script>
