@@ -11,7 +11,7 @@
         { symbol: "FISH", name: "Ton Fish", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/30117.png", contract: "EQATcUc69sGSCCMSadsVUKdGwM1BMKS-HKCWGPk60xZGgwsK" },
         { symbol: "DUST", name: "DeDust", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/23156.png", contract: "EQBlqsm144Dq6SjbPI4jjZvA1hqTIP3CvHovbIfW_t-SCALE" },
         { symbol: "GEMSTON", name: "GemSTON", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/28152.png", contract: "EQBX6K9aXVl3nXINCyPPL86C4ONVmQ8vK360u6dykFKXpHCa" },
-        { symbol: "RAFF", name: "TonRaffles", logo: "https://tonviewer.com/logo/RAFF.png" },
+        { symbol: "RAFF", name: "TonRaffles", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/29705.png", contract: "EQCJbp0kBpPwPoBG-U5C-cWfP_jnksvotGfArPF50Q9Qiv9h" },
         { symbol: "PUNK", name: "TON Punks", logo: "https://tonviewer.com/logo/PUNK.png" },
         { symbol: "KING", name: "Kingy", logo: "https://tonviewer.com/logo/KING.png" },
         { symbol: "DFC", name: "DeFinder", logo: "https://tonviewer.com/logo/DFC.png" },
