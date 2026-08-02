@@ -580,24 +580,35 @@ const AnalyticsService = (() => {
     }
   }
 
-  function buildNetworkTVLData() {
+  async function getNetworkTVLData() {
+    try {
+      const res = await fetch('https://api.llama.fi/v2/historicalChainTvl/TON');
+      const data = await res.json();
+      if (data && Array.isArray(data)) {
+        // Take last 30 days
+        const last30 = data.slice(-30);
+        const labels = last30.map(d => new Date(d.date * 1000).toLocaleDateString('en', { month: 'short', day: 'numeric' }));
+        const values = last30.map(d => parseFloat((d.tvl / 1e6).toFixed(1)));
+        return { labels, values };
+      }
+    } catch { /* fall back */ }
+    
+    // Fallback to static
     const labels = [], values = [];
-    const base = 580;
     for (let i = 29; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
       labels.push(d.toLocaleDateString('en', { month: 'short', day: 'numeric' }));
-      values.push(parseFloat((base + (29 - i) * 0.8 + Math.sin(i) * 5 + _rand(0, 3)).toFixed(1)));
+      values.push(600); // 600M static fallback
     }
     return { labels, values };
   }
 
-  function buildAprHistoryData(poolId) {
+  function getAprHistoryData(poolId, currentApr = 4.8) {
     const labels = [], values = [];
-    const base = 4.8;
     for (let i = 29; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
       labels.push(d.toLocaleDateString('en', { month: 'short', day: 'numeric' }));
-      values.push(parseFloat((base + Math.sin(i * 0.5) * 0.3 + _rand(-0.1, 0.1)).toFixed(2)));
+      values.push(currentApr); // Static APR line
     }
     return { labels, values };
   }
@@ -628,7 +639,7 @@ const AnalyticsService = (() => {
     };
   }
 
-  return { getNetworkStats, buildNetworkTVLData, buildAprHistoryData, getTransactions };
+  return { getNetworkStats, getNetworkTVLData, getAprHistoryData, getTransactions };
 })();
 
 /* ══════════════════════════════════════════════════════════════
@@ -1407,7 +1418,7 @@ const ValidatorDetailController = {
     // APR history chart
     const aprCtx = document.getElementById('detail-apr-chart')?.getContext('2d');
     if (aprCtx) {
-      const { labels, values } = AnalyticsService.buildAprHistoryData(v.id);
+      const { labels, values } = AnalyticsService.getAprHistoryData(v.id, v.apr);
       this._aprChart = new Chart(aprCtx, {
         type: 'line',
         data: { labels, datasets: [{ label: 'APR %', data: values, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', tension: 0.4, pointRadius: 0, borderWidth: 2, fill: true }] },
@@ -1822,7 +1833,7 @@ const NetworkAnalyticsController = {
   _tvlChart: null,
 
   async init() {
-    const { labels, values } = AnalyticsService.buildNetworkTVLData();
+    const { labels, values } = await AnalyticsService.getNetworkTVLData();
     const ctx = document.getElementById('chart-network-tvl')?.getContext('2d');
     if (!ctx) return;
     this._tvlChart = new Chart(ctx, {
