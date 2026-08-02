@@ -164,11 +164,17 @@
             { name: "Retail", color: "#b388ff", sizeMult: 2 } // Light purple
         ];
 
+        const realAddresses = [
+            'EQBcf-EQNmSjqAHnTLZQ48jOwcrJMC1PYIywzcs6trO7U5AA',
+            'EQCI_ln0rbVRndDaohvqV-m6_0pVec_SHimkM-2qod95n-BK',
+            'EQCDee0do0lD1Nhwwz1CJj4895Cv_EUM2vKCpLzHzqSakTIg',
+            'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N'
+        ];
+
         for (let i = 0; i < numNodes; i++) {
             const cluster = clusters[Math.floor(rand() * clusters.length)];
             const size = (rand() * 5 + 2) * cluster.sizeMult;
-            const randChar = () => (Math.random().toString(36)[2] || 'A').toUpperCase();
-            const fullAddr = `EQ${Array.from({length: 46}, randChar).join('')}`;
+            const fullAddr = realAddresses[Math.floor(rand() * realAddresses.length)];
             nodes.push({
                 id: i,
                 fullAddress: fullAddr,
