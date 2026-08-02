@@ -8,7 +8,7 @@
         { symbol: "NOT", name: "Notcoin", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/28850.png", contract: "EQAvlWFDxGF2lXm67y4yzC17wYKD9A0guwPkMs1gOsM__NOT" },
         { symbol: "STON", name: "STON.fi", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/27311.png", contract: "EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO" },
         { symbol: "DOGS", name: "DOGS", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/32698.png", contract: "EQCvxJy4eG8hyHBFsZ7eePxrRsUQSFE_jpptRAYBmcG_DOGS" },
-        { symbol: "FISH", name: "Ton Fish", logo: "https://tonviewer.com/logo/FISH.png" },
+        { symbol: "FISH", name: "Ton Fish", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/30117.png", contract: "EQATcUc69sGSCCMSadsVUKdGwM1BMKS-HKCWGPk60xZGgwsK" },
         { symbol: "SCALE", name: "Scale", logo: "https://tonviewer.com/logo/SCALE.png" },
         { symbol: "UP", name: "TonUP", logo: "https://tonviewer.com/logo/UP.png" },
         { symbol: "RAFF", name: "TonRaffles", logo: "https://tonviewer.com/logo/RAFF.png" },
