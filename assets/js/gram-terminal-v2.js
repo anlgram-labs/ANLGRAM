@@ -5,7 +5,7 @@
     const TON_TOKENS = [
         { symbol: "GRAM", name: "Gram", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/11419.png" },
         { symbol: "REDO", name: "Resistance Dog", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/30116.png", contract: "EQBZ_cafPyDr5KUTs0aNxh0ZTDhkpEZONmLJA2SNGlLm4Cko" },
-        { symbol: "NOT", name: "Notcoin", logo: "https://tonviewer.com/logo/NOT.png" },
+        { symbol: "NOT", name: "Notcoin", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/28850.png", contract: "EQAvlWFDxGF2lXm67y4yzC17wYKD9A0guwPkMs1gOsM__NOT" },
         { symbol: "STON", name: "STON.fi", logo: "https://tonviewer.com/logo/STON.png" },
         { symbol: "DOGS", name: "DOGS", logo: "https://tonviewer.com/logo/DOGS.png" },
         { symbol: "FISH", name: "Ton Fish", logo: "https://tonviewer.com/logo/FISH.png" },
