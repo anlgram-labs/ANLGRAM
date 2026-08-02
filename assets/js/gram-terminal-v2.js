@@ -4,7 +4,7 @@
     // === OFFICIAL TOP TON TOKENS ===
     const TON_TOKENS = [
         { symbol: "GRAM", name: "Gram", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/11419.png" },
-        { symbol: "REDO", name: "Resistance Dog", logo: "https://tonviewer.com/logo/REDO.png" },
+        { symbol: "REDO", name: "Resistance Dog", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/30116.png", contract: "EQBZ_cafPyDr5KUTs0aNxh0ZTDhkpEZONmLJA2SNGlLm4Cko" },
         { symbol: "NOT", name: "Notcoin", logo: "https://tonviewer.com/logo/NOT.png" },
         { symbol: "STON", name: "STON.fi", logo: "https://tonviewer.com/logo/STON.png" },
         { symbol: "DOGS", name: "DOGS", logo: "https://tonviewer.com/logo/DOGS.png" },
@@ -81,7 +81,8 @@
                 change24h: change24h,
                 marketCap: marketCap,
                 volume: volume,
-                holders: Math.floor(rand() * 50000) + 1000
+                holders: Math.floor(rand() * 50000) + 1000,
+                contract: TON_TOKENS[i].contract || null
             });
         }
     }
@@ -135,6 +136,23 @@
         document.getElementById('map-price').textContent = formatPrice(token.price);
         document.getElementById('map-mcap').textContent = formatMoney(token.marketCap);
         document.getElementById('map-holders').textContent = token.holders.toLocaleString();
+        
+        const contractEl = document.getElementById('map-contract');
+        if (contractEl) {
+            if (token.contract) {
+                contractEl.textContent = `${token.contract.substring(0, 8)}...${token.contract.substring(40)}`;
+                contractEl.onclick = () => {
+                    navigator.clipboard.writeText(token.contract);
+                    contractEl.textContent = 'Copied!';
+                    setTimeout(() => {
+                        contractEl.textContent = `${token.contract.substring(0, 8)}...${token.contract.substring(40)}`;
+                    }, 2000);
+                };
+            } else {
+                contractEl.textContent = 'N/A';
+                contractEl.onclick = null;
+            }
+        }
         
         // Hide wallet panel initially
         document.getElementById('panel-wallet').style.display = 'none';
