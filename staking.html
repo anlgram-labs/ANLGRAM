@@ -1,0 +1,2005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#050c1e" />
+
+  <!-- SEO -->
+  <title>TON Staking Intelligence Center | ANLGRAM Enterprise</title>
+  <meta name="description" content="Institutional-grade TON staking analytics. Compare validators, track rewards, analyze risks, and stake securely — all in one Bloomberg-grade platform." />
+  <meta name="keywords" content="TON staking, TON validator, TON rewards, DeFi, cryptocurrency staking, blockchain analytics" />
+  <link rel="canonical" href="https://anlgram-labs.github.io/ANLGRAM/staking.html" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="TON Staking Intelligence Center | ANLGRAM Enterprise" />
+  <meta property="og:description" content="Institutional-grade TON staking analytics platform." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://anlgram-labs.github.io/ANLGRAM/staking.html" />
+  <meta property="og:image" content="https://anlgram-labs.github.io/ANLGRAM/assets/images/og-staking.png" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="TON Staking Intelligence Center | ANLGRAM Enterprise" />
+  <meta name="twitter:description" content="Institutional-grade TON staking analytics platform." />
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="assets/images/icon-192.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- ANLGRAM Shared Styles -->
+  <link rel="stylesheet" href="assets/css/design-system.css" />
+  <link rel="stylesheet" href="assets/css/layout.css" />
+  <link rel="stylesheet" href="assets/css/animations.css" />
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "ANLGRAM TON Staking Intelligence Center",
+    "description": "Institutional-grade TON staking analytics and management platform",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web"
+  }
+  </script>
+
+  <style>
+    /* ── Canvas Background ─────────────────────────────────── */
+    #staking-canvas {
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 0; opacity: 0.38;
+    }
+
+    /* ── Network Warning Banner ─────────────────────────────── */
+    #network-warning-banner {
+      display: none; position: sticky; top: 0; z-index: 200;
+      background: rgba(234,179,8,0.12);
+      border-bottom: 1px solid rgba(234,179,8,0.35);
+      padding: 9px 24px; font-size: 13px; color: #f59e0b;
+      align-items: center; gap: 10px; font-weight: 500;
+    }
+    #network-warning-banner.show { display: flex; }
+
+    /* ── Wallet Info Bar ────────────────────────────────────── */
+    #wallet-info-bar {
+      display: none;
+      align-items: center; gap: 12px;
+      padding: 8px 20px;
+      background: rgba(0,136,204,0.06);
+      border-bottom: 1px solid rgba(0,136,204,0.15);
+      font-size: 12px;
+    }
+    #wallet-info-bar.visible { display: flex; }
+
+    /* ── Section Layout ─────────────────────────────────────── */
+    .staking-section {
+      position: relative; z-index: 10;
+      margin-bottom: 40px;
+    }
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px; flex-wrap: wrap; gap: 12px;
+    }
+    .section-title {
+      font-size: 16px; font-weight: 700;
+      color: var(--text-primary); letter-spacing: -0.02em;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-icon {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: var(--ton-blue-dim);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; flex-shrink: 0;
+    }
+    .section-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .section-sub {
+      font-size: 12px; color: var(--text-muted); margin-top: 2px;
+    }
+
+    /* ── Page Header Block ──────────────────────────────────── */
+    .staking-page-header {
+      background: linear-gradient(135deg, rgba(0,136,204,0.08) 0%, rgba(0,207,255,0.04) 50%, transparent 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      position: relative; overflow: hidden;
+    }
+    .staking-page-header::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--ton-blue), var(--cyan), transparent);
+    }
+    .staking-header-content {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 24px; flex-wrap: wrap;
+    }
+    .staking-header-title {
+      font-size: 26px; font-weight: 800; letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #fff 0%, var(--cyan) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1.1; margin-bottom: 6px;
+    }
+    .staking-header-sub {
+      font-size: 13px; color: var(--text-secondary); max-width: 480px; line-height: 1.5;
+    }
+    .staking-header-actions {
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    }
+
+    /* ── Metric Cards ───────────────────────────────────────── */
+    .metric-grid-6 {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 14px; margin-bottom: 32px;
+    }
+    .s-metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+      position: relative; overflow: hidden;
+      transition: var(--transition-base); cursor: default;
+    }
+    .s-metric-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,136,204,0.12);
+    }
+    .s-metric-card::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--ton-blue), transparent);
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .s-metric-card:hover::after { opacity: 1; }
+    .metric-card-top {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .metric-card-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-muted);
+    }
+    .metric-card-icon {
+      width: 26px; height: 26px; border-radius: 6px;
+      background: var(--ton-blue-dim);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+    }
+    .metric-card-value {
+      font-size: 22px; font-weight: 800;
+      font-family: var(--font-mono); letter-spacing: -0.03em;
+      color: var(--text-primary); line-height: 1;
+      margin-bottom: 10px; min-height: 26px;
+    }
+    .metric-card-sparkline {
+      width: 100%; height: 30px; display: block;
+      margin-bottom: 6px;
+    }
+    .metric-card-footer {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 10px; font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    /* ── Validator Table ────────────────────────────────────── */
+    .table-controls {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      flex-wrap: wrap;
+    }
+    .search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 280px; }
+    .search-icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); font-size: 13px; pointer-events: none;
+    }
+    .table-search {
+      width: 100%; height: 32px;
+      background: var(--bg-input); border: 1px solid var(--border-default);
+      border-radius: var(--radius-md); padding: 0 12px 0 30px;
+      color: var(--text-primary); font-size: 13px;
+    }
+    .table-search:focus { outline: none; border-color: var(--ton-blue); box-shadow: 0 0 0 2px var(--ton-blue-dim); }
+    .table-select {
+      height: 32px; padding: 0 10px;
+      background: var(--bg-input); border: 1px solid var(--border-default);
+      border-radius: var(--radius-md); color: var(--text-primary); font-size: 12px;
+    }
+    .table-select:focus { outline: none; border-color: var(--ton-blue); }
+    .export-grp { display: flex; gap: 6px; margin-left: auto; }
+
+    .sortable-th { cursor: pointer; user-select: none; white-space: nowrap; }
+    .sortable-th:hover { color: var(--text-primary) !important; }
+    .sort-icon { margin-left: 3px; font-size: 9px; color: var(--text-muted); }
+    .sort-asc .sort-icon, .sort-desc .sort-icon { color: var(--cyan); }
+
+    .validator-logo {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--ton-blue-dim); border: 1px solid rgba(0,136,204,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: var(--cyan);
+      flex-shrink: 0; overflow: hidden;
+    }
+    .validator-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+    .validator-name { font-weight: 600; font-size: 13px; color: var(--text-primary); white-space: nowrap; }
+    .validator-addr { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+    .apr-value { font-family: var(--font-mono); font-weight: 700; color: #22c55e; }
+    .text-green { color: #22c55e !important; }
+    .text-red   { color: #ef4444 !important; }
+    .text-cyan  { color: var(--cyan) !important; }
+    .td-mono    { font-family: var(--font-mono); font-size: 12px; }
+    .td-entity  { display: flex; align-items: center; gap: 8px; }
+    .entity-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--ton-blue-dim);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: var(--cyan); flex-shrink: 0;
+    }
+
+    .perf-bar-wrap { width: 56px; height: 4px; background: var(--border-subtle); border-radius: 2px; overflow: hidden; }
+    .perf-bar { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--ton-blue), var(--cyan)); transition: width 0.5s ease; }
+
+    /* Risk Grade Badges */
+    .risk-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 46px; padding: 2px 6px;
+      border-radius: 4px; font-size: 10px; font-weight: 800;
+      font-family: var(--font-mono); letter-spacing: 0.04em; white-space: nowrap;
+    }
+    .risk-aaa,.risk-aa,.risk-a { background:rgba(34,197,94,0.1);color:#22c55e;border:1px solid rgba(34,197,94,0.2); }
+    .risk-bbb,.risk-bb        { background:rgba(234,179,8,0.1);color:#eab308;border:1px solid rgba(234,179,8,0.2); }
+    .risk-b                   { background:rgba(249,115,22,0.1);color:#f97316;border:1px solid rgba(249,115,22,0.2); }
+    .risk-high                { background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2); }
+    .risk-critical            { background:rgba(239,68,68,0.18);color:#ef4444;border:1px solid #ef4444;animation:pulse-danger 1.8s infinite; }
+    @keyframes pulse-danger { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.3);}50%{box-shadow:0 0 0 4px rgba(239,68,68,0);} }
+
+    .row-act-btn {
+      background: var(--bg-input); border: 1px solid var(--border-default);
+      border-radius: 5px; padding: 3px 10px; font-size: 11px;
+      color: var(--text-secondary); cursor: pointer; transition: var(--transition-fast);
+    }
+    .row-act-btn:hover { border-color: var(--border-accent); color: var(--text-primary); }
+
+    .validator-row { cursor: pointer; transition: background 0.15s; }
+    .validator-row:hover td { background: rgba(0,136,204,0.04); }
+
+    /* Pagination */
+    .table-pagination {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; border-top: 1px solid var(--border-subtle);
+      font-size: 11px; flex-wrap: wrap; gap: 10px;
+    }
+    .pagination-info { color: var(--text-muted); font-family: var(--font-mono); }
+    .pagination-controls { display: flex; gap: 4px; }
+    .page-btn {
+      width: 28px; height: 28px; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-family: var(--font-mono);
+      background: var(--bg-input); border: 1px solid var(--border-default);
+      color: var(--text-secondary); cursor: pointer; transition: var(--transition-fast);
+    }
+    .page-btn:hover:not(:disabled) { border-color: var(--border-accent); color: var(--text-primary); }
+    .page-btn.active { background: var(--ton-blue-dim); border-color: var(--ton-blue); color: var(--cyan); }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+    /* ── Validator Detail Panel ─────────────────────────────── */
+    #validator-detail-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+      z-index: 500;
+    }
+    #validator-detail-overlay.open { display: block; }
+
+    #validator-detail-panel {
+      position: fixed; top: 0; right: 0;
+      width: 480px; height: 100vh;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border-default);
+      z-index: 501; overflow-y: auto;
+      transform: translateX(102%);
+      transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+      display: flex; flex-direction: column;
+    }
+    #validator-detail-panel.open { transform: translateX(0); box-shadow: -4px 0 40px rgba(0,136,204,0.12); }
+
+    .detail-panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 20px; border-bottom: 1px solid var(--border-subtle);
+      position: sticky; top: 0; background: var(--bg-secondary); z-index: 2;
+    }
+    .detail-panel-title { font-weight: 700; font-size: 15px; }
+    .detail-close {
+      width: 30px; height: 30px; border-radius: 6px;
+      background: var(--bg-card); border: 1px solid var(--border-default);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--text-muted); font-size: 14px;
+      transition: var(--transition-fast);
+    }
+    .detail-close:hover { color: var(--text-primary); }
+
+    #detail-content { flex: 1; }
+
+    .detail-section {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .detail-stat-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .detail-stat {
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+      border-radius: 8px; padding: 10px 12px;
+    }
+    .detail-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+    .detail-stat-val { font-family: var(--font-mono); font-weight: 700; font-size: 16px; color: var(--text-primary); }
+
+    .detail-actions-bar {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      padding: 16px 20px;
+      position: sticky; bottom: 0;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    /* ── Calculator ─────────────────────────────────────────── */
+    .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .form-group { margin-bottom: 18px; }
+    .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+    .form-sublabel { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+    .form-input, .form-select {
+      width: 100%; height: 36px; padding: 0 12px;
+      background: var(--bg-input); border: 1px solid var(--border-default);
+      border-radius: var(--radius-md); color: var(--text-primary);
+      font-size: 13px; font-family: var(--font-sans); transition: var(--transition-fast);
+    }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--ton-blue); box-shadow: 0 0 0 2px var(--ton-blue-dim); }
+
+    .range-wrap { position: relative; padding-bottom: 6px; }
+    .range-slider {
+      -webkit-appearance: none; width: 100%; height: 4px;
+      border-radius: 2px; outline: none; cursor: pointer;
+      background: linear-gradient(to right, var(--ton-blue) 0%, var(--ton-blue) var(--slider-pct, 25%), var(--border-subtle) var(--slider-pct, 25%), var(--border-subtle) 100%);
+    }
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px;
+      border-radius: 50%; background: var(--ton-blue);
+      box-shadow: 0 0 8px rgba(0,136,204,0.5); cursor: pointer;
+      border: 2px solid var(--bg-card);
+    }
+    .range-slider::-moz-range-thumb {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--ton-blue); cursor: pointer; border: 2px solid var(--bg-card);
+    }
+    .range-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 4px; }
+
+    .calc-output-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+    .calc-output-card {
+      background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+      border-radius: 8px; padding: 14px; text-align: center;
+    }
+    .calc-output-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .calc-output-value { font-family: var(--font-mono); font-weight: 700; font-size: 18px; color: #22c55e; }
+    .calc-output-sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; margin-bottom: 10px; cursor: pointer; }
+    .toggle-lbl { font-size: 13px; font-weight: 500; }
+    .toggle-sw { width: 36px; height: 20px; border-radius: 10px; background: var(--border-subtle); position: relative; transition: background 0.2s; pointer-events: none; }
+    .toggle-sw.on { background: var(--ton-blue); }
+    .toggle-sw::after { content: ''; position: absolute; width: 14px; height: 14px; border-radius: 50%; background: white; top: 3px; left: 3px; transition: left 0.2s; }
+    .toggle-sw.on::after { left: 19px; }
+
+    /* ── Portfolio Section ──────────────────────────────────── */
+    .portfolio-totals {
+      display: flex; gap: 1px; margin-bottom: 20px; border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border-subtle); background: var(--border-subtle);
+    }
+    .portfolio-total-item {
+      flex: 1; padding: 14px 16px; background: var(--bg-card); text-align: center;
+    }
+    .pt-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .pt-value { font-family: var(--font-mono); font-weight: 700; font-size: 18px; color: var(--text-primary); margin: 4px 0 0; }
+
+    /* ── Charts ─────────────────────────────────────────────── */
+    .chart-card {
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg); padding: 20px;
+    }
+    .chart-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .chart-title { font-size: 13px; font-weight: 700; }
+    .chart-sub { font-size: 11px; color: var(--text-muted); }
+    .chart-body { position: relative; }
+
+    .time-filter { display: flex; gap: 2px; }
+    .tf-btn {
+      padding: 4px 9px; border-radius: 4px;
+      font-size: 10px; font-weight: 600; cursor: pointer;
+      background: none; border: 1px solid transparent;
+      color: var(--text-muted); transition: var(--transition-fast);
+    }
+    .tf-btn.active { background: var(--ton-blue-dim); border-color: var(--ton-blue); color: var(--cyan); }
+    .tf-btn:hover { color: var(--text-primary); }
+
+    .chart-2col { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
+    .chart-3col { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+
+    /* Network stats row */
+    .net-stats-row {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 12px; margin-top: 16px;
+    }
+    .net-stat { background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px 14px; }
+    .net-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .net-stat-value { font-family: var(--font-mono); font-weight: 700; font-size: 16px; }
+
+    /* ── Whale Intelligence ─────────────────────────────────── */
+    .whale-tabs { display: flex; gap: 2px; padding: 12px 20px; border-bottom: 1px solid var(--border-subtle); }
+    .whale-tab {
+      padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+      color: var(--text-muted); cursor: pointer; transition: var(--transition-fast);
+    }
+    .whale-tab.active { background: var(--ton-blue-dim); color: var(--cyan); }
+    .whale-tab:hover { color: var(--text-primary); }
+
+    .whale-ticker {
+      overflow: hidden; height: 34px;
+      background: rgba(0,136,204,0.04);
+      border-top: 1px solid var(--border-subtle);
+      display: flex; align-items: center;
+    }
+    .whale-ticker-inner {
+      display: flex; gap: 40px; white-space: nowrap;
+      animation: ticker-scroll 45s linear infinite;
+      padding: 0 20px;
+    }
+    @keyframes ticker-scroll { from{transform:translateX(0);}to{transform:translateX(-50%);} }
+    .whale-ticker-item { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-family: var(--font-mono); flex-shrink: 0; }
+
+    /* ── AI Insights ────────────────────────────────────────── */
+    .insights-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+    .insight-card {
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+      border-radius: 10px; padding: 14px 16px;
+      display: flex; gap: 12px; transition: var(--transition-fast);
+    }
+    .insight-card:hover { border-color: var(--border-accent); }
+    .insight-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+    .insight-icon.info    { background: var(--ton-blue-dim); }
+    .insight-icon.warning { background: rgba(234,179,8,0.1); }
+    .insight-icon.danger  { background: rgba(239,68,68,0.1); }
+    .insight-icon.success { background: rgba(34,197,94,0.1); }
+    .insight-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+    .insight-text  { font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
+    .insight-time  { font-size: 10px; color: var(--text-muted); margin-top: 5px; font-family: var(--font-mono); }
+
+    /* ── News / Alert Cards ─────────────────────────────────── */
+    .alerts-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(270px,1fr)); gap: 14px; }
+    .alert-card {
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+      border-radius: 10px; padding: 16px 18px;
+      transition: var(--transition-fast);
+      border-left: 3px solid transparent; cursor: pointer;
+    }
+    .alert-card:hover { transform: translateY(-2px); border-color: var(--border-default); }
+    .alert-card.info    { border-left-color: var(--ton-blue); }
+    .alert-card.success { border-left-color: #22c55e; }
+    .alert-card.warning { border-left-color: #eab308; }
+    .alert-card.danger  { border-left-color: #ef4444; }
+    .alert-card-tag { display: flex; gap: 8px; margin-bottom: 8px; }
+    .alert-card-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .alert-card-body { font-size: 11px; color: var(--text-secondary); line-height: 1.6; }
+    .alert-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+
+    /* ── Modals ─────────────────────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.72); backdrop-filter: blur(8px);
+      z-index: 800; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal-glass {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-default);
+      border-radius: 20px; padding: 28px;
+      max-width: 480px; width: 100%;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.4), 0 0 40px rgba(0,136,204,0.1);
+      animation: scaleIn 0.22s ease;
+      position: relative;
+    }
+    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .modal-sub { font-size: 12px; color: var(--text-secondary); margin-bottom: 20px; }
+    .modal-divider { height: 1px; background: var(--border-subtle); margin: 14px 0; }
+    .modal-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+    .modal-row-label { font-size: 13px; color: var(--text-secondary); }
+    .modal-row-value { font-family: var(--font-mono); font-weight: 600; font-size: 13px; }
+    .modal-warning {
+      display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px;
+      background: rgba(234,179,8,0.07); border: 1px solid rgba(234,179,8,0.18);
+      border-radius: 8px; margin: 14px 0; font-size: 11px; color: var(--text-secondary);
+    }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-close-top {
+      position: absolute; top: 16px; right: 16px;
+      width: 28px; height: 28px; border-radius: 6px;
+      background: var(--bg-card); border: 1px solid var(--border-default);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--text-muted); font-size: 13px;
+    }
+    .modal-close-top:hover { color: var(--text-primary); }
+
+    /* Amount input */
+    .amount-wrap { position: relative; margin-bottom: 20px; }
+    .amount-input {
+      width: 100%; height: 52px; padding: 0 70px 0 16px;
+      background: var(--bg-input); border: 1px solid var(--border-default);
+      border-radius: 10px; font-size: 22px; font-family: var(--font-mono);
+      font-weight: 700; color: var(--text-primary);
+    }
+    .amount-input:focus { outline: none; border-color: var(--ton-blue); box-shadow: 0 0 0 3px var(--ton-blue-dim); }
+    .amount-suffix { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--text-muted); pointer-events: none; }
+    .amount-hint { font-size: 11px; color: var(--text-muted); margin-top: 5px; display: flex; justify-content: space-between; }
+    .amount-max { color: var(--ton-blue); cursor: pointer; }
+    .amount-max:hover { text-decoration: underline; }
+    .amount-error { font-size: 11px; color: #ef4444; margin-top: 4px; min-height: 16px; }
+
+    /* TX Steps */
+    .tx-steps { display: flex; align-items: center; gap: 6px; margin-bottom: 18px; }
+    .tx-step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+    .tx-step-circle {
+      width: 26px; height: 26px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+      background: var(--bg-secondary); border: 1px solid var(--border-default); color: var(--text-muted);
+    }
+    .tx-step.done .tx-step-circle   { background: rgba(34,197,94,0.1); border-color: #22c55e; color: #22c55e; }
+    .tx-step.active .tx-step-circle { background: var(--ton-blue-dim); border-color: var(--ton-blue); color: var(--cyan); }
+    .tx-step-lbl { font-size: 10px; color: var(--text-muted); text-align: center; }
+    .tx-connector { flex: 1; height: 1px; background: var(--border-subtle); margin-bottom: 18px; }
+
+    /* Success animation */
+    .tx-success { text-align: center; padding: 20px 0; }
+    .tx-success-icon { font-size: 52px; margin-bottom: 12px; animation: scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1); display: block; }
+    .tx-success-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: #22c55e; }
+    .tx-success-sub { font-size: 12px; color: var(--text-secondary); }
+
+    /* ── Notification Center ─────────────────────────────────── */
+    #notification-center {
+      position: fixed; bottom: 24px; right: 24px;
+      z-index: 999; display: flex; flex-direction: column;
+      align-items: flex-end; gap: 12px;
+    }
+    .notif-bell {
+      width: 44px; height: 44px;
+      background: var(--bg-card); border: 1px solid var(--border-default);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; position: relative; transition: var(--transition-fast);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    .notif-bell:hover { border-color: var(--border-accent); box-shadow: 0 4px 20px rgba(0,136,204,0.2); }
+    #notif-badge {
+      position: absolute; top: -3px; right: -3px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #ef4444; color: white;
+      font-size: 9px; font-weight: 800;
+      display: none; align-items: center; justify-content: center;
+      border: 1.5px solid var(--bg-primary);
+    }
+    #notif-badge.show { display: flex; }
+
+    .notif-panel {
+      width: 340px; max-height: 500px;
+      background: var(--bg-card); border: 1px solid var(--border-default);
+      border-radius: 16px; box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+      display: none; flex-direction: column; overflow: hidden;
+    }
+    .notif-panel.open { display: flex; }
+    .notif-panel-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; border-bottom: 1px solid var(--border-subtle);
+    }
+    .notif-panel-title { font-size: 13px; font-weight: 700; }
+    #notif-list { flex: 1; overflow-y: auto; }
+    .notification-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 14px; border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer; transition: background 0.15s;
+    }
+    .notification-item:hover { background: rgba(255,255,255,0.02); }
+    .notification-item.unread { background: rgba(0,136,204,0.04); }
+    .notif-item-icon { width: 30px; height: 30px; border-radius: 7px; background: var(--ton-blue-dim); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .notif-item-title { font-size: 12px; font-weight: 600; }
+    .notif-item-body  { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+    .notif-item-time  { font-size: 10px; color: var(--text-muted); margin-top: 3px; font-family: var(--font-mono); }
+
+    /* ── Toast Container ─────────────────────────────────────── */
+    .toast-container {
+      position: fixed; top: 16px; right: 16px; z-index: 1100;
+      display: flex; flex-direction: column; gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--bg-card); border: 1px solid var(--border-default);
+      border-radius: 10px; padding: 12px 14px;
+      max-width: 320px; pointer-events: all;
+      animation: toastIn 0.3s ease;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+    .toast-success { border-left: 3px solid #22c55e; }
+    .toast-error   { border-left: 3px solid #ef4444; }
+    .toast-info    { border-left: 3px solid var(--ton-blue); }
+    .toast-warning { border-left: 3px solid #eab308; }
+
+    /* ── Settings Modal ──────────────────────────────────────── */
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid var(--border-subtle);
+    }
+    .settings-lbl { font-size: 13px; font-weight: 500; }
+    .settings-sub { font-size: 11px; color: var(--text-muted); }
+
+    /* ── Skeleton ────────────────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-card) 0%, rgba(255,255,255,0.04) 50%, var(--bg-card) 100%);
+      background-size: 200% 100%; border-radius: 4px;
+      animation: shimmer 1.4s infinite;
+    }
+
+    /* ── Empty State ─────────────────────────────────────────── */
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+    .empty-state-icon { font-size: 36px; margin-bottom: 14px; opacity: 0.45; display: block; }
+    .empty-state-title { font-size: 15px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+    .empty-state-text { font-size: 12px; }
+
+    /* ── Mobile Bottom Nav ───────────────────────────────────── */
+    .mobile-bottom-nav {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 900;
+      background: var(--bg-secondary); border-top: 1px solid var(--border-subtle);
+      padding: 6px 0 8px; height: 60px;
+    }
+    .mobile-nav-items { display: flex; justify-content: space-around; height: 100%; }
+    .mobile-nav-item {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px; cursor: pointer; flex: 1; padding: 4px; transition: var(--transition-fast);
+    }
+    .mobile-nav-icon { font-size: 18px; line-height: 1; }
+    .mobile-nav-label { font-size: 9px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .mobile-nav-item.active .mobile-nav-label { color: var(--cyan); }
+    .mobile-nav-item.active .mobile-nav-icon  { filter: drop-shadow(0 0 4px var(--cyan)); }
+
+    /* ── Dot Live ────────────────────────────────────────────── */
+    .dot-live {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green); display: inline-block;
+      animation: pulse 2s ease-in-out infinite;
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    /* ── Loading Spinner ─────────────────────────────────────── */
+    .loading-spinner {
+      width: 28px; height: 28px;
+      border: 2px solid var(--border-subtle);
+      border-top-color: var(--ton-blue);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 1440px) {
+      .metric-grid-6 { grid-template-columns: repeat(3,1fr); }
+    }
+    @media (max-width: 1100px) {
+      .metric-grid-6 { grid-template-columns: repeat(3,1fr); }
+      .calc-grid     { grid-template-columns: 1fr; }
+      .chart-2col    { grid-template-columns: 1fr; }
+      .chart-3col    { grid-template-columns: 1fr 1fr; }
+      .insights-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .metric-grid-6       { grid-template-columns: repeat(2,1fr); }
+      .chart-3col          { grid-template-columns: 1fr; }
+      .export-grp          { display: none; }
+      #validator-detail-panel { width: 100%; }
+      .staking-header-actions { display: none; }
+      .mobile-bottom-nav   { display: block; }
+      .page-content        { padding-bottom: 70px !important; }
+      #notification-center { bottom: 70px; right: 12px; }
+      .net-stats-row       { grid-template-columns: repeat(2,1fr); }
+      .calc-output-grid    { grid-template-columns: repeat(2,1fr); }
+    }
+    @media (max-width: 480px) {
+      .metric-grid-6 { grid-template-columns: 1fr 1fr; }
+      .modal-glass   { padding: 20px; }
+      .staking-page-header { padding: 18px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ────────────────────────────────────────────────────────────
+     NETWORK WARNING BANNER
+──────────────────────────────────────────────────────────────── -->
+<div id="network-warning-banner" role="alert">
+  <span style="font-size:16px;">⚠️</span>
+  <strong>Testnet Detected:</strong> Your wallet is connected to TON Testnet. Switch to Mainnet for real staking operations. All displayed data reflects Mainnet.
+  <button onclick="document.getElementById('network-warning-banner').classList.remove('show')" style="margin-left:auto;background:none;border:none;color:#f59e0b;cursor:pointer;font-size:16px;">✕</button>
+</div>
+
+<!-- ────────────────────────────────────────────────────────────
+     APP SHELL
+──────────────────────────────────────────────────────────────── -->
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-logo">
+      <a href="index.html" aria-label="ANLGRAM Home">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">ANLGRAM</span>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav" role="navigation">
+
+      <!-- PLATFORM -->
+      <div class="nav-group">
+        <div class="nav-group-label">Platform</div>
+        <a href="dashboard.html" class="nav-item">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </a>
+        <a href="explorer.html" class="nav-item">
+          <span class="nav-icon">🔍</span>
+          <span>On-Chain Explorer</span>
+        </a>
+        <a href="intel-exchange.html" class="nav-item">
+          <span class="nav-icon">🏦</span>
+          <span>Exchange Intel</span>
+        </a>
+      </div>
+
+      <!-- STAKING CENTER -->
+      <div class="nav-group">
+        <div class="nav-group-label">Staking Center</div>
+
+        <a href="#overview" class="nav-item active" data-scroll-to="overview">
+          <span class="nav-icon">⚡</span>
+          <span>Overview</span>
+        </a>
+        <a href="#validators" class="nav-item" data-scroll-to="validators">
+          <span class="nav-icon">🏆</span>
+          <span>Validators</span>
+        </a>
+        <a href="#my-stakes" class="nav-item" data-scroll-to="my-stakes">
+          <span class="nav-icon">💼</span>
+          <span>My Stakes</span>
+        </a>
+        <a href="#calculator" class="nav-item" data-scroll-to="calculator">
+          <span class="nav-icon">🧮</span>
+          <span>Calculator</span>
+        </a>
+        <a href="#portfolio" class="nav-item" data-scroll-to="portfolio">
+          <span class="nav-icon">📈</span>
+          <span>Portfolio</span>
+        </a>
+        <a href="#network" class="nav-item" data-scroll-to="network">
+          <span class="nav-icon">🌐</span>
+          <span>Network</span>
+        </a>
+        <a href="#risk-engine" class="nav-item" data-scroll-to="risk-engine">
+          <span class="nav-icon">🛡️</span>
+          <span>Risk Engine</span>
+        </a>
+        <a href="#whale" class="nav-item" data-scroll-to="whale">
+          <span class="nav-icon">🐋</span>
+          <span>Whale Intel</span>
+        </a>
+        <a href="#transactions" class="nav-item" data-scroll-to="transactions">
+          <span class="nav-icon">📋</span>
+          <span>Transactions</span>
+        </a>
+        <a href="#news" class="nav-item" data-scroll-to="news">
+          <span class="nav-icon">📡</span>
+          <span>Alerts</span>
+        </a>
+      </div>
+
+      <!-- TOOLS -->
+      <div class="nav-group">
+        <div class="nav-group-label">Tools</div>
+        <a href="alerts.html" class="nav-item">
+          <span class="nav-icon">🔔</span>
+          <span>Price Alerts</span>
+        </a>
+        <a href="memecoin-platform.html" class="nav-item">
+          <span class="nav-icon">🚀</span>
+          <span>Memecoin Lab</span>
+        </a>
+        <a href="#" class="nav-item" onclick="SettingsUIController.open();return false;">
+          <span class="nav-icon">⚙️</span>
+          <span>Settings</span>
+        </a>
+        <a href="https://docs.ton.org" target="_blank" rel="noopener" class="nav-item">
+          <span class="nav-icon">📚</span>
+          <span>Documentation</span>
+        </a>
+      </div>
+
+    </nav><!-- /sidebar-nav -->
+
+    <!-- Network Status Badge -->
+    <div class="sidebar-footer">
+      <div style="display:flex;align-items:center;gap:7px;padding:10px 16px;background:rgba(0,136,204,0.06);border-radius:8px;border:1px solid var(--border-subtle);">
+        <span class="dot-live" style="width:7px;height:7px;"></span>
+        <span style="font-size:11px;font-weight:600;" id="network-badge-label">TON Mainnet</span>
+      </div>
+    </div>
+  </aside><!-- /sidebar -->
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content" id="main-content">
+
+    <!-- TOPBAR -->
+    <header class="topbar" id="topbar" role="banner">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+          <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.5">
+            <line x1="0" y1="1" x2="18" y2="1"/><line x1="0" y1="7" x2="18" y2="7"/><line x1="0" y1="13" x2="18" y2="13"/>
+          </svg>
+        </button>
+
+        <div class="topbar-search-wrap" id="topbarSearchWrap">
+          <svg class="topbar-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="topbar-search-input" class="topbar-search-input" placeholder="Search validators, addresses, pools..." aria-label="Search" />
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <!-- TON Price -->
+        <div style="display:flex;align-items:center;gap:6px;padding:0 12px;font-size:12px;color:var(--text-secondary);">
+          <span style="font-size:14px;">💎</span>
+          <span id="topbar-ton-price" style="font-family:var(--font-mono);font-weight:600;">$5.42</span>
+          <span style="font-size:10px;color:var(--green);">+2.1%</span>
+        </div>
+
+        <button class="btn btn-ghost btn-sm" onclick="StakeModalController.open(StakingState.get('validators')[0]?.id)" title="Stake TON">
+          ⚡ Stake TON
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('network')?.scrollIntoView({behavior:'smooth'})" title="Analytics">
+          📊 Analytics
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="window.open('https://docs.ton.org',`_blank`)" title="Documentation">
+          📚 Docs
+        </button>
+        <button class="btn btn-ghost btn-sm" id="refresh-btn" onclick="MetricCardsController.refresh();ValidatorTableController.init();" title="Refresh data" aria-label="Refresh">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="SettingsUIController.open()" title="Settings" aria-label="Settings">⚙️</button>
+
+        <button id="topbarWalletBtn" class="btn btn-primary btn-sm connect-wallet-btn" onclick="window.openWalletModal?.()" aria-label="Connect TON wallet">
+          Connect Wallet
+        </button>
+      </div>
+    </header><!-- /topbar -->
+
+    <!-- WALLET INFO BAR (shown when connected) -->
+    <div id="wallet-info-bar" role="status" aria-live="polite">
+      <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;display:inline-block;flex-shrink:0;"></span>
+      <span style="font-weight:600;">Connected:</span>
+      <span id="wallet-addr-display" style="font-family:var(--font-mono);">EQ...xxxx</span>
+      <span style="color:var(--text-muted);">·</span>
+      <span id="wallet-bal-display" style="font-family:var(--font-mono);font-weight:700;">0.00 TON</span>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:11px;" onclick="window.disconnectWallet?.()">Disconnect</button>
+    </div>
+
+    <!-- PAGE CONTENT -->
+    <div class="page-content" id="page-content" role="main">
+
+      <!-- Animated Background Canvas -->
+      <canvas id="staking-canvas" aria-hidden="true"></canvas>
+
+      <!-- ─────────────────────────────────────────────────────
+           SECTION 1 · OVERVIEW
+      ──────────────────────────────────────────────────────── -->
+      <section class="staking-section" id="overview" aria-labelledby="overview-heading">
+
+        <!-- Page Header -->
+        <div class="staking-page-header">
+          <div class="staking-header-content">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <div style="background:var(--ton-blue-dim);border:1px solid rgba(0,136,204,0.25);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:var(--cyan);letter-spacing:0.05em;">ANLGRAM ENTERPRISE</div>
+                <div style="width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite;"></div>
+                <span style="font-size:11px;color:var(--green);font-weight:600;">LIVE</span>
+              </div>
+              <h1 class="staking-header-title" id="overview-heading">TON Staking Intelligence Center</h1>
+              <p class="staking-header-sub">Institutional-grade analytics for TON staking. Compare validators, manage positions, track rewards, and monitor whale activity — all in real time.</p>
+              <div style="display:flex;align-items:center;gap:16px;margin-top:14px;font-size:11px;color:var(--text-muted);">
+                <span>Powered by <strong style="color:var(--text-secondary);">TonAPI v2</strong></span>
+                <span>·</span>
+                <span>TON Connect 2.0</span>
+                <span>·</span>
+                <a href="https://tonviewer.com" target="_blank" rel="noopener" style="color:var(--ton-blue);">Tonviewer ↗</a>
+              </div>
+            </div>
+            <div class="staking-header-actions">
+              <button class="btn btn-primary" onclick="window.openWalletModal?.()">🔗 Connect Wallet</button>
+              <button class="btn btn-ghost" onclick="StakeModalController.open(StakingState.get('validators')[0]?.id)">⚡ Quick Stake</button>
+              <button class="btn btn-ghost" onclick="document.getElementById('validators')?.scrollIntoView({behavior:'smooth'})">🏆 Validators</button>
+              <button class="btn btn-ghost" onclick="document.getElementById('calculator')?.scrollIntoView({behavior:'smooth'})">🧮 Calculator</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metric Cards Grid -->
+        <div class="metric-grid-6" role="list" aria-label="Network metrics">
+
+          <div class="s-metric-card" role="listitem" aria-label="Total TON Staked">
+            <div class="metric-card-top">
+              <div class="metric-card-label">Total TON Staked</div>
+              <div class="metric-card-icon" aria-hidden="true">⚡</div>
+            </div>
+            <div class="metric-card-value" id="metric-staked">
+              <div class="skeleton" style="height:22px;width:80%;"></div>
+            </div>
+            <svg class="metric-card-sparkline" id="spark-staked" aria-hidden="true"></svg>
+            <div class="metric-card-footer">
+              <span style="color:var(--green);">↑ +3.2%</span>
+              <span style="margin-left:6px;">30d</span>
+            </div>
+          </div>
+
+          <div class="s-metric-card" role="listitem" aria-label="Average APR">
+            <div class="metric-card-top">
+              <div class="metric-card-label">Avg Network APR</div>
+              <div class="metric-card-icon" aria-hidden="true">📈</div>
+            </div>
+            <div class="metric-card-value" id="metric-apr">
+              <div class="skeleton" style="height:22px;width:70%;"></div>
+            </div>
+            <svg class="metric-card-sparkline" id="spark-apr" aria-hidden="true"></svg>
+            <div class="metric-card-footer">
+              <span style="color:var(--green);">↑ +0.3%</span>
+              <span style="margin-left:6px;">7d</span>
+            </div>
+          </div>
+
+          <div class="s-metric-card" role="listitem" aria-label="Active Validators">
+            <div class="metric-card-top">
+              <div class="metric-card-label">Active Validators</div>
+              <div class="metric-card-icon" aria-hidden="true">🏆</div>
+            </div>
+            <div class="metric-card-value" id="metric-validators">
+              <div class="skeleton" style="height:22px;width:60%;"></div>
+            </div>
+            <svg class="metric-card-sparkline" id="spark-val" aria-hidden="true"></svg>
+            <div class="metric-card-footer">
+              <span style="color:var(--text-muted);">TON Network</span>
+            </div>
+          </div>
+
+          <div class="s-metric-card" role="listitem" aria-label="Total Delegators">
+            <div class="metric-card-top">
+              <div class="metric-card-label">Total Delegators</div>
+              <div class="metric-card-icon" aria-hidden="true">👥</div>
+            </div>
+            <div class="metric-card-value" id="metric-delegators">
+              <div class="skeleton" style="height:22px;width:75%;"></div>
+            </div>
+            <svg class="metric-card-sparkline" id="spark-del" aria-hidden="true"></svg>
+            <div class="metric-card-footer">
+              <span style="color:var(--green);">↑ +1.8%</span>
+              <span style="margin-left:6px;">7d</span>
+            </div>
+          </div>
+
+          <div class="s-metric-card" role="listitem" aria-label="Current Block">
+            <div class="metric-card-top">
+              <div class="metric-card-label">Current Block</div>
+              <div class="metric-card-icon" aria-hidden="true">🟢</div>
+            </div>
+            <div class="metric-card-value" id="metric-block">
+              <div class="skeleton" style="height:22px;width:85%;"></div>
+            </div>
+            <svg class="metric-card-sparkline" id="spark-block" aria-hidden="true"></svg>
+            <div class="metric-card-footer">
+              <span class="dot-live" style="width:5px;height:5px;"></span>
+              <span style="margin-left:4px;">~5s block time</span>
+            </div>
+          </div>
+
+          <div class="s-metric-card" role="listitem" aria-label="Network Status">
+            <div class="metric-card-top">
+              <div class="metric-card-label">Network Status</div>
+              <div class="metric-card-icon" aria-hidden="true">🌐</div>
+            </div>
+            <div class="metric-card-value" id="metric-status" style="font-size:16px;padding-top:4px;">
+              <div class="skeleton" style="height:22px;width:60%;"></div>
+            </div>
+            <svg class="metric-card-sparkline" id="spark-status" aria-hidden="true"></svg>
+            <div class="metric-card-footer">
+              <span style="color:var(--text-muted);">All systems nominal</span>
+            </div>
+          </div>
+
+        </div><!-- /metric-grid-6 -->
+      </section><!-- /overview -->
+
+      <!-- ─────────────────────────────────────────────────────
+           SECTION 2 · VALIDATOR RANKING TABLE
+      ──────────────────────────────────────────────────────── -->
+      <section class="staking-section" id="validators" aria-labelledby="validators-heading">
+        <div class="section-header">
+          <div>
+            <div class="section-title" id="validators-heading">
+              <div class="section-icon" aria-hidden="true">🏆</div>
+              Validator Ranking
+            </div>
+            <div class="section-sub">All active TON staking pools — sorted, filtered, and risk-graded in real time</div>
+          </div>
+          <div class="section-actions">
+            <div id="validator-count-badge" class="badge badge-blue" style="font-family:var(--font-mono);"></div>
+            <button class="btn btn-ghost btn-sm" onclick="MetricCardsController.refresh();ValidatorTableController.init();" aria-label="Refresh validators">↻ Refresh</button>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+
+          <!-- Table Controls -->
+          <div class="table-controls" role="toolbar" aria-label="Validator table controls">
+            <div class="search-wrap" role="search">
+              <span class="search-icon" aria-hidden="true">🔍</span>
+              <input type="text" id="validator-search" class="table-search"
+                     placeholder="Search validators..." aria-label="Search validators"
+                     autocomplete="off" spellcheck="false" />
+            </div>
+
+            <select id="filter-status" class="table-select" aria-label="Filter by status">
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+
+            <select id="filter-risk" class="table-select" aria-label="Filter by risk">
+              <option value="all">All Risk</option>
+              <option value="safe">Safe (AAA–A)</option>
+              <option value="medium">Medium (BBB–BB)</option>
+              <option value="risky">Risky (B+)</option>
+            </select>
+
+            <div class="export-grp" role="group" aria-label="Export options">
+              <button id="export-csv" class="btn btn-ghost btn-sm" aria-label="Export to CSV">↓ CSV</button>
+              <button id="export-pdf" class="btn btn-ghost btn-sm" aria-label="Export to PDF">↓ PDF</button>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="data-table-wrap" style="max-height:520px;overflow-y:auto;" role="region" aria-label="Validator data">
+            <table class="data-table" id="validator-table" aria-label="TON Staking Validators">
+              <thead>
+                <tr>
+                  <th style="width:44px;">#</th>
+                  <th>Validator</th>
+                  <th class="sortable-th" data-sort="shortAddress">Address <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th" data-sort="status">Status <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th" data-sort="apr">APR <span class="sort-icon">↓</span></th>
+                  <th class="sortable-th" data-sort="commission">Fee <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th" data-sort="minStake">Min Stake <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th" data-sort="totalStaked">TVL <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th" data-sort="delegators">Delegators <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th" data-sort="performanceScore">Perf. <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th" data-sort="uptime">Uptime <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th" data-sort="riskScore">Risk <span class="sort-icon">↕</span></th>
+                  <th style="width:160px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="validator-tbody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="table-pagination" role="navigation" aria-label="Table pagination">
+            <span class="pagination-info" id="table-page-info">Loading...</span>
+            <div class="pagination-controls" id="table-page-controls"></div>
+          </div>
+        </div>
+      </section><!-- /validators -->
+
+      <!-- ─────────────────────────────────────────────────────
+           SECTION 3 · MY CURRENT STAKING
+      ──────────────────────────────────────────────────────── -->
+      <section class="staking-section" id="my-stakes" aria-labelledby="my-stakes-heading">
+        <div class="section-header">
+          <div>
+            <div class="section-title" id="my-stakes-heading">
+              <div class="section-icon" aria-hidden="true">💼</div>
+              My Staking Positions
+            </div>
+            <div class="section-sub">Live view of your active delegations, rewards, and lock periods</div>
+          </div>
+          <div class="section-actions">
+            <button class="btn btn-ghost btn-sm" onclick="PortfolioService.refresh()">↻ Refresh</button>
+            <button class="btn btn-primary btn-sm" onclick="document.getElementById('validators')?.scrollIntoView({behavior:'smooth'})">+ Add Stake</button>
+          </div>
+        </div>
+
+        <!-- Portfolio Totals -->
+        <div class="portfolio-totals" id="portfolio-totals" style="display:none;" role="group" aria-label="Portfolio summary">
+          <div class="portfolio-total-item">
+            <div class="pt-label">Total Staked</div>
+            <div class="pt-value" id="pt-staked">0.00 TON</div>
+          </div>
+          <div class="portfolio-total-item">
+            <div class="pt-label">Pending Rewards</div>
+            <div class="pt-value" id="pt-pending" style="color:var(--cyan);">0.0000 TON</div>
+          </div>
+          <div class="portfolio-total-item">
+            <div class="pt-label">Earned Total</div>
+            <div class="pt-value" id="pt-earned" style="color:#22c55e;">0.0000 TON</div>
+          </div>
+          <div class="portfolio-total-item">
+            <div class="pt-label">Projected Annual</div>
+            <div class="pt-value" id="pt-annual" style="color:#22c55e;">0.00 TON</div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="data-table-wrap" style="max-height:380px;overflow-y:auto;" role="region" aria-label="Staking positions">
+            <table class="data-table" id="positions-table" aria-label="My staking positions">
+              <thead>
+                <tr>
+                  <th>Validator</th>
+                  <th>Staked Amount</th>
+                  <th>Earned</th>
+                  <th>Claimable</th>
+                  <th>APR</th>
+                  <th>Lock Period</th>
+                  <th>Unlock Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="positions-tbody">
+                <!-- Populated by PortfolioController -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section><!-- /my-stakes -->
+
+      <!-- ─────────────────────────────────────────────────────
+           SECTION 4 · REWARD CALCULATOR
+      ──────────────────────────────────────────────────────── -->
+      <section class="staking-section" id="calculator" aria-labelledby="calculator-heading">
+        <div class="section-header">
+          <div>
+            <div class="section-title" id="calculator-heading">
+              <div class="section-icon" aria-hidden="true">🧮</div>
+              Staking Reward Calculator
+            </div>
+            <div class="section-sub">Simulate compound returns with real validator APRs</div>
+          </div>
+          <div class="section-actions">
+            <button class="btn btn-ghost btn-sm" onclick="CalculatorController._calculate()">↻ Recalculate</button>
+          </div>
+        </div>
+
+        <div class="calc-grid">
+
+          <!-- Left: Inputs -->
+          <div class="card">
+            <div style="font-size:13px;font-weight:700;margin-bottom:18px;color:var(--text-primary);">Configure Simulation</div>
+
+            <div class="form-group">
+              <label class="form-label" for="calc-validator-select">Validator / Pool</label>
+              <select id="calc-validator-select" class="form-select" aria-label="Select validator">
+                <option value="">-- Loading validators... --</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="calc-amount">
+                Staking Amount (TON)
+                <span id="calc-amount-display" style="font-family:var(--font-mono);color:var(--cyan);font-weight:400;margin-left:8px;font-size:12px;"></span>
+              </label>
+              <input type="number" id="calc-amount" class="form-input" value="1000" min="1" max="10000000" aria-label="Staking amount" />
+              <div class="range-wrap" style="margin-top:10px;">
+                <input type="range" id="calc-amount-slider" class="range-slider"
+                       min="1" max="100000" value="1000" step="100"
+                       aria-label="Staking amount slider" aria-valuemin="1" aria-valuemax="100000" aria-valuenow="1000" />
+                <div class="range-labels"><span>1 TON</span><span>100,000 TON</span></div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="calc-apr">Annual APR (%)</label>
+              <input type="number" id="calc-apr" class="form-input" value="4.82" min="0.1" max="100" step="0.01" aria-label="APR percentage" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="calc-period">Staking Period</label>
+              <select id="calc-period" class="form-select" aria-label="Select staking period">
+                <option value="30">30 Days</option>
+                <option value="90">90 Days</option>
+                <option value="180">6 Months</option>
+                <option value="365" selected>1 Year</option>
+                <option value="730">2 Years</option>
+                <option value="1825">5 Years</option>
+              </select>
+            </div>
+
+            <div class="toggle-row" id="calc-compound-toggle" role="checkbox" aria-checked="true" tabindex="0">
+              <div>
+                <div class="toggle-lbl">Compound Rewards</div>
+                <div style="font-size:11px;color:var(--text-muted);">Re-stake rewards daily for exponential growth</div>
+              </div>
+              <div class="toggle-sw on" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <!-- Right: Results -->
+          <div>
+            <div class="calc-output-grid">
+              <div class="calc-output-card">
+                <div class="calc-output-label">Daily Reward</div>
+                <div class="calc-output-value" id="calc-daily">—</div>
+                <div class="calc-output-sub">per day</div>
+              </div>
+              <div class="calc-output-card">
+                <div class="calc-output-label">Weekly</div>
+                <div class="calc-output-value" id="calc-weekly">—</div>
+                <div class="calc-output-sub">per week</div>
+              </div>
+              <div class="calc-output-card">
+                <div class="calc-output-label">Monthly</div>
+                <div class="calc-output-value" id="calc-monthly">—</div>
+                <div class="calc-output-sub">per month</div>
+              </div>
+              <div class="calc-output-card">
+                <div class="calc-output-label">Annual</div>
+                <div class="calc-output-value" id="calc-yearly">—</div>
+                <div class="calc-output-sub">per year</div>
+              </div>
+              <div class="calc-output-card">
+                <div class="calc-output-label">ROI</div>
+                <div class="calc-output-value" id="calc-roi" style="color:var(--cyan);">—</div>
+                <div class="calc-output-sub">return on investment</div>
+              </div>
+              <div class="calc-output-card">
+                <div class="calc-output-label">Future Balance</div>
+                <div class="calc-output-value" id="calc-future" style="color:var(--text-primary);font-size:14px;">—</div>
+                <div class="calc-output-sub">at period end</div>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-header">
+                <div>
+                  <div class="chart-title">12-Month Growth Projection</div>
+                  <div class="chart-sub">Compound vs principal baseline</div>
+                </div>
+              </div>
+              <div class="chart-body" style="height:200px;">
+                <canvas id="calc-chart" aria-label="Reward growth chart" role="img"></canvas>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /calc-grid -->
+      </section><!-- /calculator -->
+
+      <!-- ─────────────────────────────────────────────────────
+           SECTION 5 · PORTFOLIO ANALYTICS
+      ──────────────────────────────────────────────────────── -->
+      <section class="staking-section" id="portfolio" aria-labelledby="portfolio-heading">
+        <div class="section-header">
+          <div>
+            <div class="section-title" id="portfolio-heading">
+              <div class="section-icon" aria-hidden="true">📈</div>
+              Portfolio Analytics
+            </div>
+            <div class="section-sub">Distribution, growth trajectory, and monthly reward breakdown</div>
+          </div>
+          <div class="section-actions">
+            <div class="time-filter" role="group" aria-label="Time filter">
+              <button class="tf-btn" onclick="tfSet(this,'7d')">7D</button>
+              <button class="tf-btn active" onclick="tfSet(this,'30d')">30D</button>
+              <button class="tf-btn" onclick="tfSet(this,'90d')">90D</button>
+              <button class="tf-btn" onclick="tfSet(this,'1y')">1Y</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-2col">
+          <!-- Allocation Donut -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Allocation by Validator</div>
+                <div class="chart-sub">Portfolio distribution</div>
+              </div>
+            </div>
+            <div class="chart-body" style="height:220px;">
+              <canvas id="chart-allocation" aria-label="Portfolio allocation by validator" role="img"></canvas>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <!-- Growth Line -->
+            <div class="chart-card" style="flex:1;">
+              <div class="chart-header">
+                <div>
+                  <div class="chart-title">Portfolio Value (30d)</div>
+                  <div class="chart-sub">Total staked + rewards</div>
+                </div>
+              </div>
+              <div class="chart-body" style="height:140px;">
+                <canvas id="chart-growth" aria-label="Portfolio growth over 30 days" role="img"></canvas>
+              </div>
+            </div>
+
+            <!-- Monthly Bar -->
+            <div class="chart-card" style="flex:1;">
+              <div class="chart-header">
+                <div>
+                  <div class="chart-title">Monthly Rewards (6m)</div>
+                  <div class="chart-sub">Earned per calendar month</div>
+                </div>
+              </div>
+              <div class="chart-body" style="height:130px;">
+                <canvas id="chart-monthly" aria-label="Monthly rewards for last 6 months" role="img"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section><!-- /portfolio -->
+
+      <!-- ─────────────────────────────────────────────────────
+           SECTION 6 · NETWORK ANALYTICS
+      ──────────────────────────────────────────────────────── -->
+      <section class="staking-section" id="network" aria-labelledby="network-heading">
+        <div class="section-header">
+          <div>
+            <div class="section-title" id="network-heading">
+              <div class="section-icon" aria-hidden="true">🌐</div>
+              Network Analytics
+            </div>
+            <div class="section-sub">TON blockchain health, staking participation, and network decentralization</div>
+          </div>
+          <div class="section-actions">
+            <div class="time-filter" role="group" aria-label="Time filter">
+              <button class="tf-btn" onclick="tfSet(this,'7d')">7D</button>
+              <button class="tf-btn active" onclick="tfSet(this,'30d')">30D</button>
+              <button class="tf-btn" onclick="tfSet(this,'90d')">90D</button>
+              <button class="tf-btn" onclick="tfSet(this,'1y')">1Y</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TVL Chart -->
+        <div class="chart-card" style="margin-bottom:16px;">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Total TON Staked — 30d</div>
+              <div class="chart-sub">Network-wide staking participation (Millions TON)</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);">
+              <span class="dot-live" style="width:5px;height:5px;"></span> Live feed
+            </div>
+          </div>
+          <div class="chart-body" style="height:200px;">
+            <canvas id="chart-network-tvl" aria-label="Total TON staked over 30 days" role="img"></canvas>
+          </div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="net-stats-row" role="list" aria-label="Network statistics">
+          <div class="net-stat" role="listitem">
+            <div class="net-stat-label">Network TPS</div>
+            <div class="net-stat-value" id="net-tps">—</div>
+          </div>
+          <div class="net-stat" role="listitem">
+            <div class="net-stat-label">Block Time</div>
+            <div class="net-stat-value" id="net-blocktime">—</div>
+          </div>
+          <div class="net-stat" role="listitem">
+            <div class="net-stat-label">TON Price</div>
+            <div class="net-stat-value" id="net-price" style="color:var(--cyan);">—</div>
+          </div>
+          <div class="net-stat" role="listitem">
+            <div class="net-stat-label">Staking Ratio</div>
+            <div class="net-stat-value" id="net-ratio">~46%</div>
+          </div>
+        </div>
+      </section><!-- /network -->
+
+      <!-- ─────────────────────────────────────────────────────
+           SECTION 7 · AI RISK ENGINE + INSIGHTS
+      ──────────────────────────────────────────────────────── -->
+      <section class="staking-section" id="risk-engine" aria-labelledby="risk-heading">
+        <div class="section-header">
+          <div>
+            <div class="section-title" id="risk-heading">
+              <div class="section-icon" aria-hidden="true">🛡️</div>
+              AI Risk Engine &amp; Intelligence
+            </div>
+            <div class="section-sub">Machine-learning risk scoring and real-time ecosystem insights</div>
+          </div>
+          <div class="section-actions">
+            <span class="badge badge-blue" style="font-size:10px;">AI-Powered</span>
+          </div>
+        </div>
+
+        <!-- Insights Grid -->
+        <div class="insights-grid" id="insights-grid" role="feed" aria-label="AI-generated insights">
+          <!-- Populated by InsightsController.render() -->
+        </div>
+
+        <!-- Risk Methodology -->
+        <div class="card" style="margin-top:16px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:14px;">Risk Score Methodology</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">
+            ${[
+              ['Security (30%)', 'Uptime, slashing history, key management security'],
+              ['Commission (20%)', 'Fee level relative to network average'],
+              ['Stability (15%)', 'Validator age and operational consistency'],
+              ['Downtime (15%)', 'Block miss ratio over trailing 30 days'],
+              ['Decentralization (10%)', 'Voting power share concentration'],
+              ['Community Trust (10%)', 'Delegator count growth and retention'],
+            ].map(([title, desc]) => `
+              <div style="padding:10px 12px;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--border-subtle);">
+                <div style="font-size:11px;font-weight:700;margin-bottom:4px;">${title}</div>
+                <div style="font-size:10px;color:var(--text-muted);line-height:1.5;">${desc}</div>
+              </div>`).join('')}
+          </div>
+
+          <!-- Grade Legend -->
+          <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            <span style="font-size:11px;color:var(--text-muted);margin-right:4px;">Grade Scale:</span>
+            ${['AAA','AA','A','BBB','BB','B','High Risk','Critical'].map((g, i) => {
+              const cls = g.replace(' ','-').toLowerCase().replace('high-risk','high');
+              return `<span class="risk-badge risk-${cls}">${g}</span>`;
+            }).join('')}
+          </div>
+        </div>
+      </section><!-- /risk-engine -->
+
+      <!-- ─────────────────────────────────────────────────────
+           SECTION 8 · LATEST TRANSACTIONS
+      ──────────────────────────────────────────────────────── -->
+      <section class="staking-section" id="transactions" aria-labelledby="transactions-heading">
+        <div class="section-header">
+          <div>
+            <div class="section-title" id="transactions-heading">
+              <div class="section-icon" aria-hidden="true">📋</div>
+              Transaction History
+            </div>
+            <div class="section-sub">Latest staking operations — refreshes automatically every 30 seconds</div>
+          </div>
+          <div class="section-actions">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);">
+              <span class="dot-live" style="width:5px;height:5px;"></span> Live
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="TransactionController.init()">↻ Refresh</button>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="data-table-wrap" style="max-height:400px;overflow-y:auto;" role="region" aria-label="Transaction history">
+            <table class="data-table" id="tx-table" aria-label="Staking transaction history">
+              <thead>
+                <tr>
+                  <th>TX Hash</th>
+                  <th>Type</th>
+                  <th>Validator / Pool</th>
+                  <th>Amount</th>
+                  <th>Fee</th>
+                  <th>Status</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="tx-tbody">
+                <!-- Populated by TransactionController -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section><!-- /transactions -->
+
+      <!-- ─────────────────────────────────────────────────────
+           SECTION 9 · WHALE INTELLIGENCE
+      ──────────────────────────────────────────────────────── -->
+      <section class="staking-section" id="whale" aria-labelledby="whale-heading">
+        <div class="section-header">
+          <div>
+            <div class="section-title" id="whale-heading">
+              <div class="section-icon" aria-hidden="true">🐋</div>
+              Whale Intelligence
+            </div>
+            <div class="section-sub">Track large staking movements, validator flows, and institutional activity</div>
+          </div>
+          <div class="section-actions">
+            <div class="badge badge-blue" style="font-size:10px;">
+              Threshold: ≥ 10,000 TON
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <!-- Tabs -->
+          <div class="whale-tabs" role="tablist" aria-label="Whale intelligence tabs">
+            <button class="whale-tab active" role="tab" aria-selected="true" aria-controls="whale-body" data-tab="top" onclick="WhaleController.renderTab('top')">🏆 Top Stakers</button>
+            <button class="whale-tab" role="tab" aria-selected="false" aria-controls="whale-body" data-tab="flows" onclick="WhaleController.renderTab('flows')">↕ Validator Flows</button>
+            <button class="whale-tab" role="tab" aria-selected="false" aria-controls="whale-body" data-tab="unstakes" onclick="WhaleController.renderTab('unstakes')">🔓 Recent Unstakes</button>
+          </div>
+
+          <!-- Body -->
+          <div id="whale-body" role="tabpanel" style="max-height:360px;overflow-y:auto;">
+            <!-- Populated by WhaleController -->
+          </div>
+
+          <!-- Live Ticker -->
+          <div class="whale-ticker" aria-label="Live whale activity ticker" aria-live="polite">
+            <span style="font-size:10px;color:var(--text-muted);font-weight:700;padding:0 12px;flex-shrink:0;">LIVE</span>
+            <div id="whale-ticker-inner" class="whale-ticker-inner">
+              <!-- Populated by WhaleController._buildTicker() -->
+            </div>
+          </div>
+        </div>
+      </section><!-- /whale -->
+
+      <!-- ─────────────────────────────────────────────────────
+           SECTION 10 · NEWS & NETWORK ALERTS
+      ──────────────────────────────────────────────────────── -->
+      <section class="staking-section" id="news" aria-labelledby="news-heading">
+        <div class="section-header">
+          <div>
+            <div class="section-title" id="news-heading">
+              <div class="section-icon" aria-hidden="true">📡</div>
+              Network Alerts &amp; News
+            </div>
+            <div class="section-sub">Validator updates, protocol changes, and market-moving events</div>
+          </div>
+          <div class="section-actions">
+            <span class="badge badge-green">6 Active Alerts</span>
+          </div>
+        </div>
+
+        <div class="alerts-grid" id="alerts-grid" role="feed" aria-label="Network alerts and news">
+          <!-- Populated by NewsController.render() -->
+        </div>
+
+        <!-- Footer Links -->
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--border-subtle);">
+          <a href="https://ton.org" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">🌐 TON Foundation</a>
+          <a href="https://docs.ton.org" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">📚 TON Documentation</a>
+          <a href="https://tonviewer.com" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">🔍 Tonviewer Explorer</a>
+          <a href="https://tonscan.org" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">📊 TonScan</a>
+          <a href="https://docs.ton.org/participate/network-maintenance/nominators" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">📋 Staking Guide</a>
+        </div>
+      </section><!-- /news -->
+
+    </div><!-- /page-content -->
+  </main><!-- /main-content -->
+</div><!-- /app-shell -->
+
+<!-- ════════════════════════════════════════════════════════════
+     VALIDATOR DETAIL PANEL (slide-in overlay)
+════════════════════════════════════════════════════════════════ -->
+<div id="validator-detail-overlay" aria-hidden="true" onclick="ValidatorDetailController.close()"></div>
+
+<div id="validator-detail-panel" role="dialog" aria-modal="true" aria-label="Validator details" aria-hidden="true">
+  <div class="detail-panel-header">
+    <span class="detail-panel-title">Validator Details</span>
+    <button class="detail-close" onclick="ValidatorDetailController.close()" aria-label="Close validator details">✕</button>
+  </div>
+  <div id="detail-content">
+    <!-- Dynamically rendered by ValidatorDetailController -->
+  </div>
+  <div class="detail-actions-bar">
+    <button class="btn btn-primary" style="flex:1;" id="detail-stake-btn" onclick="ValidatorDetailController.close();setTimeout(()=>StakeModalController.open(StakingState.get('selectedValidator')?.id),100);">⚡ Stake TON</button>
+    <button class="btn btn-ghost" id="detail-explorer-btn" onclick="window.open(STAKING_CONFIG.TONVIEWER_BASE+'/'+(StakingState.get('selectedValidator')?.address||''),'_blank')">↗ Explorer</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     STAKE MODAL
+════════════════════════════════════════════════════════════════ -->
+<div id="stake-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="stake-modal-title">
+  <div class="modal-glass" onclick="event.stopPropagation()">
+    <button class="modal-close-top" onclick="StakeModalController.close()" aria-label="Close">✕</button>
+
+    <!-- Step Progress -->
+    <div class="tx-steps" aria-label="Transaction steps" role="list">
+      <div class="tx-step active" id="tx-step-1" role="listitem">
+        <div class="tx-step-circle">1</div>
+        <div class="tx-step-lbl">Amount</div>
+      </div>
+      <div class="tx-connector"></div>
+      <div class="tx-step" id="tx-step-2" role="listitem">
+        <div class="tx-step-circle">2</div>
+        <div class="tx-step-lbl">Review</div>
+      </div>
+      <div class="tx-connector"></div>
+      <div class="tx-step" id="tx-step-3" role="listitem">
+        <div class="tx-step-circle">✓</div>
+        <div class="tx-step-lbl">Complete</div>
+      </div>
+    </div>
+
+    <!-- Step 1: Enter Amount -->
+    <div id="stake-step-1">
+      <h2 class="modal-title" id="stake-modal-title">⚡ Stake TON</h2>
+      <p class="modal-sub">Delegate to <strong id="stake-val-name">—</strong></p>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+        <div style="padding:6px 10px;background:var(--bg-secondary);border-radius:6px;font-size:11px;">
+          APR: <strong id="stake-val-apr" style="color:#22c55e;">—</strong>
+        </div>
+        <div style="padding:6px 10px;background:var(--bg-secondary);border-radius:6px;font-size:11px;">
+          Fee: <strong id="stake-val-commission">—</strong>
+        </div>
+        <div style="padding:6px 10px;background:var(--bg-secondary);border-radius:6px;font-size:11px;">
+          Min: <strong id="stake-val-min">—</strong>
+        </div>
+      </div>
+
+      <label class="form-label" for="stake-amount-input">Enter Amount</label>
+      <div class="amount-wrap">
+        <input type="number" id="stake-amount-input" class="amount-input"
+               placeholder="0.00" min="0" step="0.01" autocomplete="off"
+               aria-label="TON amount to stake" aria-describedby="stake-amount-hint" />
+        <span class="amount-suffix" aria-hidden="true">TON</span>
+      </div>
+      <div class="amount-hint" id="stake-amount-hint">
+        <span id="stake-max-display">Connect wallet to see balance</span>
+        <span class="amount-max" onclick="StakeModalController.setMax()" tabindex="0" role="button" aria-label="Use maximum available balance">Use Max</span>
+      </div>
+      <div class="amount-error" id="stake-amount-error" role="alert"></div>
+      <div style="margin-top:12px;font-size:11px;color:var(--text-secondary);">
+        Est. rewards: <span id="stake-reward-preview" style="color:#22c55e;font-weight:600;">—</span>
+      </div>
+
+      <div class="modal-warning" role="note">
+        <span>⚠️</span>
+        <span>Always verify the validator address before signing. Your funds will be locked for the pool's cycle period. Staking involves market risks.</span>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" style="flex:1;" onclick="StakeModalController.close()">Cancel</button>
+        <button class="btn btn-primary" style="flex:2;" onclick="StakeModalController.confirmStake()" aria-label="Review staking transaction">Review →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Confirmation -->
+    <div id="stake-step-2" style="display:none;">
+      <h2 class="modal-title">Review &amp; Confirm</h2>
+      <p class="modal-sub">Verify all details before signing with your wallet.</p>
+
+      <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:14px;">
+        <div class="modal-row">
+          <span class="modal-row-label">Validator</span>
+          <span class="modal-row-value" id="stake-confirm-validator">—</span>
+        </div>
+        <div class="modal-divider"></div>
+        <div class="modal-row">
+          <span class="modal-row-label">Amount</span>
+          <span class="modal-row-value" id="stake-confirm-amount" style="color:var(--cyan);">—</span>
+        </div>
+        <div class="modal-row">
+          <span class="modal-row-label">Expected APR</span>
+          <span class="modal-row-value" id="stake-confirm-apr" style="color:#22c55e;">—</span>
+        </div>
+        <div class="modal-row">
+          <span class="modal-row-label">Estimated Annual Reward</span>
+          <span class="modal-row-value" id="stake-confirm-annual">—</span>
+        </div>
+        <div class="modal-divider"></div>
+        <div class="modal-row">
+          <span class="modal-row-label">Network Fee</span>
+          <span class="modal-row-value" id="stake-confirm-fee">~0.050 TON</span>
+        </div>
+      </div>
+
+      <div class="modal-warning" role="note">
+        <span>🔒</span>
+        <span>Your wallet will prompt you to sign. Never share your seed phrase. ANLGRAM never stores private keys or transaction data.</span>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" style="flex:1;" onclick="StakeModalController._showStep(1)">← Back</button>
+        <button class="btn btn-primary" style="flex:2;" id="stake-execute-btn" onclick="StakeModalController.executeStake()">Confirm &amp; Sign</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Success -->
+    <div id="stake-step-3" style="display:none;">
+      <div class="tx-success">
+        <span class="tx-success-icon" aria-hidden="true">✅</span>
+        <div class="tx-success-title">Stake Submitted!</div>
+        <div class="tx-success-sub">Your TON delegation has been broadcast to the network.<br>It will be confirmed within the next block cycle.</div>
+        <button class="btn btn-primary" style="margin-top:20px;" onclick="StakeModalController.close()">Done</button>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /stake-modal -->
+
+<!-- ════════════════════════════════════════════════════════════
+     UNSTAKE MODAL
+════════════════════════════════════════════════════════════════ -->
+<div id="unstake-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="unstake-modal-title">
+  <div class="modal-glass" onclick="event.stopPropagation()">
+    <button class="modal-close-top" onclick="UnstakeModalController.close()" aria-label="Close">✕</button>
+    <h2 class="modal-title" id="unstake-modal-title">🔓 Unstake TON</h2>
+    <p class="modal-sub">Withdraw your delegation from <strong id="unstake-val-name">—</strong></p>
+
+    <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div class="modal-row">
+        <span class="modal-row-label">Staked Amount</span>
+        <span class="modal-row-value" id="unstake-staked-amount">—</span>
+      </div>
+      <div class="modal-divider"></div>
+      <div class="modal-row">
+        <span class="modal-row-label">Lock Period</span>
+        <span class="modal-row-value" id="unstake-lock-period">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">Network Fee</span>
+        <span class="modal-row-value">~0.050 TON</span>
+      </div>
+    </div>
+
+    <div class="modal-warning" role="note">
+      <span>⚠️</span>
+      <span>Unstaking typically requires 36–48 hours unlock delay on TON Network. Your rewards will be automatically claimed. You will stop earning APR immediately after signing.</span>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" style="flex:1;" onclick="UnstakeModalController.close()">Cancel</button>
+      <button class="btn btn-primary" style="flex:2;background:rgba(239,68,68,0.15);border-color:#ef4444;color:#ef4444;" id="unstake-execute-btn" onclick="UnstakeModalController.execute()">Confirm Unstake</button>
+    </div>
+  </div>
+</div><!-- /unstake-modal -->
+
+<!-- ════════════════════════════════════════════════════════════
+     CLAIM MODAL
+════════════════════════════════════════════════════════════════ -->
+<div id="claim-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="claim-modal-title">
+  <div class="modal-glass" onclick="event.stopPropagation()">
+    <button class="modal-close-top" onclick="document.getElementById('claim-modal').classList.remove('open')" aria-label="Close">✕</button>
+    <h2 class="modal-title" id="claim-modal-title">💰 Claim Rewards</h2>
+    <p class="modal-sub">Withdraw accumulated rewards from <strong id="claim-validator-name">—</strong></p>
+
+    <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div class="modal-row">
+        <span class="modal-row-label">Claimable Amount</span>
+        <span class="modal-row-value" style="color:#22c55e;" id="claim-amount">— TON</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">Estimated Fee</span>
+        <span class="modal-row-value">~<span id="claim-fee-est">0.050</span> TON</span>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('claim-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="document.getElementById('claim-modal').classList.remove('open');NotificationService.toast('Claim Submitted','Reward claim has been broadcast.',`success`)">💰 Claim Rewards</button>
+    </div>
+  </div>
+</div><!-- /claim-modal -->
+
+<!-- ════════════════════════════════════════════════════════════
+     SETTINGS MODAL
+════════════════════════════════════════════════════════════════ -->
+<div id="settings-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+  <div class="modal-glass" style="max-width:520px;" onclick="event.stopPropagation()">
+    <button class="modal-close-top" onclick="SettingsUIController.close()" aria-label="Close settings">✕</button>
+    <h2 class="modal-title" id="settings-modal-title">⚙️ Settings</h2>
+    <p class="modal-sub">Customize your ANLGRAM Staking Intelligence Center experience.</p>
+
+    <!-- General -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:10px;">General</div>
+    <div class="settings-row">
+      <div><div class="settings-lbl">Currency</div><div class="settings-sub">Display prices in</div></div>
+      <select id="settings-currency" class="table-select" aria-label="Select currency">
+        <option value="USD">USD ($)</option>
+        <option value="EUR">EUR (€)</option>
+        <option value="GBP">GBP (£)</option>
+        <option value="BTC">BTC (₿)</option>
+      </select>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-lbl">Block Explorer</div><div class="settings-sub">Default explorer for TX links</div></div>
+      <select id="settings-explorer" class="table-select" aria-label="Select block explorer">
+        <option value="tonviewer">Tonviewer</option>
+        <option value="tonscan">TonScan</option>
+      </select>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-lbl">Refresh Interval</div><div class="settings-sub">Auto-refresh frequency</div></div>
+      <select id="settings-refresh" class="table-select" aria-label="Select refresh interval">
+        <option value="30000">30 seconds</option>
+        <option value="45000" selected>45 seconds</option>
+        <option value="60000">1 minute</option>
+        <option value="120000">2 minutes</option>
+      </select>
+    </div>
+
+    <!-- Notifications -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin:18px 0 10px;">Notifications</div>
+    ${[
+      ['stake','Staking events','Confirmations for stake/unstake/claim'],
+      ['rewards','Reward alerts','Notify when claimable rewards are available'],
+      ['whale','Whale activity','Large staking movement alerts (>10,000 TON)'],
+      ['apr','APR changes','Alert on validator APR changes > 0.5%'],
+      ['network','Network alerts','TON blockchain health and security alerts'],
+    ].map(([k, lbl, sub]) => `
+      <div class="settings-row">
+        <div><div class="settings-lbl">${lbl}</div><div class="settings-sub">${sub}</div></div>
+        <div class="toggle-sw on" id="notif-toggle-${k}" role="switch" aria-checked="true" tabindex="0"
+             onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))"></div>
+      </div>`).join('')}
+
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="SettingsUIController.close()">Cancel</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="SettingsUIController.save()">Save Settings</button>
+    </div>
+  </div>
+</div><!-- /settings-modal -->
+
+<!-- ════════════════════════════════════════════════════════════
+     NOTIFICATION CENTER (floating)
+════════════════════════════════════════════════════════════════ -->
+<div id="notification-center" role="complementary" aria-label="Notification center">
+
+  <!-- Notification Panel (shown on toggle) -->
+  <div class="notif-panel" id="notif-panel" role="dialog" aria-modal="false" aria-label="Notifications">
+    <div class="notif-panel-hdr">
+      <span class="notif-panel-title">🔔 Notifications</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button onclick="NotificationService.markAllRead();NotificationService.renderPanel();" class="btn btn-ghost btn-sm" style="font-size:10px;" aria-label="Mark all notifications as read">Mark all read</button>
+        <button onclick="document.getElementById('notif-panel').classList.remove('open')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;" aria-label="Close notification panel">✕</button>
+      </div>
+    </div>
+    <div id="notif-list" role="list">
+      <!-- Populated by NotificationService.renderPanel() -->
+    </div>
+  </div>
+
+  <!-- Bell Button -->
+  <button class="notif-bell" id="notif-bell-btn"
+          onclick="document.getElementById('notif-panel').classList.toggle('open');NotificationService.renderPanel();"
+          aria-label="Toggle notifications" aria-haspopup="true" aria-expanded="false">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+    <span id="notif-badge" aria-live="polite" aria-label="Unread notifications"></span>
+  </button>
+
+</div><!-- /notification-center -->
+
+<!-- ════════════════════════════════════════════════════════════
+     TOAST CONTAINER
+════════════════════════════════════════════════════════════════ -->
+<div class="toast-container" id="toast-container" role="alert" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ════════════════════════════════════════════════════════════
+     MOBILE BOTTOM NAVIGATION
+════════════════════════════════════════════════════════════════ -->
+<nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+  <div class="mobile-nav-items">
+    <button class="mobile-nav-item active" onclick="document.getElementById('overview')?.scrollIntoView({behavior:'smooth'})" aria-label="Overview">
+      <span class="mobile-nav-icon" aria-hidden="true">⚡</span>
+      <span class="mobile-nav-label">Overview</span>
+    </button>
+    <button class="mobile-nav-item" onclick="document.getElementById('validators')?.scrollIntoView({behavior:'smooth'})" aria-label="Validators">
+      <span class="mobile-nav-icon" aria-hidden="true">🏆</span>
+      <span class="mobile-nav-label">Validators</span>
+    </button>
+    <button class="mobile-nav-item" onclick="StakeModalController.open(StakingState.get('validators')[0]?.id)" aria-label="Stake">
+      <span class="mobile-nav-icon" aria-hidden="true">⚡</span>
+      <span class="mobile-nav-label">Stake</span>
+    </button>
+    <button class="mobile-nav-item" onclick="document.getElementById('my-stakes')?.scrollIntoView({behavior:'smooth'})" aria-label="My Stakes">
+      <span class="mobile-nav-icon" aria-hidden="true">💼</span>
+      <span class="mobile-nav-label">My Stakes</span>
+    </button>
+    <button class="mobile-nav-item" onclick="document.getElementById('portfolio')?.scrollIntoView({behavior:'smooth'})" aria-label="Portfolio">
+      <span class="mobile-nav-icon" aria-hidden="true">📈</span>
+      <span class="mobile-nav-label">Portfolio</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/wallet-connect.js"></script>
+<script src="assets/js/staking.js"></script>
+
+<script>
+  /* ── Helper functions exposed to inline HTML ─────────────────── */
+
+  /** Time filter button group toggle */
+  function tfSet(btn, range) {
+    btn.closest('.time-filter')?.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Charts will re-render on next data fetch; this primarily updates UI
+  }
+
+  /* ── Sidebar toggle (mobile) ─────────────────────────────────── */
+  document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+    const sidebar = document.getElementById('sidebar');
+    sidebar?.classList.toggle('open');
+  });
+
+  /* ── Topbar search → redirect to validator table search ─────── */
+  document.getElementById('topbar-search-input')?.addEventListener('input', (e) => {
+    const searchInput = document.getElementById('validator-search');
+    if (searchInput) {
+      searchInput.value = e.target.value;
+      searchInput.dispatchEvent(new Event('input'));
+      document.getElementById('validators')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+
+  /* ── Update topbar TON price from metrics ────────────────────── */
+  StakingState.on('networkStats', (stats) => {
+    const el = document.getElementById('topbar-ton-price');
+    if (el && stats.tonPrice) el.textContent = `$${stats.tonPrice.toFixed(2)}`;
+
+    // Update network analytics stats row
+    document.getElementById('net-tps')?.setAttribute('textContent', stats.tps + ' TPS') ||
+      (_setText('net-tps',       stats.tps ? stats.tps.toFixed(0) + ' TPS' : '—'));
+    _setText('net-blocktime',   stats.blockTime ? stats.blockTime + 's' : '—');
+    _setText('net-price',       stats.tonPrice ? '$' + stats.tonPrice.toFixed(2) : '—');
+
+    // Update validator count badge
+    const badge = document.getElementById('validator-count-badge');
+    if (badge) badge.textContent = StakingState.get('validators').length + ' Pools';
+  });
+
+  /* ── Keyboard navigation for modals ─────────────────────────── */
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      ValidatorDetailController.close();
+      StakeModalController.close();
+      UnstakeModalController.close();
+      document.getElementById('claim-modal')?.classList.remove('open');
+      document.getElementById('settings-modal')?.classList.remove('open');
+      document.getElementById('notif-panel')?.classList.remove('open');
+    }
+  });
+
+  /* ── Network stats watcher (after JS loads) ──────────────────── */
+  setTimeout(() => {
+    const stats = StakingState.get('networkStats');
+    if (stats && stats.tps) {
+      _setText('net-tps',       stats.tps.toFixed(0) + ' TPS');
+      _setText('net-blocktime', stats.blockTime + 's');
+      _setText('net-price',     '$' + (stats.tonPrice || 5.42).toFixed(2));
+    }
+  }, 4000);
+</script>
+
+</body>
+</html>
