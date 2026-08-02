@@ -230,7 +230,7 @@
       <div class="topbar-actions">
         <div class="topbar-price">
           <span class="topbar-price-label">GRAM</span>
-          <span class="topbar-price-value" id="topbar-price">$2.47</span>
+          <span class="topbar-price-value" id="topbar-price">$1.39</span>
           <span class="text-green" style="font-size:var(--text-xs);font-family:var(--font-mono);">+4.18%</span>
         </div>
         <button class="topbar-btn" title="Notifications">
@@ -260,7 +260,7 @@
       <div class="metric-grid" style="margin-bottom:var(--space-5);">
         <div class="metric-card animate-fade-up">
           <div class="metric-label">GRAM Price</div>
-          <div class="metric-value" id="m-price">$2.47</div>
+          <div class="metric-value" id="m-price">$1.39</div>
           <div class="metric-change change-up">▲ +4.18% 24h</div>
         </div>
         <div class="metric-card animate-fade-up delay-1">
@@ -300,7 +300,7 @@
               <div class="chart-title-group">
                 <div>
                   <div style="font-size:var(--text-xs);color:var(--text-muted);margin-bottom:2px;">GRAM / USD</div>
-                  <span class="chart-price" id="chart-price">$2.47</span>
+                  <span class="chart-price" id="chart-price">$1.39</span>
                   <span class="chart-change change-up" style="margin-left:var(--space-2);">+4.18%</span>
                 </div>
               </div>
@@ -679,7 +679,7 @@ document.getElementById('topEntities').innerHTML = topEntData.map((e,i) => `
 `).join('');
 
 // ── Live Updates (API Integrated) ────────────────────────────
-let currentPrice = 2.47;
+let currentPrice = 1.39;
 
 async function updateLivePrice() {
   const price = await getTonPrice();

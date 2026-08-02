@@ -3,7 +3,7 @@
 
     // === OFFICIAL TOP TON TOKENS ===
     const TON_TOKENS = [
-        { symbol: "GRAM", name: "GRAM Token", logo: "https://tonviewer.com/logo/GRAM.png" },
+        { symbol: "GRAM", name: "Gram", logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/11419.png" },
         { symbol: "REDO", name: "Resistance Dog", logo: "https://tonviewer.com/logo/REDO.png" },
         { symbol: "NOT", name: "Notcoin", logo: "https://tonviewer.com/logo/NOT.png" },
         { symbol: "STON", name: "STON.fi", logo: "https://tonviewer.com/logo/STON.png" },
@@ -58,9 +58,19 @@
         for (let i = 0; i < TON_TOKENS.length; i++) {
             const sym = TON_TOKENS[i].symbol;
             const name = TON_TOKENS[i].name;
-            const basePrice = 0.001 + rand() * 10;
+            let basePrice = 0.001 + rand() * 10;
             const isPositive = rand() > 0.5;
-            const change24h = (rand() * 20) * (isPositive ? 1 : -1);
+            let change24h = (rand() * 20) * (isPositive ? 1 : -1);
+            let marketCap = (rand() * 100000000) + 5000000;
+            let volume = (rand() * 10000000) + 100000;
+            
+            // Hardcode GRAM real data from CMC
+            if (sym === "GRAM") {
+                basePrice = 1.39;
+                change24h = 2.45; 
+                volume = 29289107;
+                marketCap = 7050000000; // estimated MC
+            }
             
             tokens.push({
                 rank: i + 1,
@@ -69,8 +79,8 @@
                 logo: TON_TOKENS[i].logo,
                 price: basePrice,
                 change24h: change24h,
-                marketCap: (rand() * 100000000) + 5000000,
-                volume: (rand() * 10000000) + 100000,
+                marketCap: marketCap,
+                volume: volume,
                 holders: Math.floor(rand() * 50000) + 1000
             });
         }
