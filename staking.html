@@ -1454,27 +1454,43 @@
         <div class="card" style="margin-top:16px;">
           <div style="font-size:13px;font-weight:700;margin-bottom:14px;">Risk Score Methodology</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">
-            ${[
-              ['Security (30%)', 'Uptime, slashing history, key management security'],
-              ['Commission (20%)', 'Fee level relative to network average'],
-              ['Stability (15%)', 'Validator age and operational consistency'],
-              ['Downtime (15%)', 'Block miss ratio over trailing 30 days'],
-              ['Decentralization (10%)', 'Voting power share concentration'],
-              ['Community Trust (10%)', 'Delegator count growth and retention'],
-            ].map(([title, desc]) => `
-              <div style="padding:10px 12px;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--border-subtle);">
-                <div style="font-size:11px;font-weight:700;margin-bottom:4px;">${title}</div>
-                <div style="font-size:10px;color:var(--text-muted);line-height:1.5;">${desc}</div>
-              </div>`).join('')}
+            <div style="padding:10px 12px;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--border-subtle);">
+              <div style="font-size:11px;font-weight:700;margin-bottom:4px;">Security (30%)</div>
+              <div style="font-size:10px;color:var(--text-muted);line-height:1.5;">Uptime, slashing history, key management security</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--border-subtle);">
+              <div style="font-size:11px;font-weight:700;margin-bottom:4px;">Commission (20%)</div>
+              <div style="font-size:10px;color:var(--text-muted);line-height:1.5;">Fee level relative to network average</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--border-subtle);">
+              <div style="font-size:11px;font-weight:700;margin-bottom:4px;">Stability (15%)</div>
+              <div style="font-size:10px;color:var(--text-muted);line-height:1.5;">Validator age and operational consistency</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--border-subtle);">
+              <div style="font-size:11px;font-weight:700;margin-bottom:4px;">Downtime (15%)</div>
+              <div style="font-size:10px;color:var(--text-muted);line-height:1.5;">Block miss ratio over trailing 30 days</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--border-subtle);">
+              <div style="font-size:11px;font-weight:700;margin-bottom:4px;">Decentralization (10%)</div>
+              <div style="font-size:10px;color:var(--text-muted);line-height:1.5;">Voting power share concentration</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--border-subtle);">
+              <div style="font-size:11px;font-weight:700;margin-bottom:4px;">Community Trust (10%)</div>
+              <div style="font-size:10px;color:var(--text-muted);line-height:1.5;">Delegator count growth and retention</div>
+            </div>
           </div>
 
           <!-- Grade Legend -->
           <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
             <span style="font-size:11px;color:var(--text-muted);margin-right:4px;">Grade Scale:</span>
-            ${['AAA','AA','A','BBB','BB','B','High Risk','Critical'].map((g, i) => {
-              const cls = g.replace(' ','-').toLowerCase().replace('high-risk','high');
-              return `<span class="risk-badge risk-${cls}">${g}</span>`;
-            }).join('')}
+            <span class="risk-badge risk-aaa">AAA</span>
+            <span class="risk-badge risk-aa">AA</span>
+            <span class="risk-badge risk-a">A</span>
+            <span class="risk-badge risk-bbb">BBB</span>
+            <span class="risk-badge risk-bb">BB</span>
+            <span class="risk-badge risk-b">B</span>
+            <span class="risk-badge risk-high">High Risk</span>
+            <span class="risk-badge risk-critical">Critical</span>
           </div>
         </div>
       </section><!-- /risk-engine -->
@@ -1843,18 +1859,32 @@
 
     <!-- Notifications -->
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin:18px 0 10px;">Notifications</div>
-    ${[
-      ['stake','Staking events','Confirmations for stake/unstake/claim'],
-      ['rewards','Reward alerts','Notify when claimable rewards are available'],
-      ['whale','Whale activity','Large staking movement alerts (>10,000 TON)'],
-      ['apr','APR changes','Alert on validator APR changes > 0.5%'],
-      ['network','Network alerts','TON blockchain health and security alerts'],
-    ].map(([k, lbl, sub]) => `
-      <div class="settings-row">
-        <div><div class="settings-lbl">${lbl}</div><div class="settings-sub">${sub}</div></div>
-        <div class="toggle-sw on" id="notif-toggle-${k}" role="switch" aria-checked="true" tabindex="0"
-             onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))"></div>
-      </div>`).join('')}
+    <div class="settings-row">
+      <div><div class="settings-lbl">Staking events</div><div class="settings-sub">Confirmations for stake/unstake/claim</div></div>
+      <div class="toggle-sw on" id="notif-toggle-stake" role="switch" aria-checked="true" tabindex="0"
+           onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))"></div>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-lbl">Reward alerts</div><div class="settings-sub">Notify when claimable rewards are available</div></div>
+      <div class="toggle-sw on" id="notif-toggle-rewards" role="switch" aria-checked="true" tabindex="0"
+           onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))"></div>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-lbl">Whale activity</div><div class="settings-sub">Large staking movement alerts (&gt;10,000 TON)</div></div>
+      <div class="toggle-sw on" id="notif-toggle-whale" role="switch" aria-checked="true" tabindex="0"
+           onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))"></div>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-lbl">APR changes</div><div class="settings-sub">Alert on validator APR changes &gt; 0.5%</div></div>
+      <div class="toggle-sw on" id="notif-toggle-apr" role="switch" aria-checked="true" tabindex="0"
+           onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))"></div>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-lbl">Network alerts</div><div class="settings-sub">TON blockchain health and security alerts</div></div>
+      <div class="toggle-sw on" id="notif-toggle-network" role="switch" aria-checked="true" tabindex="0"
+           onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))"></div>
+    </div>
+
 
     <div class="modal-actions" style="margin-top:20px;">
       <button class="btn btn-ghost" style="flex:1;" onclick="SettingsUIController.close()">Cancel</button>
@@ -1964,18 +1994,19 @@
 
   /* ── Update topbar TON price from metrics ────────────────────── */
   StakingState.on('networkStats', (stats) => {
+    const s = typeof normalizeNetworkStats === 'function' ? normalizeNetworkStats(stats) : (stats || {});
     const el = document.getElementById('topbar-ton-price');
-    if (el && stats.tonPrice) el.textContent = `$${stats.tonPrice.toFixed(2)}`;
+    if (el) el.textContent = `$${typeof safeToFixed === 'function' ? safeToFixed(s.tonPrice, 2) : '5.42'}`;
 
     // Update network analytics stats row
-    document.getElementById('net-tps')?.setAttribute('textContent', stats.tps + ' TPS') ||
-      (_setText('net-tps',       stats.tps ? stats.tps.toFixed(0) + ' TPS' : '—'));
-    _setText('net-blocktime',   stats.blockTime ? stats.blockTime + 's' : '—');
-    _setText('net-price',       stats.tonPrice ? '$' + stats.tonPrice.toFixed(2) : '—');
+    const tpsStr = (s.tps && s.tps > 0) ? (typeof safeToFixed === 'function' ? safeToFixed(s.tps, 0) : s.tps) + ' TPS' : '—';
+    _setText('net-tps', tpsStr);
+    _setText('net-blocktime', s.blockTime ? s.blockTime + 's' : '—');
+    _setText('net-price', '$' + (typeof safeToFixed === 'function' ? safeToFixed(s.tonPrice, 2) : '5.42'));
 
     // Update validator count badge
     const badge = document.getElementById('validator-count-badge');
-    if (badge) badge.textContent = StakingState.get('validators').length + ' Pools';
+    if (badge) badge.textContent = (StakingState.get('validators') || []).length + ' Pools';
   });
 
   /* ── Keyboard navigation for modals ─────────────────────────── */
@@ -1992,11 +2023,12 @@
 
   /* ── Network stats watcher (after JS loads) ──────────────────── */
   setTimeout(() => {
-    const stats = StakingState.get('networkStats');
-    if (stats && stats.tps) {
-      _setText('net-tps',       stats.tps.toFixed(0) + ' TPS');
-      _setText('net-blocktime', stats.blockTime + 's');
-      _setText('net-price',     '$' + (stats.tonPrice || 5.42).toFixed(2));
+    const raw = StakingState.get('networkStats');
+    const stats = typeof normalizeNetworkStats === 'function' ? normalizeNetworkStats(raw) : (raw || {});
+    if (stats) {
+      _setText('net-tps', stats.tps > 0 ? (typeof safeToFixed === 'function' ? safeToFixed(stats.tps, 0) : stats.tps) + ' TPS' : '—');
+      _setText('net-blocktime', stats.blockTime ? stats.blockTime + 's' : '—');
+      _setText('net-price', '$' + (typeof safeToFixed === 'function' ? safeToFixed(stats.tonPrice || 5.42, 2) : '5.42'));
     }
   }, 4000);
 </script>

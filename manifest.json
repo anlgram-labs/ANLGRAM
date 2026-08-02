@@ -1,0 +1,24 @@
+{
+  "name": "ANLGRAM TON Staking Intelligence Center",
+  "short_name": "ANLGRAM Staking",
+  "description": "Enterprise-grade TON Staking Intelligence & Liquid Staking Hub",
+  "start_url": "./staking.html",
+  "display": "standalone",
+  "background_color": "#0b0e14",
+  "theme_color": "#0088cc",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "assets/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
