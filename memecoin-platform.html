@@ -652,7 +652,7 @@
         return;
       }
   
-      const { beginCell, toNano, storeStateInit, Dictionary, Cell, contractAddress } = window.TON_CORE || {};
+      const { beginCell, toNano, storeStateInit, Dictionary, Cell, contractAddress, Address } = window.TON_CORE || {};
       if(!beginCell) {
          alert("Las librerías Web3 de TON (core) aún están cargando. Intenta de nuevo en unos segundos.");
          return;
@@ -664,53 +664,109 @@
       const logo = document.getElementById('lp-logo').value || 'https://anlgram.io/logo.png';
   
       const origHTML = btn.innerHTML;
-      btn.innerHTML = '<span class="status-dot"></span> Clonando Bytecode de Mainnet...';
+      btn.innerHTML = '<span class="status-dot"></span> Construyendo Metadatos (TEP-64)...';
       btn.style.pointerEvents = 'none';
   
       try {
-        // Build On-Chain Metadata Cell (TEP-64)
-        const metadataCell = beginCell()
-          .storeUint(0x01, 8) // format = 1
-          .storeStringTail(JSON.stringify({ name, symbol, description: desc, image: logo }))
-          .endCell();
+        const hexToBytes = (hex) => Uint8Array.from(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
+        const sha256BigInt = async (str) => {
+          const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+          return BigInt("0x" + Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
+        };
+
+        const adminAddress = Address.parse(tc.account.address); // The user's wallet becomes the admin
+
+        // 1. Build On-Chain Metadata Dictionary (TEP-64)
+        const metadata = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell());
+        const entries = [
+          ["name", name],
+          ["symbol", symbol],
+          ["description", desc],
+          ["image", logo],
+          ["decimals", "9"]
+        ];
+        
+        for (const [key, value] of entries) {
+          if (!value) continue;
+          const valCell = beginCell().storeUint(0, 8).storeStringTail(value).endCell();
+          metadata.set(await sha256BigInt(key), valCell);
+        }
+        
+        const metadataCell = beginCell().storeUint(0, 8).storeDict(metadata).endCell();
   
-        // We will fetch the standard Jetton Minter bytecode from an existing successful deploy on Mainnet
-        // In a perfect SDK, this is statically compiled. For pure client-side JS without compilation, this works perfectly.
+        btn.innerHTML = '<span class="status-dot"></span> Preparando Códigos Base...';
+        
+        // 2. Fetch standard Minter & Wallet Code from an existing Mainnet Jetton
         const cloneSource = "EQD-cvR0Nz6XAyVRvkfcD3gR7uMebGzZf1M_r4z23mZ4eB40"; 
         const res = await fetch(`https://tonapi.io/v2/blockchain/accounts/${cloneSource}`);
         const data = await res.json();
+        if(!data.code || !data.data) throw new Error("Could not fetch Code from Mainnet");
         
-        if(!data.code) throw new Error("Could not fetch Minter Code from Mainnet");
-        
-        // For demonstration of a successful Wallet Prompt with StateInit, we create a valid initial data cell.
-        // A real deploy requires the EXACT initial data layout matching the bytecode. 
-        const dataCell = beginCell()
-          .storeCoins(toNano("1000000000")) // Total Supply: 1 Billion
-          .storeAddress(tc.wallet.account.address) // Owner Address
-          .storeRef(metadataCell) // Metadata
+        const minterCode = Cell.fromBoc(hexToBytes(data.code))[0];
+        const sourceMinterData = Cell.fromBoc(hexToBytes(data.data))[0].beginParse();
+        sourceMinterData.loadCoins();   // skip total_supply
+        sourceMinterData.loadAddress(); // skip admin_address
+        sourceMinterData.loadRef();     // skip metadata
+        const walletCodeCell = sourceMinterData.loadRef(); // extract exact standard wallet code
+  
+        // 3. Construct Initial Minter Data
+        const minterData = beginCell()
+          .storeCoins(0n) // initial supply is 0, we mint below
+          .storeAddress(adminAddress) // creator owns the jetton
+          .storeRef(metadataCell)
+          .storeRef(walletCodeCell)
           .endCell();
-        
-        const hexToBytes = (hex) => Uint8Array.from(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
-        
-        const stateInitObj = {
-          code: Cell.fromBoc(hexToBytes(data.code))[0],
-          data: dataCell
-        };
-
+  
+        const stateInitObj = { code: minterCode, data: minterData };
         const stateInitCell = beginCell().store(storeStateInit(stateInitObj)).endCell();
-        const destAddress = contractAddress(0, stateInitObj).toString();
+        const destAddress = contractAddress(0, stateInitObj).toString({bounceable: false});
+        const destAddressMint = contractAddress(0, stateInitObj).toString({bounceable: true});
 
         btn.innerHTML = '<span class="status-dot"></span> Firmando en Tonkeeper...';
         
-        // 3. Send Transaction request to the User's Wallet via TonConnect
+        // 4. Construct Deploy & Mint Payloads
+        const INITIAL_SUPPLY = toNano("1000000000"); // 1 Billion tokens (9 decimals)
+        
+        // Deploy Payload (TopUp)
+        const deployPayload = beginCell().storeUint(0xd372158c, 32).endCell().toBoc().toString('base64');
+        
+        // Mint Payload
+        const forwardPayload = beginCell().storeUint(0, 32).storeStringTail("Initial mint").endCell();
+        const internalTransfer = beginCell()
+            .storeUint(0x178d4519, 32)
+            .storeUint(0n, 64)
+            .storeCoins(INITIAL_SUPPLY)
+            .storeAddress(null)
+            .storeAddress(adminAddress)
+            .storeCoins(toNano("0.02"))
+            .storeBit(1)
+            .storeRef(forwardPayload)
+            .endCell();
+            
+        const mintPayload = beginCell()
+            .storeUint(0x642b7d07, 32) // MintNewJettons
+            .storeUint(0n, 64)
+            .storeAddress(adminAddress)
+            .storeCoins(toNano("0.08")) // forward for wallet creation
+            .storeRef(internalTransfer)
+            .endCell()
+            .toBoc()
+            .toString('base64');
+        
+        // 5. Send Transaction request (Deploy + Mint bundled)
         const transaction = {
-            validUntil: Math.floor(Date.now() / 1000) + 600, // 10 min expiration
+            validUntil: Math.floor(Date.now() / 1000) + 600,
             messages: [
                 {
                     address: destAddress,
-                    amount: toNano("0.15").toString(), // 0.15 TON deploy fee
+                    amount: toNano("0.05").toString(), // 0.05 TON deploy fee
                     stateInit: stateInitCell.toBoc().toString('base64'),
-                    payload: beginCell().storeUint(0, 32).storeStringTail("Deploy " + symbol).endCell().toBoc().toString('base64'),
+                    payload: deployPayload
+                },
+                {
+                    address: destAddressMint,
+                    amount: toNano("0.15").toString(), // 0.15 TON mint fee
+                    payload: mintPayload
                 }
             ]
         };
