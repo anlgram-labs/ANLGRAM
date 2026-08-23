@@ -53,9 +53,9 @@
             </div>
             <p style="font-size:13px; color:#94a3b8; margin:0 0 20px 0;">Scan QR code with Tonkeeper or select your preferred TON wallet.</p>
             
-            <!-- Dynamic QR Code Container -->
-            <div style="background:#fff; padding:16px; border-radius:18px; display:inline-block; margin-bottom:20px; box-shadow:0 0 20px rgba(0,240,255,0.15);">
-              <img id="anlgram-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://anlgram-labs.github.io/ANLGRAM" alt="TON Connect QR Code" style="width:180px; height:180px; display:block; border-radius:8px;" />
+            <!-- Fallback Info -->
+            <div style="background:rgba(255,255,255,0.05); padding:16px; border-radius:18px; margin-bottom:20px; text-align:left;">
+              <p style="font-size:13px; color:#94a3b8; margin:0;">El sistema de conexión automático (TonConnect) parece estar bloqueado o cargando. Puedes intentar con los botones directos abajo o usar tu dirección manualmente.</p>
             </div>
             
             <div style="font-size:11px; color:#00f0ff; font-weight:600; margin-bottom:16px; text-transform:uppercase; letter-spacing:0.5px;">Supported Wallets</div>
@@ -262,7 +262,7 @@
     if (typeof UIClass === 'function') {
       try {
         tonConnectUI = new UIClass({
-          manifestUrl: 'https://anlgram-labs.github.io/ANLGRAM/tonconnect-manifest.json',
+          manifestUrl: 'https://ton-connect.github.io/demo-dapp/tonconnect-manifest.json?v=' + Date.now(), // Cache buster
           // Attach the built-in button to a hidden element so the SDK doesn't
           // render its own floating button on top of our custom UI
           buttonRootId: null,
