@@ -652,7 +652,7 @@
         return;
       }
   
-      const { beginCell, toNano, storeStateInit, Dictionary } = window.TON_CORE || {};
+      const { beginCell, toNano, storeStateInit, Dictionary, Cell, contractAddress } = window.TON_CORE || {};
       if(!beginCell) {
          alert("Las librerías Web3 de TON (core) aún están cargando. Intenta de nuevo en unos segundos.");
          return;
@@ -690,10 +690,15 @@
           .storeRef(metadataCell) // Metadata
           .endCell();
         
-        const stateInitCell = beginCell().store(storeStateInit({
-          code: window.TON_CORE.Cell.fromBoc(Buffer.from(data.code, 'hex'))[0],
+        const hexToBytes = (hex) => Uint8Array.from(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
+        
+        const stateInitObj = {
+          code: Cell.fromBoc(hexToBytes(data.code))[0],
           data: dataCell
-        })).endCell();
+        };
+
+        const stateInitCell = beginCell().store(storeStateInit(stateInitObj)).endCell();
+        const destAddress = contractAddress(0, stateInitObj).toString();
 
         btn.innerHTML = '<span class="status-dot"></span> Firmando en Tonkeeper...';
         
@@ -702,7 +707,7 @@
             validUntil: Math.floor(Date.now() / 1000) + 600, // 10 min expiration
             messages: [
                 {
-                    address: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c", // To themselves or standard 0 address
+                    address: destAddress,
                     amount: toNano("0.15").toString(), // 0.15 TON deploy fee
                     stateInit: stateInitCell.toBoc().toString('base64'),
                     payload: beginCell().storeUint(0, 32).storeStringTail("Deploy " + symbol).endCell().toBoc().toString('base64'),
@@ -871,8 +876,8 @@
 </script>
 
 <script type="module">
-  import { beginCell, toNano, Address, storeStateInit, Dictionary } from 'https://esm.sh/@ton/core';
-  window.TON_CORE = { beginCell, toNano, Address, storeStateInit, Dictionary };
+  import { beginCell, toNano, Address, storeStateInit, Dictionary, Cell, contractAddress } from 'https://esm.sh/@ton/core';
+  window.TON_CORE = { beginCell, toNano, Address, storeStateInit, Dictionary, Cell, contractAddress };
 </script>
 
 <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
