@@ -828,7 +828,7 @@
     }
 
     try {
-      const response = await fetch(\`https://tonapi.io/v2/accounts/\${address}/jettons\`);
+      const response = await fetch(`https://tonapi.io/v2/accounts/${address}/jettons`);
       if (!response.ok) throw new Error('API Error');
       const data = await response.json();
       
@@ -848,7 +848,7 @@
         const decimals = b.jetton.decimals || 9;
         const formattedBal = (Number(rawBal) / Math.pow(10, decimals)).toFixed(2);
         
-        optionsHTML += \`<option value="\${b.jetton.address}">\${name} (\${symbol}) - Bal: \${formattedBal}</option>\`;
+        optionsHTML += `<option value="${b.jetton.address}">${name} (${symbol}) - Bal: ${formattedBal}</option>`;
       });
       
       if(selectEl) {
