@@ -744,7 +744,7 @@
             .endCell();
             
         const mintPayload = beginCell()
-            .storeUint(0x642b7d07, 32) // MintNewJettons
+            .storeUint(21, 32) // Mint (Standard OP 21)
             .storeUint(0n, 64)
             .storeAddress(adminAddress)
             .storeCoins(toNano("0.08")) // forward for wallet creation
