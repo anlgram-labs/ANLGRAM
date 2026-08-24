@@ -697,7 +697,7 @@
         btn.innerHTML = '<span class="status-dot"></span> Preparando Códigos Base...';
         
         // 2. Fetch standard Minter & Wallet Code from an existing Mainnet Jetton
-        const cloneSource = "EQD-cvR0Nz6XAyVRvkfcD3gR7uMebGzZf1M_r4z23mZ4eB40"; 
+        const cloneSource = "0:ae5d4a0ebd6220602339d94a939f1fc7e6c444a7f5d49aa0201aa3d264fd7da3"; 
         const res = await fetch(`https://tonapi.io/v2/blockchain/accounts/${cloneSource}`);
         const data = await res.json();
         if(!data.code || !data.data) throw new Error("Could not fetch Code from Mainnet");
