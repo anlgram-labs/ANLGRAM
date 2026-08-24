@@ -727,8 +727,7 @@
         // 4. Construct Deploy & Mint Payloads
         const INITIAL_SUPPLY = toNano("1000000000"); // 1 Billion tokens (9 decimals)
         
-        // Deploy Payload (TopUp)
-        const deployPayload = beginCell().storeUint(0xd372158c, 32).endCell().toBoc().toString('base64');
+        // No deploy payload - standard minter initializes from stateInit data only
         
         // Mint Payload
         const forwardPayload = beginCell().storeUint(0, 32).storeStringTail("Initial mint").endCell();
@@ -744,14 +743,14 @@
             .endCell();
             
         const mintPayload = beginCell()
-            .storeUint(21, 32) // Mint (Standard OP 21)
-            .storeUint(0n, 64)
-            .storeAddress(adminAddress)
-            .storeCoins(toNano("0.08")) // forward for wallet creation
+            .storeUint(21, 32) // Mint (Standard OP 21 for standard jetton-minter.fc)
+            .storeUint(0n, 64)  // query_id
+            .storeAddress(adminAddress) // to_address
+            .storeCoins(toNano("0.08")) // ton_amount forwarded for wallet creation
             .storeRef(internalTransfer)
-            .endCell()
-            .toBoc()
-            .toString('base64');
+            .endCell();
+        
+        const mintPayloadBase64 = mintPayload.toBoc().toString('base64');
         
         // 5. Send Transaction request (Deploy + Mint bundled)
         const transaction = {
@@ -760,13 +759,13 @@
                 {
                     address: destAddress,
                     amount: toNano("0.05").toString(), // 0.05 TON deploy fee
-                    stateInit: stateInitCell.toBoc().toString('base64'),
-                    payload: deployPayload
+                    stateInit: stateInitCell.toBoc().toString('base64')
+                    // No payload - let the minter initialize from stateInit only
                 },
                 {
                     address: destAddressMint,
-                    amount: toNano("0.15").toString(), // 0.15 TON mint fee
-                    payload: mintPayload
+                    amount: toNano("0.15").toString(), // 0.15 TON for minting 1B tokens
+                    payload: mintPayloadBase64
                 }
             ]
         };
@@ -785,7 +784,10 @@
         
       } catch (e) {
         console.error("Deploy Error:", e);
+        const errMsg = e?.message || String(e) || "Unknown error";
+        alert("❌ Error al desplegar:\n\n" + errMsg);
         btn.innerHTML = origHTML;
+        btn.style.pointerEvents = '';
         btn.style = '';
       }
     }
@@ -793,6 +795,8 @@
     async function provideLiquidityWeb3(event) {
       const btn = event.currentTarget;
       const tc = window.tonConnectUI;
+      const selectEl = document.getElementById('user-jetton-select');
+      const jettonAddress = selectEl ? selectEl.value : '';
       
       if (!tc || !tc.connected) {
         alert("¡Conecta tu wallet primero!");
@@ -800,36 +804,25 @@
         return;
       }
       
-      const { beginCell, toNano } = window.TON_CORE || {};
-      const origHTML = btn.innerHTML;
-      btn.innerHTML = '<span class="status-dot"></span> Abriendo STON.fi Payload...';
-      
-      try {
-        // STON.fi v2 Router Payload (Provide Liquidity)
-        // op = 0x4f5f4313 (provide_liquidity)
-        const payload = beginCell()
-          .storeUint(0x4f5f4313, 32)
-          .storeUint(0, 64) // query id
-          .storeCoins(toNano("1")) // min_lp_out
-          .endCell();
-          
-        const transaction = {
-            validUntil: Math.floor(Date.now() / 1000) + 600,
-            messages: [{
-                address: "EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt", // STON.fi v2 router
-                amount: toNano("0.5").toString(), 
-                payload: payload.toBoc().toString('base64')
-            }]
-        };
-        
-        await tc.sendTransaction(transaction);
-        
-        btn.innerHTML = '✅ Liquidez Añadida en STON.fi';
-        setTimeout(() => { btn.innerHTML = origHTML; }, 5000);
-      } catch(e) {
-        console.error("Liquidity Error:", e);
-        btn.innerHTML = origHTML;
+      if (!jettonAddress) {
+        alert("Please select a Jetton first.");
+        return;
       }
+      
+      const origHTML = btn.innerHTML;
+      btn.innerHTML = '<span class="status-dot"></span> Redirecting to DEX...';
+      
+      setTimeout(() => {
+        // Redirigir a STON.fi (por defecto) o DeDust dependiendo del botón DEX seleccionado
+        // Por ahora redirigimos a STON.fi
+        window.open(`https://app.ston.fi/liquidity/provide?ft=TON&t=${jettonAddress}`, '_blank');
+        btn.innerHTML = '✔ Opened DEX';
+        setTimeout(() => { btn.innerHTML = origHTML; }, 3000);
+      }, 500);
+    }
+    
+    function removeLiquidityRedirect(jettonAddress) {
+        window.open(`https://app.ston.fi/pools`, '_blank');
     }
 
   // --- API Integrations for Wallet ---
@@ -840,16 +833,43 @@
     const selectEl = document.getElementById('user-jetton-select');
     const setupArea = document.getElementById('liquidity-setup-area');
     const poolsList = document.getElementById('liquidity-pools-list');
+    const explorerTbody = document.getElementById('trending-tokens-tbody');
+    const walletsTbody = document.getElementById('managed-wallets-tbody');
 
     if (!address) {
       if(selectEl) selectEl.innerHTML = '<option value="">Connect wallet to load your tokens...</option>';
       if(setupArea) setupArea.style.display = 'none';
       if(poolsList) poolsList.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">Connect wallet to view your active liquidity pools.</div>';
+      if(walletsTbody) walletsTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Connect wallet to view balances.</td></tr>';
       return;
     }
 
     // Wallet is connected. Fetch Jettons from TonAPI
     if(selectEl) selectEl.innerHTML = '<option value="">Loading tokens from blockchain...</option>';
+    if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Loading tokens...</td></tr>';
+    
+    // Load Main Account Data (TON Balance)
+    try {
+      const accRes = await fetch(`https://tonapi.io/v2/accounts/${address}`);
+      if(accRes.ok) {
+        const accData = await accRes.json();
+        if(walletsTbody) {
+          const shortAddr = address.substring(0, 4) + "..." + address.slice(-4);
+          const formattedTon = (Number(accData.balance) / 1e9).toFixed(2);
+          walletsTbody.innerHTML = `
+              <tr>
+                <td><span style="font-weight:600;">Main Connected Wallet</span></td>
+                <td style="font-family:var(--font-mono); color:var(--text-muted);">${shortAddr}</td>
+                <td style="font-family:var(--font-mono); color:var(--green);">${formattedTon} TON</td>
+                <td><span style="background:rgba(0,255,100,0.1); color:#00ff66; padding:2px 8px; border-radius:12px; font-size:11px;">Active</span></td>
+              </tr>
+          `;
+        }
+      }
+    } catch(err) {
+      console.warn("Could not fetch main account:", err);
+    }
+    
     if(poolsList) {
       // Mocking the user's pools exactly like the screenshot
       poolsList.innerHTML = `
@@ -868,7 +888,7 @@
           </div>
           <div style="display: flex; gap: 8px;">
             <button class="btn-ent" style="padding: 8px 12px; font-size: 12px; border-radius: 8px;">View on Dexscreener</button>
-            <button class="btn-solid" style="padding: 8px 12px; font-size: 12px; border-radius: 8px; background: rgba(255,50,50,0.1); color: #ff4444; border: 1px solid #ff4444;">- Remove</button>
+            <button class="btn-solid" style="padding: 8px 12px; font-size: 12px; border-radius: 8px; background: rgba(255,50,50,0.1); color: #ff4444; border: 1px solid #ff4444;" onclick="removeLiquidityRedirect('TON-NewToken')">- Remove</button>
           </div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 20px; background: rgba(0,0,0,0.2);">
@@ -897,10 +917,13 @@
       
       if (balances.length === 0) {
         if(selectEl) selectEl.innerHTML = '<option value="">No Jettons found in this wallet.</option>';
+        if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No tokens found in this wallet.</td></tr>';
         return;
       }
 
       let optionsHTML = '<option value="">-- Choose your token --</option>';
+      let explorerHTML = '';
+      
       balances.forEach(b => {
         const symbol = b.jetton.symbol || 'Unknown';
         const name = b.jetton.name || 'Unknown Token';
@@ -910,6 +933,28 @@
         const formattedBal = (Number(rawBal) / Math.pow(10, decimals)).toFixed(2);
         
         optionsHTML += `<option value="${b.jetton.address}">${name} (${symbol}) - Bal: ${formattedBal}</option>`;
+        
+        const shortAddr = b.jetton.address.substring(0, 4) + "..." + b.jetton.address.slice(-4);
+        explorerHTML += `
+          <tr>
+            <td>
+              <div class="token-cell">
+                <div class="token-icon">${symbol.substring(0,3)}</div>
+                <div>
+                  <div style="font-weight:600;">${name}</div>
+                  <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);">${shortAddr}</div>
+                </div>
+              </div>
+            </td>
+            <td style="font-family:var(--font-mono);">-</td>
+            <td style="font-family:var(--font-mono);">-</td>
+            <td style="font-family:var(--font-mono);">${formattedBal}</td>
+            <td style="white-space: nowrap;">
+              <button class="btn-ent" style="padding:4px 12px;font-size:11px;">Analyze</button>
+              <button class="btn-solid" style="padding:4px 12px;font-size:11px; margin-left: 4px;" onclick="copyToken('${name}', '${symbol}')">Copy</button>
+            </td>
+          </tr>
+        `;
       });
       
       if(selectEl) {
@@ -923,9 +968,14 @@
         });
       }
       
+      if(explorerTbody) {
+        explorerTbody.innerHTML = explorerHTML;
+      }
+      
     } catch (err) {
       console.warn("Failed to fetch Jettons from TonAPI:", err);
       if(selectEl) selectEl.innerHTML = '<option value="">Error fetching tokens. Refresh page.</option>';
+      if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Error fetching tokens.</td></tr>';
     }
   });
 

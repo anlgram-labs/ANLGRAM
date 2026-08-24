@@ -1,0 +1,22 @@
+{
+    "balances":  [
+                     {
+                         "balance":  "1030803098090614",
+                         "wallet_address":  {
+                                                "address":  "0:3af4af287b92cfec9d0d7a79883c807a20dd138cae912b9710d533c5eb171bcd",
+                                                "is_scam":  false,
+                                                "is_wallet":  false
+                                            },
+                         "jetton":  {
+                                        "address":  "0:30eb766a2e69f0440efb3d6d3b0962049e0c20f9e222cac6aa67c216a542f49c",
+                                        "name":  "UTYAB",
+                                        "symbol":  "UTYAB",
+                                        "decimals":  9,
+                                        "image":  "https://cache.tonapi.io/imgproxy/2QN_WwjJ_ghyxfD1SQGR605_CXjMkh3RIYgdcTCHyOI/rs:fill:200:200:1/g:no/aHR0cHM6Ly93d3cudXR5YWJzd2FwLmNvbS9sb2dvLnBuZw.webp",
+                                        "verification":  "whitelist",
+                                        "score":  39,
+                                        "description":  "The faster duck on ton"
+                                    }
+                     }
+                 ]
+}

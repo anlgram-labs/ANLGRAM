@@ -1,0 +1,1 @@
+const { beginCell, Cell } = require('./minter-contract/node_modules/@ton/core'); const code = beginCell().storeUint(1,8).endCell(); const c = beginCell().storeDict(code).endCell(); console.log(c.toBoc().toString('hex'));

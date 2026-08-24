@@ -262,7 +262,7 @@
     if (typeof UIClass === 'function') {
       try {
         tonConnectUI = new UIClass({
-          manifestUrl: 'https://ton-connect.github.io/demo-dapp/tonconnect-manifest.json?v=' + Date.now(), // Cache buster
+          manifestUrl: 'https://anlgram-labs.github.io/ANLGRAM/tonconnect-manifest.json',
           // Attach the built-in button to a hidden element so the SDK doesn't
           // render its own floating button on top of our custom UI
           buttonRootId: null,

@@ -1,5 +1,7 @@
 {
-  "url": "https://anlgram-labs.github.io/ANLGRAM",
-  "name": "ANLGRAM Web3",
-  "iconUrl": "https://anlgram-labs.github.io/ANLGRAM/favicon.svg"
+  "url": "https://anlgram-labs.github.io/ANLGRAM/",
+  "name": "ANLGRAM Memecoin Platform",
+  "iconUrl": "https://anlgram-labs.github.io/ANLGRAM/assets/img/logo.png",
+  "termsOfUseUrl": "https://anlgram-labs.github.io/ANLGRAM/",
+  "privacyPolicyUrl": "https://anlgram-labs.github.io/ANLGRAM/"
 }
