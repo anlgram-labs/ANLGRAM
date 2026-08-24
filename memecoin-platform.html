@@ -598,6 +598,16 @@
               ⚠️ <strong>IRREVERSIBLE.</strong> After renouncing, no one (including you) can mint more tokens. The supply becomes permanently fixed. This builds trust with buyers.
             </p>
           </div>
+          <!-- Notice: GitHub Pages required -->
+          <div style="background:rgba(0,240,255,0.06); border:1px solid rgba(0,240,255,0.2); border-radius:10px; padding:12px; margin-bottom:16px; font-size:12px; color:var(--accent-cyan);">
+            💡 <strong>Importante:</strong> Esta función requiere conexión a wallet. Usa la versión en línea:<br>
+            <a href="https://anlgram-labs.github.io/ANLGRAM/memecoin-platform.html" target="_blank" style="color:#00f0ff; font-weight:700;">🔗 anlgram-labs.github.io/ANLGRAM/memecoin-platform.html</a>
+          </div>
+          <!-- Manual minter address input -->
+          <div style="margin-bottom:14px;">
+            <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Minter Contract Address (auto-filled or paste manually)</label>
+            <input type="text" id="renounce-minter-addr" class="token-search-input" style="padding:12px 16px; font-size:13px; border-radius:12px; width:calc(100% - 32px); font-family:monospace;" placeholder="EQ... or 0:... (paste your minter contract address)"/>
+          </div>
           <button class="btn-solid" style="padding:14px; font-size:14px; background:rgba(255,68,68,0.1); border:1px solid #ff4444; color:#ff4444; border-radius:12px; cursor:pointer; width:100%;" onclick="renounceAdminWeb3(event)">
             🔒 Renounce Admin (Burn Key)
           </button>
@@ -996,18 +1006,27 @@
     async function renounceAdminWeb3(event) {
       const btn = event.currentTarget;
       const tc = window.tonConnectUI;
+
+      // Get address from manual input OR from dropdown
+      const manualInput = document.getElementById('renounce-minter-addr');
       const selectEl = document.getElementById('user-jetton-select');
-      const minterRawAddr = selectEl ? selectEl.value : '';
+      const minterRawAddr = (manualInput && manualInput.value.trim()) || (selectEl ? selectEl.value : '');
+
+      if (!minterRawAddr) {
+        alert("Por favor pega la dirección del contrato Minter en el campo de texto.\n\nPuedes encontrarla en TonScan buscando tu wallet:\nhttps://tonscan.org/address/" + (tc && tc.account ? tc.account.address : 'TU_WALLET'));
+        if(manualInput) manualInput.focus();
+        return;
+      }
 
       if (!tc || !tc.connected) {
-        alert("¡Conecta tu wallet primero!");
+        alert("⚠️ Wallet no conectada.\n\nPara enviar esta transacción necesitas conectar Tonkeeper.\n\nAbre esta página en tu navegador:\nhttps://anlgram-labs.github.io/ANLGRAM/memecoin-platform.html\n\nY conecta tu wallet con el botón 'Connect Wallet'.");
         if(tc) tc.openModal();
         return;
       }
-      if (!minterRawAddr) { alert("Selecciona un token primero."); return; }
 
       const confirmed = confirm(
         "⚠️ ACCIÓN IRREVERSIBLE ⚠️\n\n" +
+        "Contrato: " + minterRawAddr.substring(0, 20) + "...\n\n" +
         "Al renunciar como admin, NADIE podrá mintear más tokens jamás, ni siquiera tú.\n\n" +
         "El suministro quedará fijo para siempre.\n\n" +
         "¿Estás seguro de querer continuar?"
@@ -1015,43 +1034,44 @@
       if (!confirmed) return;
 
       const { beginCell, Address } = window.TON_CORE || {};
-      if (!beginCell) { alert("TON Core aún está cargando."); return; }
+      if (!beginCell) { alert("TON Core aún está cargando. Espera unos segundos."); return; }
 
       const origHTML = btn.innerHTML;
-      btn.innerHTML = '<span class="status-dot"></span> Renunciando Admin...';
+      btn.innerHTML = '<span class="status-dot"></span> Enviando a Tonkeeper...';
       btn.style.pointerEvents = 'none';
 
       try {
         const minterAddress = Address.parse(minterRawAddr);
+        const minterFriendly = minterAddress.toString({ bounceable: true, urlSafe: true });
 
-        // change_admin op = 3, new_admin = Address.NONE (null address = burn key)
+        // change_admin op = 3, new_admin = null address (burn key)
         const renouncePayload = beginCell()
-            .storeUint(3, 32)   // change_admin op code (standard jetton-minter.fc)
+            .storeUint(3, 32)   // change_admin op code
             .storeUint(0n, 64)  // query_id
-            .storeAddress(null) // new_admin = null address (burn!)
+            .storeAddress(null) // new_admin = null = nobody
             .endCell();
 
         const transaction = {
           validUntil: Math.floor(Date.now() / 1000) + 600,
           messages: [{
-            address: minterAddress.toString({ bounceable: true, urlSafe: true }),
+            address: minterFriendly,
             amount: "50000000", // 0.05 TON for gas
             payload: renouncePayload.toBoc().toString('base64')
           }]
         };
 
         await tc.sendTransaction(transaction);
-        btn.innerHTML = '🔒 Admin Renunciado — Contrato Bloqueado';
+        btn.innerHTML = '🔒 ¡Admin Renunciado! Contrato Permanentemente Bloqueado';
         btn.style.background = 'rgba(255,68,68,0.3)';
         btn.style.borderColor = '#ff4444';
+        if(manualInput) manualInput.style.borderColor = '#ff4444';
         setTimeout(() => {
           btn.innerHTML = origHTML;
-          btn.style = '';
           btn.style.pointerEvents = '';
-        }, 7000);
+        }, 8000);
       } catch(e) {
         console.error("Renounce Error:", e);
-        alert("❌ Error al renunciar admin:\n\n" + (e.message || e));
+        alert("❌ Error al renunciar admin:\n\n" + (e.message || String(e)));
         btn.innerHTML = origHTML;
         btn.style.pointerEvents = '';
       }
@@ -1198,10 +1218,13 @@
         selectEl.addEventListener('change', (ev) => {
           const addrDiv = document.getElementById('selected-token-address');
           const addrVal = document.getElementById('selected-token-address-val');
+          const renounceInput = document.getElementById('renounce-minter-addr');
           if(ev.target.value) {
             setupArea.style.display = 'block';
             if(addrDiv) addrDiv.style.display = 'block';
             if(addrVal) addrVal.textContent = ev.target.value;
+            // Auto-fill the renounce address field
+            if(renounceInput && !renounceInput.value) renounceInput.value = ev.target.value;
           } else {
             setupArea.style.display = 'none';
             if(addrDiv) addrDiv.style.display = 'none';
