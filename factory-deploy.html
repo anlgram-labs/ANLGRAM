@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>ANLGRAM Factory Deployer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/css/design-system.css"/>
+  <style>
+    body { background:#0d0d12; color:#e2e8f0; font-family:'Inter',sans-serif; padding:40px; }
+    .deploy-card { max-width:680px; margin:0 auto; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:40px; }
+    h1 { color:#fff; font-size:24px; margin-bottom:8px; }
+    .subtitle { color:#94a3b8; font-size:14px; margin-bottom:32px; }
+    .field { margin-bottom:20px; }
+    label { display:block; color:#64748b; font-size:11px; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+    input, select { width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; padding:10px 14px; font-size:14px; font-family:'JetBrains Mono',monospace; }
+    .btn { background:linear-gradient(135deg,#00f0ff,#0080ff); color:#000; border:none; border-radius:8px; padding:14px 28px; font-size:15px; font-weight:700; cursor:pointer; width:100%; margin-top:8px; }
+    .btn:disabled { opacity:0.4; cursor:not-allowed; }
+    .info-box { background:rgba(0,240,255,0.06); border:1px solid rgba(0,240,255,0.15); border-radius:10px; padding:16px 20px; margin-bottom:20px; font-size:13px; }
+    .info-box strong { color:var(--accent-cyan,#00f0ff); }
+    .log { background:#0a0a0c; border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:16px; font-family:'JetBrains Mono',monospace; font-size:12px; color:#94a3b8; min-height:120px; white-space:pre-wrap; margin-top:20px; }
+    .success { color:#00ff66; }
+    .error { color:#ff4444; }
+    .warn { color:#ffa500; }
+  </style>
+</head>
+<body>
+
+<div class="deploy-card">
+  <h1>🏭 ANLGRAM Factory Deployer</h1>
+  <p class="subtitle">Deploy the ANLGRAMFactory contract to TON blockchain via TON Connect</p>
+
+  <div class="info-box">
+    <strong>What this does:</strong><br/>
+    Deploys the ANLGRAM Factory contract that will handle all future token creations.
+    Once deployed, copy the factory address and paste it into <code>assets/js/launchpad.js</code>.
+  </div>
+
+  <div class="field">
+    <label>Network</label>
+    <select id="network-select">
+      <option value="testnet">TON Testnet</option>
+      <option value="mainnet">TON Mainnet</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>Treasury Address (receives platform fees)</label>
+    <input type="text" id="treasury-addr" value="UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd" readonly/>
+  </div>
+
+  <div class="field">
+    <label>Platform Service Rate (%)</label>
+    <input type="number" id="service-rate" value="70" min="1" max="100"/>
+  </div>
+
+  <div id="wallet-section">
+    <button class="btn" id="connect-btn" onclick="connectWallet()">Connect Wallet to Deploy</button>
+  </div>
+
+  <div id="deploy-section" style="display:none;">
+    <div class="info-box">
+      <strong>Connected:</strong> <span id="connected-addr" style="font-family:'JetBrains Mono',monospace;font-size:12px;"></span>
+    </div>
+    <button class="btn" id="deploy-btn" onclick="deployFactory()">🚀 Deploy Factory Contract</button>
+  </div>
+
+  <div class="log" id="log">Ready. Connect your wallet to begin...</div>
+</div>
+
+<script type="module">
+import { beginCell, toNano, Address, storeStateInit, Cell, contractAddress } from 'https://esm.sh/@ton/core';
+window.TON_CORE = { beginCell, toNano, Address, storeStateInit, Cell, contractAddress };
+</script>
+<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+<script>
+let tonConnectUI;
+
+const FACTORY_COMPILED_HEX = null; // Will be loaded dynamically from minter-contract/build/anlgram-factory.compiled.json
+// Inline the compiled factory code BOC here after running compile-factory.js:
+// Run: node minter-contract/compile-factory.js
+// Then paste the hex value from build/anlgram-factory.compiled.json below:
+const FACTORY_CODE_BOC_BASE64 = 'te6ccgECCgEAAoAAART/APSkE/S88sgLAQIBYgIDA/jQMyLHAJJfA+DQ0wMBcbCSXwPg+kAwAtMf0z/tRND6QPpA0w/TANTUMIIQTlhakVKQuuMCMjY3ghCfcqHDUmC6jilbM4EAyVFTxwUV8vQD+kDTD9MAMFUTyFAGzxZQBM8WEssPywDMzMntVOCCEGqdOy5SYLrjAhAkXwQyBAUGACOgUj/aiaH0gfSBph+mAamoYLcB8DU3gQDIAfLygQDKghAHJw4AUoC+8vQD1AHQAdQB0AHUAdAB1AHQAdMHMfoA+kAwggjk4cAcoVIJgGSphFGIoYEAyoIJfXhAghAExLQAoBK+8vRVMMgBzxbJyFjPFsnIUAPPFsnIUATPFslwyMsHzBPMzMzJJwNBdAcASjWBAMlRcscFF/L0AdMAMEAFBMhQBs8WUATPFhLLD8sAzMzJ7VQAWoIQESIzRLqOHYEAyVEhxwUS8vRwgBDIywVYzxYh+gLLasmDBvsA4FuBAMvy8AH+yHD6AlAEzxYSzBLMyXAgyMsBE/QA9ADLAMkg+QBwdMjLAssHy//J0HeAGMjLBSLPFoIJfXhA+gLLaxLMyXH7AHDIyx+NBFBTkxHUkFNIExhdW5jaHBhZIM8WyXFwghAXjUUZyMsfUnDLP1AI+gIXywEnzxaCCTEtAPoCFssAFQgB/szJgBXIyx9SQMs/UAbPFoIQBMS0APoCFczJcYAYyMsFUAXPFoIQBMS0APoCFMtqE8zJcfsAcCCAEMjLBVAFzxZQA/oCE8tqyx+L9BTkxHUkFNIFNlcnZpY2WM8WyXH7AIIQ1TJ223CAEMjLBVAEzxYj+gITy2oSyx/LP8mBAIIJAAT7AA==';
+
+const log = document.getElementById('log');
+
+function addLog(msg, type = '') {
+  const line = document.createElement('div');
+  line.className = type;
+  line.textContent = `[${new Date().toTimeString().slice(0,8)}] ${msg}`;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function connectWallet() {
+  addLog('Initializing TON Connect...');
+  
+  tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+    manifestUrl: 'https://anlgram-labs.github.io/ANLGRAM/tonconnect-manifest.json',
+    buttonRootId: null,
+  });
+
+  try {
+    await tonConnectUI.openModal();
+    
+    tonConnectUI.onStatusChange(wallet => {
+      if (wallet) {
+        document.getElementById('wallet-section').style.display = 'none';
+        document.getElementById('deploy-section').style.display = 'block';
+        document.getElementById('connected-addr').textContent = wallet.account.address;
+        addLog('✅ Wallet connected: ' + wallet.account.address, 'success');
+      }
+    });
+  } catch (e) {
+    addLog('❌ Connection failed: ' + e.message, 'error');
+  }
+}
+
+async function deployFactory() {
+  const btn = document.getElementById('deploy-btn');
+  btn.disabled = true;
+  btn.textContent = '⟳ Deploying...';
+
+  const network     = document.getElementById('network-select').value;
+  const treasury    = document.getElementById('treasury-addr').value.trim();
+  const serviceRate = parseInt(document.getElementById('service-rate').value);
+
+  addLog(`Deploying to ${network.toUpperCase()}...`);
+  addLog(`Treasury: ${treasury}`);
+  addLog(`Service rate: ${serviceRate}%`);
+
+  try {
+    if (!FACTORY_CODE_BOC_BASE64) {
+      throw new Error(
+        'Factory code not compiled!\n\n' +
+        'Run: node minter-contract/compile-factory.js\n' +
+        'Then copy the "hex" value from minter-contract/build/anlgram-factory.compiled.json\n' +
+        'and paste it as FACTORY_CODE_BOC_BASE64 in factory-deploy.html'
+      );
+    }
+
+    const { beginCell, toNano, Address, storeStateInit, Cell, contractAddress } = window.TON_CORE;
+
+    // Fetch standard Jetton code (always from mainnet)
+    addLog('Fetching standard Jetton code from Mainnet...');
+    const cloneSource = '0:30eb766a2e69f0440efb3d6d3b0962049e0c20f9e222cac6aa67c216a542f49c';
+    const res  = await fetch(`https://tonapi.io/v2/blockchain/accounts/${cloneSource}`);
+    const data = await res.json();
+    const hexToBytes = h => Uint8Array.from(h.match(/.{1,2}/g).map(b => parseInt(b,16)));
+    const minterCode = Cell.fromBoc(hexToBytes(data.code))[0];
+    const sp = Cell.fromBoc(hexToBytes(data.data))[0].beginParse();
+    sp.loadCoins(); sp.loadAddress(); sp.loadRef();
+    const walletCode = sp.loadRef();
+    addLog('✅ Jetton code fetched', 'success');
+
+    // Parse treasury address
+    const treasuryAddr = Address.parse(treasury);
+    const adminAddr    = Address.parse(tonConnectUI.account.address);
+
+    // Build factory initial data
+    // Storage: admin:MsgAddress, treasury:MsgAddress, rate:uint16, paused:uint1, minter_code:^Cell, wallet_code:^Cell
+    const factoryData = beginCell()
+      .storeAddress(adminAddr)      // factory_admin
+      .storeAddress(treasuryAddr)   // platform_treasury
+      .storeUint(serviceRate, 16)   // service_rate
+      .storeUint(0, 1)              // paused = false
+      .storeRef(minterCode)         // jetton_minter_code
+      .storeRef(walletCode)         // jetton_wallet_code
+      .endCell();
+
+    // Load factory code
+    const factoryCode = Cell.fromBoc(Buffer.from(FACTORY_CODE_BOC_BASE64, 'base64'))[0];
+
+    const si       = { code: factoryCode, data: factoryData };
+    const siCell   = beginCell().store(storeStateInit(si)).endCell();
+    const factAddr = contractAddress(0, si).toString({ bounceable: false });
+
+    addLog(`Factory address will be: ${factAddr}`, 'warn');
+    addLog('Sending deployment transaction...');
+
+    // Deploy transaction: send 0.05 TON to factory address with stateInit
+    const tx = {
+      validUntil: Math.floor(Date.now() / 1000) + 600,
+      messages: [{
+        address: factAddr,
+        amount: toNano('0.05').toString(),
+        stateInit: siCell.toBoc().toString('base64'),
+      }],
+    };
+
+    await tonConnectUI.sendTransaction(tx);
+
+    addLog('✅ Deployment transaction sent!', 'success');
+    addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'success');
+    addLog(`Factory Address: ${factAddr}`, 'success');
+    addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'success');
+    addLog(`Now update assets/js/launchpad.js:`, 'warn');
+    addLog(`  FACTORY_${network.toUpperCase()}: '${factAddr}'`, 'warn');
+
+    // Show factory address prominently
+    const result = document.createElement('div');
+    result.style.cssText = 'margin-top:20px;background:rgba(0,255,100,0.1);border:1px solid rgba(0,255,100,0.3);border-radius:10px;padding:16px;';
+    result.innerHTML = `
+      <div style="color:#00ff66;font-weight:600;margin-bottom:8px;">🎉 Factory Deployed!</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;word-break:break-all;color:#fff;">${factAddr}</div>
+      <button onclick="navigator.clipboard.writeText('${factAddr}');this.textContent='Copied!'" 
+        style="margin-top:10px;background:rgba(0,240,255,0.15);border:1px solid rgba(0,240,255,0.3);color:#00f0ff;border-radius:6px;padding:6px 14px;cursor:pointer;">
+        Copy Address
+      </button>
+    `;
+    document.querySelector('.deploy-card').appendChild(result);
+
+  } catch (e) {
+    addLog('❌ Deployment error: ' + (e.message || e), 'error');
+    btn.disabled = false;
+    btn.textContent = '🚀 Deploy Factory Contract';
+  }
+}
+</script>
+</body>
+</html>
