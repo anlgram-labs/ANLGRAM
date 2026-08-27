@@ -401,8 +401,131 @@
   }
 
   // ══════════════════════════════════════════════════════════
-  // LOGO UPLOAD SYSTEM
   // ══════════════════════════════════════════════════════════
+  // LOGO UPLOAD SYSTEM & OPTIMIZER
+  // ══════════════════════════════════════════════════════════
+
+  async function optimizeImageForUpload(file) {
+    return new Promise((resolve) => {
+      // If SVG or small GIF, preserve original
+      if (file.type === 'image/svg+xml' || (file.type === 'image/gif' && file.size < 1024 * 1024)) {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve({ base64: e.target.result.split(',')[1], blob: file, dataUrl: e.target.result });
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const maxDim = 512;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        const base64 = dataUrl.split(',')[1];
+        canvas.toBlob((blob) => {
+          resolve({ base64, blob: blob || file, dataUrl });
+        }, 'image/jpeg', 0.88);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        const reader = new FileReader();
+        reader.onload = (e) => resolve({ base64: e.target.result.split(',')[1], blob: file, dataUrl: e.target.result });
+        reader.readAsDataURL(file);
+      };
+      img.src = url;
+    });
+  }
+
+  async function uploadToImgur(base64Data) {
+    const clientIds = [
+      '546c25a59c58ad7',
+      'ebc35c1ec8b50e4',
+      'c06eb6f6b5b5ba3',
+      'e94e50259b13fa2'
+    ];
+
+    for (const clientId of clientIds) {
+      try {
+        const fd = new FormData();
+        fd.append('image', base64Data);
+        fd.append('type', 'base64');
+
+        const res = await fetch('https://api.imgur.com/3/image', {
+          method: 'POST',
+          headers: { 'Authorization': `Client-ID ${clientId}` },
+          body: fd
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data && json.data.link) {
+            return json.data.link.replace('http://', 'https://');
+          }
+        }
+      } catch (err) {
+        console.warn(`Imgur client ID ${clientId} attempt failed:`, err);
+      }
+    }
+    throw new Error('All Imgur attempts failed');
+  }
+
+  async function uploadToCatbox(blob) {
+    const fd = new FormData();
+    fd.append('reqtype', 'fileupload');
+    fd.append('time', '72h');
+    fd.append('fileToUpload', blob, 'token-logo.jpg');
+
+    const res = await fetch('https://litterbox.catbox.moe/resources/internals/api.php', {
+      method: 'POST',
+      body: fd
+    });
+
+    if (!res.ok) throw new Error(`Catbox upload failed with status ${res.status}`);
+    const text = (await res.text()).trim();
+    if (!text.startsWith('http')) throw new Error(`Catbox invalid response: ${text}`);
+    return text.replace('http://', 'https://');
+  }
+
+  async function uploadToFreeImage(base64Data) {
+    const fd = new FormData();
+    fd.append('key', '6d207e02198a847aa98d0a2a901485a5');
+    fd.append('action', 'upload');
+    fd.append('source', base64Data);
+    fd.append('format', 'json');
+
+    const res = await fetch('https://freeimage.host/api/1/upload', {
+      method: 'POST',
+      body: fd
+    });
+
+    if (!res.ok) throw new Error(`FreeImage upload failed with status ${res.status}`);
+    const json = await res.json();
+    if (json.image && json.image.url) {
+      return json.image.url.replace('http://', 'https://');
+    }
+    throw new Error('FreeImage returned unexpected payload');
+  }
 
   function initLogoUpload() {
     const fileInput = document.getElementById('lp-logo-file');
@@ -419,55 +542,73 @@
       const file = e.target.files[0];
       if (!file) return;
 
-      // 1. Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('File is too large. Maximum size is 5MB.');
+      // 1. Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File is too large. Maximum size is 10MB.');
         fileInput.value = '';
         return;
       }
 
-      // 2. Show local preview instantly
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (previewImg) {
-          previewImg.src = event.target.result;
-          previewImg.style.display = 'block';
-        }
-        if (previewPlaceholder) previewPlaceholder.style.display = 'none';
-      };
-      reader.readAsDataURL(file);
-
-      // 3. Perform upload
+      // 2. Process & Show local preview instantly
       if (statusText) {
-        statusText.innerHTML = '<span class="status-dot"></span> Uploading logo...';
+        statusText.innerHTML = '<span class="status-dot"></span> Optimizing & uploading logo...';
         statusText.style.color = 'var(--accent-cyan)';
       }
       if (uploadBtn) {
         uploadBtn.disabled = true;
-        uploadBtn.textContent = 'Uploading...';
+        uploadBtn.textContent = '⏳ Processing...';
       }
 
+      let optimized;
       try {
-        const formData = new FormData();
-        formData.append('file', file);
+        optimized = await optimizeImageForUpload(file);
+        if (previewImg) {
+          previewImg.src = optimized.dataUrl;
+          previewImg.style.display = 'block';
+        }
+        if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+      } catch (optErr) {
+        console.warn('Image optimization fallback:', optErr);
+      }
 
-        const targetUrl = 'https://telegra.ph/upload';
-        const proxyUrl = 'https://corsproxy.io/?url=' + encodeURIComponent(targetUrl);
-        
-        const res = await fetch(proxyUrl, {
-          method: 'POST',
-          body: formData
-        });
+      const base64Data = optimized ? optimized.base64 : '';
+      const blobData = optimized ? optimized.blob : file;
 
-        if (!res.ok) throw new Error('Primary upload failed');
-        const resData = await res.json();
-        
-        if (!resData?.[0]?.src) throw new Error('Invalid response format');
+      // 3. Multi-tier upload strategy
+      let uploadedUrl = null;
 
-        const imageUrl = 'https://telegra.ph' + resData[0].src;
+      // Provider 1: Imgur (CORS enabled, highly reliable CDN)
+      if (!uploadedUrl && base64Data) {
+        try {
+          uploadedUrl = await uploadToImgur(base64Data);
+          console.log('[LogoUpload] Uploaded successfully to Imgur:', uploadedUrl);
+        } catch (e1) {
+          console.warn('[LogoUpload] Imgur failed, trying Catbox...', e1);
+        }
+      }
 
-        // Success!
-        if (urlInput) urlInput.value = imageUrl;
+      // Provider 2: Catbox Litterbox (CORS enabled)
+      if (!uploadedUrl && blobData) {
+        try {
+          uploadedUrl = await uploadToCatbox(blobData);
+          console.log('[LogoUpload] Uploaded successfully to Catbox:', uploadedUrl);
+        } catch (e2) {
+          console.warn('[LogoUpload] Catbox failed, trying FreeImage...', e2);
+        }
+      }
+
+      // Provider 3: FreeImage.host
+      if (!uploadedUrl && base64Data) {
+        try {
+          uploadedUrl = await uploadToFreeImage(base64Data);
+          console.log('[LogoUpload] Uploaded successfully to FreeImage:', uploadedUrl);
+        } catch (e3) {
+          console.warn('[LogoUpload] FreeImage failed:', e3);
+        }
+      }
+
+      if (uploadedUrl) {
+        if (urlInput) urlInput.value = uploadedUrl;
         if (statusText) {
           statusText.innerHTML = '✅ Logo uploaded successfully!';
           statusText.style.color = 'var(--green)';
@@ -476,48 +617,17 @@
           uploadBtn.disabled = false;
           uploadBtn.textContent = '📂 Change Image';
         }
-
-      } catch (err) {
-        console.warn('Primary upload failed, trying fallback (ImgBB)...', err);
-        // Fallback: try uploading to ImgBB
-        try {
-          const fbData = new FormData();
-          fbData.append('image', file);
-          
-          // Use another active public key or allow fallback
-          const fbRes = await fetch('https://api.imgbb.com/1/upload?key=5d808e08d669e46a7be7c770c67cd6b1', {
-            method: 'POST',
-            body: fbData
-          });
-          if (!fbRes.ok) throw new Error('Fallback failed');
-          const fbResData = await fbRes.json();
-          if (!fbResData?.data?.url) throw new Error('Invalid fallback response');
-
-          const imageUrl = fbResData.data.url;
-
-          if (urlInput) urlInput.value = imageUrl;
-          if (statusText) {
-            statusText.innerHTML = '✅ Logo uploaded successfully!';
-            statusText.style.color = 'var(--green)';
-          }
-          if (uploadBtn) {
-            uploadBtn.disabled = false;
-            uploadBtn.textContent = '📂 Change Image';
-          }
-        } catch (fallbackErr) {
-          console.error('All upload attempts failed:', fallbackErr);
-          if (statusText) {
-            statusText.innerHTML = '❌ Upload failed. Paste Logo URL manually below.';
-            statusText.style.color = '#ff4444';
-          }
-          if (uploadBtn) {
-            uploadBtn.disabled = false;
-            uploadBtn.textContent = '📂 Try Again';
-          }
-          // Open fallback url input
-          const urlContainer = document.getElementById('logo-url-container');
-          if (urlContainer) urlContainer.style.display = 'block';
+      } else {
+        if (statusText) {
+          statusText.innerHTML = '❌ Upload failed. Please paste Logo URL manually below.';
+          statusText.style.color = '#ff4444';
         }
+        if (uploadBtn) {
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = '📂 Try Again';
+        }
+        const urlContainer = document.getElementById('logo-url-container');
+        if (urlContainer) urlContainer.style.display = 'block';
       }
     });
   }
