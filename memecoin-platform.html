@@ -592,13 +592,19 @@
         </div>
 
         <!-- 2. Mint More Tokens -->
-        <div class="glass-card" style="margin-bottom: 20px; border: 1px solid rgba(168,85,247,0.3);">
+        <div id="mint-card" class="glass-card" style="margin-bottom: 20px; border: 1px solid rgba(168,85,247,0.3);">
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
             <div style="width:40px; height:40px; border-radius:12px; background:rgba(168,85,247,0.15); display:flex; align-items:center; justify-content:center; font-size:20px;">⚗️</div>
             <div>
               <div style="color:#fff; font-weight:700; font-size:16px;">Mint More Tokens</div>
               <div style="color:var(--text-muted); font-size:12px;">Mint additional tokens to your wallet (only while you are admin)</div>
             </div>
+          </div>
+          <!-- Admin status banner (shown when admin is renounced on-chain) -->
+          <div id="mint-renounced-banner" style="display:none; background:rgba(255,68,68,0.08); border:1px solid rgba(255,68,68,0.3); border-radius:10px; padding:14px; margin-bottom:16px;">
+            <p style="color:#ff8888; font-size:13px; margin:0; line-height:1.6;">
+              🔒 <strong>Admin already renounced on-chain.</strong> No one can mint more tokens — supply is permanently fixed. Verified on TON blockchain.
+            </p>
           </div>
           <div style="display:grid; gap:14px;">
             <div>
@@ -608,14 +614,14 @@
                 <span style="position:absolute; left:16px; top:50%; transform:translateY(-50%); color:#a855f7; font-weight:700;">🪙</span>
               </div>
             </div>
-            <button class="btn-solid" style="padding:14px; font-size:14px; background:rgba(168,85,247,0.15); border:1px solid #a855f7; color:#a855f7; border-radius:12px; cursor:pointer;" onclick="mintMoreTokensWeb3(event)">
+            <button id="mint-btn" class="btn-solid" style="padding:14px; font-size:14px; background:rgba(168,85,247,0.15); border:1px solid #a855f7; color:#a855f7; border-radius:12px; cursor:pointer;" onclick="mintMoreTokensWeb3(event)">
               ⚗️ Mint Tokens to My Wallet
             </button>
           </div>
         </div>
 
         <!-- 3. Renounce Admin -->
-        <div class="glass-card" style="border: 1px solid rgba(255,68,68,0.3);">
+        <div id="renounce-card" class="glass-card" style="border: 1px solid rgba(255,68,68,0.3);">
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
             <div style="width:40px; height:40px; border-radius:12px; background:rgba(255,68,68,0.1); display:flex; align-items:center; justify-content:center; font-size:20px;">🔒</div>
             <div>
@@ -638,7 +644,7 @@
             <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Minter Contract Address (auto-filled or paste manually)</label>
             <input type="text" id="renounce-minter-addr" class="token-search-input" style="padding:12px 16px; font-size:13px; border-radius:12px; width:calc(100% - 32px); font-family:monospace;" placeholder="EQ... or 0:... (paste your minter contract address)"/>
           </div>
-          <button class="btn-solid" style="padding:14px; font-size:14px; background:rgba(255,68,68,0.1); border:1px solid #ff4444; color:#ff4444; border-radius:12px; cursor:pointer; width:100%;" onclick="renounceAdminWeb3(event)">
+          <button id="renounce-btn" class="btn-solid" style="padding:14px; font-size:14px; background:rgba(255,68,68,0.1); border:1px solid #ff4444; color:#ff4444; border-radius:12px; cursor:pointer; width:100%;" onclick="renounceAdminWeb3(event)">
             🔒 Renounce Admin (Burn Key)
           </button>
         </div>
@@ -1379,40 +1385,93 @@
         const newSelect = selectEl.cloneNode(true);
         selectEl.parentNode.replaceChild(newSelect, selectEl);
 
-        newSelect.addEventListener('change', (ev) => {
+        newSelect.addEventListener('change', async (ev) => {
           const selectedAddr = ev.target.value;
           const addrDiv = document.getElementById('selected-token-address');
           const addrVal = document.getElementById('selected-token-address-val');
           const renounceInput = document.getElementById('renounce-minter-addr');
-          const renounceBtn = document.querySelector('[onclick="renounceAdminWeb3(event)"]');
+          const renounceBtn = document.getElementById('renounce-btn');
+          const mintBtn = document.getElementById('mint-btn');
+          const mintBanner = document.getElementById('mint-renounced-banner');
 
           if (selectedAddr) {
             if(setupArea) setupArea.style.display = 'block';
             if(addrDiv) addrDiv.style.display = 'block';
             if(addrVal) addrVal.textContent = selectedAddr;
-
-            // Always auto-fill the minter address field
             if(renounceInput) renounceInput.value = selectedAddr;
 
-            // Check if already renounced
-            const renouncedKey = 'anlgram_renounced_' + selectedAddr.replace(/[^a-zA-Z0-9]/g, '_');
-            const renouncedData = localStorage.getItem(renouncedKey);
+            // Show checking state
+            if(renounceBtn) { renounceBtn.innerHTML = '⏳ Checking admin status on blockchain...'; renounceBtn.disabled = true; }
 
-            if (renounceBtn) {
-              if (renouncedData) {
-                const info = JSON.parse(renouncedData);
-                const dateStr = new Date(info.renouncedAt).toLocaleDateString();
+            // ── Live blockchain admin check ──────────────────────────────
+            let isAdminRenounced = false;
+            try {
+              const checkRes = await fetch(`https://tonapi.io/v2/blockchain/accounts/${encodeURIComponent(selectedAddr)}/methods/get_jetton_data`);
+              if (checkRes.ok) {
+                const checkData = await checkRes.json();
+                const adminAddr = checkData?.decoded?.admin_address;
+                // admin_address is empty string or 'null' when renounced
+                if (!adminAddr || adminAddr.trim() === '' || adminAddr === 'null' || adminAddr === '0:0000000000000000000000000000000000000000000000000000000000000000') {
+                  isAdminRenounced = true;
+                }
+              }
+            } catch(e) {
+              console.warn('Could not check admin status:', e);
+            }
+
+            // ── Also check localStorage (instant, persisted) ─────────────
+            const renouncedKey = 'anlgram_renounced_' + selectedAddr.replace(/[^a-zA-Z0-9]/g, '_');
+            const localRenouncedData = localStorage.getItem(renouncedKey);
+            if (localRenouncedData) isAdminRenounced = true;
+
+            // ── Update UI based on admin status ──────────────────────────
+            if (isAdminRenounced) {
+              // Persist to localStorage in case not already there
+              if (!localRenouncedData) {
+                localStorage.setItem(renouncedKey, JSON.stringify({
+                  address: selectedAddr,
+                  renouncedAt: Date.now(),
+                  source: 'blockchain_verification'
+                }));
+              }
+
+              // Disable Mint button
+              if(mintBtn) {
+                mintBtn.disabled = true;
+                mintBtn.style.opacity = '0.45';
+                mintBtn.style.cursor = 'not-allowed';
+                mintBtn.innerHTML = '🔒 Minting Disabled — Admin Renounced On-Chain';
+              }
+              if(mintBanner) mintBanner.style.display = 'block';
+
+              // Disable Renounce button (already done)
+              if(renounceBtn) {
+                const info = localRenouncedData ? JSON.parse(localRenouncedData) : null;
+                const dateStr = info?.renouncedAt ? new Date(info.renouncedAt).toLocaleDateString() : 'verified on-chain';
                 renounceBtn.innerHTML = `🔒 Admin Already Renounced (${dateStr})`;
                 renounceBtn.disabled = true;
-                renounceBtn.style.opacity = '0.6';
+                renounceBtn.style.opacity = '0.5';
                 renounceBtn.style.cursor = 'not-allowed';
-              } else {
+              }
+
+            } else {
+              // Admin is ACTIVE — enable Mint and Renounce
+              if(mintBtn) {
+                mintBtn.disabled = false;
+                mintBtn.style.opacity = '1';
+                mintBtn.style.cursor = 'pointer';
+                mintBtn.innerHTML = '⚗️ Mint Tokens to My Wallet';
+              }
+              if(mintBanner) mintBanner.style.display = 'none';
+
+              if(renounceBtn) {
                 renounceBtn.innerHTML = '🔒 Renounce Admin (Burn Key)';
                 renounceBtn.disabled = false;
                 renounceBtn.style.opacity = '1';
                 renounceBtn.style.cursor = 'pointer';
               }
             }
+
           } else {
             if(setupArea) setupArea.style.display = 'none';
             if(addrDiv) addrDiv.style.display = 'none';
