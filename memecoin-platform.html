@@ -1206,6 +1206,56 @@
     // ══════════════════════════════════════════════════════════
     // Load only tokens WHERE wallet is admin (created by this wallet)
     // ══════════════════════════════════════════════════════════
+
+    // Helper: wait for TON_CORE to be ready (ES module loads async)
+    async function waitForTonCore(maxMs = 4000) {
+      const start = Date.now();
+      while (!window.TON_CORE?.Address && Date.now() - start < maxMs) {
+        await new Promise(r => setTimeout(r, 80));
+      }
+      return window.TON_CORE?.Address || null;
+    }
+
+    // Helper: convert raw 0:xxxx OR any TON address to EQ... bounceable base64url
+    async function rawToFriendly(rawAddr) {
+      if (!rawAddr) return rawAddr;
+
+      // 1. Try TON_CORE (waits up to 4s for it to load)
+      try {
+        const AddrClass = window.TON_CORE?.Address || await waitForTonCore(2000);
+        if (AddrClass) {
+          return AddrClass.parse(rawAddr).toString({ bounceable: true, urlSafe: true });
+        }
+      } catch (e) { /* try manual fallback */ }
+
+      // 2. Pure-JS CRC16-XMODEM fallback (no dependencies, always works)
+      try {
+        if (rawAddr.includes(':')) {
+          const parts = rawAddr.split(':');
+          const hexAddr = parts[1];
+          if (hexAddr.length !== 64) throw new Error('bad hex length');
+          const buf = new Uint8Array(36);
+          buf[0] = 0x11; // bounceable
+          buf[1] = parseInt(parts[0], 10) & 0xff; // workchain
+          for (let i = 0; i < 32; i++) buf[2 + i] = parseInt(hexAddr.substr(i * 2, 2), 16);
+          // CRC16-XMODEM over first 34 bytes
+          let crc = 0;
+          for (let i = 0; i < 34; i++) {
+            crc ^= (buf[i] & 0xff) << 8;
+            for (let j = 0; j < 8; j++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+            crc &= 0xffff;
+          }
+          buf[34] = (crc >>> 8) & 0xff;
+          buf[35] = crc & 0xff;
+          return btoa(String.fromCharCode(...buf)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+        // Already friendly format (EQ/UQ) — return as-is
+        if (/^[EUe][Qq]/.test(rawAddr)) return rawAddr;
+      } catch (e2) { /* fall through */ }
+
+      return rawAddr; // return raw as last resort
+    }
+
     try {
       if(selectEl) selectEl.innerHTML = '<option value="">🔍 Scanning your created tokens...</option>';
 
@@ -1221,26 +1271,38 @@
       }
 
       // For each jetton, check if connected wallet IS the admin (creator)
-      // We check each jetton's contract data from TonAPI to get admin_address
+      // Use /v2/jettons/{addr} which returns admin address via get_jetton_data
       const adminTokens = [];
       const otherTokens = [];
+
+      // Normalize connected wallet address to raw hex for comparison
+      function toRawHex(addr) {
+        if (!addr) return '';
+        // If already raw (contains ':'), strip workchain prefix
+        if (addr.includes(':')) return addr.split(':')[1].toLowerCase();
+        // If friendly (EQ/UQ), decode base64url to get raw hex
+        try {
+          const std = addr.replace(/-/g, '+').replace(/_/g, '/') + '==';
+          const bytes = atob(std);
+          let hex = '';
+          for (let i = 2; i < 34; i++) hex += bytes.charCodeAt(i).toString(16).padStart(2, '0');
+          return hex.toLowerCase();
+        } catch(e) { return addr.toLowerCase().replace(/[^a-z0-9]/g,''); }
+      }
+
+      const walletRawHex = toRawHex(address);
 
       await Promise.all(balances.map(async (b) => {
         try {
           const jetAddr = b.jetton.address;
-          const contractRes = await fetch(`https://tonapi.io/v2/blockchain/accounts/${jetAddr}`);
-          if (contractRes.ok) {
-            const contractData = await contractRes.json();
-            // Check if admin field matches our wallet
-            const adminAddr = contractData.status === 'active' &&
-              contractData.interfaces?.includes('jetton_minter') &&
-              contractData.jetton_minter_data?.admin?.address;
-
-            if (adminAddr) {
-              // Normalize both addresses for comparison
-              const adminNorm = adminAddr.toLowerCase().replace(/[^a-z0-9]/g, '');
-              const walletNorm = address.toLowerCase().replace(/[^a-z0-9]/g, '');
-              if (adminNorm === walletNorm) {
+          // Use the v2/jettons endpoint which returns admin_address from get_jetton_data
+          const jetRes = await fetch(`https://tonapi.io/v2/blockchain/accounts/${jetAddr}/methods/get_jetton_data`);
+          if (jetRes.ok) {
+            const jetData = await jetRes.json();
+            const adminAddr = jetData?.decoded?.admin_address;
+            if (adminAddr && adminAddr.trim() !== '' && adminAddr !== 'null') {
+              const adminRawHex = toRawHex(adminAddr);
+              if (adminRawHex && walletRawHex && adminRawHex === walletRawHex) {
                 adminTokens.push({ ...b, _minterAddress: jetAddr, _isAdmin: true });
                 return;
               }
@@ -1257,13 +1319,22 @@
       let optionsHTML = `<option value="">-- ${isFiltered ? `${adminTokens.length} token(s) you created` : 'Choose your token'} --</option>`;
       let explorerHTML = '';
 
-      tokensToShow.forEach(b => {
+      // Convert all minter addresses to friendly format in parallel
+      const resolvedTokens = await Promise.all(tokensToShow.map(async (b) => {
+        const rawMinterAddr = b._minterAddress || b.jetton.address;
+        const friendlyAddr = await rawToFriendly(rawMinterAddr);
+        return { ...b, _friendlyMinterAddr: friendlyAddr };
+      }));
+
+      resolvedTokens.forEach(b => {
         const symbol = b.jetton.symbol || 'Unknown';
         const name = b.jetton.name || 'Unknown Token';
         const rawBal = b.balance;
         const decimals = b.jetton.decimals || 9;
         const formattedBal = (Number(rawBal) / Math.pow(10, decimals)).toFixed(2);
-        const minterAddr = b._minterAddress || b.jetton.address;
+        // Use the pre-resolved friendly EQ... address
+        const minterAddr = b._friendlyMinterAddr || b._minterAddress || b.jetton.address;
+
 
         // Check if previously renounced (persisted in localStorage)
         const renouncedKey = 'anlgram_renounced_' + minterAddr.replace(/[^a-zA-Z0-9]/g, '_');
