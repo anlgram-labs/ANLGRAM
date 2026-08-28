@@ -1089,14 +1089,25 @@
         };
 
         await tc.sendTransaction(transaction);
+
+        // ✅ Persist renounce state to localStorage so it survives page refresh
+        const renouncedKey = 'anlgram_renounced_' + minterRawAddr.replace(/[^a-zA-Z0-9]/g, '_');
+        localStorage.setItem(renouncedKey, JSON.stringify({
+          address: minterRawAddr,
+          renouncedAt: Date.now(),
+          wallet: tc.account.address
+        }));
+
         btn.innerHTML = '🔒 ¡Admin Renunciado! Contrato Permanentemente Bloqueado';
         btn.style.background = 'rgba(255,68,68,0.3)';
         btn.style.borderColor = '#ff4444';
         if(manualInput) manualInput.style.borderColor = '#ff4444';
+
+        // Refresh the selector to show renounced badge
         setTimeout(() => {
-          btn.innerHTML = origHTML;
-          btn.removeAttribute('style');
-        }, 8000);
+          window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: tc.account.address } }));
+        }, 3000);
+
       } catch(e) {
         console.error("Renounce Error:", e);
         alert("❌ Error al renunciar admin:\n\n" + (e.message || String(e)));
@@ -1192,41 +1203,90 @@
       `;
     }
 
+    // ══════════════════════════════════════════════════════════
+    // Load only tokens WHERE wallet is admin (created by this wallet)
+    // ══════════════════════════════════════════════════════════
     try {
-      const response = await fetch(`https://tonapi.io/v2/accounts/${address}/jettons`);
+      if(selectEl) selectEl.innerHTML = '<option value="">🔍 Scanning your created tokens...</option>';
+
+      const response = await fetch(`https://tonapi.io/v2/accounts/${address}/jettons?supported_extensions=custom_payload`);
       if (!response.ok) throw new Error('API Error');
       const data = await response.json();
-      
       const balances = data.balances || [];
-      
+
       if (balances.length === 0) {
-        if(selectEl) selectEl.innerHTML = '<option value="">No Jettons found in this wallet.</option>';
+        if(selectEl) selectEl.innerHTML = '<option value="">No tokens found in this wallet.</option>';
         if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No tokens found in this wallet.</td></tr>';
         return;
       }
 
-      let optionsHTML = '<option value="">-- Choose your token --</option>';
+      // For each jetton, check if connected wallet IS the admin (creator)
+      // We check each jetton's contract data from TonAPI to get admin_address
+      const adminTokens = [];
+      const otherTokens = [];
+
+      await Promise.all(balances.map(async (b) => {
+        try {
+          const jetAddr = b.jetton.address;
+          const contractRes = await fetch(`https://tonapi.io/v2/blockchain/accounts/${jetAddr}`);
+          if (contractRes.ok) {
+            const contractData = await contractRes.json();
+            // Check if admin field matches our wallet
+            const adminAddr = contractData.status === 'active' &&
+              contractData.interfaces?.includes('jetton_minter') &&
+              contractData.jetton_minter_data?.admin?.address;
+
+            if (adminAddr) {
+              // Normalize both addresses for comparison
+              const adminNorm = adminAddr.toLowerCase().replace(/[^a-z0-9]/g, '');
+              const walletNorm = address.toLowerCase().replace(/[^a-z0-9]/g, '');
+              if (adminNorm === walletNorm) {
+                adminTokens.push({ ...b, _minterAddress: jetAddr, _isAdmin: true });
+                return;
+              }
+            }
+          }
+        } catch (e) { /* skip on error */ }
+        otherTokens.push(b);
+      }));
+
+      // If we found admin tokens, show only those; otherwise fall back to all
+      const tokensToShow = adminTokens.length > 0 ? adminTokens : balances;
+      const isFiltered = adminTokens.length > 0;
+
+      let optionsHTML = `<option value="">-- ${isFiltered ? `${adminTokens.length} token(s) you created` : 'Choose your token'} --</option>`;
       let explorerHTML = '';
-      
-      balances.forEach(b => {
+
+      tokensToShow.forEach(b => {
         const symbol = b.jetton.symbol || 'Unknown';
         const name = b.jetton.name || 'Unknown Token';
-        // Format balance (assuming standard 9 decimals, we might need b.jetton.decimals but this is visual)
         const rawBal = b.balance;
         const decimals = b.jetton.decimals || 9;
         const formattedBal = (Number(rawBal) / Math.pow(10, decimals)).toFixed(2);
-        
-        optionsHTML += `<option value="${b.jetton.address}">${name} (${symbol}) - Bal: ${formattedBal}</option>`;
-        
-        const shortAddr = b.jetton.address.substring(0, 4) + "..." + b.jetton.address.slice(-4);
+        const minterAddr = b._minterAddress || b.jetton.address;
+
+        // Check if previously renounced (persisted in localStorage)
+        const renouncedKey = 'anlgram_renounced_' + minterAddr.replace(/[^a-zA-Z0-9]/g, '_');
+        const isRenounced = !!localStorage.getItem(renouncedKey);
+
+        const renouncedLabel = isRenounced ? ' 🔒 [RENOUNCED]' : '';
+        const optionStyle = isRenounced ? 'color:#ff8888;' : '';
+
+        optionsHTML += `<option value="${minterAddr}" style="${optionStyle}">${name} (${symbol}) - Bal: ${formattedBal}${renouncedLabel}</option>`;
+
+        const shortAddr = minterAddr.substring(0, 8) + '...' + minterAddr.slice(-6);
+        const renouncedBadge = isRenounced
+          ? `<span style="background:rgba(255,68,68,0.15);color:#ff4444;padding:2px 8px;border-radius:12px;font-size:11px;margin-left:6px;">🔒 Renounced</span>`
+          : (b._isAdmin ? `<span style="background:rgba(0,255,100,0.1);color:#00ff66;padding:2px 8px;border-radius:12px;font-size:11px;margin-left:6px;">👑 Admin</span>` : '');
+
         explorerHTML += `
           <tr>
             <td>
               <div class="token-cell">
                 <div class="token-icon">${symbol.substring(0,3)}</div>
                 <div>
-                  <div style="font-weight:600;">${name}</div>
-                  <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);">${shortAddr}</div>
+                  <div style="font-weight:600;">${name} ${renouncedBadge}</div>
+                  <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">${shortAddr}</div>
                 </div>
               </div>
             </td>
@@ -1234,38 +1294,67 @@
             <td style="font-family:var(--font-mono);">-</td>
             <td style="font-family:var(--font-mono);">${formattedBal}</td>
             <td style="white-space: nowrap;">
-              <button class="btn-ent" style="padding:4px 12px;font-size:11px;">Analyze</button>
+              <button class="btn-ent" style="padding:4px 12px;font-size:11px;" onclick="window.open('https://tonscan.org/address/${minterAddr}','_blank')">Explorer ↗</button>
               <button class="btn-solid" style="padding:4px 12px;font-size:11px; margin-left: 4px;" onclick="copyToken('${name}', '${symbol}')">Copy</button>
             </td>
           </tr>
         `;
       });
-      
-      if(selectEl) {
+
+      if (selectEl) {
         selectEl.innerHTML = optionsHTML;
-        selectEl.addEventListener('change', (ev) => {
+
+        // Remove previous listener to avoid duplicates
+        const newSelect = selectEl.cloneNode(true);
+        selectEl.parentNode.replaceChild(newSelect, selectEl);
+
+        newSelect.addEventListener('change', (ev) => {
+          const selectedAddr = ev.target.value;
           const addrDiv = document.getElementById('selected-token-address');
           const addrVal = document.getElementById('selected-token-address-val');
           const renounceInput = document.getElementById('renounce-minter-addr');
-          if(ev.target.value) {
-            setupArea.style.display = 'block';
+          const renounceBtn = document.querySelector('[onclick="renounceAdminWeb3(event)"]');
+
+          if (selectedAddr) {
+            if(setupArea) setupArea.style.display = 'block';
             if(addrDiv) addrDiv.style.display = 'block';
-            if(addrVal) addrVal.textContent = ev.target.value;
-            // Auto-fill the renounce address field
-            if(renounceInput && !renounceInput.value) renounceInput.value = ev.target.value;
+            if(addrVal) addrVal.textContent = selectedAddr;
+
+            // Always auto-fill the minter address field
+            if(renounceInput) renounceInput.value = selectedAddr;
+
+            // Check if already renounced
+            const renouncedKey = 'anlgram_renounced_' + selectedAddr.replace(/[^a-zA-Z0-9]/g, '_');
+            const renouncedData = localStorage.getItem(renouncedKey);
+
+            if (renounceBtn) {
+              if (renouncedData) {
+                const info = JSON.parse(renouncedData);
+                const dateStr = new Date(info.renouncedAt).toLocaleDateString();
+                renounceBtn.innerHTML = `🔒 Admin Already Renounced (${dateStr})`;
+                renounceBtn.disabled = true;
+                renounceBtn.style.opacity = '0.6';
+                renounceBtn.style.cursor = 'not-allowed';
+              } else {
+                renounceBtn.innerHTML = '🔒 Renounce Admin (Burn Key)';
+                renounceBtn.disabled = false;
+                renounceBtn.style.opacity = '1';
+                renounceBtn.style.cursor = 'pointer';
+              }
+            }
           } else {
-            setupArea.style.display = 'none';
+            if(setupArea) setupArea.style.display = 'none';
             if(addrDiv) addrDiv.style.display = 'none';
           }
         });
       }
-      
-      if(explorerTbody) {
+
+      if (explorerTbody) {
         explorerTbody.innerHTML = explorerHTML;
       }
-      
+
     } catch (err) {
-      console.warn("Failed to fetch Jettons from TonAPI:", err);
+      console.warn('Failed to fetch Jettons from TonAPI:', err);
       if(selectEl) selectEl.innerHTML = '<option value="">Error fetching tokens. Refresh page.</option>';
       if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Error fetching tokens.</td></tr>';
     }
