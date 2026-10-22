@@ -1,0 +1,31 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ANLGRAM Staking Router TL-B Schema (Single Verified Pool: Tonstakers liquidTF)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Client deposit via router:
+// Router computes fee_nano = (principal_nano * 35) / 10000 on-chain,
+// escrows fee_nano until tsTON mint notification (0x7362d09c) arrives,
+// and forwards principal_nano + 1.0 TON gas to Tonstakers Pool (0x47d54391).
+router_stake#414e4c53 query_id:uint64 principal_nano:Coins expected_network_id:int16 = InternalMsgBody;
+
+// Refund notification sent to user when pool bounces or deposit times out:
+stake_refunded#414e4c52 query_id:uint64 principal_nano:Coins fee_nano:Coins = InternalMsgBody;
+
+// Client timeout refund claim (if pool neither minted nor bounced within timeout_sec):
+reclaim_timeout#414e4c54 query_id:uint64 = InternalMsgBody;
+
+// Tonstakers Pool Deposit (outgoing from Router to Pool):
+tonstakers_deposit#47d54391 query_id:uint64 partner_code:uint64 = InternalMsgBody;
+
+// TEP-74 Jetton Transfer Notification (incoming from Router's tsTON Jetton Wallet):
+transfer_notification#7362d09c query_id:uint64 amount:Coins sender:MsgAddress forward_payload:(Either Cell ^Cell) = InternalMsgBody;
+
+// TEP-74 Jetton Transfer (outgoing from Router to Router's tsTON Jetton Wallet):
+jetton_transfer#0f8a7ea5 query_id:uint64 amount:Coins destination:MsgAddress response_destination:MsgAddress custom_payload:(Maybe ^Cell) forward_ton_amount:Coins forward_payload:(Either Cell ^Cell) = InternalMsgBody;
+
+// TEP-74 Excesses (incoming/outgoing gas refund):
+excesses#d53276db query_id:uint64 = InternalMsgBody;
+
+// Admin configuration (cannot touch user principal, pending escrow, or tsTON):
+set_router_jwallet#414e4c60 query_id:uint64 jwallet_address:MsgAddress = InternalMsgBody;
+set_paused#414e4c61 query_id:uint64 paused:uint1 = InternalMsgBody;

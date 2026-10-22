@@ -1,0 +1,690 @@
+;; ═══════════════════════════════════════════════════════════════════════════
+;; ANLGRAM Staking Router Contract (Non-Custodial Escrow & Fee Router)
+;; File: minter-contract/contracts/anlgram-staking-router.fc
+;;
+;; Single Verified Pool Protocol: Tonstakers Official Liquid Staking (liquidTF)
+;; Fee Policy:
+;;   - ANLGRAM_STAKE_FEE_BPS = 35 (0.35% of accepted & confirmed principal)
+;;   - Integer arithmetic in nanoTON: fee_nano = muldiv(principal_nano, 35, 10000)
+;;   - Rounded down to nanoTON, no cap, 0% fee on withdrawals/claims.
+;;   - Fee Recipient: UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd
+;;
+;; Asynchronous Safety Guarantees:
+;;   1. Receiving op::router_stake does NOT charge the fee immediately.
+;;   2. The 0.35% fee is held in contract escrow (pending_deposits[query_id]) while
+;;      the principal + pool gas reserve is forwarded to Tonstakers Pool (0x47d54391).
+;;   3. Only when the Router's verified tsTON Jetton Wallet sends op::transfer_notification
+;;      (0x7362d09c) with the matching query_id is the deposit marked confirmed:
+;;      - 100% of minted tsTON is transferred to the client's wallet (0x0f8a7ea5).
+;;      - The 0.35% fee_nano is transferred to ANLGRAM's fee_recipient wallet.
+;;      - Excess gas (0xd53276db) is forwarded back to the client's wallet.
+;;   4. If the Tonstakers Pool bounces the 0x47d54391 message (flags & 1) or if
+;;      timeout_sec elapses without confirmation, the Router refunds principal + fee_nano
+;;      back to the client and charges 0 fee.
+;;   5. Admin has zero ability to withdraw client principal, escrowed fees, or tsTON.
+;; ═══════════════════════════════════════════════════════════════════════════
+
+#include "imports/stdlib.fc";
+#pragma version >=0.2.0;
+
+;; ── Opcodes ────────────────────────────────────────────────────────────────
+int op::router_stake()          asm "0x414e4c53 PUSHINT"; ;; Client -> Router deposit
+int op::stake_refunded()        asm "0x414e4c52 PUSHINT"; ;; Router -> Client bounce/timeout refund
+int op::reclaim_timeout()       asm "0x414e4c54 PUSHINT"; ;; Client -> Router timeout reclaim
+int op::set_router_jwallet()    asm "0x414e4c60 PUSHINT"; ;; Admin -> Router set tsTON jwallet
+int op::set_paused()            asm "0x414e4c61 PUSHINT"; ;; Admin -> Router pause/unpause
+
+;; Protocol Opcodes (Tonstakers & TEP-74 Jettons)
+int op::tonstakers_deposit()    asm "0x47d54391 PUSHINT"; ;; Router -> Tonstakers Pool
+int op::transfer_notification() asm "0x7362d09c PUSHINT"; ;; Router tsTON JWallet -> Router
+int op::jetton_transfer()       asm "0x0f8a7ea5 PUSHINT"; ;; Router -> Router tsTON JWallet
+int op::excesses()              asm "0xd53276db PUSHINT"; ;; Excess gas refund
+
+;; ── Error Codes ────────────────────────────────────────────────────────────
+int error::router_paused()              asm "300 PUSHINT";
+int error::access_denied()              asm "301 PUSHINT";
+int error::invalid_query_id()           asm "302 PUSHINT";
+int error::wrong_network()              asm "303 PUSHINT";
+int error::jwallet_not_configured()     asm "304 PUSHINT";
+int error::below_min_stake()            asm "305 PUSHINT";
+int error::duplicate_query_id()         asm "306 PUSHINT";
+int error::insufficient_msg_value()     asm "307 PUSHINT";
+int error::unauthorized_jwallet()       asm "308 PUSHINT";
+int error::unknown_pending_deposit()    asm "309 PUSHINT";
+int error::zero_minted_jettons()        asm "310 PUSHINT";
+int error::timeout_not_reached()        asm "311 PUSHINT";
+int error::invalid_fee_bps()            asm "312 PUSHINT";
+int error::jwallet_locked()             asm "313 PUSHINT";
+int error::unknown_op()                 asm "399 PUSHINT";
+
+;; ── Constants (nanoTON) ────────────────────────────────────────────────────
+int const::fee_bps_exact()          asm "35 PUSHINT";         ;; 35 bps = 0.35% (NEVER 3500)
+int const::bps_denominator()        asm "10000 PUSHINT";      ;; 10,000 bps = 100%
+int const::pool_deposit_gas()       asm "1000000000 PUSHINT"; ;; 1.00 TON attached to Tonstakers Pool
+int const::router_processing_gas()  asm "150000000 PUSHINT";  ;; 0.15 TON for router + jetton forward + fee send
+int const::jetton_transfer_gas()    asm "65000000 PUSHINT";   ;; 0.065 TON attached to 0x0f8a7ea5
+int const::jetton_notify_gas()      asm "10000000 PUSHINT";   ;; 0.010 TON forward_ton_amount to client
+int const::min_forward_gas()        asm "10000000 PUSHINT";   ;; 0.010 TON threshold for excess forwarding
+
+;; ── Helper: Check if address is addr_none (2 bits == 0) ────────────────────
+int is_addr_none(slice addr) inline {
+    return addr.preload_uint(2) == 0;
+}
+
+;; ── Storage Load / Save ────────────────────────────────────────────────────
+(
+    slice, ;; admin_address
+    slice, ;; fee_recipient
+    int,   ;; fee_bps
+    int,   ;; paused
+    int,   ;; network_id
+    int,   ;; total_pending_escrow
+    slice, ;; pool_address
+    slice, ;; router_jwallet_address
+    int,   ;; min_stake_nano
+    int,   ;; partner_code
+    int,   ;; timeout_sec
+    int,   ;; total_principal_routed
+    int,   ;; total_fees_collected
+    int,   ;; total_tston_forwarded
+    int,   ;; total_deposits_confirmed
+    int,   ;; total_deposits_refunded
+    cell,  ;; pending_deposits
+    cell,  ;; completed_deposits
+    cell   ;; user_accounting
+) load_router_data() inline {
+    slice ds = get_data().begin_parse();
+    slice admin_address        = ds~load_msg_addr();
+    slice fee_recipient        = ds~load_msg_addr();
+    int   fee_bps              = ds~load_uint(16);
+    int   paused               = ds~load_uint(1);
+    int   network_id           = ds~load_int(16);
+    int   total_pending_escrow = ds~load_coins();
+
+    slice cfg = ds~load_ref().begin_parse();
+    slice pool_address           = cfg~load_msg_addr();
+    slice router_jwallet_address = cfg~load_msg_addr();
+    int   min_stake_nano         = cfg~load_coins();
+    int   partner_code           = cfg~load_uint(64);
+    int   timeout_sec            = cfg~load_uint(32);
+
+    slice st = ds~load_ref().begin_parse();
+    int total_principal_routed   = st~load_coins();
+    int total_fees_collected     = st~load_coins();
+    int total_tston_forwarded    = st~load_coins();
+    int total_deposits_confirmed = st~load_uint(64);
+    int total_deposits_refunded  = st~load_uint(64);
+
+    slice dc = ds~load_ref().begin_parse();
+    cell pending_deposits   = dc~load_dict();
+    cell completed_deposits = dc~load_dict();
+    cell user_accounting    = dc~load_dict();
+
+    return (
+        admin_address,
+        fee_recipient,
+        fee_bps,
+        paused,
+        network_id,
+        total_pending_escrow,
+        pool_address,
+        router_jwallet_address,
+        min_stake_nano,
+        partner_code,
+        timeout_sec,
+        total_principal_routed,
+        total_fees_collected,
+        total_tston_forwarded,
+        total_deposits_confirmed,
+        total_deposits_refunded,
+        pending_deposits,
+        completed_deposits,
+        user_accounting
+    );
+}
+
+() save_router_data(
+    slice admin_address,
+    slice fee_recipient,
+    int   fee_bps,
+    int   paused,
+    int   network_id,
+    int   total_pending_escrow,
+    slice pool_address,
+    slice router_jwallet_address,
+    int   min_stake_nano,
+    int   partner_code,
+    int   timeout_sec,
+    int   total_principal_routed,
+    int   total_fees_collected,
+    int   total_tston_forwarded,
+    int   total_deposits_confirmed,
+    int   total_deposits_refunded,
+    cell  pending_deposits,
+    cell  completed_deposits,
+    cell  user_accounting
+) impure inline {
+    cell cfg_cell = begin_cell()
+        .store_slice(pool_address)
+        .store_slice(router_jwallet_address)
+        .store_coins(min_stake_nano)
+        .store_uint(partner_code, 64)
+        .store_uint(timeout_sec, 32)
+        .end_cell();
+
+    cell stats_cell = begin_cell()
+        .store_coins(total_principal_routed)
+        .store_coins(total_fees_collected)
+        .store_coins(total_tston_forwarded)
+        .store_uint(total_deposits_confirmed, 64)
+        .store_uint(total_deposits_refunded, 64)
+        .end_cell();
+
+    cell dicts_cell = begin_cell()
+        .store_dict(pending_deposits)
+        .store_dict(completed_deposits)
+        .store_dict(user_accounting)
+        .end_cell();
+
+    set_data(begin_cell()
+        .store_slice(admin_address)
+        .store_slice(fee_recipient)
+        .store_uint(fee_bps, 16)
+        .store_uint(paused, 1)
+        .store_int(network_id, 16)
+        .store_coins(total_pending_escrow)
+        .store_ref(cfg_cell)
+        .store_ref(stats_cell)
+        .store_ref(dicts_cell)
+        .end_cell()
+    );
+}
+
+;; ── Helper: Update Per-Client On-Chain Accounting ──────────────────────────
+cell update_user_stats(
+    cell  user_accounting,
+    slice user_address,
+    int   add_principal,
+    int   add_tston,
+    int   add_fee,
+    int   add_refund,
+    int   add_deposit_count
+) inline {
+    int key = slice_hash(user_address);
+    (slice existing, int found) = udict_get?(user_accounting, 256, key);
+
+    int principal_staked = 0;
+    int tston_received   = 0;
+    int fees_paid        = 0;
+    int refunded_amount  = 0;
+    int deposit_count    = 0;
+
+    if (found) {
+        existing~load_msg_addr(); ;; skip stored address
+        principal_staked = existing~load_coins();
+        tston_received   = existing~load_coins();
+        fees_paid        = existing~load_coins();
+        refunded_amount  = existing~load_coins();
+        deposit_count    = existing~load_uint(32);
+    }
+
+    builder updated = begin_cell()
+        .store_slice(user_address)
+        .store_coins(principal_staked + add_principal)
+        .store_coins(tston_received + add_tston)
+        .store_coins(fees_paid + add_fee)
+        .store_coins(refunded_amount + add_refund)
+        .store_uint(deposit_count + add_deposit_count, 32);
+
+    user_accounting~udict_set_builder(256, key, updated);
+    return user_accounting;
+}
+
+;; ── Bounce Handler: Pool Rejects Deposit -> Full Refund to Client ──────────
+() handle_bounce(int msg_value, slice in_msg_body) impure inline {
+    in_msg_body~skip_bits(32); ;; skip 0xffffffff bounce prefix
+    if (in_msg_body.slice_bits() < 96) {
+        return ();
+    }
+    int bounced_op = in_msg_body~load_uint(32);
+    int query_id   = in_msg_body~load_uint(64);
+
+    if (bounced_op != op::tonstakers_deposit()) {
+        return ();
+    }
+
+    var (
+        admin_address, fee_recipient, fee_bps, paused, network_id, total_pending_escrow,
+        pool_address, router_jwallet_address, min_stake_nano, partner_code, timeout_sec,
+        total_principal_routed, total_fees_collected, total_tston_forwarded,
+        total_deposits_confirmed, total_deposits_refunded,
+        pending_deposits, completed_deposits, user_accounting
+    ) = load_router_data();
+
+    (slice pending_slice, int found) = pending_deposits~udict_delete_get?(64, query_id);
+    if (~ found) {
+        return ();
+    }
+
+    slice user_address   = pending_slice~load_msg_addr();
+    int   principal_nano = pending_slice~load_coins();
+    int   fee_nano       = pending_slice~load_coins();
+    int   extra_gas      = pending_slice~load_coins();
+
+    int escrow_release = fee_nano + extra_gas;
+    if (total_pending_escrow >= escrow_release) {
+        total_pending_escrow -= escrow_release;
+    } else {
+        total_pending_escrow = 0;
+    }
+
+    total_deposits_refunded += 1;
+    user_accounting = update_user_stats(
+        user_accounting,
+        user_address,
+        0,
+        0,
+        0,
+        principal_nano + fee_nano,
+        0
+    );
+
+    ;; Refund bounced value (principal + unused pool gas) + escrowed fee_nano + extra_gas to user_address.
+    ;; Zero fee is charged on bounced/failed deposits!
+    int refund_amount = msg_value + fee_nano + extra_gas;
+    var refund_msg = begin_cell()
+        .store_uint(0x10, 6) ;; non-bounceable so user wallet always receives refund
+        .store_slice(user_address)
+        .store_coins(refund_amount)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+        .store_uint(op::stake_refunded(), 32)
+        .store_uint(query_id, 64)
+        .store_coins(principal_nano)
+        .store_coins(fee_nano)
+        .end_cell();
+    send_raw_message(refund_msg, 1);
+
+    save_router_data(
+        admin_address, fee_recipient, fee_bps, paused, network_id, total_pending_escrow,
+        pool_address, router_jwallet_address, min_stake_nano, partner_code, timeout_sec,
+        total_principal_routed, total_fees_collected, total_tston_forwarded,
+        total_deposits_confirmed, total_deposits_refunded,
+        pending_deposits, completed_deposits, user_accounting
+    );
+}
+
+;; ── Main Internal Message Handler ──────────────────────────────────────────
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) {
+        handle_bounce(msg_value, in_msg_body);
+        return ();
+    }
+    if (in_msg_body.slice_empty?()) {
+        return (); ;; Accept top-up TON for storage rent
+    }
+
+    slice sender_address = cs~load_msg_addr();
+    int op       = in_msg_body~load_uint(32);
+    int query_id = in_msg_body~load_uint(64);
+
+    var (
+        admin_address, fee_recipient, fee_bps, paused, network_id, total_pending_escrow,
+        pool_address, router_jwallet_address, min_stake_nano, partner_code, timeout_sec,
+        total_principal_routed, total_fees_collected, total_tston_forwarded,
+        total_deposits_confirmed, total_deposits_refunded,
+        pending_deposits, completed_deposits, user_accounting
+    ) = load_router_data();
+
+    ;; ── 1. CLIENT STAKE DEPOSIT (Phase 1: Escrow Fee & Forward Principal) ──
+    if (op == op::router_stake()) {
+        throw_if(error::router_paused(), paused != 0);
+        throw_unless(error::invalid_query_id(), query_id > 0);
+        throw_if(error::jwallet_not_configured(), is_addr_none(router_jwallet_address));
+        throw_unless(error::invalid_fee_bps(), fee_bps == const::fee_bps_exact());
+
+        int principal_nano      = in_msg_body~load_coins();
+        int expected_network_id = in_msg_body~load_int(16);
+
+        throw_unless(error::wrong_network(), expected_network_id == network_id);
+        throw_unless(error::below_min_stake(), principal_nano >= min_stake_nano);
+
+        ;; Replay / collision protection
+        (_, int found_pending)   = udict_get?(pending_deposits, 64, query_id);
+        (_, int found_completed) = udict_get?(completed_deposits, 64, query_id);
+        throw_if(error::duplicate_query_id(), found_pending | found_completed);
+
+        ;; Exact integer fee calculation on-chain: feeNano = (principalNano * 35) / 10000
+        int fee_nano = muldiv(principal_nano, const::fee_bps_exact(), const::bps_denominator());
+
+        int min_required = principal_nano + fee_nano + const::pool_deposit_gas() + const::router_processing_gas();
+        throw_unless(error::insufficient_msg_value(), msg_value >= min_required);
+
+        int extra_gas = msg_value - min_required;
+
+        ;; Store pending deposit in escrow until tsTON mint notification arrives
+        builder pending_val = begin_cell()
+            .store_slice(sender_address)
+            .store_coins(principal_nano)
+            .store_coins(fee_nano)
+            .store_coins(extra_gas)
+            .store_uint(now(), 64);
+        pending_deposits~udict_set_builder(64, query_id, pending_val);
+
+        total_pending_escrow += (fee_nano + extra_gas);
+
+        ;; Forward principal_nano + 1.0 TON gas reserve to Tonstakers Pool with bounce=1
+        int pool_send_value = principal_nano + const::pool_deposit_gas();
+        var pool_msg = begin_cell()
+            .store_uint(0x18, 6) ;; bounce = true
+            .store_slice(pool_address)
+            .store_coins(pool_send_value)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(op::tonstakers_deposit(), 32)
+            .store_uint(query_id, 64)
+            .store_uint(partner_code, 64)
+            .end_cell();
+        send_raw_message(pool_msg, 1);
+
+        save_router_data(
+            admin_address, fee_recipient, fee_bps, paused, network_id, total_pending_escrow,
+            pool_address, router_jwallet_address, min_stake_nano, partner_code, timeout_sec,
+            total_principal_routed, total_fees_collected, total_tston_forwarded,
+            total_deposits_confirmed, total_deposits_refunded,
+            pending_deposits, completed_deposits, user_accounting
+        );
+        return ();
+    }
+
+    ;; ── 2. POOL MINT CONFIRMATION (Phase 2: Release Fee & Forward tsTON) ───
+    if (op == op::transfer_notification()) {
+        ;; Strictly verify sender is the Router's official tsTON Jetton Wallet
+        throw_unless(error::unauthorized_jwallet(), equal_slices(sender_address, router_jwallet_address));
+
+        int jetton_amount = in_msg_body~load_coins();
+        throw_unless(error::zero_minted_jettons(), jetton_amount > 0);
+
+        (slice pending_slice, int found) = pending_deposits~udict_delete_get?(64, query_id);
+        throw_unless(error::unknown_pending_deposit(), found);
+
+        slice user_address   = pending_slice~load_msg_addr();
+        int   principal_nano = pending_slice~load_coins();
+        int   fee_nano       = pending_slice~load_coins();
+        int   extra_gas      = pending_slice~load_coins();
+
+        int escrow_release = fee_nano + extra_gas;
+        if (total_pending_escrow >= escrow_release) {
+            total_pending_escrow -= escrow_release;
+        } else {
+            total_pending_escrow = 0;
+        }
+
+        ;; Record completed deposit so subsequent 0xd53276db (excesses) also routes to user_address
+        builder completed_val = begin_cell()
+            .store_slice(user_address)
+            .store_coins(principal_nano)
+            .store_coins(fee_nano)
+            .store_coins(jetton_amount)
+            .store_uint(now(), 64);
+        completed_deposits~udict_set_builder(64, query_id, completed_val);
+
+        ;; Update per-client and global accounting
+        user_accounting = update_user_stats(
+            user_accounting,
+            user_address,
+            principal_nano,
+            jetton_amount,
+            fee_nano,
+            0,
+            1
+        );
+        total_principal_routed   += principal_nano;
+        total_fees_collected     += fee_nano;
+        total_tston_forwarded    += jetton_amount;
+        total_deposits_confirmed += 1;
+
+        ;; 2A. Transfer 0.35% ANLGRAM fee to fee_recipient (UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd)
+        if (fee_nano > 0) {
+            var fee_msg = begin_cell()
+                .store_uint(0x10, 6) ;; non-bounceable to treasury wallet
+                .store_slice(fee_recipient)
+                .store_coins(fee_nano)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .store_uint(0, 32)
+                .store_slice("ANLGRAM Stake Fee 0.35%")
+                .end_cell();
+            send_raw_message(fee_msg, 1);
+        }
+
+        ;; 2B. Transfer 100% of minted tsTON directly to user_address
+        int transfer_ton_value = const::jetton_transfer_gas() + extra_gas;
+        cell transfer_body = begin_cell()
+            .store_uint(op::jetton_transfer(), 32)
+            .store_uint(query_id, 64)
+            .store_coins(jetton_amount)
+            .store_slice(user_address)            ;; destination: client wallet
+            .store_slice(user_address)            ;; response_destination: client receives excess gas
+            .store_uint(0, 1)                     ;; custom_payload: null
+            .store_coins(const::jetton_notify_gas())
+            .store_uint(0, 1)                     ;; forward_payload: empty inline
+            .end_cell();
+
+        var jetton_msg = begin_cell()
+            .store_uint(0x18, 6)
+            .store_slice(router_jwallet_address)
+            .store_coins(transfer_ton_value)
+            .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_ref(transfer_body)
+            .end_cell();
+        send_raw_message(jetton_msg, 1);
+
+        save_router_data(
+            admin_address, fee_recipient, fee_bps, paused, network_id, total_pending_escrow,
+            pool_address, router_jwallet_address, min_stake_nano, partner_code, timeout_sec,
+            total_principal_routed, total_fees_collected, total_tston_forwarded,
+            total_deposits_confirmed, total_deposits_refunded,
+            pending_deposits, completed_deposits, user_accounting
+        );
+        return ();
+    }
+
+    ;; ── 3. EXCESS GAS REFUND FORWARDING (0xd53276db) ───────────────────────
+    if (op == op::excesses()) {
+        (slice comp_slice, int found_comp) = udict_get?(completed_deposits, 64, query_id);
+        if (found_comp & (msg_value > const::min_forward_gas())) {
+            slice user_address = comp_slice~load_msg_addr();
+            var excess_msg = begin_cell()
+                .store_uint(0x10, 6)
+                .store_slice(user_address)
+                .store_coins(0)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .store_uint(op::excesses(), 32)
+                .store_uint(query_id, 64)
+                .end_cell();
+            send_raw_message(excess_msg, 64 + 2);
+        }
+        return ();
+    }
+
+    ;; ── 4. TIMEOUT ESCROW RECLAIM (If Pool Never Responded Within Timeout) ─
+    if (op == op::reclaim_timeout()) {
+        (slice pending_slice, int found) = pending_deposits~udict_delete_get?(64, query_id);
+        throw_unless(error::unknown_pending_deposit(), found);
+
+        slice user_address   = pending_slice~load_msg_addr();
+        int   principal_nano = pending_slice~load_coins();
+        int   fee_nano       = pending_slice~load_coins();
+        int   extra_gas      = pending_slice~load_coins();
+        int   created_at     = pending_slice~load_uint(64);
+
+        ;; Only the deposit owner (or admin sending to deposit owner) can trigger after timeout_sec
+        throw_unless(error::access_denied(), equal_slices(sender_address, user_address) | equal_slices(sender_address, admin_address));
+        throw_unless(error::timeout_not_reached(), now() >= (created_at + timeout_sec));
+
+        int escrow_release = fee_nano + extra_gas;
+        if (total_pending_escrow >= escrow_release) {
+            total_pending_escrow -= escrow_release;
+        } else {
+            total_pending_escrow = 0;
+        }
+
+        total_deposits_refunded += 1;
+        user_accounting = update_user_stats(
+            user_accounting,
+            user_address,
+            0,
+            0,
+            0,
+            fee_nano + extra_gas,
+            0
+        );
+
+        ;; Return escrowed fee + extra_gas + inbound msg_value strictly to user_address
+        var reclaim_msg = begin_cell()
+            .store_uint(0x10, 6)
+            .store_slice(user_address)
+            .store_coins(fee_nano + extra_gas + msg_value)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(op::stake_refunded(), 32)
+            .store_uint(query_id, 64)
+            .store_coins(principal_nano)
+            .store_coins(fee_nano)
+            .end_cell();
+        send_raw_message(reclaim_msg, 1);
+
+        save_router_data(
+            admin_address, fee_recipient, fee_bps, paused, network_id, total_pending_escrow,
+            pool_address, router_jwallet_address, min_stake_nano, partner_code, timeout_sec,
+            total_principal_routed, total_fees_collected, total_tston_forwarded,
+            total_deposits_confirmed, total_deposits_refunded,
+            pending_deposits, completed_deposits, user_accounting
+        );
+        return ();
+    }
+
+    ;; ── 5. ADMIN: CONFIGURE ROUTER tsTON JETTON WALLET ─────────────────────
+    if (op == op::set_router_jwallet()) {
+        throw_unless(error::access_denied(), equal_slices(sender_address, admin_address));
+        ;; Prevent changing router_jwallet_address while any deposit is pending
+        throw_unless(error::jwallet_locked(), dict_empty?(pending_deposits));
+        slice new_jwallet = in_msg_body~load_msg_addr();
+        throw_if(error::jwallet_not_configured(), is_addr_none(new_jwallet));
+        save_router_data(
+            admin_address, fee_recipient, fee_bps, paused, network_id, total_pending_escrow,
+            pool_address, new_jwallet, min_stake_nano, partner_code, timeout_sec,
+            total_principal_routed, total_fees_collected, total_tston_forwarded,
+            total_deposits_confirmed, total_deposits_refunded,
+            pending_deposits, completed_deposits, user_accounting
+        );
+        return ();
+    }
+
+    ;; ── 6. ADMIN: PAUSE / UNPAUSE NEW DEPOSITS ─────────────────────────────
+    if (op == op::set_paused()) {
+        throw_unless(error::access_denied(), equal_slices(sender_address, admin_address));
+        int new_paused = in_msg_body~load_uint(1);
+        save_router_data(
+            admin_address, fee_recipient, fee_bps, new_paused, network_id, total_pending_escrow,
+            pool_address, router_jwallet_address, min_stake_nano, partner_code, timeout_sec,
+            total_principal_routed, total_fees_collected, total_tston_forwarded,
+            total_deposits_confirmed, total_deposits_refunded,
+            pending_deposits, completed_deposits, user_accounting
+        );
+        return ();
+    }
+
+    throw(error::unknown_op());
+}
+
+;; ═══════════════════════════════════════════════════════════════════════════
+;; GET METHODS (Verifiable On-Chain State & Per-Client Accounting)
+;; ═══════════════════════════════════════════════════════════════════════════
+
+(slice, slice, int, int, int, int, slice, slice, int, int, int) get_router_config() method_id {
+    var (
+        admin_address, fee_recipient, fee_bps, paused, network_id, total_pending_escrow,
+        pool_address, router_jwallet_address, min_stake_nano, partner_code, timeout_sec,
+        _, _, _, _, _, _, _, _
+    ) = load_router_data();
+    return (
+        admin_address,
+        fee_recipient,
+        fee_bps,
+        paused,
+        network_id,
+        total_pending_escrow,
+        pool_address,
+        router_jwallet_address,
+        min_stake_nano,
+        partner_code,
+        timeout_sec
+    );
+}
+
+(int, int, int, int, int) get_router_stats() method_id {
+    var (
+        _, _, _, _, _, _,
+        _, _, _, _, _,
+        total_principal_routed, total_fees_collected, total_tston_forwarded,
+        total_deposits_confirmed, total_deposits_refunded,
+        _, _, _
+    ) = load_router_data();
+    return (
+        total_principal_routed,
+        total_fees_collected,
+        total_tston_forwarded,
+        total_deposits_confirmed,
+        total_deposits_refunded
+    );
+}
+
+(int, int) get_quote_for_principal(int principal_nano) method_id {
+    int fee_nano = muldiv(principal_nano, const::fee_bps_exact(), const::bps_denominator());
+    int min_total_nano = principal_nano + fee_nano + const::pool_deposit_gas() + const::router_processing_gas();
+    return (fee_nano, min_total_nano);
+}
+
+(int, slice, int, int, int, int) get_pending_deposit(int query_id) method_id {
+    var (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, pending_deposits, _, _) = load_router_data();
+    (slice s, int found) = udict_get?(pending_deposits, 64, query_id);
+    if (~ found) {
+        return (0, begin_cell().store_uint(0, 2).end_cell().begin_parse(), 0, 0, 0, 0);
+    }
+    slice user_address   = s~load_msg_addr();
+    int   principal_nano = s~load_coins();
+    int   fee_nano       = s~load_coins();
+    int   extra_gas      = s~load_coins();
+    int   created_at     = s~load_uint(64);
+    return (-1, user_address, principal_nano, fee_nano, extra_gas, created_at);
+}
+
+(int, slice, int, int, int, int) get_completed_deposit(int query_id) method_id {
+    var (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, completed_deposits, _) = load_router_data();
+    (slice s, int found) = udict_get?(completed_deposits, 64, query_id);
+    if (~ found) {
+        return (0, begin_cell().store_uint(0, 2).end_cell().begin_parse(), 0, 0, 0, 0);
+    }
+    slice user_address   = s~load_msg_addr();
+    int   principal_nano = s~load_coins();
+    int   fee_nano       = s~load_coins();
+    int   tston_nano     = s~load_coins();
+    int   completed_at   = s~load_uint(64);
+    return (-1, user_address, principal_nano, fee_nano, tston_nano, completed_at);
+}
+
+(int, int, int, int, int, int) get_user_accounting(slice user_address) method_id {
+    var (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, user_accounting) = load_router_data();
+    int key = slice_hash(user_address);
+    (slice s, int found) = udict_get?(user_accounting, 256, key);
+    if (~ found) {
+        return (0, 0, 0, 0, 0, 0);
+    }
+    s~load_msg_addr();
+    int principal_staked = s~load_coins();
+    int tston_received   = s~load_coins();
+    int fees_paid        = s~load_coins();
+    int refunded_amount  = s~load_coins();
+    int deposit_count    = s~load_uint(32);
+    return (-1, principal_staked, tston_received, fees_paid, refunded_amount, deposit_count);
+}

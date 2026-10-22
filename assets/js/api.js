@@ -350,13 +350,14 @@ async function fetchTonApi(endpoint) {
 
 /**
  * Get current TON price in USD from live public sources (TonAPI v2 -> CoinGecko)
+ * Returns null if live price is unavailable (never returns a fabricated fallback).
  */
-let _cachedTonPrice = 1.46;
+let _cachedTonPrice = null;
 let _cachedTonPriceTime = 0;
 
 async function getTonPrice() {
   const now = Date.now();
-  if (now - _cachedTonPriceTime < 15000 && _cachedTonPrice > 0) {
+  if (now - _cachedTonPriceTime < 15000 && _cachedTonPrice !== null && _cachedTonPrice > 0) {
     return _cachedTonPrice;
   }
 

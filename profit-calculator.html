@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#050c1e" />
+
+  <!-- SEO -->
+  <title>ANLGRAM ProfitLab | Crypto Profit Calculator</title>
+  <meta name="description" content="Cryptocurrency profit and return on investment (ROI) calculator. Simulate buy and sell scenarios with live market data, custom fees, and break-even calculations." />
+  <meta name="keywords" content="crypto calculator, crypto profit calculator, calculate crypto roi, bitcoin profit, ton profit, crypto simulator" />
+  <link rel="canonical" href="https://anlgram-labs.github.io/ANLGRAM/profit-calculator.html" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://testnet.tonapi.io https://*.tonapi.io https://toncenter.com https://testnet.toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="ANLGRAM ProfitLab | Crypto Profit Calculator" />
+  <meta property="og:description" content="Crypto profit and ROI calculator with real-time market data." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://anlgram-labs.github.io/ANLGRAM/profit-calculator.html" />
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
+  <link rel="shortcut icon" href="favicon.ico?v=2" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="assets/css/design-system.css" />
+  <link rel="stylesheet" href="assets/css/layout.css" />
+  <link rel="stylesheet" href="assets/css/animations.css" />
+
+  <style>
+    /* ── ProfitLab Custom Styles (Scoped strictly to this module) ── */
+    .profit-container {
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    .profit-hero-header {
+      background: linear-gradient(135deg, rgba(0,136,204,0.08) 0%, rgba(0,207,255,0.04) 50%, transparent 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 24px 28px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .profit-hero-header::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--ton-blue), var(--cyan), transparent);
+    }
+    .profit-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #fff 0%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+    .profit-subtitle {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--cyan);
+      margin-bottom: 8px;
+    }
+    .profit-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      max-width: 720px;
+      line-height: 1.5;
+    }
+
+    /* Grid Layout */
+    .profit-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 1024px) {
+      .profit-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Form Card */
+    .form-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+    .form-section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    /* Input controls */
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+    .form-help-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+    .input-addon-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-prefix {
+      position: absolute;
+      left: 12px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text-muted);
+      pointer-events: none;
+      font-size: 14px;
+    }
+    .input-field {
+      width: 100%;
+      height: 42px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 0 12px 0 28px;
+      color: var(--text-primary);
+      font-size: 15px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      transition: var(--transition-fast);
+    }
+    .input-field:focus {
+      outline: none;
+      border-color: var(--ton-blue);
+      box-shadow: 0 0 0 3px var(--ton-blue-dim);
+    }
+
+    /* Preset & Helper Buttons */
+    .btn-pill-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .btn-pill {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+    .btn-pill:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      background: var(--cyan-dim);
+    }
+    .btn-use-market {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ton-blue);
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0;
+      transition: color 0.15s;
+    }
+    .btn-use-market:hover:not(:disabled) {
+      color: var(--cyan);
+      text-decoration: underline;
+    }
+    .btn-use-market:disabled {
+      color: var(--text-muted);
+      cursor: not-allowed;
+      text-decoration: none;
+    }
+
+    /* Coin selector chips */
+    .coin-chips-wrap {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .coin-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+    .coin-chip:hover {
+      border-color: var(--border-accent);
+      color: var(--text-primary);
+    }
+    .coin-chip.active {
+      background: var(--ton-blue-dim);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 10px rgba(0,207,255,0.15);
+    }
+
+    /* Search Dropdown */
+    .search-dropdown-wrap {
+      position: relative;
+      margin-bottom: 12px;
+    }
+    .search-dropdown-input {
+      width: 100%;
+      height: 38px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 0 12px 0 34px;
+      color: var(--text-primary);
+      font-size: 13px;
+    }
+    .search-dropdown-input:focus {
+      outline: none;
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 2px var(--cyan-dim);
+    }
+    .search-icon-abs {
+      position: absolute;
+      left: 10px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .search-results-list {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0; right: 0;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-md);
+      max-height: 250px;
+      overflow-y: auto;
+      z-index: 100;
+      margin-top: 4px;
+      box-shadow: var(--shadow-lg);
+    }
+    .search-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .search-item:last-child { border-bottom: none; }
+    .search-item:hover { background: rgba(0,136,204,0.08); }
+    .search-item-icon {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; flex-shrink: 0;
+    }
+    .search-item-icon img { width: 100%; height: 100%; object-fit: cover; }
+    .search-item-info { display: flex; flex-direction: column; }
+    .search-item-name { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+    .search-item-symbol { font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); }
+    .search-empty, .search-loading {
+      padding: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .mini-spinner {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid var(--border-subtle);
+      border-top-color: var(--cyan);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    /* Live Market Badge */
+    .market-badge-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin-top: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .market-price-text {
+      font-size: 14px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+    }
+    .market-source-note {
+      font-size: 10px;
+      color: var(--text-muted);
+      width: 100%;
+      margin-top: 2px;
+    }
+
+    /* Result Summary Banner */
+    .calc-summary-card {
+      border-radius: var(--radius-xl);
+      padding: 24px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition-base);
+    }
+    .calc-summary-card.card-profit {
+      background: linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(10,24,54,0.8) 100%);
+      border: 1px solid rgba(34,197,94,0.35);
+      box-shadow: 0 8px 32px rgba(34,197,94,0.1);
+    }
+    .calc-summary-card.card-loss {
+      background: linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(10,24,54,0.8) 100%);
+      border: 1px solid rgba(239,68,68,0.35);
+      box-shadow: 0 8px 32px rgba(239,68,68,0.1);
+    }
+    .calc-summary-card.card-breakeven {
+      background: linear-gradient(135deg, rgba(0,207,255,0.08) 0%, rgba(10,24,54,0.8) 100%);
+      border: 1px solid var(--border-accent);
+    }
+    .calc-summary-card.card-invalid {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      opacity: 0.7;
+    }
+
+    .summary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .summary-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    .summary-amount {
+      font-size: 36px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+
+    /* Breakdown Grid */
+    .metrics-breakdown-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .metric-mini-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+    }
+    .metric-mini-lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .metric-mini-val {
+      font-size: 15px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+    }
+
+    /* Formulas Card */
+    .formula-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+    .formula-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .formula-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      line-height: 1.5;
+    }
+    .formula-item {
+      padding: 4px 6px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 4px;
+      border-left: 2px solid var(--ton-blue);
+    }
+
+    /* Disclaimer Card */
+    .disclaimer-card {
+      padding: 14px;
+      background: rgba(234,179,8,0.06);
+      border: 1px solid rgba(234,179,8,0.2);
+      border-radius: var(--radius-md);
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .disclaimer-card strong { color: #f59e0b; }
+
+    /* Fee Toggle */
+    .fee-toggle-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-default);
+      color: var(--text-muted);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .fee-toggle-btn.active {
+      background: var(--ton-blue-dim);
+      border-color: var(--ton-blue);
+      color: var(--cyan);
+    }
+
+    .error-alert-box {
+      display: none;
+      padding: 12px;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: var(--radius-md);
+      color: #fca5a5;
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ── Sidebar ────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar" aria-label="Main Navigation">
+    <a href="index.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon"><img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Logo"/></div>
+      <span class="sidebar-logo-text">ANLGRAM</span>
+    </a>
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Analytics</div>
+      <a href="dashboard.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="explorer.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Entity Explorer
+      </a>
+      <a href="visualizer.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        GRAM Terminal
+      </a>
+
+      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Enterprise</div>
+      <a href="memecoin-platform.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>
+        Memecoin Platform
+      </a>
+      <a href="staking.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Staking Center
+      </a>
+
+      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Intelligence</div>
+      <a href="intel-exchange.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Exchange Intel Hub
+      </a>
+      <a href="alerts.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Alerts
+      </a>
+
+      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Tools</div>
+      <a href="profit-calculator.html" class="nav-item active" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/></svg>
+        ProfitLab
+        <span class="nav-badge" style="background:rgba(0,207,255,0.15);color:var(--cyan);border:1px solid rgba(0,207,255,0.25);">CALC</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-network-badge">
+        <span class="dot-live" id="sidebarDot"></span>
+        <span id="sidebarNetworkText">TON Mainnet · Connected</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main Content Area ──────────────────────────────── -->
+  <main class="main-content" id="main-content">
+    <header class="topbar">
+      <div class="topbar-search">
+        <svg class="topbar-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="globalSearch" placeholder="Search TON addresses, tokens, TX hashes..." autocomplete="off"/>
+      </div>
+      <div class="topbar-actions">
+        <div class="topbar-price" title="TON Spot Price">
+          <span class="topbar-price-label">TON</span>
+          <span class="topbar-price-value" id="topbar-price">$1.35</span>
+          <span id="topbar-change" class="text-green" style="font-size:var(--text-xs);font-family:var(--font-mono);">+0.00%</span>
+        </div>
+        <div class="badge badge-muted" style="font-size:11px;padding:4px 8px;border:1px solid var(--border-subtle);">
+          Informative Mode
+        </div>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <div class="profit-container">
+
+        <!-- ── Page Hero Block ────────────────────────────── -->
+        <header class="profit-hero-header">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div class="badge badge-blue">ANLGRAM ENTERPRISE SUITE</div>
+            <span class="dot-live"></span>
+            <span style="font-size:11px;color:var(--green);font-weight:600;">LIVE FINANCIAL SIMULATOR</span>
+          </div>
+          <h1 class="profit-title">ANLGRAM ProfitLab</h1>
+          <div class="profit-subtitle">Crypto Profit Calculator</div>
+          <p class="profit-desc">
+            Model buy and sell scenarios for any available cryptocurrency with custom fees, return on investment (ROI) projections, and exact break-even calculations. All computations run 100% privately in your browser.
+          </p>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:14px;font-size:11px;color:var(--text-muted);flex-wrap:wrap;">
+            <span>🛡️ 100% Non-custodial & Private</span>
+            <span>·</span>
+            <span>🌐 Catalog powered by CoinGecko Public API v3</span>
+            <span>·</span>
+            <span>🧮 Transparent Financial Formulas</span>
+          </div>
+        </header>
+
+        <!-- Error Alert Container -->
+        <div id="calcErrorAlert" class="error-alert-box" role="alert" aria-live="assertive"></div>
+
+        <!-- ── Main Grid ──────────────────────────────────── -->
+        <div class="profit-grid">
+
+          <!-- ════ LEFT COLUMN: SIMULATION INPUTS ════ -->
+          <div class="profit-col-inputs">
+
+            <!-- Card 1: Asset Selection -->
+            <section class="form-section" aria-labelledby="sec-asset-title">
+              <h2 class="form-section-title" id="sec-asset-title">
+                <span>1. Cryptocurrency & Market Price</span>
+              </h2>
+
+              <!-- Popular Quick Access Chips -->
+              <div class="form-group">
+                <label class="form-label" id="popular-chips-label">Popular Quick Access</label>
+                <div class="coin-chips-wrap" role="group" aria-labelledby="popular-chips-label">
+                  <button type="button" class="coin-chip active" data-id="the-open-network" onclick="window.selectProfitCoin('the-open-network', 'Toncoin', 'TON')" aria-label="Select Toncoin">💎 TON</button>
+                  <button type="button" class="coin-chip" data-id="bitcoin" onclick="window.selectProfitCoin('bitcoin', 'Bitcoin', 'BTC')" aria-label="Select Bitcoin">₿ BTC</button>
+                  <button type="button" class="coin-chip" data-id="ethereum" onclick="window.selectProfitCoin('ethereum', 'Ethereum', 'ETH')" aria-label="Select Ethereum">Ξ ETH</button>
+                  <button type="button" class="coin-chip" data-id="solana" onclick="window.selectProfitCoin('solana', 'Solana', 'SOL')" aria-label="Select Solana">◎ SOL</button>
+                  <button type="button" class="coin-chip" data-id="binancecoin" onclick="window.selectProfitCoin('binancecoin', 'BNB', 'BNB')" aria-label="Select BNB">🟡 BNB</button>
+                  <button type="button" class="coin-chip" data-id="dogecoin" onclick="window.selectProfitCoin('dogecoin', 'Dogecoin', 'DOGE')" aria-label="Select Dogecoin">🐕 DOGE</button>
+                  <button type="button" class="coin-chip" data-id="ripple" onclick="window.selectProfitCoin('ripple', 'XRP', 'XRP')" aria-label="Select XRP">✕ XRP</button>
+                  <button type="button" class="coin-chip" data-id="sui" onclick="window.selectProfitCoin('sui', 'Sui', 'SUI')" aria-label="Select Sui">💧 SUI</button>
+                </div>
+              </div>
+
+              <!-- Search in Broad Catalog -->
+              <div class="form-group" style="margin-bottom:10px;">
+                <label class="form-label" for="coinSearchInput">Search broad catalog (Name or Symbol)</label>
+                <div class="search-dropdown-wrap" id="coinSearchWrap">
+                  <svg class="search-icon-abs" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  <input type="text" id="coinSearchInput" class="search-dropdown-input" placeholder="e.g. Pepe, Cardano, Tether, Notcoin..." autocomplete="off" aria-autocomplete="list" aria-controls="coinSearchResults"/>
+                  <div class="search-results-list" id="coinSearchResults" role="listbox"></div>
+                </div>
+                <div class="form-help-sub">
+                  The catalog and live quotes are provided by CoinGecko's public endpoint. It does not cover all world tokens, but includes thousands of verified assets.
+                </div>
+              </div>
+
+              <!-- Current Selected Asset & Live Price Card -->
+              <div class="market-badge-card" id="marketPriceBadgeWrap" role="region" aria-label="Asset market overview">
+                <div>
+                  <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Selected Asset</div>
+                  <div style="font-size:16px;font-weight:700;color:var(--text-primary);">
+                    <span id="selectedCoinName">Toncoin</span> (<span id="selectedCoinSymbol" style="color:var(--cyan);font-family:var(--font-mono);">TON</span>)
+                  </div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Benchmark Spot Price</div>
+                  <div class="market-price-text">
+                    <span id="marketPriceVal">Loading...</span>
+                    <span id="marketPriceChange" class="text-green" style="font-size:12px;"></span>
+                  </div>
+                </div>
+                <div class="market-source-note" id="marketDataSource">Querying market API...</div>
+              </div>
+            </section>
+
+            <!-- Card 2: Investment & Entry -->
+            <section class="form-section" aria-labelledby="sec-entry-title">
+              <h2 class="form-section-title" id="sec-entry-title">
+                <span>2. Entry Parameters (Buy)</span>
+              </h2>
+
+              <!-- Buy Price -->
+              <div class="form-group">
+                <div class="form-label">
+                  <label for="buyPriceInput">Buy price per unit (USD)</label>
+                  <button type="button" class="btn-use-market" id="useMarketPriceBuyBtn" onclick="window.loadMarketPriceToField('buy')" title="Load current market price">
+                    ⚡ Use current price
+                  </button>
+                </div>
+                <div class="input-addon-wrap">
+                  <span class="input-prefix">$</span>
+                  <input type="number" id="buyPriceInput" class="input-field" step="any" min="0.00000001" placeholder="0.00" required aria-required="true" />
+                </div>
+                <div class="form-help-sub">Unit purchase price in USD for each token or coin at execution.</div>
+              </div>
+
+              <!-- Invested Amount -->
+              <div class="form-group">
+                <label class="form-label" for="investedAmountInput">Invested amount in USD</label>
+                <div class="input-addon-wrap">
+                  <span class="input-prefix">$</span>
+                  <input type="number" id="investedAmountInput" class="input-field" step="any" min="0" placeholder="0.00" required aria-required="true" />
+                </div>
+                <div class="btn-pill-group">
+                  <button type="button" class="btn-pill" onclick="window.setInvestedPreset(100)">$100</button>
+                  <button type="button" class="btn-pill" onclick="window.setInvestedPreset(500)">$500</button>
+                  <button type="button" class="btn-pill" onclick="window.setInvestedPreset(1000)">$1,000</button>
+                  <button type="button" class="btn-pill" onclick="window.setInvestedPreset(5000)">$5,000</button>
+                  <button type="button" class="btn-pill" onclick="window.setInvestedPreset(10000)">$10,000</button>
+                </div>
+                <div class="form-help-sub" style="color:var(--text-secondary);margin-top:6px;">
+                  <strong>* Key Definition:</strong> Capital dedicated solely to acquiring the asset, <u>excluding</u> the buy fee.
+                </div>
+              </div>
+
+              <!-- Buy Fee -->
+              <div class="form-group" style="margin-bottom:0;">
+                <div class="form-label">
+                  <label for="buyFeeInput">Buy fee (USD)</label>
+                </div>
+                <div class="input-addon-wrap">
+                  <span class="input-prefix">$</span>
+                  <input type="number" id="buyFeeInput" class="input-field" step="any" min="0" placeholder="0.00" value="0" />
+                </div>
+                <div class="form-help-sub">Fixed brokerage or exchange fee charged upon executing the buy order.</div>
+              </div>
+            </section>
+
+            <!-- Card 3: Exit & Selling Target -->
+            <section class="form-section" aria-labelledby="sec-exit-title">
+              <h2 class="form-section-title" id="sec-exit-title">
+                <span>3. Exit Parameters (Sell)</span>
+              </h2>
+
+              <!-- Sell Price -->
+              <div class="form-group">
+                <div class="form-label">
+                  <label for="sellPriceInput">Target sell price per unit (USD)</label>
+                  <button type="button" class="btn-use-market" id="useMarketPriceSellBtn" onclick="window.loadMarketPriceToField('sell')" title="Load current market price">
+                    ⚡ Use current price
+                  </button>
+                </div>
+                <div class="input-addon-wrap">
+                  <span class="input-prefix">$</span>
+                  <input type="number" id="sellPriceInput" class="input-field" step="any" min="0" placeholder="0.00" required aria-required="true" />
+                </div>
+                <div class="btn-pill-group">
+                  <button type="button" class="btn-pill" onclick="window.applyTargetMultiplier(10)">+10%</button>
+                  <button type="button" class="btn-pill" onclick="window.applyTargetMultiplier(25)">+25%</button>
+                  <button type="button" class="btn-pill" onclick="window.applyTargetMultiplier(50)">+50%</button>
+                  <button type="button" class="btn-pill" onclick="window.applyTargetMultiplier(100)">+100% (2x)</button>
+                  <button type="button" class="btn-pill" onclick="window.applyTargetMultiplier(400)">+400% (5x)</button>
+                  <button type="button" class="btn-pill" onclick="window.applyTargetMultiplier(900)">+900% (10x)</button>
+                  <button type="button" class="btn-pill" style="border-color:var(--cyan);color:var(--cyan);" onclick="window.applyBreakEvenScenario()">Break-Even</button>
+                  <button type="button" class="btn-pill" style="border-color:var(--red);color:var(--red);" onclick="window.applyTotalLossScenario()">Total Loss ($0)</button>
+                </div>
+                <div class="form-help-sub">Projected target exit price. $0 is permitted to model total loss of capital.</div>
+              </div>
+
+              <!-- Sell Fee -->
+              <div class="form-group" style="margin-bottom:0;">
+                <div class="form-label">
+                  <label for="sellFeeInput">Sell fee (USD)</label>
+                </div>
+                <div class="input-addon-wrap">
+                  <span class="input-prefix">$</span>
+                  <input type="number" id="sellFeeInput" class="input-field" step="any" min="0" placeholder="0.00" value="0" />
+                </div>
+                <div class="form-help-sub">Exchange commission or network fee deducted upon liquidating or selling the position.</div>
+              </div>
+            </section>
+
+          </div><!-- /col-inputs -->
+
+          <!-- ════ RIGHT COLUMN: LIVE RESULTS & METRICS ════ -->
+          <div class="profit-col-results">
+
+            <!-- Summary Card -->
+            <div id="resultStatusBox" class="calc-summary-card card-profit" role="region" aria-live="polite" aria-label="Simulation results summary">
+              <div class="summary-header">
+                <span class="summary-title" id="resultMainTitle">Estimated Net Profit</span>
+                <span id="resultStatusBadge" class="badge badge-green">PROFITABLE SCENARIO</span>
+              </div>
+              <div class="summary-amount text-green" id="resultMainAmount">+0.00 USD</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.08);padding-top:12px;">
+                <span style="font-size:12px;color:var(--text-muted);font-weight:600;">Return on Investment (ROI):</span>
+                <span id="resultRoiBadge" class="badge badge-green" style="font-size:14px;padding:3px 10px;">+0.00% ROI</span>
+              </div>
+            </div>
+
+            <!-- Detailed Audit Breakdown Cards -->
+            <div class="metrics-breakdown-grid">
+              <div class="metric-mini-card">
+                <div class="metric-mini-lbl">Units Purchased</div>
+                <div class="metric-mini-val" id="resUnitsPurchased">0 TON</div>
+              </div>
+              <div class="metric-mini-card">
+                <div class="metric-mini-lbl">Total Entry Cost</div>
+                <div class="metric-mini-val" id="resTotalCost">$0.00 USD</div>
+              </div>
+              <div class="metric-mini-card">
+                <div class="metric-mini-lbl">Gross Sell Proceeds</div>
+                <div class="metric-mini-val" id="resGrossSell">$0.00 USD</div>
+              </div>
+              <div class="metric-mini-card">
+                <div class="metric-mini-lbl">Total Fees</div>
+                <div class="metric-mini-val" id="resTotalFees">$0.00 USD</div>
+              </div>
+              <div class="metric-mini-card">
+                <div class="metric-mini-lbl">Net Sell Proceeds</div>
+                <div class="metric-mini-val" id="resNetSell">$0.00 USD</div>
+              </div>
+              <div class="metric-mini-card">
+                <div class="metric-mini-lbl">Net Profit / Loss</div>
+                <div class="metric-mini-val text-green" id="resNetProfit">+$0.00 USD</div>
+              </div>
+              <div class="metric-mini-card">
+                <div class="metric-mini-lbl">Percentage ROI</div>
+                <div class="metric-mini-val text-green" id="resRoi">+0.00%</div>
+              </div>
+              <div class="metric-mini-card" style="border-color:var(--border-accent);">
+                <div class="metric-mini-lbl" style="color:var(--cyan);">Break-Even Price</div>
+                <div class="metric-mini-val text-cyan" id="resBreakEven">$0.00 USD</div>
+              </div>
+            </div>
+
+            <!-- Formulas Card (Mandatory Transparent Display) -->
+            <div class="formula-card">
+              <div class="formula-title">
+                <span>📐 Mathematical Formulas Applied</span>
+              </div>
+              <div class="formula-list">
+                <div class="formula-item">1. Units Purchased = Invested Amount ÷ Buy Price</div>
+                <div class="formula-item">2. Total Cost = Invested Amount + Buy Fee</div>
+                <div class="formula-item">3. Gross Sell Value = Units Purchased × Sell Price</div>
+                <div class="formula-item">4. Net Sell Proceeds = Gross Sell Value − Sell Fee</div>
+                <div class="formula-item">5. Net Profit / Loss = Net Sell Proceeds − Total Cost</div>
+                <div class="formula-item">6. ROI (%) = (Net Profit or Loss ÷ Total Cost) × 100</div>
+              </div>
+            </div>
+
+            <!-- Regulatory & Analytical Disclaimers -->
+            <div class="disclaimer-card" role="note">
+              <strong>⚠️ Informative Notice & Disclaimer:</strong>
+              This tool provides mathematical estimates strictly for educational and informational purposes. It does not execute orders on exchanges or transactions on blockchain networks. Projections do not account for price slippage, variable network gas fees not entered, local capital gains taxes, or sudden liquidity fluctuations. No output constitutes financial advice, a guarantee, or an investment recommendation.
+            </div>
+
+          </div><!-- /col-results -->
+
+        </div><!-- /profit-grid -->
+
+      </div><!-- /profit-container -->
+    </div><!-- /page-content -->
+  </main>
+</div><!-- /app-shell -->
+
+<!-- ── Scripts ────────────────────────────────────────── -->
+<script src="assets/js/security.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/platform.js"></script>
+<script src="assets/js/profit-calculator.js"></script>
+
+</body>
+</html>

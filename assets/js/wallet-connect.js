@@ -11,12 +11,17 @@
     return address.slice(0, 4) + '...' + address.slice(-4);
   }
 
-  async function fetchTonBalance(address) {
+  async function fetchTonBalance(address, networkOverride) {
     try {
-      const response = await fetch(`https://tonapi.io/v2/accounts/${address}`);
+      const net = networkOverride || localStorage.getItem('anlgram_wallet_network') || localStorage.getItem('anlgram_staking_network') || 'testnet';
+      const base = net === 'testnet' ? 'https://testnet.tonapi.io/v2' : 'https://tonapi.io/v2';
+      const response = await fetch(`${base}/accounts/${encodeURIComponent(address)}`);
       if (!response.ok) throw new Error('Network response error');
       const data = await response.json();
-      return (data.balance || 0) / 1000000000;
+      const balNano = BigInt(String(data.balance || 0).split('.')[0] || '0');
+      const whole = balNano / 1000000000n;
+      const frac = (balNano % 1000000000n).toString().padStart(9, '0').slice(0, 4);
+      return Number(`${whole}.${frac}`);
     } catch (e) {
       console.warn('Could not fetch TON balance directly:', e);
       return 0;
@@ -184,17 +189,26 @@
   window.connectManualAddress = function() {
     const input = document.getElementById('anlgram-manual-addr-input');
     const addr = input ? input.value.trim() : '';
-    if (!addr || addr.length < 10) {
+    if (!addr || addr.length < 10 || (typeof window.validateTonAddress === 'function' && !window.validateTonAddress(addr).valid)) {
       if (typeof window.showWalletToast === 'function') {
-        window.showWalletToast('Dirección Inválida', 'Por favor ingresa una dirección TON válida.', 3000);
+        window.showWalletToast('Dirección Inválida', 'Por favor ingresa una dirección TON válida con checksum CRC16 correcto.', 3000);
       }
       return;
     }
+    const isTestPrefix = addr.startsWith('kQ') || addr.startsWith('0Q');
+    const defaultNet = isTestPrefix ? 'testnet' : (localStorage.getItem('anlgram_staking_network') || 'testnet');
     // Manual pasted address is strictly Watch-Only / Read-Only. Cannot sign transactions.
-    window.setConnectedWallet(addr, 'Watch-Only (Read-Only)', 'mainnet', false);
+    window.setConnectedWallet(addr, 'Watch-Only (Read-Only)', defaultNet, false);
     if (typeof window.showWalletToast === 'function') {
       window.showWalletToast('Modo Observador', 'Dirección vinculada en modo solo lectura. Para firmar transacciones conecta vía TON Connect.', 4500);
     }
+  };
+
+  window.getConnectedWalletChainId = function() {
+    const rawChain = window.tonConnectUI?.wallet?.account?.chain;
+    if (rawChain === '-3' || rawChain === -3) return '-3';
+    if (rawChain === '-239' || rawChain === -239) return '-239';
+    return null;
   };
 
   window.isWalletReadyForTransaction = function() {
