@@ -1,0 +1,325 @@
+;; ═══════════════════════════════════════════════════════════
+;; ANLGRAM Factory Contract
+;; Version: 1.0.0
+;; 
+;; Responsibilities:
+;;   - Receive CREATE_JETTON from user (ONE transaction)
+;;   - Deploy Jetton Master (TEP-74 standard)
+;;   - Mint initial token supply to creator
+;;   - Send ANLGRAM platform service fee to treasury
+;;   - Refund unused TON to creator
+;;
+;; Storage layout:
+;;   factory_admin:MsgAddress
+;;   platform_treasury:MsgAddress
+;;   service_rate:uint16           ;; numerator (e.g. 70 = 70%)
+;;   paused:uint1
+;;   jetton_minter_code:^Cell
+;;   jetton_wallet_code:^Cell
+;; ═══════════════════════════════════════════════════════════
+
+#include "imports/stdlib.fc";
+#include "imports/params.fc";
+#pragma version >=0.2.0;
+
+;; ── Op Codes ────────────────────────────────────────────────
+;; User-facing
+int op::create_jetton()   asm "0x4e585a91 PUSHINT"; ;; crc32("create_jetton")
+;; Admin-only
+int op::update_config()   asm "0x9f72a1c3 PUSHINT"; ;; crc32("update_config")
+int op::pause()           asm "0x6a9d3b2e PUSHINT"; ;; crc32("pause_factory")
+int op::withdraw_excess()  asm "0x11223344 PUSHINT"; ;; admin safety: recover stuck TON
+
+;; ── Error Codes ─────────────────────────────────────────────
+int error::factory_paused()         asm "200 PUSHINT";
+int error::access_denied()          asm "201 PUSHINT";
+int error::insufficient_payment()   asm "202 PUSHINT";
+int error::invalid_op()             asm "203 PUSHINT";
+int error::invalid_address()        asm "204 PUSHINT";
+
+;; ── Constants ───────────────────────────────────────────────
+;; Gas reserves (nanotons)
+int const::factory_execution_gas()  asm "15000000 PUSHINT";  ;; 0.015 TON
+int const::deploy_gas()             asm "25000000 PUSHINT";  ;; 0.025 TON
+int const::mint_gas()               asm "80000000 PUSHINT";  ;; 0.080 TON  
+int const::treasury_send_gas()      asm "5000000  PUSHINT";  ;; 0.005 TON
+int const::min_balance()            asm "10000000 PUSHINT";  ;; 0.010 TON
+
+;; Minimum required incoming value (deploy + mint + factory exec)
+;; = 0.025 + 0.080 + 0.015 = 0.120 TON minimum
+int const::min_required_ton()       asm "120000000 PUSHINT"; ;; 0.120 TON
+
+;; ── Storage Helpers ──────────────────────────────────────────
+(slice, slice, int, int, cell, cell) load_data() inline {
+    slice ds = get_data().begin_parse();
+    return (
+        ds~load_msg_addr(),   ;; factory_admin
+        ds~load_msg_addr(),   ;; platform_treasury
+        ds~load_uint(16),     ;; service_rate (0-100)
+        ds~load_uint(1),      ;; paused
+        ds~load_ref(),        ;; jetton_minter_code
+        ds~load_ref()         ;; jetton_wallet_code
+    );
+}
+
+() save_data(slice admin, slice treasury, int rate, int paused, cell minter_code, cell wallet_code) impure inline {
+    set_data(begin_cell()
+        .store_slice(admin)
+        .store_slice(treasury)
+        .store_uint(rate, 16)
+        .store_uint(paused, 1)
+        .store_ref(minter_code)
+        .store_ref(wallet_code)
+        .end_cell()
+    );
+}
+
+;; ── TEP-64 On-Chain Metadata Builder ────────────────────────
+;; Builds the metadata cell compatible with standard Jetton Minter
+cell build_onchain_metadata(slice name, slice symbol, slice description, slice image) inline {
+    ;; Simple snake-encoded metadata cell
+    ;; Using reference to separate cells for each field to avoid cell overflow
+    return begin_cell()
+        .store_uint(0x00, 8)  ;; on-chain content prefix
+        .store_ref(
+            begin_cell()
+                .store_slice(name)
+                .end_cell()
+        )
+        .store_ref(
+            begin_cell()
+                .store_slice(symbol)
+                .end_cell()
+        )
+        .store_ref(
+            begin_cell()
+                .store_slice(description)
+                .end_cell()
+        )
+        .store_ref(
+            begin_cell()
+                .store_slice(image)
+                .end_cell()
+        )
+        .end_cell();
+}
+
+;; ── Jetton State Init Builder ────────────────────────────────
+;; Constructs the stateInit for the new Jetton Master contract
+cell build_jetton_state_init(slice owner_address, cell metadata, cell minter_code, cell wallet_code) inline {
+    cell minter_data = begin_cell()
+        .store_coins(0)
+        .store_slice(owner_address)
+        .store_ref(metadata)
+        .store_ref(wallet_code)
+        .end_cell();
+    
+    return begin_cell()
+        .store_uint(0, 2)
+        .store_dict(minter_code)
+        .store_dict(minter_data)
+        .store_uint(0, 1)
+        .end_cell();
+}
+
+;; ── Address Calculator ───────────────────────────────────────
+slice calculate_jetton_master_address(cell state_init) inline {
+    return begin_cell()
+        .store_uint(4, 3)   ;; addr_std$10 + anycast=0 (2+1 bits)
+        .store_uint(0, 8)   ;; workchain = 0
+        .store_uint(cell_hash(state_init), 256)
+        .end_cell()
+        .begin_parse();
+}
+
+;; ── Main Receive Handler ─────────────────────────────────────
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) {
+        return (); ;; Accept plain TON transfers (rent payments, etc.)
+    }
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) {
+        return (); ;; Ignore bounced messages
+    }
+    slice sender_address = cs~load_msg_addr();
+
+    int op = in_msg_body~load_uint(32);
+    int query_id = in_msg_body~load_uint(64);
+
+    (slice admin, slice treasury, int rate, int paused, cell minter_code, cell wallet_code) = load_data();
+
+    ;; ── CREATE_JETTON ────────────────────────────────────────
+    if (op == op::create_jetton()) {
+        ;; 1. Check factory is not paused
+        throw_if(error::factory_paused(), paused);
+
+        ;; 2. Validate minimum payment
+        throw_unless(error::insufficient_payment(), msg_value >= const::min_required_ton());
+
+        ;; 3. Parse creation parameters
+        slice name        = in_msg_body~load_ref().begin_parse();
+        slice symbol      = in_msg_body~load_ref().begin_parse();
+        slice description = in_msg_body~load_ref().begin_parse();
+        slice image       = in_msg_body~load_ref().begin_parse();
+        int   decimals    = in_msg_body~load_uint(8);
+        int   total_supply = in_msg_body~load_coins();
+        slice owner_addr  = in_msg_body~load_msg_addr();
+        ;; creation_id is optional trailing data (ignored by contract, just for tx tracing)
+
+        ;; 4. Calculate platform fee (integer arithmetic only)
+        ;; platform_fee = (msg_value - execution_costs) * rate / 100
+        ;; We calculate from a fixed base: the blockchain portion is what's left
+        ;; after our execution reserves and the platform fee.
+        ;;
+        ;; Safe formula:
+        ;; blockchain_budget = const::deploy_gas() + const::mint_gas()  [= 0.105 TON]
+        ;; platform_fee = blockchain_budget * rate / 100                 [= 0.0735 TON at 70%]
+        ;; required_total = blockchain_budget + platform_fee             [= ~0.178 TON]
+        ;;
+        ;; HOWEVER: we use msg_value to keep it flexible.
+        ;; We reserve execution gas for the factory itself first.
+        ;;
+        ;; Available for distribution = msg_value - factory_execution_gas
+        int available = msg_value - const::factory_execution_gas();
+        
+        ;; platform_fee = available * rate / 100 (integer division)
+        int platform_fee = muldiv(available, rate, 100);
+        
+        ;; blockchain_budget = available - platform_fee
+        int blockchain_budget = available - platform_fee;
+        
+        ;; Validate blockchain_budget is enough for deploy + mint
+        throw_unless(error::insufficient_payment(),
+            blockchain_budget >= (const::deploy_gas() + const::mint_gas()));
+
+        ;; 5. Build Jetton metadata cell
+        cell metadata = build_onchain_metadata(name, symbol, description, image);
+
+        ;; 6. Build Jetton Master stateInit
+        ;; IMPORTANT: owner_addr is the CREATOR (not the factory)
+        ;; Factory is NOT the admin of the Jetton
+        cell state_init = build_jetton_state_init(owner_addr, metadata, minter_code, wallet_code);
+
+        ;; 7. Calculate Jetton Master address
+        slice jetton_master_addr = calculate_jetton_master_address(state_init);
+
+        ;; 8. Deploy Jetton Master (send stateInit to computed address)
+        ;; Mode 1 = pay transfer fees separately + revert on error
+        var deploy_msg = begin_cell()
+            .store_uint(0x18, 6)          ;; bounce=1, ihr_disabled=1
+            .store_slice(jetton_master_addr)
+            .store_coins(const::deploy_gas())
+            .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)  ;; with stateInit
+            .store_ref(state_init)
+            ;; no payload needed - minter initializes from stateInit data
+            .end_cell();
+        send_raw_message(deploy_msg, 1);
+
+        ;; 9. Build mint payload (op=21, standard jetton-minter.fc)
+        ;; forward_payload for the wallet creation
+        cell forward_payload = begin_cell()
+            .store_uint(0, 32)
+            .store_slice("ANLGRAM Launchpad")
+            .end_cell();
+        
+        cell internal_transfer = begin_cell()
+            .store_uint(0x178d4519, 32)   ;; op::internal_transfer
+            .store_uint(query_id, 64)
+            .store_coins(total_supply)    ;; jetton_amount
+            .store_uint(0, 2)             ;; from = addr_none (minter itself)
+            .store_slice(owner_addr)      ;; response_destination = creator
+            .store_coins(20000000)        ;; forward_ton_amount = 0.02 TON
+            .store_uint(1, 1)             ;; forward_payload is ref
+            .store_ref(forward_payload)
+            .end_cell();
+
+        cell mint_payload = begin_cell()
+            .store_uint(21, 32)           ;; op::mint (standard)
+            .store_uint(query_id, 64)
+            .store_slice(owner_addr)      ;; to_address = creator
+            .store_coins(80000000)        ;; ton_amount for wallet creation 0.08
+            .store_ref(internal_transfer)
+            .end_cell();
+
+        ;; 10. Send mint message to Jetton Master
+        var mint_msg = begin_cell()
+            .store_uint(0x18, 6)
+            .store_slice(jetton_master_addr)
+            .store_coins(const::mint_gas())
+            .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)  ;; payload is ref
+            .store_ref(mint_payload)
+            .end_cell();
+        send_raw_message(mint_msg, 1);
+
+        ;; 11. Send platform service fee to treasury
+        ;; Mode 1 = pay from msg_value remainder. nobounce (treasury always accepts)
+        var treasury_msg = begin_cell()
+            .store_uint(0x10, 6)          ;; no bounce (treasury always ready)
+            .store_slice(treasury)
+            .store_coins(platform_fee)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            ;; comment: "ANLGRAM Platform Service"
+            .store_uint(0, 32)
+            .store_slice("ANLGRAM Service")
+            .end_cell();
+        send_raw_message(treasury_msg, 1);
+
+        ;; 12. Refund excess TON to creator
+        ;; Mode 128 = send remaining balance, mode 2 = ignore errors on this msg
+        ;; This returns everything left in the factory after all outgoing messages
+        var refund_msg = begin_cell()
+            .store_uint(0x10, 6)
+            .store_slice(sender_address)
+            .store_coins(0)               ;; 0 = use mode 128 (remaining balance)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(0xd53276db, 32)   ;; op::excesses
+            .store_uint(query_id, 64)
+            .end_cell();
+        send_raw_message(refund_msg, 128 + 2); ;; 128 = send all remaining, 2 = ignore errors
+
+        return ();
+    }
+
+    ;; ── UPDATE CONFIG (Admin Only) ────────────────────────────
+    if (op == op::update_config()) {
+        throw_unless(error::access_denied(), equal_slices(sender_address, admin));
+        slice new_treasury = in_msg_body~load_msg_addr();
+        int   new_rate     = in_msg_body~load_uint(16);
+        int   new_paused   = in_msg_body~load_uint(1);
+        save_data(admin, new_treasury, new_rate, new_paused, minter_code, wallet_code);
+        return ();
+    }
+
+    ;; ── PAUSE/UNPAUSE (Admin Only) ───────────────────────────
+    if (op == op::pause()) {
+        throw_unless(error::access_denied(), equal_slices(sender_address, admin));
+        int new_paused = in_msg_body~load_uint(1);
+        save_data(admin, treasury, rate, new_paused, minter_code, wallet_code);
+        return ();
+    }
+
+    ;; ── WITHDRAW EXCESS (Admin Only — emergency) ─────────────
+    if (op == op::withdraw_excess()) {
+        throw_unless(error::access_denied(), equal_slices(sender_address, admin));
+        ;; Send all factory balance back to admin (for stuck-funds recovery)
+        var recover_msg = begin_cell()
+            .store_uint(0x10, 6)
+            .store_slice(admin)
+            .store_coins(0)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .end_cell();
+        send_raw_message(recover_msg, 128);
+        return ();
+    }
+
+    ;; ── Unknown op ───────────────────────────────────────────
+    throw(error::invalid_op());
+}
+
+;; ── GET Methods ──────────────────────────────────────────────
+(slice, slice, int, int) get_factory_data() method_id {
+    (slice admin, slice treasury, int rate, int paused, _, _) = load_data();
+    return (admin, treasury, rate, paused);
+}
