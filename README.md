@@ -21,7 +21,7 @@
 ## 🌐 Live Preview & Production Deployment
 
 * **Official Production App:** [https://anlgram-labs.github.io/ANLGRAM/](https://anlgram-labs.github.io/ANLGRAM/)
-* **Flow Visualizer (Bubblemaps):** [https://anlgram-labs.github.io/ANLGRAM/visualizer.html](https://anlgram-labs.github.io/ANLGRAM/visualizer.html)
+* **Wallet Cluster Explorer:** [https://anlgram-labs.github.io/ANLGRAM/visualizer.html](https://anlgram-labs.github.io/ANLGRAM/visualizer.html)
 * **Local Preview:** Open `index.html` directly in any web browser.
 
 ## 📁 Project Structure

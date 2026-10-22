@@ -1,9 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ANLGRAM | Bubblemaps v2 TON Edition</title>
+  <title>ANLGRAM | Wallet Cluster Explorer</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
   
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
@@ -13,9 +14,14 @@
   <!-- Shared Design System & Layout -->
   <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
+  <link rel="stylesheet" href="assets/css/gram-terminal-v2.css?v=2026.42"/>
   
-  <link rel="stylesheet" href="assets/css/gram-terminal-v2.css?v=2026.39"/>
+  <!-- D3.js Visualization Engine -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
+  
+  <!-- ANLGRAM Universal On-Chain Security & API Engine -->
+  <script src="assets/js/security.js"></script>
+  <script src="assets/js/api.js?v=2026.40"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -38,8 +44,8 @@
         Entity Explorer
       </a>
       <a href="visualizer.html" class="nav-item active">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-        GRAM Terminal
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="5" cy="18" r="2"/><path d="M10 10.5 6.5 7.5M14 10.5l3.5-3M10 13.5l-3.5 3M14 13.5l3.5 3"/></svg>
+        Wallet Cluster Explorer
       </a>
 
       <div class="sidebar-section-label" style="margin-top:var(--space-3);">Enterprise</div>
@@ -74,71 +80,147 @@
 
   <main class="main-content" style="position: relative; padding: 0;">
 
-  <!-- Internal Fixed Header for the Terminal -->
-  <header class="app-header">    
-    <div class="header-center">
-      <div class="search-bar">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" placeholder="Search token or contract address on TON...">
+    <!-- Fixed Header -->
+    <header class="app-header">    
+      <div class="header-center">
+        <div class="search-bar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="token-search-input" placeholder="Search token symbol, name, or master contract address (EQ... / 0:...)...">
+          <button id="search-clear-btn" class="search-clear-btn" title="Clear search">&times;</button>
+        </div>
       </div>
-    </div>
-    
-    <div class="header-right">
-      <button class="btn-connect" style="margin-left:auto;">Connect Wallet</button>
-    </div>
-  </header>
+      
+      <div class="header-right">
+        <div id="header-sync-status" class="header-sync-badge" title="Click to view Indexer Health & Logs">
+          <span class="dot-live"></span>
+          <span>Indexer: Live · Ready</span>
+        </div>
+        <button class="btn-connect">Connect Wallet</button>
+      </div>
+    </header>
 
-  <div class="app-container">
-    
-    <!-- State A: Trending List (v2.bubblemaps.io/ton replica) -->
-    <div id="view-list" class="view-list">
-      <div class="list-container">
-        <h1 class="list-title">Explore TON Ecosystem</h1>
-        <p class="list-subtitle">Analyze top tokens and discover connections on the TON blockchain.</p>
-        
-        <div class="table-container">
-          <div class="table-header">
-            <div class="col-rank">#</div>
-            <div class="col-token">Token</div>
-            <div class="col-price">Price</div>
-            <div class="col-24h">24h</div>
-            <div class="col-mcap">Market Cap</div>
-            <div class="col-vol">Volume (24h)</div>
-            <div class="col-action"></div>
+    <div class="app-container">
+      
+      <!-- STATE A: Token Discovery & Index Catalog -->
+      <div id="view-list" class="view-list">
+        <div class="list-container">
+          <div class="list-header-row">
+            <div>
+              <h1 class="list-title">ANLGRAM Wallet Cluster Explorer</h1>
+              <p class="list-subtitle">Live On-Chain Jetton Discovery, Relationship Topology & Cluster Intelligence on The Open Network.</p>
+            </div>
           </div>
-          <div id="token-list-body" class="table-body">
-            <!-- JS injects rows here -->
+
+          <!-- Coverage Limitations Notice -->
+          <div class="coverage-banner">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <div>
+              <strong>TON Ecosystem Indexing Coverage Notice:</strong> TON supports open, permissionless minting with over 50,000 community Jettons. The catalog below indexes verified ecosystem tokens and cached queries. To analyze any Jetton not displayed, enter its exact <strong>Master Contract Address</strong> in the search bar above to index it live from the TON blockchain.
+            </div>
+          </div>
+
+          <!-- Catalog Toolbar -->
+          <div class="catalog-toolbar">
+            <div class="filter-tabs">
+              <button class="filter-tab active" data-filter="all">All Indexed Tokens</button>
+              <button class="filter-tab" data-filter="verified">Verified Whitelist Only</button>
+              <button class="filter-tab" data-filter="unverified">Community / Unverified</button>
+            </div>
+
+            <div class="toolbar-controls">
+              <div class="sort-select-wrap">
+                <span>Sort by:</span>
+                <select id="sort-select" class="sort-select">
+                  <option value="marketCap">Market Cap</option>
+                  <option value="volume">24h Volume</option>
+                  <option value="holders">Holder Count</option>
+                  <option value="price">Price (USD)</option>
+                  <option value="change24h">24h Change</option>
+                  <option value="name">Token Name</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Table Container -->
+          <div class="table-container">
+            <div class="table-header">
+              <div class="col-rank">#</div>
+              <div class="col-token">Token</div>
+              <div class="col-price">Price</div>
+              <div class="col-24h">24h Change</div>
+              <div class="col-mcap">Market Cap</div>
+              <div class="col-vol">Volume (24h)</div>
+              <div class="col-holders">Holders</div>
+              <div class="col-last-indexed">Last Indexed</div>
+              <div class="col-action"></div>
+            </div>
+            <div id="token-list-body" class="table-body">
+              <!-- Dynamically populated rows -->
+            </div>
+            <div id="catalog-pagination" class="pagination-bar">
+              <!-- Pagination controls injected by JS -->
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- State B: Fullscreen Map (v2.bubblemaps.io/map replica) -->
-    <div id="view-map" class="view-map" style="display: none;">
-      
-      <!-- D3 Canvas Container -->
-      <div id="bubble-map-container" class="bubble-map-canvas">
-        <!-- Tooltip -->
-        <div id="bubble-tooltip" class="bubble-tooltip" style="display: none;"></div>
-      </div>
-      
-      <!-- UI Controls Overlay -->
-      <div class="map-overlay">
+      <!-- STATE B: Fullscreen Interactive Wallet Cluster Map -->
+      <div id="view-map" class="view-map" style="display: none;">
         
-        <!-- Top Left: Back Button -->
-        <button id="btn-back" class="btn-glass back-button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-          Back to List
-        </button>
+        <!-- D3 Canvas Container -->
+        <div id="bubble-map-container" class="bubble-map-canvas">
+          <!-- Hover Tooltip -->
+          <div id="bubble-tooltip" class="bubble-tooltip" style="display: none;"></div>
+        </div>
+        
+        <!-- Top Controls Overlay -->
+        <div class="map-top-bar">
+          <div class="map-top-group-left">
+            <button id="btn-back" class="back-button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+              Back to Token Catalog
+            </button>
+            <select id="cluster-filter-select" class="map-control-select" title="Filter by Cluster">
+              <option value="all">All Wallets</option>
+            </select>
+            <select id="graph-holder-limit" class="map-control-select" title="Holder Set Limit">
+              <option value="20">Top 20 Holders</option>
+              <option value="30" selected>Top 30 Holders</option>
+              <option value="50">Top 50 Holders</option>
+            </select>
+          </div>
 
-        <!-- Left Panel: Token Context -->
+          <div class="map-top-group-right">
+            <input type="text" id="graph-wallet-search" class="map-search-input" placeholder="Search address in graph (Enter)..."/>
+            <button id="btn-open-token-details" class="btn-intelligence">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              Token Intelligence
+            </button>
+          </div>
+        </div>
+
+        <!-- Meta Summary Banner -->
+        <div id="graph-meta-banner" class="map-meta-banner">
+          Window: Recent 50 on-chain events · Sampling holders...
+        </div>
+
+        <!-- Common Control Disclaimer Banner -->
+        <div class="map-disclaimer-banner">
+          <strong>Graph Rule:</strong> Connected clusters reflect observed peer transfers within recent 50 on-chain events. <em>Notice: Interaction ≠ Common Control. Shared funding and transfer patterns are evidence of interaction, not proof of common beneficial ownership.</em>
+        </div>
+
+        <!-- Left Floating Panel: Token Context & Legend -->
         <div class="panel-left floating-panel">
           <div class="panel-token-header">
-            <img id="map-logo" src="" alt="Logo" class="panel-logo">
+            <img id="map-logo" src="" alt="Token Logo" class="panel-logo">
             <div class="panel-token-titles">
               <div id="map-name" class="panel-name">Token Name</div>
               <div id="map-ticker" class="panel-ticker">TICKER</div>
             </div>
+          </div>
+          <div style="margin-top:2px; margin-bottom:12px;">
+            <span id="map-datasource-badge" class="status-badge-live">LIVE ON-CHAIN TOPOLOGY</span>
           </div>
           
           <div class="panel-stats">
@@ -147,48 +229,65 @@
               <span id="map-price" class="data-font">$0.00</span>
             </div>
             <div class="stat-row">
-              <span>Contract</span>
-              <span id="map-contract" class="data-font" style="font-size: 10px; color: var(--text-electric); cursor: pointer;" title="Copy Contract">N/A</span>
+              <span>Master Contract</span>
+              <span id="map-contract" class="data-font" style="font-size: 11px; color: var(--color-cyan); cursor: pointer;" title="Click to copy contract">N/A</span>
             </div>
             <div class="stat-row">
               <span>Market Cap</span>
               <span id="map-mcap" class="data-font">$0.00</span>
             </div>
             <div class="stat-row">
-              <span>Holders</span>
+              <span>Indexed Holders</span>
               <span id="map-holders" class="data-font">0</span>
             </div>
           </div>
 
           <div class="panel-legend">
-            <div class="legend-title">Legend</div>
-            <div class="legend-item"><span class="color-dot" style="background:#d500f9;"></span> Top Holders</div>
-            <div class="legend-item"><span class="color-dot" style="background:#651fff;"></span> CEX</div>
-            <div class="legend-item"><span class="color-dot" style="background:#00e5ff;"></span> Liquidity Pools</div>
-            <div class="legend-item"><span class="color-dot" style="background:#ff9100;"></span> Insiders</div>
-            <div class="legend-item"><span class="color-dot" style="background:#b388ff;"></span> Retail</div>
+            <div class="legend-title">Entity Categories & Tiers</div>
+
+            <div class="legend-item"><span class="color-dot" style="background:#00D2FF; box-shadow:0 0 8px #00D2FF80;"></span> Connected Cluster Node</div>
+            <div class="legend-item"><span class="color-dot" style="background:#8B5CF6; box-shadow:0 0 8px #8B5CF680;"></span> Verified Exchange (CEX)</div>
+            <div class="legend-item"><span class="color-dot" style="background:#10B981; box-shadow:0 0 8px #10B98180;"></span> DEX Liquidity Pool / AMM</div>
+            <div class="legend-item"><span class="color-dot" style="background:#FF2E93; box-shadow:0 0 8px #FF2E9380;"></span> Mega Whale (&gt; 15% Supply)</div>
+            <div class="legend-item"><span class="color-dot" style="background:#F43F5E; box-shadow:0 0 8px #F43F5E80;"></span> Major Whale (7.5% – 15%)</div>
+            <div class="legend-item"><span class="color-dot" style="background:#FFB703; box-shadow:0 0 8px #FFB70380;"></span> Shark (3% – 7.5%)</div>
+            <div class="legend-item"><span class="color-dot" style="background:#3B82F6; box-shadow:0 0 8px #3B82F680;"></span> Standard Holder (&lt; 3%)</div>
+            <div class="legend-item"><span class="color-dot" style="background:#F59E0B; box-shadow:0 0 8px #F59E0B80;"></span> Master Contract / Mint</div>
+            <div class="legend-item"><span class="color-dot" style="background:#64748B; box-shadow:0 0 8px #64748B80;"></span> Burn Address</div>
           </div>
         </div>
 
-        <!-- Right Panel: Wallet Details (Hidden initially) -->
+        <!-- Right Floating Panel: Wallet & Cluster Investigation -->
         <div id="panel-wallet" class="panel-right floating-panel" style="display: none;">
-          <div class="wallet-type" id="wallet-badge">Wallet</div>
+          <div class="panel-header-row">
+            <div class="wallet-type" id="wallet-badge">Wallet</div>
+            <button id="btn-close-wallet-panel" class="btn-close-panel" title="Close panel">&times;</button>
+          </div>
+          
           <div class="wallet-address data-font" id="wallet-address">EQ...</div>
           
-          <div class="panel-stats mt-3">
+          <div class="panel-stats">
             <div class="stat-row">
               <span>Balance</span>
               <span id="wallet-balance" class="data-font">0</span>
             </div>
             <div class="stat-row">
-              <span>% of Supply</span>
-              <span id="wallet-supply" class="data-font text-electric">0.00%</span>
+              <span>Share of Tracked</span>
+              <span id="wallet-supply" class="data-font text-cyan">0.00%</span>
             </div>
           </div>
 
-          <div class="wallet-actions">
+          <div id="wallet-cluster-info" class="cluster-info-box">
+            <!-- Cluster affiliation injected by JS -->
+          </div>
+
+          <div id="wallet-transfers-evidence">
+            <!-- Observed transfers injected by JS -->
+          </div>
+
+          <div class="wallet-actions" style="margin-top:16px;">
             <button id="btn-copy-address" class="btn-primary w-full">Copy Address</button>
-            <button id="btn-view-explorer" class="btn-secondary w-full mt-2">View on Explorer</button>
+            <button id="btn-view-explorer" class="btn-secondary w-full mt-2">View on Tonviewer ↗</button>
           </div>
         </div>
 
@@ -204,11 +303,218 @@
         </div>
 
       </div>
+
     </div>
 
   </main>
 </div>
 
-  <script src="assets/js/gram-terminal-v2.js?v=2026.39"></script>
+<!-- =========================================================================
+     MODAL: Token Details & Intelligence Drawer
+     ========================================================================= -->
+<div id="modal-token-details" class="modal-backdrop" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <img id="dt-token-logo" src="" alt="Token Logo" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="dt-token-name" class="modal-title">Token Name</span>
+            <span id="dt-token-badge" class="badge-ver badge-verified">VERIFIED</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-secondary);">
+            <span id="dt-token-symbol" class="data-font" style="color:var(--color-cyan); font-weight:600;">SYMBOL</span> · 
+            <span id="dt-token-contract" class="data-font" style="cursor: pointer; color: #fff;" title="Click to copy contract">EQ...</span>
+          </div>
+        </div>
+      </div>
+      <button class="modal-close">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Key Statistics -->
+      <div class="dt-stats-grid">
+        <div class="dt-stat-card">
+          <div class="dt-stat-label">Market Price</div>
+          <div id="dt-token-price" class="dt-stat-val data-font">$0.00</div>
+        </div>
+        <div class="dt-stat-card">
+          <div class="dt-stat-label">On-Chain Holders (TonAPI)</div>
+          <div id="dt-token-holders" class="dt-stat-val data-font">0</div>
+        </div>
+        <div class="dt-stat-card">
+          <div class="dt-stat-label">Total Supply</div>
+          <div id="dt-token-supply" class="dt-stat-val data-font" style="font-size:0.95rem;">--</div>
+        </div>
+        <div class="dt-stat-card">
+          <div class="dt-stat-label">Market Cap / 24h Vol</div>
+          <div class="dt-stat-val data-font" style="font-size:0.95rem;">
+            <span id="dt-token-mcap">N/A</span> / <span id="dt-token-vol">N/A</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Verification & Logo Provenance -->
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: 10px; padding: 12px 16px; margin-bottom: 24px; font-size: 0.85rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <span style="color: var(--text-secondary);">Logo Asset Provenance:</span>
+          <span id="dt-logo-source" style="color: var(--color-cyan); font-weight: 500;">Verified On-Chain Metadata URI</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">External Explorers:</span>
+          <div>
+            <a id="dt-link-tonviewer" href="#" target="_blank" style="color:var(--color-electric-blue); margin-right: 12px; font-weight:600; text-decoration:none;">Tonviewer ↗</a>
+            <a id="dt-link-tonscan" href="#" target="_blank" style="color:var(--color-electric-blue); font-weight:600; text-decoration:none;">Tonscan ↗</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Holder Concentration Metrics -->
+      <div style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
+        Holder Concentration & Governance Risk
+      </div>
+      <div class="conc-grid">
+        <div class="conc-card">
+          <div style="font-size: 11px; color: var(--text-secondary);">Top 5 Share</div>
+          <div id="dt-top5-share" class="val data-font">0.0%</div>
+          <div style="font-size: 10px; color: var(--text-muted);">of tracked supply</div>
+        </div>
+        <div class="conc-card">
+          <div style="font-size: 11px; color: var(--text-secondary);">Top 10 Share</div>
+          <div id="dt-top10-share" class="val data-font">0.0%</div>
+          <div style="font-size: 10px; color: var(--text-muted);">of tracked supply</div>
+        </div>
+        <div class="conc-card">
+          <div style="font-size: 11px; color: var(--text-secondary);">Top 20 Share</div>
+          <div id="dt-top20-share" class="val data-font">0.0%</div>
+          <div style="font-size: 10px; color: var(--text-muted);">of tracked supply</div>
+        </div>
+        <div class="conc-card">
+          <div style="font-size: 11px; color: var(--text-secondary);">Concentration Tier</div>
+          <div id="dt-concentration-level" class="val" style="font-size: 0.95rem; line-height: 1.8;">MODERATE</div>
+          <div style="font-size: 10px; color: var(--text-muted);">calculated rating</div>
+        </div>
+      </div>
+
+      <!-- Top Holders Table -->
+      <div style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px;">
+        Top Ranked Holders (On-Chain Snapshot)
+      </div>
+      <div style="overflow-x: auto; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+        <table class="dt-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Holder Address</th>
+              <th>Category Evidence</th>
+              <th>Balance</th>
+              <th>% of Tracked</th>
+            </tr>
+          </thead>
+          <tbody id="dt-holders-tbody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Recent Transfers (Peer-to-Peer) -->
+      <div style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin: 24px 0 8px;">
+        Observed Peer Transfers (Recent Events)
+      </div>
+      <div style="overflow-x: auto; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+        <table class="dt-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Sender</th>
+              <th>Recipient</th>
+              <th>Amount</th>
+              <th>Transaction</th>
+            </tr>
+          </thead>
+          <tbody id="dt-transfers-tbody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- DEX Swaps (Classified Trades) -->
+      <div style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin: 24px 0 8px;">
+        Verified DEX Trades (AMM Router Traces)
+      </div>
+      <div style="overflow-x: auto; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+        <table class="dt-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>DEX Protocol</th>
+              <th>Trader Wallet</th>
+              <th>Estimated Volume</th>
+              <th>Trace</th>
+            </tr>
+          </thead>
+          <tbody id="dt-trades-tbody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: Indexer Health & Failure Inspector
+     ========================================================================= -->
+<div id="modal-indexer-health" class="modal-backdrop" style="display: none;">
+  <div class="modal-content" style="max-width: 680px;">
+    <div class="modal-header">
+      <div class="modal-title">TON Indexer Engine Health & Inspector</div>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Provider Statuses -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;">
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: 8px; padding: 12px;">
+          <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">TonAPI v2 Gateway</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+            <span id="status-tonapi" style="font-weight: 700; color: var(--color-green);">OPERATIONAL</span>
+            <span id="latency-tonapi" class="data-font" style="font-size: 12px; color: var(--text-muted);">--</span>
+          </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: 8px; padding: 12px;">
+          <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">STON.fi DEX Price Feeds</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+            <span style="font-weight: 700; color: var(--color-green);">OPERATIONAL</span>
+            <span class="data-font" style="font-size: 12px; color: var(--text-muted);">Active</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Force Index Form -->
+      <div style="background: rgba(0, 152, 234, 0.06); border: 1px solid var(--border-glass); border-radius: 10px; padding: 14px; margin-bottom: 20px;">
+        <div style="font-size: 0.85rem; font-weight: 600; color: #fff; margin-bottom: 6px;">Index Custom Jetton Master Contract</div>
+        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">
+          Enter a 48-character user-friendly or raw hexadecimal TON Jetton Master contract to query on-chain data:
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="input-custom-contract" placeholder="EQ... or 0:..." style="flex:1; background:rgba(0,0,0,0.3); border:1px solid var(--border-glass); border-radius:6px; padding:8px 12px; color:#fff; font-family:var(--font-data); font-size:0.85rem; outline:none;"/>
+          <button id="btn-submit-custom-index" class="btn-primary" style="padding: 8px 18px; border-radius: 6px; font-size: 0.85rem;">Index</button>
+        </div>
+      </div>
+
+      <!-- Activity & Error Logs -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px;">Indexer Activity & Error Logs</span>
+        <button id="btn-retry-indexing" class="btn-secondary" style="padding: 4px 10px; font-size: 11px; border-radius: 4px;">Trigger Live Sync</button>
+      </div>
+      <div id="indexer-logs-list" class="logs-list">
+        <!-- Log entries populated by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- Rebuilt Universal Wallet Cluster Explorer Engine -->
+  <script src="assets/js/wallet-cluster-explorer.js?v=2026.42"></script>
 </body>
 </html>

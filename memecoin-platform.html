@@ -12,6 +12,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Memecoin Platform (Enterprise) — ANLGRAM</title>
   <meta name="description" content="Enterprise-grade TON/GRAM Memecoin Platform"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
@@ -19,6 +20,8 @@
   <link rel="shortcut icon" href="favicon.ico?v=2"/>
   <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
+  <script src="assets/js/security.js"></script>
+  <script src="assets/js/api.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="assets/js/web3-integration.js?v=2"></script>
 
@@ -762,7 +765,8 @@
       const name = document.getElementById('lp-name').value || 'Memecoin';
       const symbol = document.getElementById('lp-symbol').value || 'MEME';
       const desc = document.getElementById('lp-desc').value || 'A new Jetton on TON.';
-      const logo = document.getElementById('lp-logo').value || 'https://anlgram.io/logo.png';
+      const rawLogo = document.getElementById('lp-logo').value || 'https://anlgram.io/logo.png';
+    const logo = typeof sanitizeUrl === 'function' ? sanitizeUrl(rawLogo, 'https://anlgram.io/logo.png') : rawLogo;
   
       const origHTML = btn.innerHTML;
       btn.innerHTML = '<span class="status-dot"></span> Construyendo Metadatos (TEP-64)...';
@@ -1347,9 +1351,12 @@
         const isRenounced = !!localStorage.getItem(renouncedKey);
 
         const renouncedLabel = isRenounced ? ' 🔒 [RENOUNCED]' : '';
-        const optionStyle = isRenounced ? 'color:#ff8888;' : '';
+        const safeName = typeof escapeHtml === 'function' ? escapeHtml(name) : name;
+        const safeSymbol = typeof escapeHtml === 'function' ? escapeHtml(symbol) : symbol;
+        const safeMinter = typeof escapeHtml === 'function' ? escapeHtml(minterAddr) : minterAddr;
+        const rawSymbol3 = (symbol || '').replace(/[^a-zA-Z0-9]/g, '').substring(0, 3) || 'TOK';
 
-        optionsHTML += `<option value="${minterAddr}" style="${optionStyle}">${name} (${symbol}) - Bal: ${formattedBal}${renouncedLabel}</option>`;
+        optionsHTML += `<option value="${safeMinter}" style="${optionStyle}">${safeName} (${safeSymbol}) - Bal: ${formattedBal}${renouncedLabel}</option>`;
 
         const shortAddr = minterAddr.substring(0, 8) + '...' + minterAddr.slice(-6);
         const renouncedBadge = isRenounced
@@ -1360,10 +1367,10 @@
           <tr>
             <td>
               <div class="token-cell">
-                <div class="token-icon">${symbol.substring(0,3)}</div>
+                <div class="token-icon">${rawSymbol3}</div>
                 <div>
-                  <div style="font-weight:600;">${name} ${renouncedBadge}</div>
-                  <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">${shortAddr}</div>
+                  <div style="font-weight:600;">${safeName} ${renouncedBadge}</div>
+                  <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">${escapeHtml(shortAddr)}</div>
                 </div>
               </div>
             </td>
@@ -1371,8 +1378,8 @@
             <td style="font-family:var(--font-mono);">-</td>
             <td style="font-family:var(--font-mono);">${formattedBal}</td>
             <td style="white-space: nowrap;">
-              <button class="btn-ent" style="padding:4px 12px;font-size:11px;" onclick="window.open('https://tonscan.org/address/${minterAddr}','_blank')">Explorer ↗</button>
-              <button class="btn-solid" style="padding:4px 12px;font-size:11px; margin-left: 4px;" onclick="copyToken('${name}', '${symbol}')">Copy</button>
+              <button class="btn-ent" style="padding:4px 12px;font-size:11px;" onclick="window.open('https://tonscan.org/address/${encodeURIComponent(minterAddr)}','_blank')">Explorer ↗</button>
+              <button class="btn-solid" style="padding:4px 12px;font-size:11px; margin-left: 4px;" data-name="${safeName}" data-symbol="${safeSymbol}" onclick="copyToken(this.getAttribute('data-name'), this.getAttribute('data-symbol'))">Copy</button>
             </td>
           </tr>
         `;
@@ -1497,7 +1504,7 @@
   window.TON_CORE = { beginCell, toNano, Address, storeStateInit, Dictionary, Cell, contractAddress };
 </script>
 
-<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
 <script src="assets/js/wallet-connect.js?v=2026.35"></script>
 <script src="assets/js/launchpad.js?v=1.0.0"></script>
 </body>

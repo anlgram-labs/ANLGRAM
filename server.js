@@ -9,28 +9,49 @@ const MIME_TYPES = {
   '.json': 'application/json',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
   '.svg': 'image/svg+xml'
 };
 
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://testnet.tonapi.io https://*.tonapi.io https://toncenter.com https://testnet.toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"
+};
+
 const server = http.createServer((req, res) => {
-  // Remove query params
-  const cleanUrl = req.url.split('?')[0];
-  let filePath = path.join(__dirname, cleanUrl === '/' ? 'index.html' : cleanUrl);
+  // Remove query params and decode URI safely
+  let cleanUrl = req.url.split('?')[0];
+  try {
+    cleanUrl = decodeURIComponent(cleanUrl);
+  } catch (e) {
+    res.writeHead(400, { 'Content-Type': 'text/plain', ...SECURITY_HEADERS });
+    res.end('Bad Request');
+    return;
+  }
+
+  const safePath = path.normalize(cleanUrl).replace(/^(\.\.[\/\\])+/, '');
+  let filePath = path.resolve(__dirname, safePath === '/' || safePath === '\\' ? 'index.html' : '.' + safePath);
   
   // Safe directory check
   if (!filePath.startsWith(__dirname)) {
-    res.writeHead(403);
+    res.writeHead(403, { 'Content-Type': 'text/plain', ...SECURITY_HEADERS });
     res.end('Forbidden');
     return;
   }
 
   fs.readFile(filePath, (err, content) => {
     if (err) {
-      res.writeHead(404);
+      res.writeHead(404, { 'Content-Type': 'text/plain', ...SECURITY_HEADERS });
       res.end('File not found');
     } else {
       const ext = path.extname(filePath);
-      res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] || 'text/plain' });
+      res.writeHead(200, {
+        'Content-Type': MIME_TYPES[ext] || 'text/plain',
+        ...SECURITY_HEADERS
+      });
       res.end(content);
     }
   });

@@ -10,6 +10,7 @@
   <meta name="description" content="Institutional-grade TON staking analytics. Compare validators, track rewards, analyze risks, and stake securely — all in one Bloomberg-grade platform." />
   <meta name="keywords" content="TON staking, TON validator, TON rewards, DeFi, cryptocurrency staking, blockchain analytics" />
   <link rel="canonical" href="https://anlgram-labs.github.io/ANLGRAM/staking.html" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://testnet.tonapi.io https://*.tonapi.io https://toncenter.com https://testnet.toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
 
   <!-- Open Graph -->
   <meta property="og:title" content="TON Staking Intelligence Center | ANLGRAM Enterprise" />
@@ -844,9 +845,14 @@
 
     <!-- Network Status Badge -->
     <div class="sidebar-footer">
-      <div style="display:flex;align-items:center;gap:7px;padding:10px 16px;background:rgba(0,136,204,0.06);border-radius:8px;border:1px solid var(--border-subtle);">
-        <span class="dot-live" style="width:7px;height:7px;"></span>
-        <span style="font-size:11px;font-weight:600;" id="network-badge-label">TON Mainnet</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(0,136,204,0.06);border-radius:8px;border:1px solid var(--border-subtle);gap:8px;">
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span class="dot-live" id="sidebar-net-dot" style="width:7px;height:7px;background:#f59e0b;box-shadow:0 0 6px #f59e0b;"></span>
+          <span style="font-size:11px;font-weight:600;color:#f59e0b;" id="network-badge-label">TON Testnet</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 8px;height:24px;" onclick="window.switchStakingNetwork?.(window.StakingState?.get('activeNetwork') === 'testnet' ? 'mainnet' : 'testnet')" aria-label="Toggle network">
+          Switch
+        </button>
       </div>
     </div>
   </aside><!-- /sidebar -->
@@ -870,6 +876,15 @@
       </div>
 
       <div class="topbar-right">
+        <!-- Network Switcher Pill -->
+        <div class="network-switcher-pill" style="display:flex;align-items:center;gap:6px;padding:3px 10px;background:rgba(0,136,204,0.08);border:1px solid var(--border-subtle);border-radius:20px;">
+          <span style="font-size:10px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Net:</span>
+          <select id="topbar-network-select" onchange="window.switchStakingNetwork?.(this.value)" style="background:transparent;border:none;color:var(--cyan);font-size:11px;font-weight:700;font-family:var(--font-mono);cursor:pointer;outline:none;" aria-label="Select Staking Network">
+            <option value="testnet" style="background:#0a1226;color:#f59e0b;">Testnet (Live Verified)</option>
+            <option value="mainnet" style="background:#0a1226;color:#22c55e;">Mainnet (Audit Hold)</option>
+          </select>
+        </div>
+
         <!-- TON Price -->
         <div style="display:flex;align-items:center;gap:6px;padding:0 12px;font-size:12px;color:var(--text-secondary);">
           <span style="font-size:14px;">💎</span>
@@ -1300,6 +1315,10 @@
                 <canvas id="calc-chart" aria-label="Reward growth chart" role="img"></canvas>
               </div>
             </div>
+
+            <div style="margin-top:12px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:8px;padding:12px 14px;font-size:11px;color:var(--text-muted);line-height:1.5;">
+              <span>⚠️ <strong>Risk &amp; Variable Yield Notice:</strong> Staking yields are variable and subject to network validation cycles, validator performance, and election parameters (historical observation date: April 2026). While nominal TON rewards accumulate over time, fluctuations in the market price of TON can result in net fiat (USD/EUR) losses. Liquid staking tokens (tsTON/stTON) may also fluctuate relative to secondary market liquidity. Slashing penalties may apply in the event of validator misbehavior or prolonged downtime.</span>
+            </div>
           </div>
 
         </div><!-- /calc-grid -->
@@ -1609,6 +1628,8 @@
           <a href="https://tonviewer.com" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">🔍 Tonviewer Explorer</a>
           <a href="https://tonscan.org" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">📊 TonScan</a>
           <a href="https://docs.ton.org/participate/network-maintenance/nominators" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">📋 Staking Guide</a>
+          <a href="terms.html" class="btn btn-ghost btn-sm">📜 Terms of Service</a>
+          <a href="privacy.html" class="btn btn-ghost btn-sm">🛡️ Privacy Policy</a>
         </div>
       </section><!-- /news -->
 
@@ -1667,6 +1688,9 @@
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
         <div style="padding:6px 10px;background:var(--bg-secondary);border-radius:6px;font-size:11px;">
+          Protocol: <strong id="stake-val-protocol" style="color:var(--cyan);">—</strong>
+        </div>
+        <div style="padding:6px 10px;background:var(--bg-secondary);border-radius:6px;font-size:11px;">
           APR: <strong id="stake-val-apr" style="color:#22c55e;">—</strong>
         </div>
         <div style="padding:6px 10px;background:var(--bg-secondary);border-radius:6px;font-size:11px;">
@@ -1677,66 +1701,84 @@
         </div>
       </div>
 
-      <label class="form-label" for="stake-amount-input">Enter Amount</label>
-      <div class="amount-wrap">
-        <input type="number" id="stake-amount-input" class="amount-input"
-               placeholder="0.00" min="0" step="0.01" autocomplete="off"
-               aria-label="TON amount to stake" aria-describedby="stake-amount-hint" />
-        <span class="amount-suffix" aria-hidden="true">TON</span>
-      </div>
-      <div class="amount-hint" id="stake-amount-hint">
-        <span id="stake-max-display">Connect wallet to see balance</span>
-        <span class="amount-max" onclick="StakeModalController.setMax()" tabindex="0" role="button" aria-label="Use maximum available balance">Use Max</span>
-      </div>
-      <div class="amount-error" id="stake-amount-error" role="alert"></div>
-      <div style="margin-top:12px;font-size:11px;color:var(--text-secondary);">
-        Est. rewards: <span id="stake-reward-preview" style="color:#22c55e;font-weight:600;">—</span>
+      <div id="stake-unsupported-alert" style="display:none;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:#fca5a5;line-height:1.5;">
+        <strong>⚠️ Unsupported Delegation Contract:</strong> This validator operates as a standalone node without a public nominator delegation contract. Direct wallet transfers do NOT create a staking position and will not earn rewards. Direct staking is disabled to protect user funds.
       </div>
 
-      <div class="modal-warning" role="note">
-        <span>⚠️</span>
-        <span>Always verify the validator address before signing. Your funds will be locked for the pool's cycle period. Staking involves market risks.</span>
+      <div id="stake-supported-content">
+        <label class="form-label" for="stake-amount-input">Enter Amount</label>
+        <div class="amount-wrap">
+          <input type="number" id="stake-amount-input" class="amount-input"
+                 placeholder="0.00" min="0" step="0.01" autocomplete="off"
+                 aria-label="TON amount to stake" aria-describedby="stake-amount-hint" />
+          <span class="amount-suffix" aria-hidden="true">TON</span>
+        </div>
+        <div class="amount-hint" id="stake-amount-hint">
+          <span id="stake-max-display">Connect wallet to see balance</span>
+          <span class="amount-max" onclick="StakeModalController.setMax()" tabindex="0" role="button" aria-label="Use maximum available balance">Use Max</span>
+        </div>
+        <div class="amount-error" id="stake-amount-error" role="alert"></div>
+        <div style="margin-top:12px;font-size:11px;color:var(--text-secondary);">
+          Est. rewards: <span id="stake-reward-preview" style="color:#22c55e;font-weight:600;">—</span>
+        </div>
+
+        <div class="modal-warning" role="note">
+          <span>🛡️</span>
+          <span>Funds are deposited directly into the verified pool smart contract. Never send TON to personal wallet addresses for staking.</span>
+        </div>
       </div>
 
       <div class="modal-actions">
         <button class="btn btn-ghost" style="flex:1;" onclick="StakeModalController.close()">Cancel</button>
-        <button class="btn btn-primary" style="flex:2;" onclick="StakeModalController.confirmStake()" aria-label="Review staking transaction">Review →</button>
+        <button class="btn btn-primary" style="flex:2;" id="stake-review-btn" onclick="StakeModalController.confirmStake()" aria-label="Review staking transaction">Review →</button>
       </div>
     </div>
 
     <!-- Step 2: Confirmation -->
     <div id="stake-step-2" style="display:none;">
       <h2 class="modal-title">Review &amp; Confirm</h2>
-      <p class="modal-sub">Verify all details before signing with your wallet.</p>
+      <p class="modal-sub">Verify contract details before signing with your wallet.</p>
 
       <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:14px;">
         <div class="modal-row">
-          <span class="modal-row-label">Validator</span>
+          <span class="modal-row-label">Validator / Pool</span>
           <span class="modal-row-value" id="stake-confirm-validator">—</span>
+        </div>
+        <div class="modal-row">
+          <span class="modal-row-label">Protocol Type</span>
+          <span class="modal-row-value" id="stake-confirm-protocol" style="color:var(--cyan);">—</span>
+        </div>
+        <div class="modal-row">
+          <span class="modal-row-label">Verified Contract</span>
+          <span class="modal-row-value td-mono" id="stake-confirm-contract" style="font-size:11px;color:var(--text-muted);">—</span>
         </div>
         <div class="modal-divider"></div>
         <div class="modal-row">
           <span class="modal-row-label">Amount</span>
-          <span class="modal-row-value" id="stake-confirm-amount" style="color:var(--cyan);">—</span>
+          <span class="modal-row-value" id="stake-confirm-amount" style="color:var(--cyan);font-weight:700;">—</span>
         </div>
         <div class="modal-row">
-          <span class="modal-row-label">Expected APR</span>
+          <span class="modal-row-label">Expected APR (Variable)</span>
           <span class="modal-row-value" id="stake-confirm-apr" style="color:#22c55e;">—</span>
         </div>
         <div class="modal-row">
           <span class="modal-row-label">Estimated Annual Reward</span>
           <span class="modal-row-value" id="stake-confirm-annual">—</span>
         </div>
+        <div class="modal-row">
+          <span class="modal-row-label">Lock / Unstake Terms</span>
+          <span class="modal-row-value" id="stake-confirm-lock" style="font-size:11px;">—</span>
+        </div>
         <div class="modal-divider"></div>
         <div class="modal-row">
-          <span class="modal-row-label">Network Fee</span>
+          <span class="modal-row-label">Network Fee Est.</span>
           <span class="modal-row-value" id="stake-confirm-fee">~0.050 TON</span>
         </div>
       </div>
 
       <div class="modal-warning" role="note">
         <span>🔒</span>
-        <span>Your wallet will prompt you to sign. Never share your seed phrase. ANLGRAM never stores private keys or transaction data.</span>
+        <span>Your TON wallet will prompt you to review and sign. ANLGRAM never has access to your private keys or seed phrase.</span>
       </div>
 
       <div class="modal-actions">
@@ -1748,18 +1790,18 @@
     <!-- Step 3: Success -->
     <div id="stake-step-3" style="display:none;">
       <div class="tx-success">
-        <span class="tx-success-icon" aria-hidden="true">✅</span>
-        <div class="tx-success-title">Transaction Broadcast!</div>
-        <div class="tx-success-sub">Your TON delegation has been signed and broadcast to the TON blockchain.<br>It will be confirmed within the next block cycle (~5 seconds).</div>
+        <span class="tx-success-icon" id="stake-tx-icon" aria-hidden="true">⏳</span>
+        <div class="tx-success-title" id="stake-tx-title">Broadcasting Transaction...</div>
+        <div class="tx-success-sub" id="stake-tx-sub">Awaiting confirmation on the TON blockchain.</div>
         <div style="margin-top:14px;background:var(--bg-secondary);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 14px;text-align:left;">
-          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">TRANSACTION HASH</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;" id="stake-tx-hash-label">TRANSACTION / EVENT HASH</div>
           <div style="font-family:monospace;font-size:11px;color:var(--cyan);word-break:break-all;" id="stake-tx-hash">Confirming on-chain...</div>
           <a id="stake-tx-link" href="#" target="_blank" rel="noopener"
              style="display:inline-block;margin-top:6px;font-size:11px;color:var(--accent);text-decoration:none;">
             🔗 View on Tonviewer →
           </a>
         </div>
-        <button class="btn btn-primary" style="margin-top:20px;" onclick="StakeModalController.close()">Done</button>
+        <button class="btn btn-primary" style="margin-top:20px;" id="stake-tx-done-btn" onclick="StakeModalController.close()">Done</button>
       </div>
     </div>
 
@@ -1787,13 +1829,13 @@
       </div>
       <div class="modal-row">
         <span class="modal-row-label">Network Fee</span>
-        <span class="modal-row-value">~0.050 TON</span>
+        <span class="modal-row-value">~0.200 TON (Gas attached)</span>
       </div>
     </div>
 
     <div class="modal-warning" role="note">
       <span>⚠️</span>
-      <span>Unstaking typically requires 36–48 hours unlock delay on TON Network. Your rewards will be automatically claimed. You will stop earning APR immediately after signing.</span>
+      <span id="unstake-warning-text">For native nominator pools, unstaking initiates a full withdrawal that unlocks at the end of the current validation cycle (~36–48h). Funds will return automatically to your wallet.</span>
     </div>
 
     <div class="modal-actions">
@@ -1809,13 +1851,17 @@
 <div id="claim-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="claim-modal-title">
   <div class="modal-glass" onclick="event.stopPropagation()">
     <button class="modal-close-top" onclick="document.getElementById('claim-modal').classList.remove('open')" aria-label="Close">✕</button>
-    <h2 class="modal-title" id="claim-modal-title">💰 Claim Rewards</h2>
-    <p class="modal-sub">Withdraw accumulated rewards from <strong id="claim-validator-name">—</strong></p>
+    <h2 class="modal-title" id="claim-modal-title">💰 Staking Rewards</h2>
+    <p class="modal-sub">Reward status for <strong id="claim-validator-name">—</strong></p>
 
     <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:14px;margin-bottom:16px;">
       <div class="modal-row">
-        <span class="modal-row-label">Claimable Amount</span>
+        <span class="modal-row-label">Ready for Withdrawal</span>
         <span class="modal-row-value" style="color:#22c55e;" id="claim-amount">— TON</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">Reward Mode</span>
+        <span class="modal-row-value" id="claim-reward-mode" style="color:var(--cyan);">Auto-Compounding</span>
       </div>
       <div class="modal-row">
         <span class="modal-row-label">Estimated Fee</span>
@@ -1823,9 +1869,13 @@
       </div>
     </div>
 
+    <div id="claim-explainer-box" style="background:var(--bg-secondary);border:1px solid var(--border-subtle);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--text-secondary);line-height:1.5;">
+      💡 On TON Blockchain, staking rewards auto-compound directly into your principal balance at the end of each validation cycle (~18–36 hours). There is no manual claiming required to maximize APR. If you have unlocked funds ready from an earlier withdrawal request, you can claim them below.
+    </div>
+
     <div class="modal-actions">
-      <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('claim-modal').classList.remove('open')">Cancel</button>
-      <button class="btn btn-primary" style="flex:2;" onclick="document.getElementById('claim-modal').classList.remove('open');NotificationService.toast('Claim Submitted','Reward claim has been broadcast.',`success`)">💰 Claim Rewards</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('claim-modal').classList.remove('open')">Close</button>
+      <button class="btn btn-primary" style="flex:2;" id="claim-action-btn" onclick="RewardService.executeClaim()">Claim Ready Funds</button>
     </div>
   </div>
 </div><!-- /claim-modal -->
@@ -1973,6 +2023,12 @@
 ════════════════════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
+<script type="module">
+  import { beginCell, toNano, Address, Cell } from 'https://esm.sh/@ton/core';
+  window.TON_CORE = { beginCell, toNano, Address, Cell };
+  window.dispatchEvent(new CustomEvent('tonCoreReady', { detail: window.TON_CORE }));
+</script>
+<script src="assets/js/security.js"></script>
 <script src="assets/js/api.js"></script>
 <script src="assets/js/wallet-connect.js"></script>
 <script src="assets/js/staking.js"></script>

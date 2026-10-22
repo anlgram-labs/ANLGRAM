@@ -1247,6 +1247,7 @@ if (!document.getElementById('notificationsModal')) {
 
   window.applyAnlgramSettings = function() {
     const settings = JSON.parse(localStorage.getItem('anlgram_user_settings') || '{}');
+    const theme = settings.theme || 'cyberpunk';
     const root = document.documentElement;
 
     // Accent Color

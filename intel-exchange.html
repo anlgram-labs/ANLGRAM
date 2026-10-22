@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ANLGRAM | Intel Exchange & Institutional Web3 Terminal</title>
   <meta name="description" content="Institutional-grade crypto intelligence, market data terminal, and verified Web3 directory for TON and global markets." />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
   
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
@@ -15,6 +16,11 @@
   <!-- Shared Design System & Layout -->
   <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
+
+  <!-- Shared Security, Asset Registry & Data Engine -->
+  <script src="assets/js/security.js"></script>
+  <script src="assets/js/asset-registry.js?v=2026.40"></script>
+  <script src="assets/js/intel-engine.js?v=2026.40"></script>
 
   <style>
     :root {
@@ -67,12 +73,31 @@
       background: var(--accent-blue);
     }
 
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .dot-live {
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 8px #22c55e;
+      animation: pulse-dot 2s infinite ease-in-out;
+    }
+
     /* ── Header Navbar ─────────────────────────────────────── */
     .header-nav {
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(11, 15, 20, 0.88);
+      background: rgba(11, 15, 20, 0.9);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border-color);
@@ -120,7 +145,7 @@
     /* Search Bar */
     .search-container {
       position: relative;
-      width: 380px;
+      width: 420px;
       max-width: 100%;
     }
 
@@ -179,6 +204,25 @@
       color: var(--accent-blue);
     }
 
+    .header-status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      padding: 7px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .header-status-badge:hover {
+      background: rgba(59, 130, 246, 0.1);
+      border-color: var(--border-accent);
+      color: #fff;
+    }
+
     /* ── Main Container ────────────────────────────────────── */
     .main-container {
       max-width: 1400px;
@@ -192,6 +236,8 @@
       align-items: center;
       justify-content: space-between;
       margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
     }
 
     .section-title {
@@ -206,6 +252,8 @@
     .section-subtitle {
       font-size: 13px;
       color: var(--text-muted);
+      margin-top: 4px;
+      display: block;
     }
 
     /* ── Dashboard Metric Cards ────────────────────────────── */
@@ -246,14 +294,15 @@
     }
 
     .asset-icon {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 800;
       font-size: 14px;
+      overflow: hidden;
     }
 
     .asset-name {
@@ -324,6 +373,42 @@
       margin-top: 2px;
     }
 
+    /* ── Table Toolbar & Tabs ──────────────────────────────── */
+    .table-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .table-filter-tabs {
+      display: flex;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .table-filter-tab {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .table-filter-tab:hover { color: #fff; }
+    .table-filter-tab.active {
+      background: var(--accent-blue);
+      color: #fff;
+    }
+
     /* ── Market Explorer Table ─────────────────────────────── */
     .table-container {
       background: var(--bg-card);
@@ -331,6 +416,7 @@
       border-radius: 16px;
       overflow-x: auto;
       margin-bottom: 48px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
     }
 
     .market-table {
@@ -350,6 +436,11 @@
       padding: 14px 18px;
       border-bottom: 1px solid var(--border-color);
       white-space: nowrap;
+      user-select: none;
+    }
+    .market-table th.sortable:hover {
+      color: var(--accent-blue);
+      background: rgba(59, 130, 246, 0.05);
     }
 
     .market-table td {
@@ -370,15 +461,18 @@
       font-weight: 700;
     }
 
-    .tbl-asset-img {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-    }
-
     .tbl-mono {
       font-family: var(--font-mono);
       font-weight: 600;
+    }
+
+    .table-pagination-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      background: rgba(11, 15, 20, 0.6);
+      border-top: 1px solid var(--border-color);
     }
 
     .btn-view-chart {
@@ -435,7 +529,7 @@
 
     .directory-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
       gap: 16px;
     }
 
@@ -470,8 +564,8 @@
     }
 
     .dir-platform-icon {
-      width: 36px;
-      height: 36px;
+      width: 38px;
+      height: 38px;
       border-radius: 10px;
       background: rgba(255, 255, 255, 0.05);
       display: flex;
@@ -479,6 +573,7 @@
       justify-content: center;
       font-size: 18px;
       border: 1px solid var(--border-color);
+      flex-shrink: 0;
     }
 
     .dir-name {
@@ -495,6 +590,7 @@
       background: rgba(255, 255, 255, 0.05);
       color: var(--text-muted);
       text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
 
     .dir-desc {
@@ -505,18 +601,17 @@
     }
 
     .btn-open-link {
-      width: 100%;
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border-color);
       color: var(--text-main);
-      padding: 10px;
+      padding: 8px 12px;
       border-radius: 10px;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
       text-align: center;
       text-decoration: none;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
@@ -608,19 +703,61 @@
         grid-template-columns: repeat(2, 1fr);
       }
       .search-container {
-        width: 260px;
+        width: 240px;
+      }
+      .directory-grid {
+        grid-template-columns: repeat(2, 1fr);
       }
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
       .dashboard-grid {
         grid-template-columns: 1fr;
       }
       .header-nav {
-        padding: 0 16px;
+        padding: 10px 14px;
+        height: auto;
+        min-height: 60px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .nav-left {
+        gap: 8px;
       }
       .search-container {
         display: none;
+      }
+      .header-status-badge {
+        font-size: 11px;
+        padding: 4px 8px;
+        white-space: nowrap;
+      }
+      .directory-grid {
+        grid-template-columns: 1fr;
+      }
+      .directory-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .table-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      .table-filter-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 6px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .main-container {
+        padding: 16px 12px;
+      }
+      .modal-content {
+        width: 95vw;
+        height: 75vh;
       }
     }
   </style>
@@ -646,8 +783,8 @@
         Entity Explorer
       </a>
       <a href="visualizer.html" class="nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-        GRAM Terminal
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="5" cy="18" r="2"/><path d="M10 10.5 6.5 7.5M14 10.5l3.5-3M10 13.5l-3.5 3M14 13.5l3.5 3"/></svg>
+        Wallet Cluster Explorer
       </a>
 
       <div class="sidebar-section-label" style="margin-top:var(--space-3);">Enterprise</div>
@@ -683,455 +820,248 @@
 
   <main class="main-content" style="position: relative; padding: 0; overflow-y: auto;">
 
-  <!-- ── 1. Header Navbar ─────────────────────────────────── -->
-  <header class="header-nav" style="border-bottom-color: var(--border-subtle);">
-    <div class="nav-left">
-      <span class="brand-badge" style="margin-left:0;">Intel Exchange</span>
+    <!-- ── 1. Header Navbar ─────────────────────────────────── -->
+    <header class="header-nav">
+      <div class="nav-left">
+        <span class="brand-badge" style="margin-left:0;">Intel Exchange</span>
 
-      <!-- Universal Search -->
-      <div class="search-container">
-        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input type="text" id="universalSearchInput" class="search-input" placeholder="Search tokens, DEX, CEX, wallets, pools..." oninput="handleUniversalSearch()" />
-      </div>
-    </div>
-
-    <div class="nav-right nav-cta topbar-actions">
-      <!-- Settings Trigger -->
-      <button class="nav-btn settings-btn" onclick="openSettingsModal()" title="Settings">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06-.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06-.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
-
-      <!-- Connect Wallet Button -->
-      <button id="topbarWalletBtn" class="nav-btn connect-wallet-btn" style="background:var(--accent-blue); border-color:var(--accent-blue);">
-        Connect Wallet
-      </button>
-    </div>
-  </header>
-
-  <!-- ── Main Terminal Body ──────────────────────────────── -->
-  <main class="main-container">
-
-    <!-- ── 2. Dashboard Top Metric Cards ──────────────────── -->
-    <div class="section-header-wrap">
-      <div>
-        <h2 class="section-title">📊 Live Market Terminal</h2>
-        <span class="section-subtitle">Real-time quotes auto-refreshed every 30 seconds via public DEX/CEX aggregators.</span>
-      </div>
-    </div>
-
-    <div class="dashboard-grid">
-      <!-- Bitcoin -->
-      <div class="metric-card" id="card-btc">
-        <div class="metric-header">
-          <div class="asset-info">
-            <div class="asset-icon" style="background:#f7931a; color:#fff;">₿</div>
-            <div>
-              <div class="asset-name">Bitcoin</div>
-              <div class="asset-symbol">BTC / USD</div>
-            </div>
-          </div>
-          <span class="price-change-badge badge-up" id="btc-change">+2.45%</span>
-        </div>
-        <div class="metric-price" id="btc-price">$64,850.00</div>
-        <div class="metric-details">
-          <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="btc-mcap">$1.28T</span></div>
-          <div class="detail-item"><span class="detail-label">24h Vol</span><span class="detail-val" id="btc-vol">$28.4B</span></div>
-          <div class="detail-item"><span class="detail-label">Dominance</span><span class="detail-val">54.2%</span></div>
+        <!-- Universal Real-Time Search -->
+        <div class="search-container">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="universalSearchInput" class="search-input" placeholder="Search symbol, contract address, DEX, CEX, pools..." oninput="handleUniversalSearch()" />
         </div>
       </div>
 
-      <!-- Ethereum -->
-      <div class="metric-card" id="card-eth">
-        <div class="metric-header">
-          <div class="asset-info">
-            <div class="asset-icon" style="background:#627eea; color:#fff;">Ξ</div>
-            <div>
-              <div class="asset-name">Ethereum</div>
-              <div class="asset-symbol">ETH / USD</div>
-            </div>
-          </div>
-          <span class="price-change-badge badge-up" id="eth-change">+1.82%</span>
+      <div class="nav-right nav-cta topbar-actions">
+        <!-- Live Feed Health & Sync Status -->
+        <div id="header-sync-status" class="header-status-badge" onclick="triggerManualMarketSync()" title="Click to trigger manual refresh">
+          <span class="dot-live"></span>
+          <span>Market Feeds: Live</span>
         </div>
-        <div class="metric-price" id="eth-price">$3,480.50</div>
-        <div class="metric-details">
-          <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="eth-mcap">$418.2B</span></div>
-          <div class="detail-item"><span class="detail-label">24h Vol</span><span class="detail-val" id="eth-vol">$14.1B</span></div>
-          <div class="detail-item"><span class="detail-label">Dominance</span><span class="detail-val">17.8%</span></div>
-        </div>
-      </div>
 
-      <!-- Toncoin -->
-      <div class="metric-card" id="card-ton">
-        <div class="metric-header">
-          <div class="asset-info">
-            <div class="asset-icon" style="background:#0088cc; color:#fff;">💎</div>
-            <div>
-              <div class="asset-name">Toncoin</div>
-              <div class="asset-symbol">TON / USD</div>
-            </div>
-          </div>
-          <span class="price-change-badge badge-up" id="ton-change">+5.14%</span>
-        </div>
-        <div class="metric-price" id="ton-price">$6.85</div>
-        <div class="metric-details">
-          <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="ton-mcap">$16.8B</span></div>
-          <div class="detail-item"><span class="detail-label">24h Vol</span><span class="detail-val" id="ton-vol">$420M</span></div>
-          <div class="detail-item"><span class="detail-label">Liquidity</span><span class="detail-val">$85M</span></div>
+        <!-- Connect Wallet Button -->
+        <button id="topbarWalletBtn" class="nav-btn connect-wallet-btn" style="background:var(--accent-blue); border-color:var(--accent-blue);">
+          Connect Wallet
+        </button>
+      </div>
+    </header>
+
+    <!-- ── Main Terminal Body ──────────────────────────────── -->
+    <main class="main-container">
+
+      <!-- ── 2. Dashboard Top Metric Cards ──────────────────── -->
+      <div class="section-header-wrap">
+        <div>
+          <h2 class="section-title">📊 Live Market Terminal</h2>
+          <span class="section-subtitle">Real-time quotes auto-refreshed via public TonAPI rates, STON.fi DEX pools, and CoinGecko benchmarks.</span>
         </div>
       </div>
 
-      <!-- ANLGRAM -->
-      <div class="metric-card" id="card-anl" style="border-color:var(--border-accent); background:linear-gradient(180deg, #121821 0%, #151e2b 100%);">
-        <div class="metric-header">
-          <div class="asset-info">
-            <div class="asset-icon" style="background:var(--accent-blue); color:#fff;">⚡</div>
-            <div>
-              <div class="asset-name">ANLGRAM</div>
-              <div class="asset-symbol">ANLGRAM / TON</div>
-            </div>
-          </div>
-          <span class="price-change-badge badge-up" id="anl-change">+14.20%</span>
-        </div>
-        <div class="metric-price" id="anl-price">$0.0425</div>
-        <div class="metric-details">
-          <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="anl-mcap">$42.5M</span></div>
-          <div class="detail-item"><span class="detail-label">Liquidity</span><span class="detail-val" id="anl-liq">$8.2M</span></div>
-          <div class="detail-item"><span class="detail-label">Holders</span><span class="detail-val">24.5K</span></div>
-        </div>
-      </div>
-    </div>
-
-
-    <!-- ── 3. Market Explorer Table ────────────────────────── -->
-    <div class="section-header-wrap">
-      <div>
-        <h2 class="section-title">🔍 Market Explorer</h2>
-        <span class="section-subtitle">Real-time order book monitoring and on-chain DEX/CEX liquidity status.</span>
-      </div>
-    </div>
-
-    <div class="table-container">
-      <table class="market-table" id="marketTable">
-        <thead>
-          <tr>
-            <th>Asset</th>
-            <th>Price</th>
-            <th>24h Change</th>
-            <th>7d Change</th>
-            <th>24h Volume</th>
-            <th>Liquidity</th>
-            <th>Market Cap</th>
-            <th>FDV</th>
-            <th>Holders</th>
-            <th>Chain</th>
-            <th>Exchange</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="marketTableBody">
-          <!-- Rows injected dynamically via JS -->
-        </tbody>
-      </table>
-    </div>
-
-
-    <!-- ── 4. Exchange & Tool Directory ───────────────────── -->
-    <div class="section-header-wrap">
-      <div>
-        <h2 class="section-title">🌐 Web3 Institutional Directory</h2>
-        <span class="section-subtitle">46 verified official links to leading DEXs, CEXs, Wallets, Analytics, and Bridges.</span>
-      </div>
-    </div>
-
-    <!-- Category Tabs -->
-    <div class="directory-tabs">
-      <button class="tab-btn active" onclick="filterDirectory('all', this)">All Platforms (46)</button>
-      <button class="tab-btn" onclick="filterDirectory('dex', this)">⚡ DEXs (14)</button>
-      <button class="tab-btn" onclick="filterDirectory('cex', this)">🏦 CEXs (12)</button>
-      <button class="tab-btn" onclick="filterDirectory('wallet', this)">🔑 Wallets (6)</button>
-      <button class="tab-btn" onclick="filterDirectory('analytics', this)">📊 Analytics (10)</button>
-      <button class="tab-btn" onclick="filterDirectory('bridge', this)">🌉 Bridges (4)</button>
-    </div>
-
-    <!-- Grid Container for Directory -->
-    <div class="directory-grid" id="directoryGrid">
-      <!-- Dynamic directory cards injected via JS -->
-    </div>
-
-  </main>
-
-
-  <!-- ── Chart Modal Embed (TradingView / DexScreener) ───── -->
-  <div class="modal-overlay" id="chartModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <div class="modal-title" id="chartModalTitle">
-          <img id="chartModalIcon" src="assets/img/anlgram-icon.svg" width="22" height="22" />
-          <span id="chartModalName">ANLGRAM / USD — Live Chart</span>
-        </div>
-        <button class="modal-close" onclick="closeChartModal()">✕</button>
-      </div>
-      <div class="modal-body" id="chartModalBody">
-        <!-- iFrame loaded dynamically -->
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ── Core JavaScript Terminal Engine ─────────────────── -->
-  <script>
-    // ── Verified Directory Database (46 Official Links) ─────────
-    const DIRECTORY_DATA = [
-      // DEX (14)
-      { name: 'DexScreener', cat: 'dex', desc: 'Real-time DEX analytics, multi-chain charts and token pair data.', url: 'https://dexscreener.com', icon: '📈' },
-      { name: 'DexTools', cat: 'dex', desc: 'Leading DeFi analytics and live price charts for decentralized exchanges.', url: 'https://www.dextools.io', icon: '🛠️' },
-      { name: 'STON.fi', cat: 'dex', desc: 'Zero-fee AMM DEX built specifically for The Open Network (TON).', url: 'https://ston.fi', icon: '💎' },
-      { name: 'DeDust', cat: 'dex', desc: 'Next-generation DEX on TON with advanced liquidity routing.', url: 'https://dedust.io', icon: '🌪️' },
-      { name: 'GeckoTerminal', cat: 'dex', desc: 'Live DEX tracker powered by CoinGecko across 100+ chains.', url: 'https://www.geckoterminal.com', icon: '🦎' },
-      { name: 'Uniswap', cat: 'dex', desc: 'The pioneer decentralized protocol for automated liquidity provision.', url: 'https://app.uniswap.org', icon: '🦄' },
-      { name: 'PancakeSwap', cat: 'dex', desc: 'Leading multi-chain DEX with low fees and yield farming.', url: 'https://pancakeswap.finance', icon: '🥞' },
-      { name: 'Raydium', cat: 'dex', desc: 'On-chain orderbook AMM DEX built on Solana.', url: 'https://raydium.io', icon: '⚡' },
-      { name: 'Orca', cat: 'dex', desc: 'The most user-friendly DEX on Solana with concentrated liquidity.', url: 'https://www.orca.so', icon: '🐋' },
-      { name: 'Jupiter', cat: 'dex', desc: 'Key liquidity aggregator for Solana swaps and perpetuals.', url: 'https://jup.ag', icon: '🪐' },
-      { name: 'Curve', cat: 'dex', desc: 'Deep liquidity pool protocol optimized for stablecoin trading.', url: 'https://curve.fi', icon: '🍌' },
-      { name: 'Balancer', cat: 'dex', desc: 'Programmable liquidity protocol and automated portfolio manager.', url: 'https://balancer.fi', icon: '⚖️' },
-      { name: 'Sushi', cat: 'dex', desc: 'Community-driven multi-chain DEX and cross-chain swap engine.', url: 'https://www.sushi.com', icon: '🍣' },
-      { name: '1inch', cat: 'dex', desc: 'Leading DEX aggregator finding the best rates across protocols.', url: 'https://app.1inch.io', icon: '🦄' },
-
-      // CEX (12)
-      { name: 'Binance', cat: 'cex', desc: 'World’s largest crypto exchange by volume and liquidity.', url: 'https://www.binance.com', icon: '🟡' },
-      { name: 'Coinbase', cat: 'cex', desc: 'Secure, regulated US-based exchange and institutional custodian.', url: 'https://www.coinbase.com', icon: '🔵' },
-      { name: 'Kraken', cat: 'cex', desc: 'Institutional security and fiat spot/futures crypto exchange.', url: 'https://www.kraken.com', icon: '🐙' },
-      { name: 'Bybit', cat: 'cex', desc: 'Top global exchange for derivatives, spot, and TON Web3 ecosystem.', url: 'https://www.bybit.com', icon: '🖤' },
-      { name: 'OKX', cat: 'cex', desc: 'Leading crypto exchange and Web3 self-custodial infrastructure.', url: 'https://www.okx.com', icon: '⬛' },
-      { name: 'MEXC', cat: 'cex', desc: 'High-speed exchange specializing in trending altcoin listings.', url: 'https://www.mexc.com', icon: '💚' },
-      { name: 'Bitget', cat: 'cex', desc: 'Leading copy-trading and spot/futures crypto exchange.', url: 'https://www.bitget.com', icon: '🔷' },
-      { name: 'Gate.io', cat: 'cex', desc: 'Comprehensive exchange with over 1,700 supported crypto assets.', url: 'https://www.gate.io', icon: '🔴' },
-      { name: 'KuCoin', cat: 'cex', desc: 'Global crypto exchange known as the People’s Exchange.', url: 'https://www.kucoin.com', icon: '🟢' },
-      { name: 'HTX', cat: 'cex', desc: 'Established exchange offering digital asset trading services.', url: 'https://www.htx.com', icon: '🔥' },
-      { name: 'BingX', cat: 'cex', desc: 'Social crypto exchange supporting copy trading and derivatives.', url: 'https://bingx.com', icon: '🔵' },
-      { name: 'Crypto.com', cat: 'cex', desc: 'Global crypto app, visa card ecosystem, and institutional hub.', url: 'https://crypto.com', icon: '🛡️' },
-
-      // Wallets (6)
-      { name: 'Tonkeeper', cat: 'wallet', desc: 'The most popular non-custodial wallet for TON and Telegram apps.', url: 'https://tonkeeper.com', icon: '💎' },
-      { name: 'MyTonWallet', cat: 'wallet', desc: 'Feature-rich web & extension wallet for TON with multi-account support.', url: 'https://mytonwallet.io', icon: '🔵' },
-      { name: 'Trust Wallet', cat: 'wallet', desc: 'Multi-chain self-custody wallet supporting millions of assets.', url: 'https://trustwallet.com', icon: '🛡️' },
-      { name: 'MetaMask', cat: 'wallet', desc: 'The leading self-custody Web3 gateway and EVM wallet.', url: 'https://metamask.io', icon: '🦊' },
-      { name: 'Phantom', cat: 'wallet', desc: 'Sleek Web3 wallet for Solana, Ethereum, and Polygon.', url: 'https://phantom.app', icon: '👻' },
-      { name: 'OKX Wallet', cat: 'wallet', desc: 'Universal multi-chain Web3 wallet with built-in DEX aggregator.', url: 'https://www.okx.com/web3', icon: '⬛' },
-
-      // Analytics (10)
-      { name: 'CoinMarketCap', cat: 'analytics', desc: 'The world’s most referenced crypto market data tracker.', url: 'https://coinmarketcap.com', icon: 'Ⓜ️' },
-      { name: 'CoinGecko', cat: 'analytics', desc: 'Independent crypto data aggregator tracking price, volume and market cap.', url: 'https://www.coingecko.com', icon: '🦎' },
-      { name: 'DefiLlama', cat: 'analytics', desc: 'Largest open-source TVL and DeFi analytics aggregator.', url: 'https://defillama.com', icon: '🦙' },
-      { name: 'Arkham', cat: 'analytics', desc: 'AI-powered blockchain intelligence and entity mapping platform.', url: 'https://arkhamintelligence.com', icon: '🦅' },
-      { name: 'Glassnode', cat: 'analytics', desc: 'On-chain market intelligence and financial metrics for Bitcoin & ETH.', url: 'https://glassnode.com', icon: '📈' },
-      { name: 'IntoTheBlock', cat: 'analytics', desc: 'AI on-chain signals, order book analysis, and DeFi insights.', url: 'https://app.intotheblock.com', icon: '🧠' },
-      { name: 'Token Terminal', cat: 'analytics', desc: 'Financial data platform providing traditional financial metrics for crypto.', url: 'https://tokenterminal.com', icon: '📊' },
-      { name: 'Santiment', cat: 'analytics', desc: 'Behavioral analytics platform for crypto market sentiment and social volume.', url: 'https://app.santiment.net', icon: '📡' },
-      { name: 'Messari', cat: 'analytics', desc: 'Institutional crypto research, market data, and governance tracking.', url: 'https://messari.io', icon: '🏛️' },
-      { name: 'Nansen', cat: 'analytics', desc: 'Blockchain analytics platform enriching data with millions of wallet labels.', url: 'https://www.nansen.ai', icon: '🧭' },
-
-      // Bridges (4)
-      { name: 'LayerZero', cat: 'bridge', desc: 'Omnichain interoperability protocol connecting EVM and non-EVM chains.', url: 'https://layerzero.network', icon: '🌐' },
-      { name: 'Stargate', cat: 'bridge', desc: 'Fully composable liquidity transport protocol built on LayerZero.', url: 'https://stargate.finance', icon: '✨' },
-      { name: 'Orbiter', cat: 'bridge', desc: 'Decentralized cross-rollup bridge for Layer 2 Ethereum ecosystem.', url: 'https://www.orbiter.finance', icon: '🛸' },
-      { name: 'Rhino.fi', cat: 'bridge', desc: 'Multi-chain DeFi aggregator and instant cross-chain bridge.', url: 'https://app.rhino.fi', icon: '🦏' }
-    ];
-
-    // ── Table Assets Data ───────────────────────────────────────
-    const MARKET_ASSETS = [
-      { name: 'Bitcoin', symbol: 'BTC', price: 64850.00, change24: 2.45, change7d: 5.80, vol: '$28.4B', liq: '$1.2B', mcap: '$1.28T', fdv: '$1.36T', holders: '52.4M', chain: 'Bitcoin', exchange: 'Binance', tvSymbol: 'BINANCE:BTCUSDT' },
-      { name: 'Ethereum', symbol: 'ETH', price: 3480.50, change24: 1.82, change7d: 4.10, vol: '$14.1B', liq: '$850M', mcap: '$418.2B', fdv: '$418.2B', holders: '118M', chain: 'Ethereum', exchange: 'Coinbase', tvSymbol: 'COINBASE:ETHUSD' },
-      { name: 'Toncoin', symbol: 'TON', price: 6.85, change24: 5.14, change7d: 12.40, vol: '$420M', liq: '$85M', mcap: '$16.8B', fdv: '$34.2B', holders: '8.4M', chain: 'TON', exchange: 'Bybit', tvSymbol: 'BYBIT:TONUSDT' },
-      { name: 'ANLGRAM', symbol: 'ANLGRAM', price: 0.0425, change24: 14.20, change7d: 42.80, vol: '$8.2M', liq: '$8.2M', mcap: '$42.5M', fdv: '$42.5M', holders: '24.5K', chain: 'TON', exchange: 'STON.fi', dexUrl: 'https://dexscreener.com/ton/dedust' },
-      { name: 'Solana', symbol: 'SOL', price: 154.20, change24: -1.15, change7d: 8.90, vol: '$3.8B', liq: '$340M', mcap: '$71.4B', fdv: '$88.5B', holders: '14.2M', chain: 'Solana', exchange: 'Raydium', tvSymbol: 'BINANCE:SOLUSDT' },
-      { name: 'Tether USD', symbol: 'USDT', price: 1.00, change24: 0.01, change7d: 0.02, vol: '$45.2B', liq: '$4.2B', mcap: '$114B', fdv: '$114B', holders: '42M', chain: 'Multi-Chain', exchange: 'Binance', tvSymbol: 'BINANCE:USDTUSD' },
-      { name: 'Notcoin', symbol: 'NOT', price: 0.0124, change24: 8.65, change7d: 18.20, vol: '$180M', liq: '$24M', mcap: '$1.27B', fdv: '$1.27B', holders: '2.8M', chain: 'TON', exchange: 'OKX', tvSymbol: 'OKX:NOTUSDT' },
-      { name: 'Dogs', symbol: 'DOGS', price: 0.00085, change24: -3.40, change7d: 25.40, vol: '$95M', liq: '$12M', mcap: '$440M', fdv: '$440M', holders: '4.1M', chain: 'TON', exchange: 'Bybit', tvSymbol: 'BYBIT:DOGSUSDT' }
-    ];
-
-    // ── Render Directory ───────────────────────────────────────
-    function renderDirectory(data) {
-      const container = document.getElementById('directoryGrid');
-      if (!container) return;
-
-      container.innerHTML = data.map(item => `
-        <div class="dir-card" data-name="${item.name.toLowerCase()}" data-cat="${item.cat}">
-          <div>
-            <div class="dir-card-header">
-              <div class="dir-platform-title">
-                <div class="dir-platform-icon">${item.icon}</div>
-                <div class="dir-name">${item.name}</div>
+      <div class="dashboard-grid">
+        <!-- Bitcoin -->
+        <div class="metric-card" id="card-btc">
+          <div class="metric-header">
+            <div class="asset-info">
+              <div class="asset-icon" style="background:#f7931a; color:#fff;">₿</div>
+              <div>
+                <div class="asset-name">Bitcoin</div>
+                <div class="asset-symbol">BTC / USD</div>
               </div>
-              <span class="dir-cat-tag">${item.cat}</span>
             </div>
-            <div class="dir-desc">${item.desc}</div>
+            <span class="price-change-badge badge-up" id="btc-change">+0.00%</span>
           </div>
-          <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="btn-open-link">
-            <span>Open ${item.name}</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          </a>
+          <div class="metric-price" id="btc-price">$0.00</div>
+          <div class="metric-details">
+            <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="btc-mcap">--</span></div>
+            <div class="detail-item"><span class="detail-label">24h Vol</span><span class="detail-val" id="btc-vol">--</span></div>
+            <div class="detail-item"><span class="detail-label">Source</span><span class="detail-val">CoinGecko</span></div>
+          </div>
         </div>
-      `).join('');
-    }
 
-    // ── Render Market Table ────────────────────────────────────
-    function renderMarketTable(assets) {
-      const tbody = document.getElementById('marketTableBody');
-      if (!tbody) return;
-
-      tbody.innerHTML = assets.map(a => {
-        const isUp24 = a.change24 >= 0;
-        const isUp7d = a.change7d >= 0;
-        return `
-          <tr>
-            <td>
-              <div class="tbl-asset">
-                <span>${a.symbol === 'BTC' ? '₿' : a.symbol === 'ETH' ? 'Ξ' : a.symbol === 'TON' ? '💎' : a.symbol === 'ANLGRAM' ? '⚡' : '🪙'}</span>
-                <div>
-                  <div>${a.name}</div>
-                  <div style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">${a.symbol}</div>
-                </div>
+        <!-- Ethereum -->
+        <div class="metric-card" id="card-eth">
+          <div class="metric-header">
+            <div class="asset-info">
+              <div class="asset-icon" style="background:#627eea; color:#fff;">Ξ</div>
+              <div>
+                <div class="asset-name">Ethereum</div>
+                <div class="asset-symbol">ETH / USD</div>
               </div>
-            </td>
-            <td class="tbl-mono">$${a.price < 1 ? a.price.toFixed(4) : a.price.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
-            <td class="tbl-mono" style="color: ${isUp24 ? 'var(--green-up)' : 'var(--red-down)'}">${isUp24 ? '▲ +' : '▼ '}${a.change24.toFixed(2)}%</td>
-            <td class="tbl-mono" style="color: ${isUp7d ? 'var(--green-up)' : 'var(--red-down)'}">${isUp7d ? '▲ +' : '▼ '}${a.change7d.toFixed(2)}%</td>
-            <td class="tbl-mono">${a.vol}</td>
-            <td class="tbl-mono">${a.liq}</td>
-            <td class="tbl-mono">${a.mcap}</td>
-            <td class="tbl-mono">${a.fdv}</td>
-            <td class="tbl-mono">${a.holders}</td>
-            <td><span class="dir-cat-tag">${a.chain}</span></td>
-            <td style="color:var(--text-muted);">${a.exchange}</td>
-            <td>
-              <button class="btn-view-chart" onclick="openChartModal('${a.name}', '${a.symbol}', '${a.tvSymbol || ''}', '${a.dexUrl || ''}')">
-                📈 View
-              </button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
+            </div>
+            <span class="price-change-badge badge-up" id="eth-change">+0.00%</span>
+          </div>
+          <div class="metric-price" id="eth-price">$0.00</div>
+          <div class="metric-details">
+            <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="eth-mcap">--</span></div>
+            <div class="detail-item"><span class="detail-label">24h Vol</span><span class="detail-val" id="eth-vol">--</span></div>
+            <div class="detail-item"><span class="detail-label">Source</span><span class="detail-val">CoinGecko</span></div>
+          </div>
+        </div>
 
-    // ── Filter Directory by Category ───────────────────────────
-    function filterDirectory(cat, btn) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+        <!-- Toncoin -->
+        <div class="metric-card" id="card-ton">
+          <div class="metric-header">
+            <div class="asset-info">
+              <div class="asset-icon" style="background:#0088cc; color:#fff;">💎</div>
+              <div>
+                <div class="asset-name">Toncoin</div>
+                <div class="asset-symbol">TON / USD</div>
+              </div>
+            </div>
+            <span class="price-change-badge badge-up" id="ton-change">+0.00%</span>
+          </div>
+          <div class="metric-price" id="ton-price">$0.00</div>
+          <div class="metric-details">
+            <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="ton-mcap">--</span></div>
+            <div class="detail-item"><span class="detail-label">24h Vol</span><span class="detail-val" id="ton-vol">--</span></div>
+            <div class="detail-item"><span class="detail-label">Source</span><span class="detail-val">TonAPI / Bybit</span></div>
+          </div>
+        </div>
 
-      if (cat === 'all') {
-        renderDirectory(DIRECTORY_DATA);
-      } else {
-        const filtered = DIRECTORY_DATA.filter(d => d.cat === cat);
-        renderDirectory(filtered);
-      }
-    }
+        <!-- ANLGRAM Protocol Asset (Strictly Unlaunched / Pending) -->
+        <div class="metric-card" id="card-anl" style="border-color:var(--border-accent); background:linear-gradient(180deg, #121821 0%, #151e2b 100%);">
+          <!-- Injected dynamically by intel-engine.js -->
+        </div>
+      </div>
 
-    // ── Universal Real-Time Search Filter ───────────────────────
-    function handleUniversalSearch() {
-      const q = document.getElementById('universalSearchInput').value.toLowerCase().trim();
 
-      // Filter Directory Cards
-      document.querySelectorAll('.dir-card').forEach(card => {
-        const name = card.getAttribute('data-name') || '';
-        const text = card.textContent.toLowerCase();
-        if (name.includes(q) || text.includes(q)) {
-          card.style.display = 'flex';
-        } else {
-          card.style.display = 'none';
-        }
-      });
+      <!-- ── 3. Market Explorer Table ────────────────────────── -->
+      <div class="section-header-wrap">
+        <div>
+          <h2 class="section-title">🔍 Market Explorer</h2>
+          <span class="section-subtitle">Real-time multi-asset market quotes, AMM pool liquidity monitoring, and verified Web3 asset registry.</span>
+        </div>
+      </div>
 
-      // Filter Table Rows
-      const filteredAssets = MARKET_ASSETS.filter(a => 
-        a.name.toLowerCase().includes(q) || 
-        a.symbol.toLowerCase().includes(q) || 
-        a.chain.toLowerCase().includes(q) || 
-        a.exchange.toLowerCase().includes(q)
-      );
-      renderMarketTable(filteredAssets);
-    }
+      <!-- Table Toolbar -->
+      <div class="table-toolbar">
+        <div class="table-filter-tabs">
+          <button class="table-filter-tab active" onclick="filterMarketTableTab('all', this)">All Assets</button>
+          <button class="table-filter-tab" onclick="filterMarketTableTab('ton', this)">TON Ecosystem</button>
+          <button class="table-filter-tab" onclick="filterMarketTableTab('global', this)">Global Benchmarks</button>
+          <button class="table-filter-tab" onclick="filterMarketTableTab('verified', this)">Verified Only</button>
+        </div>
 
-    // ── Chart Modal (TradingView / DexScreener) ─────────────────
-    function openChartModal(name, symbol, tvSymbol, dexUrl) {
-      const modal = document.getElementById('chartModal');
-      const modalName = document.getElementById('chartModalName');
-      const body = document.getElementById('chartModalBody');
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div style="position:relative; width:220px; max-width:100%;">
+            <svg style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); pointer-events:none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" id="tableSearchInput" class="search-input" style="padding:6px 12px 6px 30px; font-size:12px; height:32px; width:100%;" placeholder="Filter by symbol, name, contract..." oninput="handleTableSearch(this.value)" />
+          </div>
+          <button class="nav-btn" onclick="triggerManualMarketSync()" style="font-size:12px; padding:6px 12px; height:32px;">
+            🔄 Refresh Feeds
+          </button>
+        </div>
+      </div>
 
-      if (modalName) modalName.textContent = `${name} (${symbol}) — Live Market Chart`;
+      <div class="table-container">
+        <table class="market-table" id="marketTable">
+          <thead>
+            <tr>
+              <th class="sortable" onclick="sortMarketTable('name')" style="cursor:pointer;" title="Sort by Name">Asset ↕</th>
+              <th class="sortable" onclick="sortMarketTable('price')" style="cursor:pointer;" title="Sort by Price">Price ↕</th>
+              <th class="sortable" onclick="sortMarketTable('change24')" style="cursor:pointer;" title="Sort by 24h Change">24h Change ↕</th>
+              <th class="sortable" onclick="sortMarketTable('change7d')" style="cursor:pointer;" title="Sort by 7d Change">7d Change ↕</th>
+              <th class="sortable" onclick="sortMarketTable('vol')" style="cursor:pointer;" title="Sort by 24h Volume">24h Volume ↕</th>
+              <th class="sortable" onclick="sortMarketTable('liq')" style="cursor:pointer;" title="Sort by AMM Pool Liquidity">DEX Liquidity ↕</th>
+              <th class="sortable" onclick="sortMarketTable('mcap')" style="cursor:pointer;" title="Sort by Market Cap">Market Cap ↕</th>
+              <th class="sortable" onclick="sortMarketTable('fdv')" style="cursor:pointer;" title="Sort by FDV">FDV ↕</th>
+              <th class="sortable" onclick="sortMarketTable('holders')" style="cursor:pointer;" title="Sort by Holders">Holders ↕</th>
+              <th>Network</th>
+              <th>Exchange / Source</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="marketTableBody">
+            <!-- Rows injected dynamically via JS -->
+          </tbody>
+        </table>
 
-      if (dexUrl) {
-        body.innerHTML = `<iframe src="${dexUrl}?embed=1&theme=dark" class="chart-iframe"></iframe>`;
-      } else {
-        const sym = tvSymbol || `BINANCE:${symbol}USDT`;
-        body.innerHTML = `
-          <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_widget&symbol=${encodeURIComponent(sym)}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=0B0F14&theme=dark&style=1&timezone=Etc%2FUTC" class="chart-iframe"></iframe>
-        `;
-      }
+        <div id="marketTablePagination" class="table-pagination-bar">
+          <!-- Injected dynamically by JS -->
+        </div>
+      </div>
 
-      modal.style.display = 'flex';
-    }
 
-    function closeChartModal() {
-      const modal = document.getElementById('chartModal');
-      const body = document.getElementById('chartModalBody');
-      if (body) body.innerHTML = '';
-      if (modal) modal.style.display = 'none';
-    }
+      <!-- ── 4. Web3 Institutional Directory ─────────────────── -->
+      <div class="section-header-wrap">
+        <div>
+          <h2 class="section-title">🌐 Web3 Institutional Directory</h2>
+          <span class="section-subtitle">Independently audited official links to leading DEX protocols, CEX exchanges, non-custodial wallets, analytics, and canonical bridges.</span>
+        </div>
+      </div>
 
-    // ── Live Crypto Prices Auto-Fetcher ────────────────────────
-    async function fetchLivePrices() {
-      try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,the-open-network&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true');
-        if (!res.ok) return;
-        const data = await res.json();
+      <!-- Category Tabs -->
+      <div class="directory-tabs">
+        <button class="tab-btn active" onclick="filterDirectoryCategory('all', this)">All Platforms</button>
+        <button class="tab-btn" onclick="filterDirectoryCategory('dex', this)">⚡ DEX Protocols</button>
+        <button class="tab-btn" onclick="filterDirectoryCategory('cex', this)">🏦 Centralized Exchanges</button>
+        <button class="tab-btn" onclick="filterDirectoryCategory('wallet', this)">🔑 Wallets</button>
+        <button class="tab-btn" onclick="filterDirectoryCategory('analytics', this)">📊 Analytics & Explorers</button>
+        <button class="tab-btn" onclick="filterDirectoryCategory('bridge', this)">🌉 Canonical Bridges</button>
+      </div>
 
-        if (data.bitcoin) {
-          document.getElementById('btc-price').textContent = `$${data.bitcoin.usd.toLocaleString()}`;
-          const change = data.bitcoin.usd_24h_change || 2.45;
-          const changeEl = document.getElementById('btc-change');
-          changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
-          changeEl.className = `price-change-badge ${change >= 0 ? 'badge-up' : 'badge-down'}`;
-        }
+      <!-- Grid Container for Directory -->
+      <div class="directory-grid" id="directoryGrid">
+        <!-- Dynamic directory cards injected via JS -->
+      </div>
 
-        if (data.ethereum) {
-          document.getElementById('eth-price').textContent = `$${data.ethereum.usd.toLocaleString()}`;
-          const change = data.ethereum.usd_24h_change || 1.82;
-          const changeEl = document.getElementById('eth-change');
-          changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
-          changeEl.className = `price-change-badge ${change >= 0 ? 'badge-up' : 'badge-down'}`;
-        }
+    </main>
 
-        if (data['the-open-network']) {
-          document.getElementById('ton-price').textContent = `$${data['the-open-network'].usd.toFixed(2)}`;
-          const change = data['the-open-network'].usd_24h_change || 5.14;
-          const changeEl = document.getElementById('ton-change');
-          changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
-          changeEl.className = `price-change-badge ${change >= 0 ? 'badge-up' : 'badge-down'}`;
-        }
-      } catch (e) {
-        console.warn('Coingecko live fetch silent fallback', e);
-      }
-    }
-
-    // Initialize Terminal
-    document.addEventListener('DOMContentLoaded', () => {
-      renderDirectory(DIRECTORY_DATA);
-      renderMarketTable(MARKET_ASSETS);
-      fetchLivePrices();
-      setInterval(fetchLivePrices, 30000); // 30s auto-refresh
-    });
-  </script>
+    <!-- ── Chart Modal Embed (TradingView / DexScreener) ───── -->
+    <div class="modal-overlay" id="chartModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title" id="chartModalTitle">
+            <img id="chartModalIcon" src="assets/img/anlgram-icon.svg" width="22" height="22" />
+            <span id="chartModalName">Market Chart — Live Terminal</span>
+          </div>
+          <button class="modal-close" onclick="closeChartModal()">✕</button>
+        </div>
+        <div class="modal-body" id="chartModalBody">
+          <!-- iFrame loaded dynamically -->
+        </div>
+      </div>
+    </div>
 
   </main>
 </div>
 
+<!-- Modal Script Logic -->
+<script>
+  function openChartModal(name, symbol, tvSymbol, dexUrl) {
+    const modal = document.getElementById('chartModal');
+    const modalName = document.getElementById('chartModalName');
+    const body = document.getElementById('chartModalBody');
+
+    if (modalName) modalName.textContent = `${name} (${symbol}) — Live Market Chart`;
+
+    if (dexUrl) {
+      body.innerHTML = `<iframe src="${dexUrl}?embed=1&theme=dark" class="chart-iframe"></iframe>`;
+    } else {
+      const sym = tvSymbol || `BINANCE:${symbol}USDT`;
+      body.innerHTML = `
+        <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_widget&symbol=${encodeURIComponent(sym)}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=0B0F14&theme=dark&style=1&timezone=Etc%2FUTC" class="chart-iframe"></iframe>
+      `;
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeChartModal() {
+    const modal = document.getElementById('chartModal');
+    const body = document.getElementById('chartModalBody');
+    if (body) body.innerHTML = '';
+    if (modal) modal.style.display = 'none';
+  }
+</script>
+
   <!-- Platform & TON Connect Scripts -->
   <script src="assets/js/platform.js?v=2026.35"></script>
-  <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+  <script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
   <script src="assets/js/wallet-connect.js?v=2026.35"></script>
 </body>
 </html>

@@ -1,10 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Alerts — ANLGRAM Intelligence</title>
   <meta name="description" content="Set custom alerts for TON blockchain events."/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
@@ -13,6 +14,7 @@
   <link rel="apple-touch-icon" href="favicon.svg?v=2"/>
   <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
+  <script src="assets/js/security.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <style>
@@ -322,10 +324,14 @@
                   <div class="tg-status-dot" id="tgDot"></div>
                   <span id="tgStatusText">Not connected</span>
                 </div>
+                <div style="margin-bottom:8px;">
+                  <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Telegram Bot Token (Stored locally in browser):</label>
+                  <input type="password" id="tgCustomToken" class="form-input" style="font-size:12px;padding:8px 10px;" placeholder="e.g. 123456:ABC-DEF..." onchange="localStorage.setItem('anlgram_tg_bot_token', this.value.trim())" />
+                </div>
                 <button class="tg-connect-btn" id="tgConnectBtn" onclick="connectTelegram()">
                   ✈️ Connect Telegram (1 click)
                 </button>
-                <div class="hint">Opens our bot in Telegram. Press START, then come back here — we detect you automatically.</div>
+                <div class="hint">Opens bot in Telegram. Press START, then return here to detect automatically. Token stays private in your browser.</div>
               </div>
 
               <!-- Email — SIMPLE -->
@@ -455,14 +461,14 @@ function showToast(title, desc, dur = 2500) {
   setTimeout(() => document.getElementById('toast').classList.remove('show'), dur);
 }
 
-// ── Admin Settings (Hardcoded Configuration) ───────────
+// ── Admin Settings (Configured via LocalStorage / Env) ───────────
 function getAdminConfig() {
   return {
-    botToken: '8881796443:AAGyzzFU8d1Wt4sB0iFx1jabFf4jQoLL3kM',
-    botUsername: 'ANLGRAM_bot',
-    ejsPK: '',
-    ejsSvc: '',
-    ejsTpl: ''
+    botToken: localStorage.getItem('anlgram_tg_bot_token') || '',
+    botUsername: localStorage.getItem('anlgram_tg_bot_username') || 'ANLGRAM_bot',
+    ejsPK: localStorage.getItem('anlgram_emailjs_pk') || '',
+    ejsSvc: localStorage.getItem('anlgram_emailjs_svc') || '',
+    ejsTpl: localStorage.getItem('anlgram_emailjs_tpl') || ''
   };
 }
 const adminConfig = getAdminConfig();
@@ -472,6 +478,10 @@ function updateTgStatus() {
   const dot = document.getElementById('tgDot');
   const txt = document.getElementById('tgStatusText');
   const sub = document.getElementById('tgSubLabel');
+  const tokenInput = document.getElementById('tgCustomToken');
+  if (tokenInput && !tokenInput.value) {
+    tokenInput.value = localStorage.getItem('anlgram_tg_bot_token') || '';
+  }
   if (tgChatId) {
     dot.className = 'tg-status-dot tg-connected';
     txt.textContent = 'Connected ✓ (Chat ID: ' + tgChatId + ')';
@@ -491,13 +501,15 @@ function updateTgStatus() {
 
 window.connectTelegram = async function() {
   const a = getAdminConfig();
-  if (!a.botToken || !a.botUsername) {
-    showToast('🛡️ Bot Not Configured', 'The Telegram bot configuration is missing or invalid.');
+  if (!a.botToken) {
+    showToast('🔑 Bot Token Required', 'Enter your Telegram Bot Token in the field above to connect.');
+    const input = document.getElementById('tgCustomToken');
+    if (input) { input.focus(); input.style.borderColor = 'var(--cyan)'; }
     return;
   }
 
   // Open bot in Telegram
-  window.open('https://t.me/' + a.botUsername + '?start=connect', '_blank');
+  window.open('https://t.me/' + (a.botUsername || 'ANLGRAM_bot') + '?start=connect', '_blank');
   
   document.getElementById('tgConnectBtn').textContent = '⏳ Waiting for you to press START...';
   document.getElementById('tgConnectBtn').disabled = true;
@@ -593,6 +605,13 @@ document.getElementById('saveRuleBtn').addEventListener('click', () => {
   
   if (!addr) { showToast('🛡️ Missing Wallet', 'Paste the TON wallet address to monitor.'); return; }
   
+  // Security validation: verify valid TON address format
+  const isAddrValid = typeof isValidTonAddress === 'function' ? isValidTonAddress(addr) : (addr.length >= 48);
+  if (!isAddrValid) {
+    showToast('⚠️ Invalid Address', 'Please provide a valid 48-char friendly or 64-hex TON address.');
+    return;
+  }
+  
   const channels = [];
   if (document.getElementById('togglePush').classList.contains('active')) channels.push('push');
   if (document.getElementById('toggleTelegram').classList.contains('active')) {
@@ -610,14 +629,12 @@ document.getElementById('saveRuleBtn').addEventListener('click', () => {
     id: Date.now(), type: selectedType, minAmount: minAmt,
     targetEntity: addr, channels, createdAt: new Date().toISOString()
   });
-  if (!localStorage.getItem('anlgram_wallet_addr') && addr.length > 6) {
-    localStorage.setItem('anlgram_wallet_addr', addr);
-    localStorage.setItem('anlgram_wallet_name', 'My TON Wallet');
-    if (typeof updateWalletUI === 'function') updateWalletUI();
-  }
+
+  // SECURITY FIX: Never hijack the active session wallet (anlgram_wallet_addr)
+  // Monitored target entities are strictly observational and must not overwrite user credentials.
   saveAlertRulesForWallet();
   renderSavedRules();
-  showToast('🚀 Monitoring Started!', 'Watching ' + shortenAddress(addr) + ' for ≥' + minAmt + ' GRAM');
+  showToast('🚀 Monitoring Started!', 'Watching ' + (typeof shortenAddress === 'function' ? shortenAddress(addr) : addr.substring(0,8) + '...') + ' for ≥' + minAmt + ' GRAM');
 
   if (channels.includes('push') && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   monitorBlockchain();
@@ -629,15 +646,19 @@ function renderSavedRules() {
   document.getElementById('ruleCount').textContent = alertRules.length;
   if (!alertRules.length) { c.innerHTML = '<div class="no-rules-msg">No rules yet.</div>'; updateMonitorStatus(); return; }
   c.innerHTML = alertRules.map(r => {
-    const ch = r.channels.map(c => typeof c === 'string'
-      ? `<span class="badge badge-green" style="font-size:9px;padding:1px 5px;">${c}</span>`
-      : `<span class="badge badge-cyan" style="font-size:9px;padding:1px 5px;">${c.type}</span>`
+    const safeType = escapeHtml(r.type || 'Custom Alert');
+    const safeMin = Number(r.minAmount) || 0;
+    const safeTarget = escapeHtml(typeof shortenAddress === 'function' ? shortenAddress(r.targetEntity) : r.targetEntity);
+    const safeId = Number(r.id) || Date.now();
+    const ch = (r.channels || []).map(chItem => typeof chItem === 'string'
+      ? `<span class="badge badge-green" style="font-size:9px;padding:1px 5px;">${escapeHtml(chItem)}</span>`
+      : `<span class="badge badge-cyan" style="font-size:9px;padding:1px 5px;">${escapeHtml(chItem.type)}</span>`
     ).join('');
     return `<div class="rule-item"><div class="rule-item-info">
-      <div class="rule-item-type">${r.type}</div>
-      <div class="rule-item-details">≥ ${r.minAmount} GRAM · ${shortenAddress(r.targetEntity)}</div>
+      <div class="rule-item-type">${safeType}</div>
+      <div class="rule-item-details">≥ ${safeMin} GRAM · ${safeTarget}</div>
       <div class="rule-item-channels">${ch}</div>
-    </div><button class="delete-rule" onclick="deleteRule(${r.id})">✕</button></div>`;
+    </div><button class="delete-rule" onclick="deleteRule(${safeId})">✕</button></div>`;
   }).join('');
   updateMonitorStatus();
 }
@@ -686,11 +707,20 @@ async function triggerAlert(alert) {
 
   const card = document.createElement('div');
   card.className = 'alert-card';
-  card.onclick = () => { if (alert.address) window.location = 'explorer.html?q=' + alert.address; };
-  card.innerHTML = '<div class="alert-icon ' + iconClass + '">' + emoji + '</div><div class="alert-content">' +
-    '<div class="alert-meta"><span>' + alert.type + '</span><span>' + new Date().toLocaleTimeString() + '</span></div>' +
-    '<div class="alert-title">' + alert.title + '</div>' +
-    '<div class="alert-desc">' + alert.desc + '</div>' +
+  if (alert.address && (typeof isValidTonAddress === 'function' ? isValidTonAddress(alert.address) : true)) {
+    const safeAddr = encodeURIComponent(alert.address);
+    card.onclick = () => { window.location = 'explorer.html?q=' + safeAddr; };
+  }
+  const safeIconClass = escapeHtml(iconClass);
+  const safeEmoji = escapeHtml(emoji);
+  const safeType = escapeHtml(alert.type || 'Alert');
+  const safeTitle = escapeHtml(alert.title || '');
+  const safeDesc = escapeHtml(alert.desc || '');
+
+  card.innerHTML = '<div class="alert-icon ' + safeIconClass + '">' + safeEmoji + '</div><div class="alert-content">' +
+    '<div class="alert-meta"><span>' + safeType + '</span><span>' + escapeHtml(new Date().toLocaleTimeString()) + '</span></div>' +
+    '<div class="alert-title">' + safeTitle + '</div>' +
+    '<div class="alert-desc">' + safeDesc + '</div>' +
     '<div class="alert-channels-sent">' + sent.join('') + '</div></div>';
   document.getElementById('feedBody').insertBefore(card, document.getElementById('feedBody').firstChild);
   try {
@@ -792,7 +822,7 @@ if (targetParam) {
     targetInputEl.style.borderColor = 'var(--cyan)';
     setTimeout(() => {
       if (typeof showWalletToast === 'function') {
-        showWalletToast('📡 Holder Loaded', 'Target address pre-filled from Flow Visualizer.');
+        showWalletToast('📡 Target Loaded', 'Address pre-filled from Analytics Dashboard.');
       }
     }, 500);
   }
@@ -801,6 +831,18 @@ if (targetParam) {
   if (connected && targetInputEl && !targetInputEl.value.trim()) {
     targetInputEl.value = connected;
   }
+}
+const typeParam = urlParams.get('type');
+if (typeParam) {
+  selectedType = typeParam;
+  document.querySelectorAll('.rule-type').forEach(b => {
+    b.classList.toggle('active', b.dataset.type === typeParam);
+  });
+}
+const minParam = urlParams.get('min');
+if (minParam) {
+  const minInput = document.getElementById('minAmount');
+  if (minInput) minInput.value = minParam;
 }
 
 loadAlertRulesForWallet(true);
@@ -813,7 +855,7 @@ setInterval(monitorBlockchain, 15000);
 <script src="assets/js/platform.js?v=2026.35"></script>
 
 
-<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
 <script src="assets/js/wallet-connect.js?v=2026.35"></script>
 </body>
 </html>

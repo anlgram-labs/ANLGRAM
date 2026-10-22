@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8"/>
   <title>ANLGRAM Factory Deployer</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="assets/css/design-system.css"/>
+  <script src="assets/js/security.js"></script>
   <style>
     body { background:#0d0d12; color:#e2e8f0; font-family:'Inter',sans-serif; padding:40px; }
     .deploy-card { max-width:680px; margin:0 auto; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:40px; }
@@ -71,7 +73,7 @@
 import { beginCell, toNano, Address, storeStateInit, Cell, contractAddress } from 'https://esm.sh/@ton/core';
 window.TON_CORE = { beginCell, toNano, Address, storeStateInit, Cell, contractAddress };
 </script>
-<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
 <script>
 let tonConnectUI;
 

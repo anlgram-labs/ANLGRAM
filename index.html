@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ANLGRAM — Powered by Community. Built on TON.</title>
   <meta name="description" content="ANLGRAM is the premier memecoin built on the TON blockchain. Community driven, transparent, and ultra-fast."/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
   <meta property="og:title" content="ANLGRAM - The Memecoin of TON"/>
   <meta property="og:description" content="Powered by Community. Built on TON."/>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"/>
@@ -15,6 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
+  <script src="assets/js/security.js"></script>
   <style>
     /* ── Web3 Landing Specific ────────────────────── */
     :root {
@@ -437,9 +439,12 @@
 
 <!-- ── Live Stats ─────────────────────────────────────── -->
 <section class="section-container" style="padding-top:0; margin-top:-60px;">
+  <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+    <span class="badge badge-muted" style="font-size:10px; padding:3px 8px; border:1px solid rgba(255,255,255,0.1); color:#94a3b8;">ANLGRAM DEMO METRICS · TON MAINNET</span>
+  </div>
   <div class="stats-grid animate-fade-up">
     <div class="stat-card">
-      <div class="stat-label">Current Price</div>
+      <div class="stat-label">Projected Price</div>
       <div class="stat-val" id="stat-price">$0.042</div>
       <div class="stat-change change-up" style="margin-top:8px; font-size:13px; color:var(--green);">▲ +14.2% (24h)</div>
     </div>
@@ -756,8 +761,13 @@ function calculateSwap() {
 }
 
 function copyContract() {
-  navigator.clipboard.writeText('EQC_anlgram_token_address_example_hash_9fB2');
-  alert('Contract Address Copied!');
+  const previewAddr = 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd';
+  navigator.clipboard.writeText(previewAddr);
+  if (typeof showWalletToast === 'function') {
+    showWalletToast('📋 Address Copied', 'ANLGRAM Treasury/Preview address copied to clipboard.');
+  } else {
+    alert('ANLGRAM Treasury Address Copied:\n' + previewAddr);
+  }
 }
 
 // Hero Canvas Animation (Preserved)
@@ -871,32 +881,24 @@ function copyContract() {
   draw();
 })();
 
-// Live price animation (Preserved logic, adapted for ANLGRAM)
-function animateStats() {
-  const stats = [
-    { el: 'stat-price',    base: 0.042, format: v => '$' + v.toFixed(3) },
-    { el: 'stat-mcap',     base: 42.5,  format: v => '$' + v.toFixed(1) + 'M' },
-    { el: 'stat-liquidity',base: 8.2,   format: v => '$' + v.toFixed(1) + 'M' },
-    { el: 'stat-holders',  base: 24.5,  format: v => v.toFixed(1) + 'K' }
-  ];
-  setInterval(() => {
-    stats.forEach(s => {
-      const el = document.getElementById(s.el);
-      if (el) {
-        const jitter = s.base * (Math.random() * 0.004 - 0.002);
-        s.base += jitter;
-        el.textContent = s.format(s.base);
-      }
-    });
-  }, 2500);
+// Live Ton Price Syncer
+async function syncLivePrice() {
+  try {
+    const p = await getTonPrice();
+    if (p) {
+      const topPrice = document.getElementById('topbar-price');
+      if (topPrice) topPrice.textContent = '$' + p.toFixed(2);
+    }
+  } catch (e) {}
 }
-animateStats();
+syncLivePrice();
+setInterval(syncLivePrice, 20000);
 </script>
 
 <script src="assets/js/platform.js?v=2026.35"></script>
 
 
-<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
 <script src="assets/js/wallet-connect.js?v=2026.35"></script>
 </body>
 </html>

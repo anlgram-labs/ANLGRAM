@@ -190,22 +190,43 @@
       }
       return;
     }
-    window.setConnectedWallet(addr, 'Manual TON Wallet');
+    // Manual pasted address is strictly Watch-Only / Read-Only. Cannot sign transactions.
+    window.setConnectedWallet(addr, 'Watch-Only (Read-Only)', 'mainnet', false);
+    if (typeof window.showWalletToast === 'function') {
+      window.showWalletToast('Modo Observador', 'Dirección vinculada en modo solo lectura. Para firmar transacciones conecta vía TON Connect.', 4500);
+    }
   };
 
-  window.setConnectedWallet = async function(address, walletName = 'TON Wallet') {
+  window.isWalletReadyForTransaction = function() {
+    const isTonConnect = localStorage.getItem('anlgram_wallet_is_tonconnect') === 'true';
+    const hasAddr = Boolean(localStorage.getItem('anlgram_wallet_addr'));
+    const hasUI = Boolean(window.tonConnectUI && window.tonConnectUI.wallet);
+    return isTonConnect && hasAddr && hasUI;
+  };
+
+  window.setConnectedWallet = async function(address, walletName = 'TON Wallet', network = 'mainnet', isTonConnect = false) {
     currentAddress = address;
     localStorage.setItem('anlgram_wallet_addr', address);
     localStorage.setItem('anlgram_wallet_name', walletName);
+    localStorage.setItem('anlgram_wallet_network', network);
+    localStorage.setItem('anlgram_wallet_is_tonconnect', isTonConnect ? 'true' : 'false');
     
     const overlay = document.getElementById('anlgram-wallet-modal-overlay');
     if (overlay) overlay.style.display = 'none';
 
-    window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address, walletName } }));
+    window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { 
+      detail: { 
+        address, 
+        walletName, 
+        network, 
+        isTonConnect, 
+        isReadOnly: !isTonConnect 
+      } 
+    }));
     await updateAllButtons();
     
-    if (typeof window.showWalletToast === 'function') {
-      window.showWalletToast('Conexión Exitosa', `Billetera conectada: ${formatAddress(address)}`, 3000);
+    if (isTonConnect && typeof window.showWalletToast === 'function') {
+      window.showWalletToast('Conexión Exitosa', `Billetera conectada: ${formatAddress(address)} (${network})`, 3000);
     }
   };
 
@@ -216,11 +237,13 @@
     currentAddress = '';
     localStorage.removeItem('anlgram_wallet_addr');
     localStorage.removeItem('anlgram_wallet_name');
+    localStorage.removeItem('anlgram_wallet_network');
+    localStorage.removeItem('anlgram_wallet_is_tonconnect');
 
     const overlay = document.getElementById('anlgram-wallet-modal-overlay');
     if (overlay) overlay.style.display = 'none';
 
-    window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: null } }));
+    window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: null, network: 'mainnet', isTonConnect: false, isReadOnly: true } }));
     await updateAllButtons();
 
     if (typeof window.showWalletToast === 'function') {
@@ -261,8 +284,11 @@
     const UIClass = SDK?.TonConnectUI || SDK;
     if (typeof UIClass === 'function') {
       try {
+        // Always use the public HTTPS manifest so mobile wallets (Tonkeeper, etc.) can fetch it via cellular/Wi-Fi
+        const manifestUrl = 'https://anlgram-labs.github.io/ANLGRAM/tonconnect-manifest.json';
+
         tonConnectUI = new UIClass({
-          manifestUrl: 'https://anlgram-labs.github.io/ANLGRAM/tonconnect-manifest.json',
+          manifestUrl: manifestUrl,
           // Attach the built-in button to a hidden element so the SDK doesn't
           // render its own floating button on top of our custom UI
           buttonRootId: null,
@@ -271,10 +297,16 @@
         // Expose globally so staking.js can call sendTransaction
         window.tonConnectUI = tonConnectUI;
 
+        const getChainNetwork = (wallet) => {
+          const chain = wallet?.account?.chain;
+          return (chain === '-3' || chain === -3) ? 'testnet' : 'mainnet';
+        };
+
         tonConnectUI.onStatusChange(wallet => {
           if (wallet && wallet.account) {
             const addr = wallet.account.address || wallet.account.friendlyAddress;
-            window.setConnectedWallet(addr, wallet.device?.appName || 'TON Connect');
+            const net = getChainNetwork(wallet);
+            window.setConnectedWallet(addr, wallet.device?.appName || 'TON Connect', net, true);
           } else if (!wallet && currentAddress) {
             window.disconnectWallet();
           }
@@ -283,10 +315,11 @@
         // Restore session if wallet was previously connected
         if (tonConnectUI.wallet && tonConnectUI.wallet.account) {
           const addr = tonConnectUI.wallet.account.address || tonConnectUI.wallet.account.friendlyAddress;
-          window.setConnectedWallet(addr, tonConnectUI.wallet.device?.appName || 'TON Connect');
+          const net = getChainNetwork(tonConnectUI.wallet);
+          window.setConnectedWallet(addr, tonConnectUI.wallet.device?.appName || 'TON Connect', net, true);
         }
 
-        console.log('[ANLGRAM] TON Connect UI initialised successfully.');
+        console.log('[ANLGRAM] TON Connect UI initialised successfully with manifest:', manifestUrl);
       } catch (e) {
         console.warn('[ANLGRAM] TonConnectUI init failed — manual address mode only:', e);
       }

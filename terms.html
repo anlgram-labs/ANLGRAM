@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service | ANLGRAM Enterprise</title>
+  <meta name="description" content="Terms of Service and Staking Disclaimer for ANLGRAM Staking Intelligence Center." />
+  <link rel="canonical" href="https://anlgram-labs.github.io/ANLGRAM/terms.html" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
+  <link rel="stylesheet" href="assets/css/design-system.css" />
+  <link rel="stylesheet" href="assets/css/layout.css" />
+  <style>
+    body { background: #07090e; color: #e2e8f0; font-family: 'Inter', system-ui, sans-serif; line-height: 1.7; padding: 40px 20px; }
+    .container { max-width: 860px; margin: 0 auto; background: rgba(13,16,25,0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+    h1 { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 8px; }
+    h2 { font-size: 20px; font-weight: 700; color: #00CFFF; margin-top: 32px; margin-bottom: 12px; }
+    p, li { font-size: 14px; color: #94a3b8; margin-bottom: 14px; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; background: rgba(0,207,255,0.12); color: #00CFFF; margin-bottom: 20px; }
+    .callout { background: rgba(245,158,11,0.08); border-left: 4px solid #f59e0b; padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 13px; color: #fbbf24; }
+    a { color: #0088CC; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #00CFFF; margin-bottom: 24px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="staking.html" class="back-link">← Back to Staking Intelligence Center</a>
+    <div class="badge">Legal Agreement · Version 2.1 (October 2026)</div>
+    <h1>Terms of Service &amp; Staking Disclosures</h1>
+    <p>Last updated: October 2026. Please read these Terms of Service carefully before utilizing the ANLGRAM Staking Intelligence Center.</p>
+
+    <div class="callout">
+      <strong>Important Non-Custodial Notice:</strong> ANLGRAM is a client-side graphical interface that facilitates interaction with autonomous smart contracts on The Open Network (TON). ANLGRAM does not take custody of user assets, does not manage validator private keys, and does not operate a proprietary staking pool. All staking deposits and withdrawals are executed directly between your wallet and verified third-party smart contracts (such as Tonstakers and TON Whales pools).
+    </div>
+
+    <h2>1. Non-Custodial Interface &amp; Scope of Service</h2>
+    <p>ANLGRAM provides analytics, monitoring, and user interface helpers to construct TON Connect standard transactions. You retain full control over your cryptographic keys, seed phrases, and funds at all times. ANLGRAM never requests, transmits, or stores private keys.</p>
+
+    <h2>2. Third-Party Protocols &amp; Smart Contract Risks</h2>
+    <p>Staking operations supported by the interface interact with external, independently deployed protocols:</p>
+    <ul>
+      <li><strong>Tonstakers (Liquid Staking):</strong> Operated under its respective open-source smart contracts. Staking exchanges TON for tsTON. Unstaking burns tsTON and releases TON subject to protocol validation cycles or secondary DEX liquidity.</li>
+      <li><strong>TON Whales Nominator Pools:</strong> Operated under nominator pool smart contracts where withdrawals unlock following round elections (~36–48 hours delay).</li>
+    </ul>
+    <p>ANLGRAM makes no representations or warranties regarding the security, uptime, solvency, or operational integrity of third-party contracts.</p>
+
+    <h2>3. Fee Structure &amp; Service Commissions</h2>
+    <p>ANLGRAM maintains a strict transparency policy:</p>
+    <ul>
+      <li><strong>Validator / Pool Fees:</strong> Established directly by the third-party pool operator (e.g., 8–10% of generated staking rewards) and deducted autonomously by the pool contracts on-chain.</li>
+      <li><strong>ANLGRAM Service Fee:</strong> <strong>0% (0 TON)</strong> for direct third-party pool interactions. ANLGRAM does not execute dual-transaction fee splitting to avoid user fund loss if a pool transaction fails. Referral attribution with Tonstakers is handled strictly via the protocol's native partner code where applicable.</li>
+      <li><strong>Network Gas:</strong> Standard blockchain fees required by the TON virtual machine to execute transactions, paid directly to TON validators.</li>
+    </ul>
+
+    <h2>4. Variable Yields &amp; Market Risks</h2>
+    <p>Annual Percentage Rates (APR) and Annual Percentage Yields (APY) shown on ANLGRAM are calculated from live on-chain data and are subject to continuous fluctuation based on total network stake, elector parameters, and validator performance. Slashing penalties or missed validation rounds by validators may result in reduced yields.</p>
+
+    <h2>5. Mainnet &amp; Testnet Staking Policies</h2>
+    <p>To safeguard user funds, staking actions are strictly restricted to audited, allowlisted contracts. Mainnet transactions require full network matching between your connected wallet and the interface. Testnet staking is provided for verification and testing with zero financial risk.</p>
+
+    <h2>6. Limitation of Liability</h2>
+    <p>In no event shall ANLGRAM, its contributors, or affiliates be liable for any damages, loss of profits, smart contract exploits, wallet incompatibilities, or blockchain network disruptions resulting from the use of this interface.</p>
+
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; color: #64748b; text-align: center;">
+      ANLGRAM Intelligence · Open-Source On-Chain Analytics · The Open Network (TON)
+    </div>
+  </div>
+</body>
+</html>
