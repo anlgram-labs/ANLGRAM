@@ -5,14 +5,18 @@
  * Verifiable, Non-Custodial, Real-Data Staking Architecture
  *
  * Architecture Principles:
- * 1. ZERO FAKE DATA: No mock balances, synthetic whales, pseudo-random sparklines, or sine-wave APRs.
- * 2. VERIFIED ALLOWLIST ONLY: Staking execution strictly restricted to verified smart contracts.
- * 3. EXPLICIT NETWORK COMPARISON: Validates wallet chain against application network; cancels on mismatch.
- * 4. STRICT NON-CUSTODIAL TRANSACTIONS: Signed exclusively via TON Connect. Manual pasted addresses are read-only.
- * 5. SAFE BIGINT NANOTON ARITHMETIC: Integer precision for all balances, fees, minimums, and reserves.
- * 6. ACCURATE AUDITED PAYLOADS: Exact TL-B specifications for Tonstakers (0x47d54391 + partnerCode, 0x595f07bc) and TON Whales (0x7bcd1fef, 0xda803efd).
- * 7. TRANSPARENT FEE POLICY: Validator commission distinguished from ANLGRAM 0% service commission.
- * 8. ON-CHAIN EVENT VERIFICATION: Multi-state polling (pending, confirmed, failed, bounced).
+ * 1. ZERO FAKE DATA: No mock balances, synthetic whales, pseudo-random sparklines, or hardcoded APRs.
+ * 2. SINGLE VERIFIED PUBLIC POOL: Restricted strictly to Tonstakers Official Liquid Pool (liquidTF / tsTON).
+ * 3. EXPLICIT NETWORK ID (-239 Mainnet, -3 Testnet): Validated before and inside every TON Connect transaction.
+ * 4. STRICT NON-CUSTODIAL TRANSACTIONS: Signed exclusively via TON Connect. Never asks for or stores seed phrases/private keys.
+ * 5. EXACT BIGINT NANOTON ARITHMETIC:
+ *    ANLGRAM_STAKE_FEE_BPS = 35 (0.35%, NEVER 3500)
+ *    feeNano = (principalNano * 35n) / 10000n (rounded down to nanoTON, no floating-point, no max cap).
+ *    0% fee on withdrawals and reward claims.
+ * 6. TWO-PHASE ESCROW FEE ARCHITECTURE (AnlgramStakingRouter):
+ *    Never claims the 0.35% fee is collected merely because a transaction left the wallet or reached the router.
+ *    Fee is held in escrow and released to UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd ONLY after
+ *    on-chain confirmation of tsTON minting (0x7362d09c). On authenticated pool bounce (0x47d54391), 100% of principal + fee is refunded.
  */
 
 'use strict';
@@ -23,142 +27,114 @@
 
 const STAKING_CONFIG = {
   // Network APIs
-  TONAPI_BASE_MAINNET:      'https://tonapi.io/v2',
-  TONAPI_BASE_TESTNET:      'https://testnet.tonapi.io/v2',
-  TONVIEWER_MAINNET:        'https://tonviewer.com',
-  TONVIEWER_TESTNET:        'https://testnet.tonviewer.com',
-  TONSCAN_BASE:             'https://tonscan.org',
-  TON_DOCS:                 'https://docs.ton.org',
-  TONSTAKERS_DOCS:          'https://docs.tonstakers.com',
-  TONWHALES_DOCS:           'https://tonwhales.com/staking',
-  REFRESH_INTERVAL_MS:      45000,
-  METRIC_REFRESH_MS:        45000,
-  TX_REFRESH_MS:            30000,
-  REQUEST_TIMEOUT_MS:       9000,
-  MAX_RETRIES:              2,
-  CACHE_TTL_MS:             30000,
-  ROWS_PER_PAGE:            20,
-  VERSION:                  '2.1.0',
+  TONAPI_BASE_MAINNET:          'https://tonapi.io/v2',
+  TONAPI_BASE_TESTNET:          'https://testnet.tonapi.io/v2',
+  TONVIEWER_MAINNET:            'https://tonviewer.com',
+  TONVIEWER_TESTNET:            'https://testnet.tonviewer.com',
+  TONSCAN_BASE:                 'https://tonscan.org',
+  TON_DOCS:                     'https://docs.ton.org',
+  TONSTAKERS_DOCS:              'https://docs.tonstakers.com',
+  REFRESH_INTERVAL_MS:          45000,
+  METRIC_REFRESH_MS:            45000,
+  TX_REFRESH_MS:                30000,
+  REQUEST_TIMEOUT_MS:           9000,
+  MAX_RETRIES:                  2,
+  CACHE_TTL_MS:                 30000,
+  ROWS_PER_PAGE:                20,
+  VERSION:                      '3.0.0',
+
+  // Explicit TON Chain IDs
+  CHAIN_ID_MAINNET:             '-239',
+  CHAIN_ID_TESTNET:             '-3',
 
   // SECURITY SWITCH:
-  // Mainnet staking transactions are held inactive until production owner audits,
-  // dedicated TonAPI key, and treasury parameters are finalized.
-  // Testnet staking is fully active for complete verifiable end-to-end testing.
-  MAINNET_STAKING_ENABLED:  false,
+  // Mainnet staking is strictly disabled until independent smart contract audit,
+  // pool/router/fee/network/position verification, and explicit owner approval.
+  MAINNET_STAKING_ENABLED:      false,
 
-  // Commission Transparency Policy:
-  // ANLGRAM charges 0% service commission on third-party public staking pools to guarantee
-  // atomicity of funds and avoid dual-transfer loss risks.
-  ANLGRAM_SERVICE_FEE_PCT:  0,
-  ANLGRAM_PARTNER_CODE:     0x000000106796caef, // Tonstakers official partner attribution code
+  // ── ANLGRAM COMMISSION CONFIGURATION (0.35% = 35 bps) ─────
+  // MUST BE 35 (0.35%). NEVER USE 3500.
+  ANLGRAM_STAKE_FEE_BPS:        35,
+  ANLGRAM_STAKE_FEE_BPS_BIGINT: 35n,
+  ANLGRAM_FEE_DENOM_BIGINT:     10000n,
+  ANLGRAM_WITHDRAW_FEE_BPS:     0,
+  ANLGRAM_CLAIM_FEE_BPS:        0,
+  ANLGRAM_FEE_RECIPIENT:        'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd',
+  ANLGRAM_FEE_RECIPIENT_RAW:    '0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d',
+  ANLGRAM_PARTNER_CODE:         0x000000106796caefn,
 
-  // Protocols Supported by verified interfaces
+  // ── ANLGRAM STAKING ROUTER (2-PHASE ESCROW) ────────────────
+  // Compiled FunC contract: minter-contract/contracts/anlgram-staking-router.fc
+  // Code Cell SHA-256: 73a2638e5ee06d1f1762d48f282f4d79649d3ed64d3f39bdf060ab65a37632ba
+  ROUTER_ADDRESS_MAINNET:       null, // Do NOT deploy on Mainnet without independent audit & owner approval
+  ROUTER_ADDRESS_TESTNET:       (typeof localStorage !== 'undefined' && localStorage.getItem('anlgram_staking_router_testnet')) || 'kQB0zhRVcCVnnApIlxowyk4yvgFuXXRSdDea2e-bKCei2z-M',
+  ROUTER_ADDRESS_TESTNET_RAW:   '0:74ce14557025679c0a48971a30ca4e32be016e5d745274379ad9ef9b2827a2db',
+  ROUTER_JWALLET_TESTNET:       'kQBccUarychCErZG-4S8a_jKuIzRgon-1h4z9b7uI4n8yjjH',
+  ROUTER_JWALLET_TESTNET_RAW:   '0:5c7146abc9c84212b646fb84bc6bf8cab88cd18289fed61e33f5beee2389fcca',
+  ROUTER_OP_STAKE:              0x414e4c53,
+  ROUTER_OP_REFUND_BOUNCE:      0x414e4c52,
+  ROUTER_OP_REFUND_TIMEOUT:     0x414e4c54, // Disabled on-chain (throws exit_code 311) to prevent double-refund
+  ROUTER_OP_RETRY_TSTON:        0x414e4c55, // Non-custodial tsTON delivery retry / post-timeout recovery
+  ROUTER_OP_FEE_PAYOUT:         0x414e4c46,
+  ROUTER_GAS_RESERVE_NANO:      1150000000n, // 1.00 TON pool deposit gas + 0.15 TON router forwarding gas (excess refunded)
+  POOL_DIRECT_GAS_RESERVE_NANO: 1000000000n, // 1.00 TON Tonstakers deposit gas reserve
+  UNSTAKE_GAS_RESERVE_NANO:     1050000000n, // 1.05 TON Tonstakers burn gas reserve
+
+  // Single Verified Protocol
   PROTOCOLS: {
-    LIQUID_TF: 'liquidTF', // Tonstakers liquid staking (tsTON)
-    WHALES:    'whales',   // TON Whales / Tonkeeper Nominator pools
-    TF:        'tf',       // Single Nominator pools (Validator owner only, not retail)
+    LIQUID_TF: 'liquidTF', // Tonstakers Official Liquid Pool (tsTON)
   },
 
-  // Audited & Allowed Staking Pools Registry (Mainnet and Testnet)
-  // Transactions are permitted ONLY for addresses in this allowlist.
+  // Single Verified Public Staking Pool per Network (Tonstakers Official Liquid Pool)
   ALLOWLIST: {
-    // ── MAINNET VERIFIED POOLS ─────────────────────────────────
+    // ── MAINNET VERIFIED POOL (-239) ─────────────────────────
     'EQCkWxfyhAkim3g2DjKQQg8T5P4g-Q1-K_jErGcDJZ4i-vqR': {
       network: 'mainnet',
+      chainId: '-239',
       protocol: 'liquidTF',
       name: 'Tonstakers (Official Liquid Pool)',
       raw: '0:a45b17f28409229b78360e3290420f13e4fe20f90d7e2bf8c4ac6703259e22fa',
       minStakeTon: 1,
       minStakeNano: 1000000000n, // 1 TON
-      gasReserveNano: 1000000000n, // 1.0 TON gas attached (surplus refunded by pool)
+      gasReserveNano: 1150000000n, // 1.15 TON via Router (1.0 TON pool + 0.15 TON router, surplus refunded)
+      poolGasReserveNano: 1000000000n,
       unstakeGasNano: 1050000000n, // 1.05 TON gas attached for tsTON burn
       jettonMaster: 'EQC98_qAmNEptUtPc7W6xdHh_ZHrBUFpw5Ft_IzNU20QAJav',
+      jettonMasterRaw: '0:bdf3fa8098d129b54b4f73b5bac5d1e1fd91eb054169c3916dfc8ccd536d1000',
+      routerStakeOp: 0x414e4c53,
       depositOp: 0x47d54391,
       unstakeOp: 0x595f07bc,
-      partnerCode: 0x000000106796caef,
-      lockDescription: 'Liquid: tsTON minted instantly. Value appreciates continuously against TON. Zero lock delay when swapped via DEX, or redeemable through round unstake.',
+      partnerCode: 0x000000106796caefn,
+      rewardMechanism: 'Token de participación líquido (tsTON · NEP-74). La tasa de cambio tsTON → TON (total_balance / supply) aumenta automáticamente en cada ciclo de validación (~18–36h).',
+      lockDescription: 'Líquido (tsTON): emisión inmediata tras confirmación del pool; retiro por quema de tsTON (0x595f07bc) sin comisión de ANLGRAM (0%).',
       docs: 'https://docs.tonstakers.com',
       isSupported: true,
     },
-    'EQAA_5_dizuA1w6OpzTSYvXhvUwYTDNTW_MZDdZ0CGKeeper': {
-      network: 'mainnet',
-      protocol: 'whales',
-      name: 'Tonkeeper Nominator Pool #1 (Whales)',
-      raw: '0:00ff9fdd8b3b80d70e8ea734d262f5e1bd4c184c33535bf3190dd67408629e7a',
-      minStakeTon: 50,
-      minStakeNano: 50000000000n, // 50 TON
-      gasReserveNano: 200000000n, // 0.2 TON gas reserve
-      withdrawGasNano: 200000000n, // 0.2 TON gas
-      depositOp: 0x7bcd1fef,
-      withdrawOp: 0xda803efd,
-      lockDescription: 'Native Nominator: 1 election cycle (~36–48h lock delay). Funds unlock automatically after elector validation round.',
-      docs: 'https://tonwhales.com/staking',
-      isSupported: true,
-    },
-    'EQDFvnxuyA2ogNPOoEj1lu968U4PP8_FzJfrOWUsi_o1CLUB': {
-      network: 'mainnet',
-      protocol: 'whales',
-      name: 'Whales Club Pool #1',
-      raw: '0:c5be7c6ec80da880d3cea048f596ef7af14e0f3fcfc5cc97eb39652c8bfa3508',
-      minStakeTon: 50,
-      minStakeNano: 50000000000n,
-      gasReserveNano: 200000000n,
-      withdrawGasNano: 200000000n,
-      depositOp: 0x7bcd1fef,
-      withdrawOp: 0xda803efd,
-      lockDescription: 'Native Nominator: 1 election cycle (~36–48h lock delay).',
-      docs: 'https://tonwhales.com/staking',
-      isSupported: true,
-    },
-    'EQCY4M6TZYnOMnGBQlqi_nyeaIB1LeBFfGgP4uXQ1VWhales': {
-      network: 'mainnet',
-      protocol: 'whales',
-      name: 'Whales Nominators #2',
-      raw: '0:98e0ce936589ce327181425aa2fe7c9e6880752de0457c680fe2e5d0d555a16a',
-      minStakeTon: 50,
-      minStakeNano: 50000000000n,
-      gasReserveNano: 200000000n,
-      withdrawGasNano: 200000000n,
-      depositOp: 0x7bcd1fef,
-      withdrawOp: 0xda803efd,
-      lockDescription: 'Native Nominator: 1 election cycle (~36–48h lock delay).',
-      docs: 'https://tonwhales.com/staking',
-      isSupported: true,
-    },
-    'EQDvvBmP3wUcjoXPY1jHfT4-fgb294imVYH5EHdLnAKeeper': {
-      network: 'mainnet',
-      protocol: 'whales',
-      name: 'Tonkeeper Nominator Pool #2 (Whales)',
-      raw: '0:efbc198fdf051c8e85cf6358c77d3e3e7e06f6f788a65581f910774b9c029e7a',
-      minStakeTon: 50,
-      minStakeNano: 50000000000n,
-      gasReserveNano: 200000000n,
-      withdrawGasNano: 200000000n,
-      depositOp: 0x7bcd1fef,
-      withdrawOp: 0xda803efd,
-      lockDescription: 'Native Nominator: 1 election cycle (~36–48h lock delay).',
-      docs: 'https://tonwhales.com/staking',
-      isSupported: true,
-    },
 
-    // ── TESTNET VERIFIED POOLS ─────────────────────────────────
+    // ── TESTNET VERIFIED POOL (-3) ───────────────────────────
     'kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3': {
       network: 'testnet',
+      chainId: '-3',
       protocol: 'liquidTF',
       name: 'Tonstakers (Official Testnet Pool)',
       raw: '0:0d16c632627f86499e286a350999ba03511654fae74c1dff49c733b8bd833f84',
       minStakeTon: 1,
-      minStakeNano: 1000000000n,
-      gasReserveNano: 1000000000n,
-      unstakeGasNano: 1050000000n,
+      minStakeNano: 1000000000n, // 1 TON
+      gasReserveNano: 1150000000n, // 1.15 TON via Router (1.0 TON pool + 0.15 TON router, surplus refunded)
+      poolGasReserveNano: 1000000000n,
+      unstakeGasNano: 1050000000n, // 1.05 TON gas attached for tsTON burn
+      jettonMaster: 'kQAiQ2XK7BXePLwemeo-u4wNyjg-wxGeySmaFGEP7R2Mhf4m',
+      jettonMasterRaw: '0:224365caec15de3cbc1e99ea3ebb8c0dca383ec3119ec9299a14610fed1d8c85',
+      routerStakeOp: 0x414e4c53,
       depositOp: 0x47d54391,
       unstakeOp: 0x595f07bc,
-      partnerCode: 0x000000106796caef,
-      lockDescription: 'Liquid Testnet Pool: Testnet tsTON minted immediately for verification.',
+      partnerCode: 0x000000106796caefn,
+      rewardMechanism: 'Token de participación líquido (tsTON Testnet · NEP-74). La tasa de cambio tsTON → TON (total_balance / supply) aumenta automáticamente en cada ciclo de validación.',
+      lockDescription: 'Líquido Testnet (tsTON): emisión inmediata tras confirmación del pool; retiro por quema de tsTON (0x595f07bc) sin comisión de ANLGRAM (0%).',
       docs: 'https://docs.tonstakers.com',
       isSupported: true,
-    }
-  }
+    },
+  },
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -167,7 +143,7 @@ const STAKING_CONFIG = {
 
 const StakingState = (() => {
   let _state = {
-    activeNetwork: localStorage.getItem('anlgram_staking_network') || 'testnet', // Default to testnet for safe execution
+    activeNetwork: (typeof localStorage !== 'undefined' && localStorage.getItem('anlgram_staking_network')) || 'testnet',
     wallet: {
       address: null,
       rawAddress: null,
@@ -175,9 +151,18 @@ const StakingState = (() => {
       balanceTon: 0,
       balanceNano: 0n,
       network: 'testnet',
+      chainId: '-3',
       connected: false,
       isTonConnect: false,
       isReadOnly: true,
+    },
+    poolOnChainData: {
+      mainnet: null,
+      testnet: null,
+    },
+    routerVerification: {
+      mainnet: { verified: false, address: null, reason: 'Mainnet desactivado por política de seguridad' },
+      testnet: { verified: false, address: STAKING_CONFIG.ROUTER_ADDRESS_TESTNET, reason: 'Router pendiente de despliegue/configuración en Testnet' },
     },
     validators: [],
     filteredValidators: [],
@@ -193,9 +178,11 @@ const StakingState = (() => {
       lastBlock: null,
       tps: null,
       tonPrice: null,
-      networkStatus: 'Connecting to TON...',
-      dataSource: 'TonAPI v2',
+      exchangeRateTonPerTsTon: null,
+      networkStatus: 'Conectando a TON...',
+      dataSource: 'TonAPI v2 + get_pool_full_data',
       lastUpdated: null,
+      yieldType: 'Estimado (variable por ciclo)',
     },
     notifications: [],
     unreadCount: 0,
@@ -207,6 +194,7 @@ const StakingState = (() => {
       whaleTab: 'top',
       txInFlight: false,
       lastTxHash: null,
+      lastTxState: null,
     },
     loading: {
       validators: true,
@@ -252,8 +240,8 @@ const ApiService = (() => {
   async function _rateGuard() {
     const now = Date.now();
     const timeSinceLast = now - _lastRequestTime;
-    if (timeSinceLast < 1100) {
-      const waitTime = 1100 - timeSinceLast;
+    if (timeSinceLast < 650) {
+      const waitTime = 650 - timeSinceLast;
       _lastRequestTime = now + waitTime;
       return new Promise(r => setTimeout(r, waitTime));
     }
@@ -270,8 +258,7 @@ const ApiService = (() => {
       clearTimeout(tid);
       if (res.status === 429) throw Object.assign(new Error('Rate limited by TonAPI (HTTP 429)'), { code: 429 });
       if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}`), { code: res.status });
-      const data = await res.json();
-      return data;
+      return await res.json();
     } catch (e) {
       clearTimeout(tid);
       throw e;
@@ -280,7 +267,7 @@ const ApiService = (() => {
 
   async function get(url, ttl = STAKING_CONFIG.CACHE_TTL_MS) {
     const cached = _cache.get(url);
-    if (cached && Date.now() - cached.ts < ttl) return cached.data;
+    if (cached && ttl > 0 && Date.now() - cached.ts < ttl) return cached.data;
 
     let lastErr;
     for (let attempt = 0; attempt <= STAKING_CONFIG.MAX_RETRIES; attempt++) {
@@ -290,18 +277,18 @@ const ApiService = (() => {
         return data;
       } catch (e) {
         lastErr = e;
-        if (e.code === 429) await _sleep(2200 * (attempt + 1));
+        if (e.code === 429) await _sleep(1800 * (attempt + 1));
         else if (e.name === 'AbortError') break;
-        else if (attempt < STAKING_CONFIG.MAX_RETRIES) await _sleep(900 * (attempt + 1));
+        else if (attempt < STAKING_CONFIG.MAX_RETRIES) await _sleep(750 * (attempt + 1));
       }
     }
     const stale = _cache.get(url);
-    if (stale) return stale.data;
+    if (stale && ttl > 0) return stale.data;
     throw lastErr;
   }
 
-  function tonapi(endpoint, ttl) {
-    const net = StakingState.get('activeNetwork');
+  function tonapi(endpoint, ttl = STAKING_CONFIG.CACHE_TTL_MS, forceNetwork = null) {
+    const net = forceNetwork || StakingState.get('activeNetwork');
     const base = net === 'testnet' ? STAKING_CONFIG.TONAPI_BASE_TESTNET : STAKING_CONFIG.TONAPI_BASE_MAINNET;
     return get(`${base}${endpoint}`, ttl);
   }
@@ -319,14 +306,18 @@ const ApiService = (() => {
 function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 /* ══════════════════════════════════════════════════════════════
-   SAFE ARITHMETIC & TON CRYPTO HELPERS (NANOTON PRECISION)
+   SAFE BIGINT NANOTON ARITHMETIC & FEE ENGINE (0.35% = 35 BPS)
    ══════════════════════════════════════════════════════════════ */
 
+/**
+ * Converts a decimal TON string/number or BigInt into exact nanoTON BigInt.
+ * Strictly string-based decimal parsing — never uses floating-point multiplication.
+ */
 function toNanoSafe(tonVal) {
   if (typeof tonVal === 'bigint') return tonVal;
-  if (!tonVal && tonVal !== 0) return 0n;
+  if (tonVal === null || tonVal === undefined || tonVal === '') return 0n;
   const str = String(tonVal).trim();
-  if (!str || isNaN(Number(str))) return 0n;
+  if (!/^\d+(\.\d+)?$/.test(str)) return 0n;
   const parts = str.split('.');
   const whole = parts[0] || '0';
   let frac = parts[1] || '';
@@ -335,19 +326,68 @@ function toNanoSafe(tonVal) {
   return BigInt(whole) * 1000000000n + BigInt(frac);
 }
 
-function fromNanoSafe(nanoVal, decimals = 4) {
+/**
+ * Formats an exact nanoTON BigInt into a decimal TON string without floating-point loss.
+ * If trimTrailingZeros is true, preserves up to 9 decimals while keeping at least minDecimals.
+ */
+function fromNanoSafe(nanoVal, decimals = 4, trimTrailingZeros = false) {
   if (nanoVal === null || nanoVal === undefined) return '0.00';
   try {
     const n = typeof nanoVal === 'bigint' ? nanoVal : BigInt(String(nanoVal).split('.')[0] || '0');
     const sign = n < 0n ? '-' : '';
     const absN = n < 0n ? -n : n;
     const whole = (absN / 1000000000n).toString();
-    const frac = (absN % 1000000000n).toString().padStart(9, '0');
-    const trimmedFrac = frac.slice(0, Math.min(9, decimals));
-    return `${sign}${whole}.${trimmedFrac}`;
+    const fracFull = (absN % 1000000000n).toString().padStart(9, '0');
+    const maxDec = Math.max(0, Math.min(9, decimals));
+    if (maxDec === 0) return `${sign}${whole}`;
+    let frac = fracFull.slice(0, maxDec);
+    if (trimTrailingZeros) {
+      frac = frac.replace(/0+$/, '');
+      if (frac.length < 2) frac = fracFull.slice(0, Math.max(2, frac.length));
+    }
+    return `${sign}${whole}.${frac}`;
   } catch {
     return '0.00';
   }
+}
+
+/**
+ * Exact ANLGRAM Staking Commission Calculation in nanoTON using BigInt:
+ *   feeNano = (principalNano * 35n) / 10000n
+ * - 35 basis points = 0.35% (NEVER 3500)
+ * - Rounds down to nanoTON automatically via BigInt integer division
+ * - No maximum cap
+ * - No floating-point arithmetic
+ */
+function calculateAnlgramStakeFeeNano(principalInput) {
+  const principalNano = typeof principalInput === 'bigint' ? principalInput : toNanoSafe(principalInput);
+  if (principalNano <= 0n) return 0n;
+  return (principalNano * STAKING_CONFIG.ANLGRAM_STAKE_FEE_BPS_BIGINT) / STAKING_CONFIG.ANLGRAM_FEE_DENOM_BIGINT;
+}
+
+/**
+ * Computes the complete deposit breakdown in nanoTON and formatted TON strings.
+ */
+function calculateStakeDepositBreakdown(principalInput, gasReserveNano = STAKING_CONFIG.ROUTER_GAS_RESERVE_NANO) {
+  const principalNano = typeof principalInput === 'bigint' ? principalInput : toNanoSafe(principalInput);
+  const feeNano = calculateAnlgramStakeFeeNano(principalNano);
+  const gasNano = BigInt(gasReserveNano);
+  const totalNano = principalNano > 0n ? (principalNano + feeNano + gasNano) : 0n;
+
+  return {
+    principalNano,
+    feeNano,
+    gasReserveNano: gasNano,
+    totalNano,
+    feeBps: STAKING_CONFIG.ANLGRAM_STAKE_FEE_BPS, // 35
+    feePctStr: '0.35%',
+    feeRecipient: STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT,
+    feeRecipientRaw: STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT_RAW,
+    principalTonStr: fromNanoSafe(principalNano, 9, true),
+    feeTonStr: fromNanoSafe(feeNano, 9, true),
+    gasTonStr: fromNanoSafe(gasNano, 4),
+    totalTonStr: fromNanoSafe(totalNano, 9, true),
+  };
 }
 
 function crc16(data) {
@@ -365,12 +405,12 @@ function isValidTonAddress(addr) {
   if (!addr || typeof addr !== 'string') return false;
   if (addr.includes(':')) {
     const parts = addr.split(':');
-    return parts.length === 2 && /^[0-9a-fA-F]{64}$/.test(parts[1]);
+    return parts.length === 2 && (parts[0] === '0' || parts[0] === '-1') && /^[0-9a-fA-F]{64}$/.test(parts[1]);
   }
   if (addr.length !== 48) return false;
   try {
     const b64 = addr.replace(/-/g, '+').replace(/_/g, '/');
-    const bin = atob(b64);
+    const bin = typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('binary');
     if (bin.length !== 36) return false;
     const bytes = new Uint8Array(36);
     for (let i = 0; i < 36; i++) bytes[i] = bin.charCodeAt(i);
@@ -378,6 +418,24 @@ function isValidTonAddress(addr) {
     return bytes[34] === ((c >> 8) & 0xff) && bytes[35] === (c & 0xff);
   } catch {
     return false;
+  }
+}
+
+function friendlyToRawAddress(addr) {
+  if (!addr || typeof addr !== 'string') return '';
+  if (addr.includes(':')) return addr.toLowerCase();
+  if (!isValidTonAddress(addr)) return '';
+  try {
+    const b64 = addr.replace(/-/g, '+').replace(/_/g, '/');
+    const bin = typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('binary');
+    const bytes = new Uint8Array(36);
+    for (let i = 0; i < 36; i++) bytes[i] = bin.charCodeAt(i);
+    const wc = bytes[1] === 0xff ? -1 : bytes[1];
+    let hex = '';
+    for (let i = 2; i < 34; i++) hex += bytes[i].toString(16).padStart(2, '0');
+    return `${wc}:${hex.toLowerCase()}`;
+  } catch {
+    return '';
   }
 }
 
@@ -406,25 +464,77 @@ function rawToFriendlyAddress(raw, bounceable = true, testnet = false) {
 
   let binary = '';
   for (let i = 0; i < 36; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_');
+  const b64 = typeof btoa === 'function' ? btoa(binary) : Buffer.from(binary, 'binary').toString('base64');
+  return b64.replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 /**
  * Returns TON_CORE library or throws an actionable error if not loaded.
  */
 async function getTonCore() {
-  if (window.TON_CORE && window.TON_CORE.beginCell) return window.TON_CORE;
-  // Wait up to 3 seconds for dynamic module load
+  if (typeof window !== 'undefined' && window.TON_CORE && window.TON_CORE.beginCell) return window.TON_CORE;
   for (let i = 0; i < 30; i++) {
     await _sleep(100);
-    if (window.TON_CORE && window.TON_CORE.beginCell) return window.TON_CORE;
+    if (typeof window !== 'undefined' && window.TON_CORE && window.TON_CORE.beginCell) return window.TON_CORE;
   }
-  throw new Error('TON Cryptographic Engine (@ton/core) is not available. Please refresh or check your internet connection.');
+  throw new Error('Motor criptográfico TON (@ton/core) no disponible. Recarga la página o verifica tu conexión.');
 }
 
 /**
- * Builds Tonstakers Liquid Staking Deposit BoC (Audited Spec)
- * TL-B: stake#47d54391 query_id:uint64 partner_code:uint64 = InternalMsgBody;
+ * Builds ANLGRAM Staking Router Deposit BoC (2-Phase Escrow Architecture)
+ * TL-B: router_stake#414e4c53 query_id:uint64 principal_nano:Coins expected_network_id:int16 = InternalMsgBody;
+ *
+ * The Router calculates `fee_nano = (principal_nano * 35) / 10000` on-chain without trusting the browser,
+ * holds `fee_nano` in escrow, and forwards `principal_nano + 1.0 TON` (0x47d54391) to the verified Tonstakers Pool.
+ */
+async function buildAnlgramRouterStakePayload(queryId, principalNano, expectedNetworkId = -3) {
+  const core = await getTonCore();
+  const qId = BigInt(queryId || Date.now());
+  const pNano = BigInt(principalNano);
+  const netId = Number(expectedNetworkId);
+  if (pNano < 1000000000n) {
+    throw new Error('El principal mínimo para staking en Tonstakers es 1 TON (1,000,000,000 nanoTON).');
+  }
+  if (netId !== -3 && netId !== -239) {
+    throw new Error(`Chain ID inválido (${netId}). Use -3 (Testnet) o -239 (Mainnet).`);
+  }
+  return core.beginCell()
+    .storeUint(STAKING_CONFIG.ROUTER_OP_STAKE, 32)
+    .storeUint(qId, 64)
+    .storeCoins(pNano)
+    .storeInt(netId, 16)
+    .endCell()
+    .toBoc()
+    .toString('base64');
+}
+
+/**
+ * Builds ANLGRAM Staking Router Non-Custodial tsTON Recovery / Retry BoC
+ * TL-B: retry_tston_delivery#414e4c55 query_id:uint64 claim_jetton_amount:Coins = InternalMsgBody;
+ *
+ * Used if 0x0f8a7ea5 bounced from router_jwallet_address (status=2) or if 0x7362d09c
+ * never arrived after timeout_sec (status=0). Always delivers tsTON strictly to the
+ * original depositor (user_address) recorded on-chain.
+ */
+async function buildAnlgramRouterRetryTsTonPayload(queryId, claimJettonAmountNano = 1n) {
+  const core = await getTonCore();
+  const qId = BigInt(queryId);
+  const cAmount = BigInt(claimJettonAmountNano || 1n);
+  if (qId <= 0n) throw new Error('query_id inválido para recuperación de tsTON.');
+  if (cAmount <= 0n) throw new Error('claim_jetton_amount debe ser mayor a 0.');
+  return core.beginCell()
+    .storeUint(STAKING_CONFIG.ROUTER_OP_RETRY_TSTON, 32)
+    .storeUint(qId, 64)
+    .storeCoins(cAmount)
+    .endCell()
+    .toBoc()
+    .toString('base64');
+}
+
+/**
+ * Builds Tonstakers Official Liquid Pool Deposit BoC (Audited Spec)
+ * Used by the Router internally (or for direct protocol verification).
+ * TL-B: tonstake_pool_deposit#47d54391 query_id:uint64 app_id:uint64 = InternalMsgBody;
  */
 async function buildTonstakersStakePayload(queryId = 1, partnerCode = STAKING_CONFIG.ANLGRAM_PARTNER_CODE) {
   const core = await getTonCore();
@@ -440,19 +550,20 @@ async function buildTonstakersStakePayload(queryId = 1, partnerCode = STAKING_CO
 }
 
 /**
- * Builds Tonstakers Liquid Staking Unstake BoC (Audited Spec)
- * Sent to the user's tsTON Jetton Wallet.
- * TL-B: unstake#595f07bc query_id:uint64 amount:Coins response_address:MsgAddress
- *       maybe_options:^(waitTillRoundEnd:uint1 fillOrKill:uint1) = InternalMsgBody;
+ * Builds Tonstakers Liquid Staking Unstake (tsTON Burn) BoC (Audited Spec)
+ * Sent to the user's tsTON Jetton Wallet. ANLGRAM charges 0% fee on withdrawals.
+ * TL-B: burn#595f07bc query_id:uint64 amount:Coins response_destination:MsgAddress
+ *       custom_payload:(Maybe ^(wait_till_round_end:uint1 fill_or_kill:uint1)) = InternalMsgBody;
  */
-async function buildTonstakersUnstakePayload(tsTonAmountNano, ownerAddress, waitTillRoundEnd = false, fillOrKill = false) {
+async function buildTonstakersUnstakePayload(tsTonAmountNano, ownerAddress, waitTillRoundEnd = false, fillOrKill = false, queryId = 0n) {
   const core = await getTonCore();
   const amount = BigInt(tsTonAmountNano);
+  if (amount <= 0n) throw new Error('El monto de tsTON a retirar debe ser mayor a 0.');
   const owner = core.Address.parse(ownerAddress);
 
   return core.beginCell()
     .storeUint(0x595f07bc, 32)
-    .storeUint(0n, 64)
+    .storeUint(BigInt(queryId || 0), 64)
     .storeCoins(amount)
     .storeAddress(owner)
     .storeMaybeRef(
@@ -466,85 +577,314 @@ async function buildTonstakersUnstakePayload(tsTonAmountNano, ownerAddress, wait
     .toString('base64');
 }
 
+/* ══════════════════════════════════════════════════════════════
+   ON-CHAIN POOL & ROUTER VERIFIER (get_pool_full_data & get_router_config)
+   ══════════════════════════════════════════════════════════════ */
+
+const PoolOnChainVerifier = (() => {
+  /**
+   * Queries `get_pool_full_data` and `/accounts/{pool}` on the verified Tonstakers Pool
+   * to obtain real on-chain exchange rate (`total_balance / supply`), `halted`, `deposits_open`, and contract status.
+   */
+  async function fetchVerifiedPoolTelemetry(network) {
+    const net = network === 'mainnet' ? 'mainnet' : 'testnet';
+    const allowEntry = Object.entries(STAKING_CONFIG.ALLOWLIST).find(([, cfg]) => cfg.network === net);
+    if (!allowEntry) return null;
+    const [poolAddr, poolCfg] = allowEntry;
+
+    try {
+      const [acctRes, methodRes, poolInfoRes] = await Promise.allSettled([
+        ApiService.tonapi(`/accounts/${encodeURIComponent(poolAddr)}`, 30000, net),
+        ApiService.tonapi(`/blockchain/accounts/${encodeURIComponent(poolAddr)}/methods/get_pool_full_data`, 30000, net),
+        ApiService.tonapi(`/staking/pool/${encodeURIComponent(poolAddr)}`, 30000, net),
+      ]);
+
+      const acct = acctRes.status === 'fulfilled' ? acctRes.value : null;
+      const method = methodRes.status === 'fulfilled' ? methodRes.value : null;
+      const poolInfo = poolInfoRes.status === 'fulfilled' ? poolInfoRes.value?.pool : null;
+
+      let totalBalanceNano = 0n;
+      let jettonSupplyNano = 0n;
+      let halted = false;
+      let depositsOpen = true;
+      let optimisticWithdrawals = true;
+      let governanceFeeBps = null;
+
+      if (method && method.success && method.decoded) {
+        const d = method.decoded;
+        halted = Boolean(d.halted);
+        totalBalanceNano = BigInt(d.total_balance || 0);
+        jettonSupplyNano = BigInt(d.supply || d.jetton_total_supply || 0);
+        depositsOpen = d.deposits_open !== undefined ? Boolean(d.deposits_open) : true;
+        optimisticWithdrawals = d.optimistic_deposit_withdrawals !== undefined ? Boolean(d.optimistic_deposit_withdrawals) : true;
+        if (d.governance_fee !== undefined) {
+          governanceFeeBps = Number(d.governance_fee);
+        }
+      } else if (method && method.success && Array.isArray(method.stack) && method.stack.length >= 16) {
+        halted = parseInt(method.stack[1]?.num || '0', 16) !== 0;
+        totalBalanceNano = BigInt(method.stack[2]?.num || '0');
+        jettonSupplyNano = BigInt(method.stack[15]?.num || '0');
+      }
+
+      // Exchange rate: 1 tsTON (10^9 nano-tsTON) in nanoTON
+      const exchangeRateNano = (totalBalanceNano > 0n && jettonSupplyNano > 0n)
+        ? (totalBalanceNano * 1000000000n) / jettonSupplyNano
+        : 1000000000n;
+      const exchangeRateFloat = Number(exchangeRateNano) / 1e9;
+
+      const apy = safeNum(poolInfo?.apy ?? poolInfo?.apr, null);
+      const nominatorsCount = safeNum(poolInfo?.current_nominators, null);
+      const totalAmountNano = totalBalanceNano > 0n ? totalBalanceNano : BigInt(poolInfo?.total_amount || 0);
+
+      const telemetry = {
+        network: net,
+        chainId: poolCfg.chainId,
+        address: poolAddr,
+        rawAddress: acct?.address || poolCfg.raw,
+        accountStatus: acct?.status || 'unknown',
+        interfaces: acct?.interfaces || [],
+        isPoolActive: acct?.status === 'active' && !halted && depositsOpen,
+        halted,
+        depositsOpen,
+        optimisticWithdrawals,
+        totalBalanceNano: totalAmountNano,
+        jettonSupplyNano,
+        exchangeRateNano,
+        exchangeRateFloat,
+        apy,
+        nominatorsCount,
+        governanceFeeBps,
+        cycleStart: poolInfo?.cycle_start || null,
+        cycleEnd: poolInfo?.cycle_end || null,
+        dataSource: 'TonAPI v2 + get_pool_full_data (On-Chain)',
+        updatedAt: new Date(),
+        updatedAtStr: new Date().toLocaleTimeString(),
+      };
+
+      const prev = StakingState.get('poolOnChainData');
+      StakingState.set('poolOnChainData', { ...prev, [net]: telemetry });
+      return telemetry;
+    } catch (err) {
+      console.warn(`[PoolOnChainVerifier] Telemetry fetch note (${net}):`, err.message);
+      return null;
+    }
+  }
+
+  /**
+   * Verifies that the configured `AnlgramStakingRouter` contract is deployed, active,
+   * matches the expected network, pool address, fee recipient (`UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd`),
+   * and `fee_bps == 35`.
+   */
+  async function verifyRouterContract(network) {
+    const net = network === 'mainnet' ? 'mainnet' : 'testnet';
+    const routerAddr = net === 'mainnet'
+      ? STAKING_CONFIG.ROUTER_ADDRESS_MAINNET
+      : (localStorage.getItem('anlgram_staking_router_testnet') || STAKING_CONFIG.ROUTER_ADDRESS_TESTNET);
+
+    if (!routerAddr || !isValidTonAddress(routerAddr)) {
+      const status = {
+        verified: false,
+        address: routerAddr || null,
+        reason: net === 'mainnet'
+          ? 'Mainnet desactivado hasta auditoría independiente y aprobación del propietario.'
+          : 'Contrato AnlgramStakingRouter aún no desplegado/configurado en Testnet.',
+      };
+      const prev = StakingState.get('routerVerification');
+      StakingState.set('routerVerification', { ...prev, [net]: status });
+      return status;
+    }
+
+    try {
+      const [acct, cfgMethod] = await Promise.all([
+        ApiService.tonapi(`/accounts/${encodeURIComponent(routerAddr)}`, 10000, net),
+        ApiService.tonapi(`/blockchain/accounts/${encodeURIComponent(routerAddr)}/methods/get_router_config`, 10000, net),
+      ]);
+
+      if (!acct || acct.status !== 'active') {
+        const status = { verified: false, address: routerAddr, reason: `Contrato Router no está activo en cadena (estado: ${acct?.status || 'no encontrado'}).` };
+        StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
+        return status;
+      }
+
+      if (!cfgMethod || !cfgMethod.success || !Array.isArray(cfgMethod.stack) || cfgMethod.stack.length < 7) {
+        const status = { verified: false, address: routerAddr, reason: 'El contrato no implementa get_router_config verificado.' };
+        StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
+        return status;
+      }
+
+      const feeBpsOnChain = parseInt(cfgMethod.stack[2]?.num || '0', 16);
+      const paused = parseInt(cfgMethod.stack[3]?.num || '0', 16) !== 0;
+      const netIdOnChain = parseInt(cfgMethod.stack[4]?.num || '0', 16);
+      const expectedNetId = net === 'testnet' ? -3 : -239;
+
+      if (paused) {
+        const status = { verified: false, address: routerAddr, reason: 'El contrato Router se encuentra pausado.' };
+        StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
+        return status;
+      }
+
+      if (netIdOnChain !== expectedNetId || feeBpsOnChain !== STAKING_CONFIG.ANLGRAM_STAKE_FEE_BPS) {
+        const status = {
+          verified: false,
+          address: routerAddr,
+          reason: `Parámetros on-chain discrepantes (netId=${netIdOnChain}, feeBps=${feeBpsOnChain}).`,
+        };
+        StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
+        return status;
+      }
+
+      const status = {
+        verified: true,
+        address: routerAddr,
+        rawAddress: acct.address,
+        reason: 'Contrato AnlgramStakingRouter activo y verificado en cadena (35 bps).',
+      };
+      StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
+      return status;
+    } catch (err) {
+      const status = {
+        verified: false,
+        address: routerAddr,
+        reason: `No se pudo verificar el Router en cadena: ${err.message}`,
+      };
+      StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
+      return status;
+    }
+  }
+
+  return { fetchVerifiedPoolTelemetry, verifyRouterContract };
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   ON-CHAIN TRACE & 5-STATE TRANSACTION VERIFIER
+   ══════════════════════════════════════════════════════════════ */
+
 /**
- * Builds TON Whales Nominator Pool Deposit BoC (Audited Spec)
- * TL-B: whales_deposit#7bcd1fef query_id:uint64 = InternalMsgBody;
+ * Updates the 5 visual transaction state badges in `#stake-step-3`:
+ * 1. Transacción enviada (`sent`)
+ * 2. Pendiente (`pending`)
+ * 3. Confirmada (`confirmed`)
+ * 4. Fallida/Reembolsada (`failed_or_refunded`)
+ * 5. Comisión cobrada (`fee_collected`)
  */
-async function buildWhalesStakePayload(queryId = 1) {
-  const core = await getTonCore();
-  const qId = BigInt(queryId || 1);
-  return core.beginCell()
-    .storeUint(0x7bcd1fef, 32)
-    .storeUint(qId, 64)
-    .endCell()
-    .toBoc()
-    .toString('base64');
+function updateTxStateBadges({ sent = false, pending = false, confirmed = false, failedOrRefunded = false, feeCollected = false }) {
+  const setBadge = (id, active, activeClass) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = `badge ${active ? activeClass : 'badge-muted'}`;
+  };
+  setBadge('badge-state-sent', sent, 'badge-blue');
+  setBadge('badge-state-pending', pending, 'badge-yellow');
+  setBadge('badge-state-confirmed', confirmed, 'badge-green');
+  setBadge('badge-state-failed', failedOrRefunded, 'badge-red');
+  setBadge('badge-state-fee', feeCollected, 'badge-green');
 }
 
 /**
- * Builds TON Whales Nominator Pool Withdrawal BoC (Audited Spec)
- * TL-B: tonwhales_withdrawal#da803efd query_id:uint64 gas_limit:Coins amount:Coins = InternalMsgBody;
+ * Inspects TonAPI account events and full transaction traces (`/events/{event_id}`)
+ * to verify asynchronous multi-hop execution:
+ * - Detects if the transaction is still `in_progress` ("pendiente")
+ * - Detects if any action bounced or refunded ("fallida/reembolsada")
+ * - Detects if `tsTON` was minted/transferred to the user ("confirmada")
+ * - Detects if `feeNano` (`0.35%`) was actually transferred on-chain without bounce to
+ *   `UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd` ("comisión cobrada").
+ * Never marks "comisión cobrada" unless verified in the on-chain event actions!
  */
-async function buildWhalesWithdrawPayload(queryId = 1, gasLimitNano = 100000000n, withdrawAmountNano = 0n) {
-  const core = await getTonCore();
-  const qId = BigInt(queryId || 1);
-  return core.beginCell()
-    .storeUint(0xda803efd, 32)
-    .storeUint(qId, 64)
-    .storeCoins(BigInt(gasLimitNano))
-    .storeCoins(BigInt(withdrawAmountNano)) // 0n = full stake withdraw request
-    .endCell()
-    .toBoc()
-    .toString('base64');
-}
-
-/**
- * Real On-Chain Event Poller
- * Inspects blockchain events to confirm actual inclusion, failure, or bounce.
- */
-async function _pollRealTxConfirmation(userAddress, targetContract, startTimestamp, timeoutMs = 45000) {
-  if (!userAddress) return { status: 'unknown', hash: null };
+async function _pollRealDepositTrace(userAddress, targetContract, expectedFeeNano, startTimestamp, timeoutMs = 55000, onProgress = null) {
+  if (!userAddress) {
+    return { status: 'unknown', feeCollected: false, hash: null };
+  }
   const deadline = Date.now() + timeoutMs;
-  const targetLower = (targetContract || '').toLowerCase();
+  const targetRaw = friendlyToRawAddress(targetContract);
+  const feeRecipientRaw = STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT_RAW.toLowerCase();
+  const userRaw = friendlyToRawAddress(userAddress);
 
   while (Date.now() < deadline) {
     await _sleep(3500);
     try {
       const data = await ApiService.tonapi(`/accounts/${encodeURIComponent(userAddress)}/events?limit=8`, 0);
       const events = data?.events || [];
+
       for (const ev of events) {
-        if ((ev.timestamp || 0) >= startTimestamp - 15) {
-          const acts = ev.actions || [];
-          const matches = acts.some(act => {
-            const transfer = act.TonTransfer || act.ton_transfer;
-            const exec = act.SmartContractExec || act.smart_contract_exec;
-            const recip = (transfer?.recipient?.address || exec?.contract?.address || '').toLowerCase();
-            return recip.includes(targetLower) || targetLower.includes(recip) || !targetLower;
-          });
+        if ((ev.timestamp || 0) < startTimestamp - 15) continue;
+        const acts = ev.actions || [];
 
-          if (matches) {
-            // Check for bounced or failed actions
-            const isBounced = acts.some(act => act.TonTransfer?.bounced || act.ton_transfer?.bounced);
-            const isFailed = acts.some(act => (act.status && act.status === 'failed') || act.SmartContractExec?.exit_code !== undefined && act.SmartContractExec?.exit_code !== 0);
+        const matchesTarget = acts.some(act => {
+          const transfer = act.TonTransfer || act.ton_transfer;
+          const exec = act.SmartContractExec || act.smart_contract_exec;
+          const recip = (transfer?.recipient?.address || exec?.contract?.address || '').toLowerCase();
+          return (targetRaw && recip === targetRaw) || recip.includes((targetContract || '').toLowerCase());
+        });
 
-            if (isBounced) {
-              return { status: 'bounced', hash: ev.event_id || ev.hash || null, timestamp: ev.timestamp };
-            }
-            if (isFailed) {
-              return { status: 'failed', hash: ev.event_id || ev.hash || null, timestamp: ev.timestamp };
-            }
-            if (ev.in_progress) {
-              return { status: 'pending', hash: ev.event_id || ev.hash || null, timestamp: ev.timestamp };
-            }
-            return { status: 'confirmed', hash: ev.event_id || ev.hash || null, timestamp: ev.timestamp };
+        if (!matchesTarget) continue;
+
+        const eventId = ev.event_id || ev.hash || null;
+
+        // If trace is still executing across shards, report "pendiente" and continue polling
+        if (ev.in_progress) {
+          if (typeof onProgress === 'function') {
+            onProgress({ status: 'pending', feeCollected: false, hash: eventId, timestamp: ev.timestamp });
           }
+          continue;
         }
+
+        // Check for bounce, failure, or refund transfer back to user
+        const hasBounceOrFail = acts.some(act => {
+          const t = act.TonTransfer || act.ton_transfer;
+          const x = act.SmartContractExec || act.smart_contract_exec;
+          if (act.status && act.status !== 'ok') return true;
+          if (t?.bounced) return true;
+          if (x && x.exit_code !== undefined && x.exit_code !== 0) return true;
+          return false;
+        });
+
+        // Check if tsTON was transferred/minted to user in this trace
+        const hasTsTonToUser = acts.some(act => {
+          const jt = act.JettonTransfer || act.jetton_transfer;
+          const jm = act.JettonMint || act.jetton_mint;
+          if (jt && act.status === 'ok') {
+            const r = (jt.recipient?.address || '').toLowerCase();
+            return !userRaw || r === userRaw;
+          }
+          if (jm && act.status === 'ok') {
+            const r = (jm.recipient?.address || '').toLowerCase();
+            return !userRaw || r === userRaw;
+          }
+          return false;
+        });
+
+        // Verify on-chain fee collection to UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd
+        const feeTransferVerified = acts.some(act => {
+          const t = act.TonTransfer || act.ton_transfer;
+          if (!t || t.bounced || (act.status && act.status !== 'ok')) return false;
+          const recip = (t.recipient?.address || '').toLowerCase();
+          const amt = BigInt(t.amount || 0);
+          return recip === feeRecipientRaw && amt >= BigInt(expectedFeeNano || 0);
+        });
+
+        if (hasBounceOrFail && !hasTsTonToUser) {
+          return {
+            status: 'failed_or_refunded',
+            feeCollected: false,
+            hash: eventId,
+            timestamp: ev.timestamp,
+          };
+        }
+
+        return {
+          status: 'confirmed',
+          feeCollected: feeTransferVerified && hasTsTonToUser,
+          tsTonDelivered: hasTsTonToUser,
+          hash: eventId,
+          timestamp: ev.timestamp,
+        };
       }
     } catch (e) {
-      console.warn('[pollRealTxConfirmation] Polling note:', e);
+      console.warn('[_pollRealDepositTrace] Polling note:', e.message);
     }
   }
-  return { status: 'pending', hash: null };
+
+  return { status: 'pending', feeCollected: false, hash: null };
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -567,12 +907,18 @@ const WalletService = (() => {
   function getNetwork() {
     return localStorage.getItem('anlgram_wallet_network') || 'testnet';
   }
+  function getChainId() {
+    if (typeof window.getConnectedWalletChainId === 'function') {
+      const cid = window.getConnectedWalletChainId();
+      if (cid) return cid;
+    }
+    return getNetwork() === 'testnet' ? STAKING_CONFIG.CHAIN_ID_TESTNET : STAKING_CONFIG.CHAIN_ID_MAINNET;
+  }
 
   async function getAccountInfo(address) {
     if (!address) return null;
     try {
-      const data = await ApiService.tonapi(`/accounts/${encodeURIComponent(address)}`);
-      return data;
+      return await ApiService.tonapi(`/accounts/${encodeURIComponent(address)}`);
     } catch { return null; }
   }
 
@@ -584,10 +930,17 @@ const WalletService = (() => {
     try {
       const isTC = isTonConnect();
       const net = getNetwork();
-      const [infoRes, stakingRes, jettonsRes] = await Promise.allSettled([
+      const activeNet = StakingState.get('activeNetwork');
+
+      // Ensure live pool telemetry is loaded so we have the exact tsTON -> TON exchange rate
+      let poolTelemetry = StakingState.get('poolOnChainData')[activeNet];
+      if (!poolTelemetry) {
+        poolTelemetry = await PoolOnChainVerifier.fetchVerifiedPoolTelemetry(activeNet);
+      }
+
+      const [infoRes, jettonsRes] = await Promise.allSettled([
         getAccountInfo(address),
-        ApiService.tonapi(`/staking/nominator/${encodeURIComponent(address)}/pools`),
-        ApiService.tonapi(`/accounts/${encodeURIComponent(address)}/jettons`),
+        ApiService.tonapi(`/accounts/${encodeURIComponent(address)}/jettons`, 15000),
       ]);
 
       const balNano = infoRes.status === 'fulfilled' && infoRes.value ? BigInt(infoRes.value.balance || 0) : 0n;
@@ -595,269 +948,191 @@ const WalletService = (() => {
 
       StakingState.set('wallet', {
         address,
-        rawAddress: infoRes.status === 'fulfilled' ? infoRes.value?.address : address,
+        rawAddress: infoRes.status === 'fulfilled' ? (infoRes.value?.address || friendlyToRawAddress(address)) : friendlyToRawAddress(address),
         name: getName(),
         balanceTon: balTon,
         balanceNano: balNano,
         network: net,
+        chainId: getChainId(),
         connected: true,
         isTonConnect: isTC,
         isReadOnly: !isTC,
       });
 
-      const poolsData = stakingRes.status === 'fulfilled' && stakingRes.value ? stakingRes.value.pools || [] : [];
       const jettonsData = jettonsRes.status === 'fulfilled' && jettonsRes.value ? jettonsRes.value.balances || [] : [];
 
-      _processVerifiedPositions(poolsData, jettonsData, address);
+      _processVerifiedPositions(jettonsData, poolTelemetry);
       PortfolioController.render();
     } finally {
       StakingState.set('loading', { ...StakingState.get('loading'), positions: false });
     }
   }
 
-  function _processVerifiedPositions(pools, jettons, userAddress) {
+  function _processVerifiedPositions(jettons, poolTelemetry) {
     const positions = [];
-    const allowlist = STAKING_CONFIG.ALLOWLIST;
+    const activeNet = StakingState.get('activeNetwork');
+    const allowEntry = Object.entries(STAKING_CONFIG.ALLOWLIST).find(([, cfg]) => cfg.network === activeNet);
+    if (!allowEntry) {
+      StakingState.set('positions', []);
+      return;
+    }
+    const [poolAddr, poolCfg] = allowEntry;
+    const expectedMasterRaw = poolCfg.jettonMasterRaw.toLowerCase();
+    const expectedMasterFriendly = poolCfg.jettonMaster;
 
-    // 1. Process Verified Native Nominator Pools
-    pools.forEach(p => {
-      const pRaw = typeof p.pool === 'string' ? p.pool : (p.pool?.address || p.address || '');
-      const pFriendly = rawToFriendlyAddress(pRaw);
-      const allowConfig = allowlist[pFriendly] || allowlist[pRaw];
+    const rateNano = poolTelemetry?.exchangeRateNano || 1000000000n;
+    const rateFloat = Number(rateNano) / 1e9;
+    const liveApy = poolTelemetry?.apy ?? null;
 
-      const stakedNano = BigInt(p.amount || 0);
-      const readyWithdrawNano = BigInt(p.ready_withdraw || 0);
-      const pendingDepositNano = BigInt(p.pending_deposit || 0);
-
-      if (stakedNano > 0n || readyWithdrawNano > 0n || pendingDepositNano > 0n) {
-        positions.push({
-          validatorId: pFriendly || pRaw,
-          validatorName: allowConfig?.name || p.pool?.name || shortenAddress(pFriendly || pRaw),
-          amount: parseFloat(fromNanoSafe(stakedNano, 4)),
-          amountNano: stakedNano,
-          readyWithdraw: parseFloat(fromNanoSafe(readyWithdrawNano, 4)),
-          readyWithdrawNano: readyWithdrawNano,
-          pendingDeposit: parseFloat(fromNanoSafe(pendingDepositNano, 4)),
-          pendingDepositNano: pendingDepositNano,
-          earnedRewards: 0, // Auto-compounded into principal on TON elector
-          apr: allowConfig?.apr || null,
-          status: stakedNano > 0n ? 'active' : 'unlocking',
-          protocol: allowConfig?.protocol || 'whales',
-          lockPeriod: allowConfig?.lockDescription || '~36–48h lock',
-          isVerified: Boolean(allowConfig),
-        });
-      }
-    });
-
-    // 2. Process Verified Liquid Staking Tokens (tsTON)
     jettons.forEach(j => {
-      const rawMaster = j.jetton?.address;
-      const friendlyMaster = rawToFriendlyAddress(rawMaster);
+      const rawMaster = (j.jetton?.address || '').toLowerCase();
+      const friendlyMaster = rawToFriendlyAddress(rawMaster, true, activeNet === 'testnet');
 
-      // Match against Tonstakers tsTON contract
-      const isTsTon = friendlyMaster === 'EQC98_qAmNEptUtPc7W6xdHh_ZHrBUFpw5Ft_IzNU20QAJav' ||
-                      rawMaster === '0:7dfbeba26c0498d129b54b4f73b5bacd71eb054169c3916dfc8ccdcd436d1000';
+      const isTsTon = rawMaster === expectedMasterRaw || friendlyMaster === expectedMasterFriendly;
+      if (!isTsTon) return;
 
-      if (isTsTon) {
-        const balNano = BigInt(j.balance || 0);
-        if (balNano > 0n) {
-          positions.push({
-            validatorId: 'EQCkWxfyhAkim3g2DjKQQg8T5P4g-Q1-K_jErGcDJZ4i-vqR',
-            validatorName: 'Tonstakers (tsTON Liquid Staking)',
-            amount: parseFloat(fromNanoSafe(balNano, 4)),
-            amountNano: balNano,
-            readyWithdraw: 0,
-            readyWithdrawNano: 0n,
-            pendingDeposit: 0,
-            pendingDepositNano: 0n,
-            earnedRewards: 0, // Liquid staking reflects appreciation via exchange rate
-            apr: null, // Sourced from live pool info
-            status: 'active',
-            protocol: 'liquidTF',
-            lockPeriod: 'Liquid (Immediate DEX Swap or Burn)',
-            jettonWalletAddress: j.wallet_address?.address || null,
-            isVerified: true,
-          });
-        }
-      }
+      const tsTonBalNano = BigInt(j.balance || 0);
+      if (tsTonBalNano <= 0n) return;
+
+      // Underlying TON value based on real on-chain pool exchange rate (total_balance / jetton_total_supply)
+      const underlyingTonNano = (tsTonBalNano * rateNano) / 1000000000n;
+      const appreciationNano = underlyingTonNano > tsTonBalNano ? (underlyingTonNano - tsTonBalNano) : 0n;
+
+      positions.push({
+        validatorId: poolAddr,
+        validatorName: poolCfg.name,
+        tsTonBalance: parseFloat(fromNanoSafe(tsTonBalNano, 4)),
+        tsTonBalanceNano: tsTonBalNano,
+        amount: parseFloat(fromNanoSafe(underlyingTonNano, 4)),
+        amountNano: underlyingTonNano,
+        readyWithdraw: parseFloat(fromNanoSafe(underlyingTonNano, 4)),
+        readyWithdrawNano: underlyingTonNano,
+        pendingDeposit: 0,
+        pendingDepositNano: 0n,
+        earnedRewards: parseFloat(fromNanoSafe(appreciationNano, 4)),
+        earnedRewardsNano: appreciationNano,
+        exchangeRateTonPerTsTon: rateFloat,
+        apr: liveApy,
+        status: 'active',
+        protocol: 'liquidTF',
+        lockPeriod: 'Líquido (Quema 0x595f07bc · 0% Fee)',
+        jettonWalletAddress: j.wallet_address?.address
+          ? rawToFriendlyAddress(j.wallet_address.address, true, activeNet === 'testnet')
+          : null,
+        jettonWalletRaw: j.wallet_address?.address || null,
+        dataSource: poolTelemetry?.dataSource || 'TonAPI v2',
+        lastUpdated: poolTelemetry?.updatedAtStr || new Date().toLocaleTimeString(),
+        isVerified: true,
+      });
     });
 
     StakingState.set('positions', positions);
   }
 
   // React to wallet events from wallet-connect.js
-  window.addEventListener('anlgramWalletChanged', async (e) => {
-    const { address, network, isTonConnect: isTC } = e.detail || {};
-    if (address) {
-      if (network) localStorage.setItem('anlgram_wallet_network', network);
-      await loadWalletData();
-      WalletUIController.updateConnected();
-      NotificationService.push({
-        type: 'wallet',
-        title: isTC ? 'Wallet Connected via TON Connect' : 'Address Linked (Watch-Only)',
-        body: `${address.slice(0,6)}...${address.slice(-4)} (${network || 'testnet'})${!isTC ? ' · Read-Only' : ''}`,
-        icon: isTC ? '🔗' : '👀'
-      });
-    } else {
-      StakingState.set('wallet', {
-        address: null, rawAddress: null, name: null,
-        balanceTon: 0, balanceNano: 0n, connected: false,
-        isTonConnect: false, isReadOnly: true
-      });
-      StakingState.set('positions', []);
-      WalletUIController.updateDisconnected();
-      NotificationService.push({
-        type: 'wallet',
-        title: 'Wallet Disconnected',
-        body: 'Your wallet has been disconnected.',
-        icon: '🔌'
-      });
-    }
-    PortfolioController.render();
-  });
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('anlgramWalletChanged', async (e) => {
+      const { address, network, isTonConnect: isTC } = e.detail || {};
+      if (address) {
+        if (network) localStorage.setItem('anlgram_wallet_network', network);
+        await loadWalletData();
+        WalletUIController.updateConnected();
+        NotificationService.push({
+          type: 'wallet',
+          title: isTC ? 'Wallet Conectada vía TON Connect' : 'Dirección Vinculada (Solo Lectura)',
+          body: `${shortenAddress(address)} (${(network || 'testnet').toUpperCase()})${!isTC ? ' · Solo Lectura' : ''}`,
+          icon: isTC ? '🔗' : '👀',
+        });
+      } else {
+        StakingState.set('wallet', {
+          address: null, rawAddress: null, name: null,
+          balanceTon: 0, balanceNano: 0n, connected: false,
+          isTonConnect: false, isReadOnly: true,
+        });
+        StakingState.set('positions', []);
+        WalletUIController.updateDisconnected();
+      }
+      PortfolioController.render();
+      TransactionController.init();
+    });
+  }
 
-  return { getAddress, getName, isTonConnect, isConnected, getNetwork, loadWalletData };
+  return { getAddress, getName, isTonConnect, isConnected, getNetwork, getChainId, loadWalletData };
 })();
 
 /* ══════════════════════════════════════════════════════════════
-   VALIDATOR SERVICE — Live Audited Staking Pools
+   VALIDATOR SERVICE — Single Verified Public Pool (Tonstakers)
    ══════════════════════════════════════════════════════════════ */
 
 const ValidatorService = (() => {
   async function getAll() {
     const net = StakingState.get('activeNetwork');
-    try {
-      const data = await ApiService.tonapi('/staking/pools?available_for_withdrawal=false', STAKING_CONFIG.CACHE_TTL_MS);
-      if (data && Array.isArray(data.pools) && data.pools.length > 0) {
-        return data.pools.map(raw => _normalizeFromApi(raw, net));
-      }
-    } catch (e) {
-      console.warn('[ValidatorService] Live API fetch note:', e.message);
+    const allowEntries = Object.entries(STAKING_CONFIG.ALLOWLIST).filter(([, cfg]) => cfg.network === net);
+
+    const results = [];
+    for (const [poolAddr, cfg] of allowEntries) {
+      const telemetry = await PoolOnChainVerifier.fetchVerifiedPoolTelemetry(net);
+      await PoolOnChainVerifier.verifyRouterContract(net);
+
+      const totalNano = telemetry?.totalBalanceNano || 0n;
+      const totalTon = totalNano > 0n ? parseFloat(fromNanoSafe(totalNano, 2)) : null;
+      const apy = telemetry?.apy ?? null;
+      const delegators = telemetry?.nominatorsCount ?? null;
+      const rateFloat = telemetry?.exchangeRateFloat ?? null;
+      const isOnline = Boolean(telemetry && telemetry.isPoolActive);
+
+      results.push({
+        id: poolAddr,
+        address: poolAddr,
+        rawAddress: cfg.raw,
+        shortAddress: shortenAddress(poolAddr),
+        name: cfg.name,
+        logoUrl: null,
+        logoEmoji: '⚡',
+        status: isOnline ? 'active' : (telemetry ? 'halted' : 'offline'),
+        apr: apy,
+        apy: apy,
+        yieldType: 'Estimado (variable según ciclo de validación TON)',
+        commission: STAKING_CONFIG.ANLGRAM_STAKE_FEE_BPS / 100, // 0.35% ANLGRAM fee
+        anlgramFeeBps: STAKING_CONFIG.ANLGRAM_STAKE_FEE_BPS,
+        minStake: cfg.minStakeTon,
+        minStakeNano: cfg.minStakeNano,
+        totalStaked: totalTon,
+        totalStakedNano: totalNano,
+        delegators,
+        exchangeRateTonPerTsTon: rateFloat,
+        performanceScore: null, // Honest: no fabricated synthetic score
+        uptime: null,           // Honest: no fabricated 99.9% uptime
+        riskGrade: 'Auditado (liquidTF)',
+        website: cfg.docs,
+        description: `${cfg.rewardMechanism} ${cfg.lockDescription}`,
+        verified: true,
+        protocol: cfg.protocol,
+        isSupported: cfg.isSupported,
+        dataSource: telemetry ? telemetry.dataSource : 'Allowlist (Sin datos de red)',
+        lastUpdated: telemetry ? telemetry.updatedAtStr : 'Sin datos',
+      });
     }
 
-    // In case of API failure or offline state, return empty state with honest metadata
-    // NEVER INVENT FAKE DATA.
-    return _buildHonestEmptyList(net);
-  }
-
-  function _normalizeFromApi(raw, currentNet) {
-    const rawAddr = raw.address || '';
-    const friendlyAddr = rawToFriendlyAddress(rawAddr, true, currentNet === 'testnet');
-    const allowConfig = STAKING_CONFIG.ALLOWLIST[friendlyAddr] || STAKING_CONFIG.ALLOWLIST[rawAddr];
-
-    const totalNano = toNanoSafe((raw.total_amount || 0) / 1e9);
-    const totalTon = parseFloat(fromNanoSafe(totalNano, 2));
-    const minTon = allowConfig?.minStakeTon || (raw.min_stake_size ? parseFloat(fromNanoSafe(raw.min_stake_size, 0)) : 1);
-    const apr = safeNum(raw.apr || raw.apy, null);
-    const delegators = safeNum(raw.nominators_count || raw.current_nominators, 0);
-
-    // Protocol determination STRICTLY via allowlist or verified implementation
-    const isAllowlisted = Boolean(allowConfig);
-    const protocol = allowConfig ? allowConfig.protocol : (raw.implementation || 'unknown');
-    const isSupported = Boolean(allowConfig && allowConfig.isSupported);
-
-    // Live commission: Extract from API or set to null (never invent math formulas)
-    const commission = raw.cycle_end ? safeNum(raw.commission, null) : null;
-
-    return {
-      id: friendlyAddr || rawAddr,
-      address: friendlyAddr || rawAddr,
-      rawAddress: rawAddr,
-      shortAddress: shortenAddress(friendlyAddr || rawAddr),
-      name: allowConfig?.name || raw.name || 'TON Nominator Pool',
-      logoUrl: raw.icon || null,
-      logoEmoji: _poolEmoji(raw.name || ''),
-      status: raw.cycle_end && raw.cycle_end > Date.now() / 1000 ? 'active' : 'active',
-      apr: apr,
-      apy: safeNum(raw.apy, apr),
-      commission: commission,
-      minStake: minTon,
-      minStakeNano: toNanoSafe(minTon),
-      totalStaked: totalTon,
-      totalStakedNano: totalNano,
-      delegators,
-      performanceScore: _calcScore(apr, delegators, totalTon),
-      uptime: null, // Honest: Do not fabricate 99.9%
-      riskGrade: isAllowlisted ? 'AAA (Audited)' : 'Unverified Protocol',
-      website: raw.pool_address ? `${currentNet === 'testnet' ? STAKING_CONFIG.TONVIEWER_TESTNET : STAKING_CONFIG.TONVIEWER_MAINNET}/${raw.pool_address}` : '',
-      description: isSupported
-        ? `${allowConfig.lockDescription} Verified contract on ${currentNet.toUpperCase()}.`
-        : `Pool not verified in ANLGRAM allowlist. Direct retail delegation is disabled for user security.`,
-      verified: isAllowlisted,
-      protocol: protocol,
-      isSupported: isSupported,
-      dataSource: 'TonAPI v2 Live Blockchain',
-      lastUpdated: new Date().toLocaleTimeString(),
-    };
-  }
-
-  function _buildHonestEmptyList(net) {
-    // Return only verified allowlist entries with "Data Offline" tags, never fake numbers
-    const list = [];
-    for (const [addr, cfg] of Object.entries(STAKING_CONFIG.ALLOWLIST)) {
-      if (cfg.network === net) {
-        list.push({
-          id: addr,
-          address: addr,
-          rawAddress: cfg.raw || addr,
-          shortAddress: shortenAddress(addr),
-          name: cfg.name,
-          logoUrl: null,
-          logoEmoji: '💎',
-          status: 'online',
-          apr: null, // Honest null
-          apy: null,
-          commission: null,
-          minStake: cfg.minStakeTon,
-          minStakeNano: cfg.minStakeNano,
-          totalStaked: null,
-          delegators: null,
-          performanceScore: null,
-          uptime: null,
-          riskGrade: 'Audited Contract',
-          website: cfg.docs,
-          description: cfg.lockDescription,
-          verified: true,
-          protocol: cfg.protocol,
-          isSupported: cfg.isSupported,
-          dataSource: 'Allowlist (Offline Data Mode)',
-          lastUpdated: new Date().toLocaleTimeString(),
-        });
-      }
-    }
-    return list;
-  }
-
-  function _poolEmoji(name) {
-    const n = name.toLowerCase();
-    if (n.includes('tonstakers')) return '⚡';
-    if (n.includes('whale')) return '🐋';
-    if (n.includes('keeper')) return '💎';
-    if (n.includes('bemo')) return '🐳';
-    return '🛡️';
-  }
-
-  function _calcScore(apr, delegators, totalTon) {
-    if (!apr || !delegators) return null;
-    return Math.min(100, Math.round((apr / 5.5) * 50 + (delegators > 1000 ? 30 : 15) + (totalTon > 1000000 ? 20 : 10)));
+    return results;
   }
 
   async function getById(poolId) {
     const all = StakingState.get('validators');
-    return all.find(v => v.id === poolId || v.address === poolId || v.rawAddress === poolId) || null;
+    return all.find(v => v.id === poolId || v.address === poolId || v.rawAddress === poolId) || all[0] || null;
   }
 
   return { getAll, getById };
 })();
 
 /* ══════════════════════════════════════════════════════════════
-   REWARD SERVICE — Mathematical Projections & Transparent Fee
+   REWARD SERVICE — Mathematical Projections & Claim Modal Handler
    ══════════════════════════════════════════════════════════════ */
 
 const RewardService = (() => {
   function calculate({ amount, apr, days = 365, compound = true }) {
-    if (!amount || !apr) {
-      return { daily: 0, weekly: 0, monthly: 0, yearly: 0, roi: 0, futureBalance: amount || 0, totalRewards: 0 };
+    if (!amount || !apr || apr <= 0) {
+      return { daily: null, weekly: null, monthly: null, yearly: null, roi: null, futureBalance: amount || 0, totalRewards: null };
     }
     const r = apr / 100;
     const t = days / 365;
@@ -884,24 +1159,53 @@ const RewardService = (() => {
   }
 
   function buildGrowthData(amount, apr, months = 12, compound = true) {
+    if (!apr || apr <= 0) return { labels: [], values: [] };
     const labels = [], values = [];
     for (let m = 1; m <= months; m++) {
-      labels.push(`Month ${m}`);
+      labels.push(`Mes ${m}`);
       const res = calculate({ amount, apr, days: m * 30, compound });
       values.push(parseFloat(safeToFixed(res.futureBalance, 4, '0')));
     }
     return { labels, values };
   }
 
-  async function estimateFee() {
-    return 0.05; // Standard TON network gas fee estimate for smart contract calls
+  function openClaimModal(validatorId) {
+    const positions = StakingState.get('positions') || [];
+    const pos = positions.find(p => p.validatorId === validatorId) || positions[0];
+    const modal = document.getElementById('claim-modal');
+    if (!modal) return;
+
+    if (pos) {
+      modal.dataset.validatorId = pos.validatorId;
+      _setText('claim-validator-name', pos.validatorName);
+      _setText('claim-amount', `${safeToFixed(pos.amount, 4)} TON (${safeToFixed(pos.tsTonBalance, 4)} tsTON)`);
+    } else {
+      _setText('claim-validator-name', 'Tonstakers Liquid Pool');
+      _setText('claim-amount', 'Sin posición activa');
+    }
+    modal.classList.add('open');
   }
 
-  return { calculate, buildGrowthData, estimateFee };
+  function executeClaim() {
+    const claimModal = document.getElementById('claim-modal');
+    const validatorId = claimModal?.dataset?.validatorId || (StakingState.get('positions')[0]?.validatorId);
+    claimModal?.classList.remove('open');
+    if (validatorId) {
+      UnstakeModalController.open(validatorId);
+    } else {
+      NotificationService.toast(
+        'Mecanismo tsTON',
+        'En Tonstakers las recompensas se acumulan automáticamente en la tasa de cambio de tsTON. Conecta tu wallet con tsTON para retirar.',
+        'info'
+      );
+    }
+  }
+
+  return { calculate, buildGrowthData, openClaimModal, executeClaim };
 })();
 
 /* ══════════════════════════════════════════════════════════════
-   PORTFOLIO SERVICE — Verified User Positions
+   PORTFOLIO SERVICE — Verified User Positions (No Hardcoded APR)
    ══════════════════════════════════════════════════════════════ */
 
 const PortfolioService = (() => {
@@ -910,7 +1214,10 @@ const PortfolioService = (() => {
     const totalStaked = positions.reduce((s, p) => s + (p.amount || 0), 0);
     const totalPending = positions.reduce((s, p) => s + (p.readyWithdraw || 0), 0);
     const totalEarned = positions.reduce((s, p) => s + (p.earnedRewards || 0), 0);
-    const projAnnual = positions.reduce((s, p) => s + (p.amount * (p.apr || 4.2) / 100), 0);
+    const hasLiveApr = positions.some(p => p.apr !== null && p.apr !== undefined);
+    const projAnnual = hasLiveApr
+      ? positions.reduce((s, p) => s + (p.apr ? (p.amount * p.apr / 100) : 0), 0)
+      : null;
     return { totalStaked, totalPending, totalEarned, projAnnual };
   }
 
@@ -923,8 +1230,8 @@ const PortfolioService = (() => {
   }
 
   async function refresh() {
-    await WalletService.loadWalletData();
     ApiService.clearCache('/accounts/');
+    await WalletService.loadWalletData();
   }
 
   return { getTotals, getAllocationData, refresh };
@@ -938,70 +1245,43 @@ const AnalyticsService = (() => {
   async function getNetworkStats() {
     const net = StakingState.get('activeNetwork');
     try {
-      const [poolsRes, rateRes] = await Promise.allSettled([
-        ApiService.tonapi('/staking/pools?available_for_withdrawal=false', 60000),
-        ApiService.tonapi('/rates?tokens=ton&currencies=usd', 60000),
+      const [telemetry, rateRes] = await Promise.all([
+        PoolOnChainVerifier.fetchVerifiedPoolTelemetry(net),
+        ApiService.tonapi('/rates?tokens=ton&currencies=usd', 60000, 'mainnet').catch(() => null),
       ]);
 
-      const pools = poolsRes.status === 'fulfilled' ? poolsRes.value?.pools || [] : [];
-      let totalStakedNano = 0n;
-      let delegators = 0;
-      let aprSum = 0;
-      let aprCount = 0;
-
-      pools.forEach(p => {
-        totalStakedNano += toNanoSafe((p.total_amount || 0) / 1e9);
-        delegators += p.current_nominators || 0;
-        if (p.apr || p.apy) {
-          aprSum += (p.apr || p.apy);
-          aprCount++;
-        }
-      });
-
-      const tonPrice = rateRes.status === 'fulfilled' && rateRes.value?.rates?.TON ? rateRes.value.rates.TON.prices.USD : null;
-      const totalStakedTon = parseFloat(fromNanoSafe(totalStakedNano, 0));
+      const tonPrice = rateRes?.rates?.TON?.prices?.USD ?? null;
+      const totalStakedTon = telemetry && telemetry.totalBalanceNano > 0n
+        ? parseFloat(fromNanoSafe(telemetry.totalBalanceNano, 2))
+        : null;
 
       return {
-        tps: null, // Sourced from block rate or null
+        tps: null,
         blockTime: '~5s',
         lastBlock: null,
-        totalStakedTon: totalStakedTon > 0 ? (totalStakedTon / 1e6) : null, // In Millions
-        activeVal: pools.length > 0 ? pools.length : null,
-        delegators: delegators > 0 ? delegators : null,
-        tonPrice: tonPrice,
-        avgApr: aprCount > 0 ? (aprSum / aprCount) : null,
-        networkStatus: 'Operational',
-        dataSource: 'TonAPI v2 Live',
-        lastUpdated: new Date().toLocaleTimeString(),
+        totalStakedTon: totalStakedTon !== null ? (totalStakedTon / 1e6) : null,
+        totalStakedRawTon: totalStakedTon,
+        activeVal: telemetry ? 1 : null,
+        delegators: telemetry?.nominatorsCount ?? null,
+        tonPrice,
+        avgApr: telemetry?.apy ?? null,
+        exchangeRateTonPerTsTon: telemetry?.exchangeRateFloat ?? null,
+        networkStatus: telemetry?.isPoolActive ? 'Operativo (En Cadena)' : (telemetry ? 'Pool Pausado' : 'Sin datos'),
+        dataSource: telemetry ? telemetry.dataSource : 'TonAPI v2 (Sin datos)',
+        lastUpdated: telemetry ? telemetry.updatedAtStr : new Date().toLocaleTimeString(),
+        yieldType: 'Estimado (TonAPI v2 / get_pool_full_data)',
       };
-    } catch (e) {
+    } catch {
       return {
-        tps: null, blockTime: '~5s', lastBlock: null,
-        totalStakedTon: null, activeVal: null, delegators: null,
-        tonPrice: null, avgApr: null,
-        networkStatus: 'Data Unavailable (Check Connection)',
-        dataSource: 'TonAPI v2 (Error)',
+        tps: null, blockTime: 'Sin datos', lastBlock: null,
+        totalStakedTon: null, totalStakedRawTon: null, activeVal: null, delegators: null,
+        tonPrice: null, avgApr: null, exchangeRateTonPerTsTon: null,
+        networkStatus: 'Sin datos (Verifica conexión)',
+        dataSource: 'TonAPI v2 (No disponible)',
         lastUpdated: new Date().toLocaleTimeString(),
+        yieldType: 'No disponible',
       };
     }
-  }
-
-  async function getNetworkTVLData() {
-    try {
-      const res = await fetch('https://api.llama.fi/v2/historicalChainTvl/TON');
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const last30 = data.slice(-30);
-          const labels = last30.map(d => new Date(d.date * 1000).toLocaleDateString('en', { month: 'short', day: 'numeric' }));
-          const values = last30.map(d => parseFloat(safeToFixed(d.tvl / 1e6, 1, '0')));
-          return { labels, values, isReal: true };
-        }
-      }
-    } catch {}
-
-    // Return empty labels without fabricating static 600M
-    return { labels: [], values: [], isReal: false };
   }
 
   async function getTransactions(address) {
@@ -1016,80 +1296,88 @@ const AnalyticsService = (() => {
   }
 
   function _normalizeTx(ev) {
-    const action = ev.actions?.[0] || {};
+    const acts = ev.actions || [];
+    const action = acts[0] || {};
     const tonTransfer = action.TonTransfer || action.ton_transfer || {};
-    const contractExec = action.SmartContractExec || action.smart_contract_exec || null;
+    const jettonTransfer = action.JettonTransfer || action.jetton_transfer || null;
+    const jettonBurn = action.JettonBurn || action.jetton_burn || null;
 
     let type = action.type || 'transfer';
     const recip = tonTransfer.recipient?.name || tonTransfer.recipient?.address || '';
-    if (recip.toLowerCase().includes('pool') || recip.toLowerCase().includes('stake')) {
-      type = 'stake';
-    }
+    if (jettonBurn) type = 'unstake (burn tsTON)';
+    else if (jettonTransfer) type = 'tsTON transfer';
+    else if (recip.toLowerCase().includes('tonstakers') || recip.toLowerCase().includes('pool')) type = 'stake';
+
+    const hasBounce = acts.some(a => a.TonTransfer?.bounced || a.ton_transfer?.bounced || (a.status && a.status !== 'ok'));
+    const feeRecipientRaw = STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT_RAW.toLowerCase();
+    const feePaid = acts.some(a => {
+      const t = a.TonTransfer || a.ton_transfer;
+      return t && !t.bounced && (t.recipient?.address || '').toLowerCase() === feeRecipientRaw;
+    });
+
+    let statusLabel = 'confirmada';
+    if (ev.in_progress) statusLabel = 'pendiente';
+    else if (hasBounce) statusLabel = 'fallida/reembolsada';
+    else if (feePaid) statusLabel = 'comisión cobrada';
 
     return {
       hash: ev.event_id || ev.hash || '',
       type,
-      validator: tonTransfer.recipient?.name || shortenAddress(recip),
-      amount: parseFloat(fromNanoSafe(tonTransfer.amount || 0, 4)),
-      fee: parseFloat(fromNanoSafe(ev.fees?.total || 0, 4)),
-      status: ev.in_progress ? 'pending' : 'confirmed',
+      validator: tonTransfer.recipient?.name || shortenAddress(recip) || 'Tonstakers',
+      amount: parseFloat(fromNanoSafe(tonTransfer.amount || jettonBurn?.amount || 0, 4)),
+      fee: parseFloat(fromNanoSafe(ev.fee || ev.fees?.total || 0, 4)),
+      status: statusLabel,
       timestamp: new Date((ev.timestamp || Date.now() / 1000) * 1000),
       hash_short: (ev.event_id || '').substring(0, 8) + '...',
     };
   }
 
-  return { getNetworkStats, getNetworkTVLData, getTransactions };
+  return { getNetworkStats, getTransactions };
 })();
 
 /* ══════════════════════════════════════════════════════════════
-   WHALE SERVICE — Real Live Large Movements
+   WHALE SERVICE — Real Live On-Chain Holders & Flows
    ══════════════════════════════════════════════════════════════ */
 
 const WhaleService = (() => {
   async function fetchStakingWallets() {
-    // Query live tsTON liquid staking holders from TonAPI
-    const tsTonMaster = 'EQC98_qAmNEptUtPc7W6xdHh_ZHrBUFpw5Ft_IzNU20QAJav';
+    const net = StakingState.get('activeNetwork');
+    const allowEntry = Object.values(STAKING_CONFIG.ALLOWLIST).find(cfg => cfg.network === net);
+    if (!allowEntry) return [];
+
     try {
-      const data = await ApiService.tonapi(`/jettons/${tsTonMaster}/holders?limit=30`);
+      const data = await ApiService.tonapi(`/jettons/${encodeURIComponent(allowEntry.jettonMaster)}/holders?limit=20`);
       if (!data || !Array.isArray(data.addresses)) return [];
 
-      const mapped = data.addresses.map(holder => {
-        if (!holder || !holder.owner || !holder.owner.address) return null;
-        const balNano = toNanoSafe(holder.balance);
+      return data.addresses.map(holder => {
+        if (!holder?.owner?.address) return null;
+        const balNano = BigInt(holder.balance || 0);
         const tonAmount = parseFloat(fromNanoSafe(balNano, 2));
         if (tonAmount <= 0) return null;
 
-        const address = holder.owner.address;
-        const short = shortenAddress(address);
-        const name = holder.owner.name || short;
-
+        const friendly = rawToFriendlyAddress(holder.owner.address, true, net === 'testnet');
         return {
-          address: address,
-          shortAddress: name,
-          validator: 'Tonstakers (tsTON)',
+          address: friendly,
+          shortAddress: holder.owner.name || shortenAddress(friendly),
+          validator: `${allowEntry.name} (tsTON)`,
           delegatedTON: tonAmount,
           delegatedNano: balNano,
-          estimatedRewards: null,
-          apr: null,
-          status: 'Active',
-          lastActivity: 'On-Chain Holder',
-          txCount: 'Live',
-          riskScore: 'AAA',
+          status: 'En Cadena',
         };
       }).filter(Boolean);
-
-      return mapped;
-    } catch (err) {
-      console.warn('[WhaleService] TonAPI holders note:', err.message);
-      // Return empty list, NEVER invent mock whales like "Whale #1" or "DeFi Fund"
+    } catch {
       return [];
     }
   }
 
   async function getFlows() {
-    const topPool = 'EQCkWxfyhAkim3g2DjKQQg8T5P4g-Q1-K_jErGcDJZ4i-vqR';
+    const net = StakingState.get('activeNetwork');
+    const allowEntry = Object.entries(STAKING_CONFIG.ALLOWLIST).find(([, cfg]) => cfg.network === net);
+    if (!allowEntry) return [];
+    const [poolAddr, poolCfg] = allowEntry;
+
     try {
-      const eventsData = await ApiService.tonapi(`/accounts/${encodeURIComponent(topPool)}/events?limit=20`);
+      const eventsData = await ApiService.tonapi(`/accounts/${encodeURIComponent(poolAddr)}/events?limit=20`);
       const events = eventsData?.events || [];
       const flows = [];
 
@@ -1098,15 +1386,15 @@ const WhaleService = (() => {
         if (!action) return;
         const t = action.TonTransfer || action.ton_transfer;
         if (t && t.amount) {
-          const isOutflow = t.sender?.address === topPool;
+          const isOutflow = (t.sender?.address || '').toLowerCase() === poolCfg.raw.toLowerCase();
           const amountTon = parseFloat(fromNanoSafe(t.amount, 2));
           if (amountTon >= 1) {
             flows.push({
-              pool: 'Tonstakers',
+              pool: poolCfg.name,
               type: isOutflow ? 'outflow' : 'inflow',
               amount: amountTon,
-              wallet: shortenAddress(isOutflow ? t.recipient?.address : t.sender?.address),
-              time: _timeAgo(ev.timestamp)
+              wallet: shortenAddress(rawToFriendlyAddress(isOutflow ? t.recipient?.address : t.sender?.address, true, net === 'testnet')),
+              time: _timeAgo(ev.timestamp),
             });
           }
         }
@@ -1118,11 +1406,11 @@ const WhaleService = (() => {
   }
 
   function _timeAgo(unix) {
-    if (!unix) return 'Recent';
+    if (!unix) return 'Reciente';
     const s = Math.floor(Date.now() / 1000 - unix);
-    if (s < 60) return `${s}s ago`;
-    if (s < 3600) return `${Math.floor(s/60)}m ago`;
-    return `${Math.floor(s/3600)}h ago`;
+    if (s < 60) return `hace ${s}s`;
+    if (s < 3600) return `hace ${Math.floor(s / 60)}m`;
+    return `hace ${Math.floor(s / 3600)}h`;
   }
 
   return { fetchStakingWallets, getFlows };
@@ -1186,13 +1474,14 @@ const WalletUIController = {
       banner.style.display = 'flex';
       const addrEl = document.getElementById('wallet-addr-display');
       const balEl = document.getElementById('wallet-bal-display');
-      if (addrEl) addrEl.textContent = shortenAddress(w.address) + (w.isReadOnly ? ' (Watch-Only)' : '');
+      if (addrEl) addrEl.textContent = `${shortenAddress(w.address)} (${w.network === 'testnet' ? 'Testnet -3' : 'Mainnet -239'})${w.isReadOnly ? ' · Solo Lectura' : ''}`;
       if (balEl) balEl.textContent = `${safeToFixed(w.balanceTon, 4)} TON`;
     }
     const networkEl = document.getElementById('network-badge-label');
     if (networkEl) {
-      networkEl.textContent = w.network === 'testnet' ? 'TON Testnet' : 'TON Mainnet';
-      networkEl.style.color = w.network === 'testnet' ? '#f59e0b' : '#22c55e';
+      const activeNet = StakingState.get('activeNetwork');
+      networkEl.textContent = activeNet === 'testnet' ? 'TON Testnet (-3)' : 'TON Mainnet (-239)';
+      networkEl.style.color = activeNet === 'testnet' ? '#f59e0b' : '#22c55e';
     }
   },
   updateDisconnected() {
@@ -1202,16 +1491,17 @@ const WalletUIController = {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   STAKE MODAL CONTROLLER (Strict Network and Security Audited)
+   STAKE MODAL CONTROLLER (0.35% Fee Breakdown, Client Acceptance & Trace)
    ══════════════════════════════════════════════════════════════ */
 
 const StakeModalController = {
   _currentValidator: null,
+  _currentBreakdown: null,
   _step: 1,
 
   async open(validatorId) {
     const validators = StakingState.get('validators');
-    const v = validators.find(v => v.id === validatorId || v.address === validatorId) || validators[0];
+    const v = validators.find(val => val.id === validatorId || val.address === validatorId) || validators[0];
     if (!v) return;
     this._currentValidator = v;
     this._step = 1;
@@ -1220,18 +1510,24 @@ const StakeModalController = {
     if (!modal) return;
     modal.classList.add('open');
 
-    // Populate modal fields
-    document.getElementById('stake-val-name').textContent = v.name;
-    document.getElementById('stake-val-protocol').textContent = v.protocol === 'liquidTF' ? 'Liquid Staking' : 'Nominator Pool';
-    document.getElementById('stake-val-apr').textContent = v.apr ? `${safeToFixed(v.apr, 2)}% APR` : 'Variable (On-Chain)';
-    document.getElementById('stake-val-commission').textContent = v.commission ? `${safeToFixed(v.commission, 1)}%` : 'Protocol Native';
-    document.getElementById('stake-val-min').textContent = `${v.minStake || 1} TON`;
+    const activeNet = StakingState.get('activeNetwork');
+    const poolTelemetry = await PoolOnChainVerifier.fetchVerifiedPoolTelemetry(activeNet);
+    const routerCheck = await PoolOnChainVerifier.verifyRouterContract(activeNet);
+
+    // Populate Step 1 Header
+    _setText('stake-val-name', v.name);
+    _setText('stake-val-protocol', 'Tonstakers Liquid (tsTON · 0x47d54391)');
+    _setText('stake-val-apr', v.apr ? `${safeToFixed(v.apr, 2)}% (Estimado)` : 'Variable en cadena');
+    _setText('stake-val-commission', `0.35% (${STAKING_CONFIG.ANLGRAM_STAKE_FEE_BPS} bps)`);
+    _setText('stake-val-min', `${v.minStake || 1} TON`);
+    _setText('stake-preview-fee-wallet', STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT);
 
     const alertBox = document.getElementById('stake-unsupported-alert');
     const reviewBtn = document.getElementById('stake-review-btn');
-    const activeNet = StakingState.get('activeNetwork');
+    const checkbox = document.getElementById('stake-accept-terms-checkbox');
+    if (checkbox) checkbox.checked = false;
 
-    // 1. Check Mainnet Security Enforcement
+    // 1. Mainnet Security Switch Check
     if (activeNet === 'mainnet' && !STAKING_CONFIG.MAINNET_STAKING_ENABLED) {
       if (alertBox) {
         alertBox.style.display = 'block';
@@ -1239,45 +1535,61 @@ const StakeModalController = {
         alertBox.style.borderColor = '#f59e0b';
         alertBox.style.color = '#fbbf24';
         alertBox.innerHTML = `
-          <strong>🛡️ Mainnet Staking Paused by Security Policy:</strong><br/>
-          To safeguard user assets, direct Mainnet transaction execution is held disabled until the owner finalizes:
-          <ul style="margin:6px 0 6px 16px;padding:0;">
-            <li>Dedicated TonAPI Pro authorization key;</li>
-            <li>Formal protocol affiliate &amp; auditor agreement;</li>
-            <li>Treasury &amp; parameter confirmation.</li>
-          </ul>
-          <em>Switch the platform to <strong>TON Testnet</strong> to execute and verify live staking transactions safely.</em>
+          <strong>🛡️ Staking en Mainnet (-239) Desactivado por Política de Seguridad:</strong><br/>
+          El pool oficial de Tonstakers (<code>0x47d54391</code>) no deduce ni transfiere en cadena la comisión de <code>0.35%</code> a una wallet externa mediante <code>partner_code</code>.
+          Para garantizar el cobro automático verificable sin segunda firma y con reembolso ante rebotes, se requiere desplegar el contrato <code>AnlgramStakingRouter</code> tras auditoría independiente y aprobación explícita del propietario.<br/>
+          <em>Cambia a <strong>TON Testnet (-3)</strong> para revisar el desglose e inspeccionar las pruebas verificables.</em>
         `;
       }
-      if (reviewBtn) { reviewBtn.disabled = true; reviewBtn.textContent = 'Mainnet Disabled (Use Testnet)'; }
+      if (reviewBtn) { reviewBtn.disabled = true; reviewBtn.textContent = 'Mainnet Desactivado (Usa Testnet)'; }
+      this._bindAmountInput();
+      this._updatePreview();
+      this._showStep(1);
       return;
     }
 
-    // 2. Check Pool Allowlist Eligibility
-    if (!v.isSupported) {
+    // 2. Pool On-Chain Status Check
+    if (!v.isSupported || (poolTelemetry && !poolTelemetry.isPoolActive)) {
       if (alertBox) {
         alertBox.style.display = 'block';
         alertBox.style.background = 'rgba(239,68,68,0.15)';
         alertBox.style.borderColor = '#ef4444';
         alertBox.style.color = '#fca5a5';
-        alertBox.innerHTML = `<strong>⚠️ Unsupported Pool Contract:</strong> This address is not in the verified ANLGRAM allowlist. Direct transfers to unverified contracts will not create a staking position.`;
+        alertBox.innerHTML = `<strong>⚠️ Pool No Disponible:</strong> El contrato del pool no se encuentra activo o tiene depósitos cerrados en cadena.`;
       }
-      if (reviewBtn) { reviewBtn.disabled = true; reviewBtn.textContent = 'Pool Not Supported'; }
+      if (reviewBtn) { reviewBtn.disabled = true; reviewBtn.textContent = 'Pool No Disponible'; }
       return;
     }
 
-    if (alertBox) alertBox.style.display = 'none';
-    if (reviewBtn) { reviewBtn.disabled = false; reviewBtn.textContent = 'Review →'; }
+    // 3. Router Deployment Status Notice on Testnet
+    if (!routerCheck.verified) {
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.style.background = 'rgba(245,158,11,0.14)';
+        alertBox.style.borderColor = '#f59e0b';
+        alertBox.style.color = '#fbbf24';
+        alertBox.innerHTML = `
+          <strong>ℹ️ Estado del Contrato Router en Testnet (-3):</strong><br/>
+          ${routerCheck.reason}<br/>
+          Puedes revisar el desglose exacto (principal, comisión <code>0.35%</code>, gas, total y wallet receptora <code>${STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT}</code>), pero la firma permanecerá bloqueada hasta que el contrato <code>AnlgramStakingRouter</code> esté activo en Testnet para no cobrar ni afirmar cobros sin verificación en cadena.
+        `;
+      }
+    } else if (alertBox) {
+      alertBox.style.display = 'none';
+    }
+
+    if (reviewBtn) { reviewBtn.disabled = false; reviewBtn.textContent = 'Revisar Desglose →'; }
 
     const wallet = StakingState.get('wallet');
     const maxEl = document.getElementById('stake-max-display');
     if (maxEl) {
       maxEl.textContent = wallet.connected
-        ? `Available: ${safeToFixed(wallet.balanceTon, 4)} TON ${wallet.isReadOnly ? '(Read-Only)' : ''}`
-        : 'Connect wallet to see balance';
+        ? `Disponible: ${safeToFixed(wallet.balanceTon, 4)} TON ${wallet.isReadOnly ? '(Solo Lectura)' : ''}`
+        : 'Conecta tu wallet para ver tu balance';
     }
 
     this._bindAmountInput();
+    this._updatePreview();
     this._showStep(1);
   },
 
@@ -1295,104 +1607,125 @@ const StakeModalController = {
   setMax() {
     const wallet = StakingState.get('wallet');
     if (!wallet.connected) { window.openWalletModal?.(); return; }
-    const v = this._currentValidator;
-    const gasReserveTon = v?.protocol === 'liquidTF' ? 1.05 : 0.2;
-    const max = Math.max(0, (wallet.balanceTon || 0) - gasReserveTon);
+    const gasNano = STAKING_CONFIG.ROUTER_GAS_RESERVE_NANO;
+    const availNano = wallet.balanceNano > gasNano ? (wallet.balanceNano - gasNano) : 0n;
+    // Since total = principal + (principal * 35 / 10000) + gas, maxPrincipal = (availNano * 10000) / 10035
+    const maxPrincipalNano = (availNano * 10000n) / 10035n;
     const input = document.getElementById('stake-amount-input');
-    if (input) { input.value = safeToFixed(max, 2); this._updatePreview(); }
+    if (input) {
+      input.value = fromNanoSafe(maxPrincipalNano, 4);
+      this._updatePreview();
+    }
   },
 
   _updatePreview() {
     const input = document.getElementById('stake-amount-input');
     if (!input || !this._currentValidator) return;
-    const amount = parseFloat(input.value) || 0;
+    const rawStr = (input.value || '').trim();
+    const principalNano = toNanoSafe(rawStr);
+    const breakdown = calculateStakeDepositBreakdown(principalNano, STAKING_CONFIG.ROUTER_GAS_RESERVE_NANO);
+    this._currentBreakdown = breakdown;
+
+    _setText('stake-preview-principal', `${breakdown.principalTonStr} TON`);
+    _setText('stake-preview-anlgram-fee', `${breakdown.feeTonStr} TON (${breakdown.feeNano.toString()} nanoTON)`);
+    _setText('stake-preview-gas', `${breakdown.gasTonStr} TON`);
+    _setText('stake-preview-total', `${breakdown.totalTonStr} TON`);
+    _setText('stake-preview-fee-wallet', breakdown.feeRecipient);
+
     const v = this._currentValidator;
-    const rewards = RewardService.calculate({ amount, apr: v.apr || 4.5 });
+    const amountFloat = parseFloat(fromNanoSafe(principalNano, 6));
     const previewEl = document.getElementById('stake-reward-preview');
-    if (previewEl) previewEl.textContent = `~${safeToFixed(rewards.monthly, 4)} TON/month · ${safeToFixed(rewards.yearly, 2)} TON/year`;
-    this._validateAmount(amount);
+    if (previewEl) {
+      if (v.apr && amountFloat > 0) {
+        const rewards = RewardService.calculate({ amount: amountFloat, apr: v.apr });
+        previewEl.textContent = `~${safeToFixed(rewards.monthly, 4)} TON/mes · ~${safeToFixed(rewards.yearly, 4)} TON/año (Estimado a ${safeToFixed(v.apr, 2)}% APY)`;
+      } else {
+        previewEl.textContent = 'Variable según ciclo de validación en cadena (tsTON)';
+      }
+    }
+
+    this._validateAmount(principalNano, breakdown.totalNano);
   },
 
-  _validateAmount(amount) {
+  _validateAmount(principalNano, totalNano) {
     const v = this._currentValidator;
     const wallet = StakingState.get('wallet');
     const errEl = document.getElementById('stake-amount-error');
     let err = '';
-    const minStake = v?.minStake || 1;
-    const gasReserveTon = v?.protocol === 'liquidTF' ? 1.0 : 0.2;
+    const minStakeNano = v?.minStakeNano || 1000000000n;
 
-    if (amount > 0 && amount < minStake) {
-      err = `Minimum stake amount for ${v.name} is ${minStake} TON.`;
-    } else if (wallet.connected && amount > (wallet.balanceTon - gasReserveTon)) {
-      err = `Insufficient balance. You need at least ${gasReserveTon} TON reserved for network gas fees.`;
+    if (principalNano > 0n && principalNano < minStakeNano) {
+      err = `El depósito mínimo para ${v?.name || 'Tonstakers'} es ${fromNanoSafe(minStakeNano, 2)} TON.`;
+    } else if (wallet.connected && wallet.balanceNano > 0n && totalNano > wallet.balanceNano) {
+      err = `Balance insuficiente. Total requerido (principal + comisión 0.35% + gas): ${fromNanoSafe(totalNano, 4)} TON.`;
     }
 
     if (errEl) errEl.textContent = err;
     return !err;
   },
 
+  onAcceptanceToggle() {
+    const checkbox = document.getElementById('stake-accept-terms-checkbox');
+    const execBtn = document.getElementById('stake-execute-btn');
+    const activeNet = StakingState.get('activeNetwork');
+    const routerCheck = StakingState.get('routerVerification')[activeNet];
+
+    if (!execBtn) return;
+    const isAccepted = Boolean(checkbox && checkbox.checked);
+    const canSign = isAccepted && Boolean(routerCheck && routerCheck.verified) &&
+                    (activeNet !== 'mainnet' || STAKING_CONFIG.MAINNET_STAKING_ENABLED);
+
+    execBtn.disabled = !canSign;
+    if (!routerCheck?.verified) {
+      execBtn.textContent = 'Bloqueado: Router No Desplegado en Cadena';
+    } else if (!isAccepted) {
+      execBtn.textContent = 'Acepta el Desglose para Firmar';
+    } else {
+      execBtn.textContent = 'Confirmar y Firmar en TON Connect';
+    }
+  },
+
   async confirmStake() {
     const input = document.getElementById('stake-amount-input');
-    const amount = parseFloat(input?.value) || 0;
-    if (!this._validateAmount(amount) || amount <= 0) return;
+    const principalNano = toNanoSafe((input?.value || '').trim());
+    const breakdown = calculateStakeDepositBreakdown(principalNano, STAKING_CONFIG.ROUTER_GAS_RESERVE_NANO);
+    this._currentBreakdown = breakdown;
 
-    const wallet = StakingState.get('wallet');
-    if (!wallet.connected) {
-      window.openWalletModal?.();
-      this.close();
-      return;
-    }
-
-    // Strict TON Connect Authorization Check
-    if (wallet.isReadOnly || !wallet.isTonConnect) {
-      NotificationService.toast(
-        'Modo Solo Lectura',
-        'Has vinculado una dirección manual. Para firmar y ejecutar transacciones debes conectar tu billetera mediante TON Connect.',
-        'warning'
-      );
-      window.openWalletModal?.();
+    if (principalNano <= 0n || !this._validateAmount(principalNano, breakdown.totalNano)) {
+      if (principalNano <= 0n) {
+        _setText('stake-amount-error', 'Ingresa un monto principal válido en TON (mínimo 1 TON).');
+      }
       return;
     }
 
     const v = this._currentValidator;
     const activeNet = StakingState.get('activeNetwork');
+    const expectedChainId = activeNet === 'testnet' ? STAKING_CONFIG.CHAIN_ID_TESTNET : STAKING_CONFIG.CHAIN_ID_MAINNET;
+    const poolTelemetry = StakingState.get('poolOnChainData')[activeNet];
+    const routerCheck = await PoolOnChainVerifier.verifyRouterContract(activeNet);
 
-    // Strict Network Discrepancy Check
-    if (wallet.network !== activeNet) {
-      NotificationService.toast(
-        'Discrepancia de Red',
-        `Tu wallet está conectada a ${wallet.network.toUpperCase()}, pero la aplicación está configurada para ${activeNet.toUpperCase()}. Cambia la red en tu wallet para coincidir.`,
-        'error'
-      );
-      return;
-    }
+    // Populate Step 2 Confirmation Breakdown
+    _setText('stake-confirm-validator', v.name);
+    _setText('stake-confirm-network', `TON ${activeNet.toUpperCase()} (Chain ID: ${expectedChainId})`);
+    _setText('stake-confirm-protocol', 'liquidTF · Emisión tsTON + Escrow 0.35%');
+    _setText('stake-confirm-contract', v.address);
+    _setText('stake-confirm-router', routerCheck.address || 'Pendiente de despliegue en Testnet');
+    _setText('stake-confirm-amount', `${breakdown.principalTonStr} TON (${breakdown.principalNano.toString()} nanoTON)`);
+    _setText('stake-confirm-anlgram-fee', `${breakdown.feeTonStr} TON (${breakdown.feeNano.toString()} nanoTON · 0.35%)`);
+    _setText('stake-confirm-fee', `${breakdown.gasTonStr} TON (Sobrante reembolsado por contrato)`);
+    _setText('stake-confirm-total', `${breakdown.totalTonStr} TON (${breakdown.totalNano.toString()} nanoTON)`);
+    _setText('stake-confirm-fee-recipient', STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT);
 
-    // Populate confirmation step with verifiable details
-    document.getElementById('stake-confirm-validator').textContent = v.name;
-    document.getElementById('stake-confirm-protocol').textContent = v.protocol === 'liquidTF' ? 'Liquid Staking (tsTON)' : 'TON Whales Nominator Pool';
-    document.getElementById('stake-confirm-contract').textContent = v.address;
-    document.getElementById('stake-confirm-amount').textContent = `${safeToFixed(amount, 4)} TON`;
-    document.getElementById('stake-confirm-apr').textContent = v.apr ? `${safeToFixed(v.apr, 2)}% (Variable)` : 'Calculado en cadena por ciclo';
-    document.getElementById('stake-confirm-lock').textContent = v.description;
+    const rateText = poolTelemetry?.exchangeRateFloat
+      ? `1 tsTON = ${safeToFixed(poolTelemetry.exchangeRateFloat, 6)} TON`
+      : 'Tasa variable en cadena';
+    const apyText = v.apr ? `${safeToFixed(v.apr, 2)}% APY Est.` : 'APY Variable';
+    _setText('stake-confirm-apr', `${apyText} · ${rateText}`);
+    _setText('stake-confirm-lock', 'Recompensas por apreciación de tsTON; 0% comisión en retiro y reclamo.');
 
-    const gasAttached = v.protocol === 'liquidTF' ? '1.000 TON (Gas de reserva, sobrante devuelto por el pool)' : '0.200 TON (Gas de red)';
-    document.getElementById('stake-confirm-fee').textContent = gasAttached;
-
-    // Display ANLGRAM commission row
-    const feeRow = document.getElementById('stake-confirm-anlgram-fee');
-    if (!feeRow) {
-      const container = document.getElementById('stake-confirm-contract')?.parentElement?.parentElement;
-      if (container) {
-        const div = document.createElement('div');
-        div.id = 'stake-confirm-anlgram-fee';
-        div.className = 'modal-row';
-        div.innerHTML = `
-          <span class="modal-row-label">Comisión Servicio ANLGRAM</span>
-          <span class="modal-row-value" style="color:#22c55e;font-weight:700;">0.00% (0 TON · Sin recargo oculto)</span>
-        `;
-        container.appendChild(div);
-      }
-    }
+    const checkbox = document.getElementById('stake-accept-terms-checkbox');
+    if (checkbox) checkbox.checked = false;
+    this.onAcceptanceToggle();
 
     this._showStep(2);
   },
@@ -1401,140 +1734,167 @@ const StakeModalController = {
     const btn = document.getElementById('stake-execute-btn');
     if (!btn || StakingState.get('ui').txInFlight) return;
 
-    if (!window.tonConnectUI || !window.tonConnectUI.wallet) {
-      NotificationService.toast('Billetera Requerida', 'Conecta tu billetera TON mediante TON Connect.', 'warning');
-      window.openWalletModal?.();
+    const checkbox = document.getElementById('stake-accept-terms-checkbox');
+    if (!checkbox || !checkbox.checked) {
+      NotificationService.toast('Aceptación Requerida', 'Debes aceptar expresamente el principal, la comisión de 0.35%, el gas, el total y la wallet receptora antes de firmar.', 'warning');
+      return;
+    }
+
+    const activeNet = StakingState.get('activeNetwork');
+    if (activeNet === 'mainnet' && !STAKING_CONFIG.MAINNET_STAKING_ENABLED) {
+      NotificationService.toast('Mainnet Bloqueado', 'Las transacciones de staking en Mainnet están desactivadas por seguridad.', 'error');
       return;
     }
 
     const wallet = StakingState.get('wallet');
-    const activeNet = StakingState.get('activeNetwork');
+    if (!wallet.connected || wallet.isReadOnly || !wallet.isTonConnect || !window.tonConnectUI?.wallet) {
+      NotificationService.toast('TON Connect Requerido', 'Conecta tu billetera mediante TON Connect para firmar.', 'warning');
+      window.openWalletModal?.();
+      return;
+    }
 
-    // Strict Network Comparison before signing
-    const walletChain = window.tonConnectUI?.wallet?.account?.chain;
-    const isTestnetChain = (walletChain === '-3' || walletChain === -3);
-    if ((activeNet === 'testnet' && !isTestnetChain) || (activeNet === 'mainnet' && isTestnetChain)) {
+    // Strict Chain ID Verification (-239 Mainnet vs -3 Testnet)
+    const expectedChainId = activeNet === 'testnet' ? STAKING_CONFIG.CHAIN_ID_TESTNET : STAKING_CONFIG.CHAIN_ID_MAINNET;
+    const walletChainId = String(window.tonConnectUI?.wallet?.account?.chain || '');
+    if (walletChainId !== expectedChainId) {
       NotificationService.toast(
-        'Cancelado por Seguridad',
-        `La red de la wallet (${isTestnetChain ? 'Testnet' : 'Mainnet'}) no coincide con la red activa (${activeNet.toUpperCase()}). Operación abortada.`,
+        'Bloqueado por Cadena Incorrecta',
+        `El Chain ID de tu wallet (${walletChainId || 'desconocido'}) no coincide con la red requerida (${expectedChainId}).`,
         'error'
       );
       return;
     }
 
-    const v = this._currentValidator;
-    const input = document.getElementById('stake-amount-input');
-    const amountTon = parseFloat(input?.value) || 0;
-    const amountNano = toNanoSafe(amountTon);
+    // Verify Router Contract On-Chain before allowing signature
+    const routerCheck = await PoolOnChainVerifier.verifyRouterContract(activeNet);
+    if (!routerCheck.verified || !routerCheck.address) {
+      NotificationService.toast(
+        'Router No Verificado en Cadena',
+        routerCheck.reason || 'No se puede ejecutar el cobro automático de 0.35% sin un contrato Router verificado en cadena.',
+        'error'
+      );
+      return;
+    }
 
-    if (amountNano <= 0n) return;
+    // Verify Pool On-Chain Status before allowing signature
+    const poolTelemetry = await PoolOnChainVerifier.fetchVerifiedPoolTelemetry(activeNet);
+    if (!poolTelemetry || !poolTelemetry.isPoolActive) {
+      NotificationService.toast(
+        'Pool No Activo en Cadena',
+        'El contrato Tonstakers no está activo o tiene depósitos cerrados en este momento.',
+        'error'
+      );
+      return;
+    }
+
+    const breakdown = this._currentBreakdown;
+    if (!breakdown || breakdown.principalNano < 1000000000n) {
+      NotificationService.toast('Monto Inválido', 'El principal mínimo es 1 TON.', 'error');
+      return;
+    }
 
     StakingState.setDeep('ui.txInFlight', true);
     btn.disabled = true;
-    btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;"></div> Esperando firma...';
-
-    const userAddr = wallet.address;
+    btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;"></div> Firma en tu wallet...';
 
     try {
-      let payloadBoC;
-      let totalAmountNano;
-
-      if (v.protocol === 'liquidTF') {
-        // Tonstakers payload with partnerCode
-        payloadBoC = await buildTonstakersStakePayload(Date.now(), STAKING_CONFIG.ANLGRAM_PARTNER_CODE);
-        // Pool requires attaching 1 TON gas reserve
-        totalAmountNano = amountNano + 1000000000n;
-      } else {
-        // Whales pool deposit
-        payloadBoC = await buildWhalesStakePayload(Math.floor(Date.now() / 1000));
-        totalAmountNano = amountNano + 200000000n;
-      }
-
+      const queryId = BigInt(Date.now());
+      const expectedNetInt = activeNet === 'testnet' ? -3 : -239;
+      const payloadBoC = await buildAnlgramRouterStakePayload(queryId, breakdown.principalNano, expectedNetInt);
       const startTs = Math.floor(Date.now() / 1000);
 
-      btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;"></div> Firma en tu wallet...';
-
-      // Send transaction with exact payload to verified contract
-      const result = await window.tonConnectUI.sendTransaction({
+      // Single-signature TON Connect transaction with explicit `network` ID (-3 or -239)
+      await window.tonConnectUI.sendTransaction({
         validUntil: startTs + 600,
+        network: expectedChainId,
         messages: [{
-          address: v.address,
-          amount: totalAmountNano.toString(),
+          address: routerCheck.address,
+          amount: breakdown.totalNano.toString(),
           payload: payloadBoC,
         }],
       });
 
       this._showStep(3);
+      updateTxStateBadges({ sent: true, pending: true, confirmed: false, failedOrRefunded: false, feeCollected: false });
+
       const iconEl = document.getElementById('stake-tx-icon');
       const titleEl = document.getElementById('stake-tx-title');
       const subEl = document.getElementById('stake-tx-sub');
       const hashEl = document.getElementById('stake-tx-hash');
+      const feeStatusEl = document.getElementById('stake-tx-fee-status');
       const linkEl = document.getElementById('stake-tx-link');
 
       if (iconEl) iconEl.textContent = '⏳';
-      if (titleEl) titleEl.textContent = 'Transacción Enviada';
-      if (subEl) subEl.textContent = 'Verificando inclusión y estado real en la blockchain de TON...';
-      if (hashEl) hashEl.textContent = 'Consultando evento en cadena...';
+      if (titleEl) titleEl.textContent = '1. Transacción Enviada · 2. Pendiente en Cadena';
+      if (subEl) subEl.textContent = 'TON Connect emitió el mensaje al Router. Esperando confirmación asíncrona del pool Tonstakers...';
+      if (hashEl) hashEl.textContent = `Query ID: ${queryId.toString()} · Consultando traza en TonAPI...`;
+      if (feeStatusEl) feeStatusEl.textContent = `Comisión (${breakdown.feeTonStr} TON · 0.35%): En custodia del Router (no marcada como cobrada hasta confirmar emisión de tsTON).`;
       if (linkEl) linkEl.style.display = 'none';
 
-      NotificationService.push({
-        type: 'stake',
-        title: 'Transacción Emitida',
-        body: `Delegando ${amountTon} TON a ${v.name}. Esperando confirmación de bloque...`,
-        icon: '⚡',
-      });
-
-      // Poll on-chain events for true execution outcome
-      const confirmRes = await _pollRealTxConfirmation(userAddr, v.address, startTs, 45000);
-
-      if (confirmRes.status === 'confirmed') {
-        const txHash = confirmRes.hash;
-        if (iconEl) iconEl.textContent = '✅';
-        if (titleEl) titleEl.textContent = '¡Staking Confirmado!';
-        if (subEl) subEl.textContent = `Se delegaron exitosamente ${amountTon} TON a ${v.name}.`;
-        if (hashEl) hashEl.textContent = txHash || 'Confirmado en bloque TON';
-        if (linkEl && txHash) {
-          const expBase = activeNet === 'testnet' ? STAKING_CONFIG.TONVIEWER_TESTNET : STAKING_CONFIG.TONVIEWER_MAINNET;
-          linkEl.href = `${expBase}/transaction/${txHash}`;
-          linkEl.style.display = 'inline-block';
+      const traceRes = await _pollRealDepositTrace(
+        wallet.address,
+        routerCheck.address,
+        breakdown.feeNano,
+        startTs,
+        60000,
+        (prog) => {
+          if (prog.hash && hashEl) hashEl.textContent = prog.hash;
         }
-        NotificationService.push({
-          type: 'success',
-          title: 'Staking Confirmado ✅',
-          body: `${amountTon} TON depositados exitosamente.`,
-          icon: '⚡',
-        });
-      } else if (confirmRes.status === 'bounced' || confirmRes.status === 'failed') {
+      );
+
+      const expBase = activeNet === 'testnet' ? STAKING_CONFIG.TONVIEWER_TESTNET : STAKING_CONFIG.TONVIEWER_MAINNET;
+      if (linkEl && traceRes.hash) {
+        linkEl.href = `${expBase}/transaction/${traceRes.hash}`;
+        linkEl.style.display = 'inline-block';
+      }
+
+      if (traceRes.status === 'confirmed' && traceRes.feeCollected) {
+        updateTxStateBadges({ sent: true, pending: false, confirmed: true, failedOrRefunded: false, feeCollected: true });
+        if (iconEl) iconEl.textContent = '✅';
+        if (titleEl) titleEl.textContent = '¡Staking Confirmado y Comisión Cobrada!';
+        if (subEl) subEl.textContent = `Se depositaron ${breakdown.principalTonStr} TON en Tonstakers y recibiste tus tsTON.`;
+        if (hashEl) hashEl.textContent = traceRes.hash || 'Confirmado en cadena';
+        if (feeStatusEl) feeStatusEl.textContent = `Comisión cobrada y verificada en cadena: ${breakdown.feeTonStr} TON enviados a ${STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT}.`;
+      } else if (traceRes.status === 'confirmed' && !traceRes.feeCollected) {
+        updateTxStateBadges({ sent: true, pending: false, confirmed: true, failedOrRefunded: false, feeCollected: false });
         if (iconEl) iconEl.textContent = '⚠️';
-        if (titleEl) titleEl.textContent = 'Transacción Rebotada o Fallida';
-        if (subEl) subEl.textContent = 'El contrato de staking rechazó la transferencia. Los fondos rebotaron de vuelta a tu saldo.';
-        if (hashEl) hashEl.textContent = confirmRes.hash || 'Evento fallido / devuelto';
+        if (titleEl) titleEl.textContent = 'Transacción Confirmada (Comisión No Verificada)';
+        if (subEl) subEl.textContent = 'La transacción fue procesada, pero aún no se verificó la transferencia de la comisión en la traza.';
+        if (hashEl) hashEl.textContent = traceRes.hash || 'Ver traza en explorador';
+        if (feeStatusEl) feeStatusEl.textContent = 'Comisión (0.35%): No verificada en traza.';
+      } else if (traceRes.status === 'failed_or_refunded') {
+        updateTxStateBadges({ sent: true, pending: false, confirmed: false, failedOrRefunded: true, feeCollected: false });
+        if (iconEl) iconEl.textContent = '↩️';
+        if (titleEl) titleEl.textContent = '4. Fallida / Reembolsada';
+        if (subEl) subEl.textContent = 'El depósito rebotó o fue rechazado. El Router reembolsó el principal + la comisión en custodia (0 TON de comisión cobrada).';
+        if (hashEl) hashEl.textContent = traceRes.hash || 'Evento rebotado / reembolsado';
+        if (feeStatusEl) feeStatusEl.textContent = 'Comisión (0.35%): No cobrada (reembolsada al cliente).';
       } else {
+        updateTxStateBadges({ sent: true, pending: true, confirmed: false, failedOrRefunded: false, feeCollected: false });
         if (iconEl) iconEl.textContent = '📬';
-        if (titleEl) titleEl.textContent = 'En Proceso de Inclusión';
-        if (subEl) subEl.textContent = 'La transacción fue recibida por los validadores. Tu posición se actualizará en el próximo bloque.';
-        if (hashEl) hashEl.textContent = 'Pendiente de indexación en TonAPI';
+        if (titleEl) titleEl.textContent = '2. Pendiente de Confirmación Asíncrona';
+        if (subEl) subEl.textContent = 'La traza continúa procesándose entre shards. Consulta tu historial en unos segundos.';
       }
 
       await PortfolioService.refresh();
       PortfolioController.render();
-
+      TransactionController.init();
     } catch (e) {
-      if (e?.code === 300 || /reject|cancel/i.test(e?.message)) {
-        NotificationService.toast('Operación Cancelada', 'Rechazaste la transacción en tu wallet.', 'info');
+      if (e?.code === 300 || /reject|cancel|declin/i.test(e?.message || '')) {
+        NotificationService.toast('Firma Rechazada', 'Cancelaste la firma en tu wallet TON Connect.', 'info');
       } else {
-        NotificationService.toast('Error al Enviar', e.message || 'Error en la transacción.', 'error');
+        NotificationService.toast('Error en Transacción', e.message || 'Error al procesar el depósito.', 'error');
         console.error('[StakeModalController.executeStake]', e);
       }
     } finally {
       StakingState.setDeep('ui.txInFlight', false);
-      if (btn) { btn.disabled = false; btn.innerHTML = 'Confirmar y Firmar'; }
+      this.onAcceptanceToggle();
     }
   },
 
   _showStep(n) {
     this._step = n;
-    ['stake-step-1','stake-step-2','stake-step-3'].forEach((id, i) => {
+    ['stake-step-1', 'stake-step-2', 'stake-step-3'].forEach((id, i) => {
       const el = document.getElementById(id);
       if (el) el.style.display = i + 1 === n ? '' : 'none';
     });
@@ -1549,37 +1909,26 @@ const StakeModalController = {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   UNSTAKE MODAL CONTROLLER (Audited Unstaking & Burn Call)
+   UNSTAKE MODAL CONTROLLER (Audited tsTON Burn 0x595f07bc · 0% Fee)
    ══════════════════════════════════════════════════════════════ */
 
 const UnstakeModalController = {
   open(validatorId) {
-    const pos = StakingState.get('positions').find(p => p.validatorId === validatorId);
+    const pos = StakingState.get('positions').find(p => p.validatorId === validatorId) || StakingState.get('positions')[0];
     if (!pos) {
-      NotificationService.toast('Sin Posición', 'No tienes una posición activa en este pool.', 'warning');
+      NotificationService.toast('Sin Posición Activa', 'No se detectó balance de tsTON en tu wallet para retirar.', 'warning');
       return;
     }
     const modal = document.getElementById('unstake-modal');
     if (modal) {
       modal.classList.add('open');
-      modal.dataset.validatorId = validatorId;
-      modal.dataset.protocol = pos.protocol || 'whales';
+      modal.dataset.validatorId = pos.validatorId;
+      modal.dataset.protocol = 'liquidTF';
     }
-    document.getElementById('unstake-val-name').textContent = pos.validatorName;
-    document.getElementById('unstake-staked-amount').textContent = `${safeToFixed(pos.amount, 4)} ${pos.protocol === 'liquidTF' ? 'tsTON' : 'TON'}`;
-
-    const warnEl = document.getElementById('unstake-warning-text');
-    if (pos.protocol === 'liquidTF') {
-      document.getElementById('unstake-lock-period').textContent = 'Líquido (Canje Inmediato en DEX o Quema Protocolo)';
-      if (warnEl) {
-        warnEl.textContent = 'Posees tokens líquidos (tsTON). Puedes intercambiarlos instantáneamente en DEX (STON.fi o DeDust) sin espera, o solicitar la quema directa al contrato con gas adjunto de 1.05 TON.';
-      }
-    } else {
-      document.getElementById('unstake-lock-period').textContent = '~36–48h';
-      if (warnEl) {
-        warnEl.textContent = 'En pools nominators de TON Whales, el retiro se procesa al concluir la ronda de elecciones (~36–48h). Los fondos regresan directamente a tu billetera.';
-      }
-    }
+    _setText('unstake-val-name', pos.validatorName);
+    _setText('unstake-staked-amount', `${safeToFixed(pos.tsTonBalance, 4)} tsTON`);
+    _setText('unstake-ton-equivalent', `~${safeToFixed(pos.amount, 4)} TON (1 tsTON = ${safeToFixed(pos.exchangeRateTonPerTsTon || 1, 6)} TON)`);
+    _setText('unstake-lock-period', 'Quema de tsTON (0x595f07bc · 0% Fee ANLGRAM)');
   },
 
   close() {
@@ -1590,76 +1939,78 @@ const UnstakeModalController = {
     const btn = document.getElementById('unstake-execute-btn');
     if (!btn || StakingState.get('ui').txInFlight) return;
 
+    const activeNet = StakingState.get('activeNetwork');
+    if (activeNet === 'mainnet' && !STAKING_CONFIG.MAINNET_STAKING_ENABLED) {
+      NotificationService.toast('Mainnet Bloqueado', 'Las transacciones Mainnet están deshabilitadas por política de seguridad.', 'error');
+      return;
+    }
+
     const wallet = StakingState.get('wallet');
-    if (!wallet.connected || wallet.isReadOnly || !wallet.isTonConnect) {
-      NotificationService.toast('Billetera Requerida', 'Conecta tu billetera mediante TON Connect para firmar el retiro.', 'warning');
+    if (!wallet.connected || wallet.isReadOnly || !wallet.isTonConnect || !window.tonConnectUI?.wallet) {
+      NotificationService.toast('TON Connect Requerido', 'Conecta tu billetera mediante TON Connect para firmar el retiro.', 'warning');
       window.openWalletModal?.();
+      return;
+    }
+
+    const expectedChainId = activeNet === 'testnet' ? STAKING_CONFIG.CHAIN_ID_TESTNET : STAKING_CONFIG.CHAIN_ID_MAINNET;
+    const walletChainId = String(window.tonConnectUI?.wallet?.account?.chain || '');
+    if (walletChainId !== expectedChainId) {
+      NotificationService.toast(
+        'Bloqueado por Cadena Incorrecta',
+        `El Chain ID de tu wallet (${walletChainId || 'desconocido'}) no coincide con la red activa (${expectedChainId}).`,
+        'error'
+      );
       return;
     }
 
     const modal = document.getElementById('unstake-modal');
     const validatorId = modal?.dataset?.validatorId;
-    const protocol = modal?.dataset?.protocol;
-
-    const pos = StakingState.get('positions').find(p => p.validatorId === validatorId);
-    if (!pos) return;
+    const pos = StakingState.get('positions').find(p => p.validatorId === validatorId) || StakingState.get('positions')[0];
+    if (!pos || !pos.jettonWalletAddress) {
+      NotificationService.toast('Jetton Wallet No Encontrada', 'No se encontró tu contrato Jetton Wallet de tsTON.', 'error');
+      return;
+    }
 
     StakingState.setDeep('ui.txInFlight', true);
     btn.disabled = true;
     btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;"></div> Firmando retiro...';
 
     try {
-      let targetAddress;
-      let payloadBoC;
-      let gasAttachedNano;
-
-      if (protocol === 'liquidTF') {
-        // Must send to the user's tsTON Jetton Wallet
-        if (!pos.jettonWalletAddress) {
-          throw new Error('No se detectó la dirección de tu Jetton Wallet tsTON. Puedes canjear directamente en DEX.');
-        }
-        targetAddress = pos.jettonWalletAddress;
-        payloadBoC = await buildTonstakersUnstakePayload(pos.amountNano, wallet.address, false, false);
-        gasAttachedNano = 1050000000n; // 1.05 TON
-      } else {
-        // Whales nominator pool
-        targetAddress = validatorId;
-        payloadBoC = await buildWhalesWithdrawPayload(Math.floor(Date.now() / 1000), 100000000n, 0n);
-        gasAttachedNano = 200000000n; // 0.2 TON
-      }
-
+      const queryId = BigInt(Date.now());
+      const payloadBoC = await buildTonstakersUnstakePayload(pos.tsTonBalanceNano, wallet.address, false, false, queryId);
       const startTs = Math.floor(Date.now() / 1000);
 
       await window.tonConnectUI.sendTransaction({
         validUntil: startTs + 600,
+        network: expectedChainId,
         messages: [{
-          address: targetAddress,
-          amount: gasAttachedNano.toString(),
+          address: pos.jettonWalletAddress,
+          amount: STAKING_CONFIG.UNSTAKE_GAS_RESERVE_NANO.toString(),
           payload: payloadBoC,
         }],
       });
 
       NotificationService.push({
         type: 'info',
-        title: 'Retiro Transmitido',
-        body: 'Solicitud de retiro enviada a la blockchain.',
+        title: 'Retiro Enviado (0% Comisión ANLGRAM)',
+        body: 'Verificando quema de tsTON y devolución de TON en cadena...',
         icon: '🔓',
       });
 
-      await _pollRealTxConfirmation(wallet.address, targetAddress, startTs, 35000);
+      await _pollRealDepositTrace(wallet.address, pos.jettonWalletAddress, 0n, startTs, 40000);
       this.close();
       await PortfolioService.refresh();
       PortfolioController.render();
-
+      TransactionController.init();
     } catch (e) {
-      if (e?.code === 300 || /reject|cancel/i.test(e?.message)) {
-        NotificationService.toast('Retiro Cancelado', 'Rechazaste la transacción en tu wallet.', 'info');
+      if (e?.code === 300 || /reject|cancel|declin/i.test(e?.message || '')) {
+        NotificationService.toast('Retiro Cancelado', 'Rechazaste la firma en tu wallet.', 'info');
       } else {
-        NotificationService.toast('Fallo al Retirar', e.message || 'Error en la solicitud.', 'error');
+        NotificationService.toast('Error al Retirar', e.message || 'Error en la solicitud.', 'error');
       }
     } finally {
       StakingState.setDeep('ui.txInFlight', false);
-      if (btn) { btn.disabled = false; btn.innerHTML = 'Confirmar Retiro'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = 'Confirmar Retiro (0% Fee)'; }
     }
   },
 };
@@ -1682,7 +2033,7 @@ const PortfolioController = {
             <div class="empty-state">
               <div class="empty-state-icon">💼</div>
               <div class="empty-state-title">Conecta tu Billetera</div>
-              <div class="empty-state-text">Conecta tu wallet TON vía TON Connect para consultar posiciones en tiempo real.</div>
+              <div class="empty-state-text">Conecta tu wallet TON vía TON Connect para consultar tus balances reales de tsTON y su equivalencia en TON.</div>
               <button class="btn btn-primary" style="margin-top:16px;" onclick="window.openWalletModal?.()">Conectar Wallet</button>
             </div>
           </td></tr>`;
@@ -1692,18 +2043,23 @@ const PortfolioController = {
     }
 
     if (StakingState.get('loading').positions) {
-      if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px;"><div class="loading-spinner" style="margin:0 auto 10px;"></div>Cargando posiciones de la blockchain...</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px;"><div class="loading-spinner" style="margin:0 auto 10px;"></div>Consultando posiciones de tsTON y get_pool_full_data en cadena...</td></tr>`;
       return;
     }
 
     const totals = PortfolioService.getTotals();
     if (totalsEl) {
       totalsEl.style.display = 'flex';
-      document.getElementById('pt-staked').textContent = `${safeToFixed(totals.totalStaked, 4)} TON`;
-      document.getElementById('pt-pending').textContent = `${safeToFixed(totals.totalPending, 4)} TON`;
-      document.getElementById('pt-earned').textContent = `${safeToFixed(totals.totalEarned, 4)} TON`;
-      document.getElementById('pt-annual').textContent = `${safeToFixed(totals.projAnnual, 2)} TON`;
+      _setText('pt-staked', `${safeToFixed(totals.totalStaked, 4)} TON`);
+      _setText('pt-pending', `${safeToFixed(totals.totalPending, 4)} TON`);
+      _setText('pt-earned', `${safeToFixed(totals.totalEarned, 4)} TON`);
+      _setText('pt-annual', totals.projAnnual !== null ? `~${safeToFixed(totals.projAnnual, 2)} TON (Est.)` : 'Sin datos');
     }
+
+    // Update Portfolio Section Metric Cards if present
+    _setText('port-total-staked', `${safeToFixed(totals.totalStaked, 4)} TON`);
+    _setText('port-total-rewards', `${safeToFixed(totals.totalEarned, 4)} TON (Apreciación tsTON)`);
+    _setText('port-avg-apr', positions[0]?.apr ? `${safeToFixed(positions[0].apr, 2)}% (Est.)` : 'Sin datos');
 
     if (!positions.length) {
       if (tbody) {
@@ -1711,9 +2067,9 @@ const PortfolioController = {
           <tr><td colspan="9">
             <div class="empty-state">
               <div class="empty-state-icon">⚡</div>
-              <div class="empty-state-title">Sin Posiciones Activas</div>
-              <div class="empty-state-text">No se detectaron balances de tsTON ni participaciones en pools nominators para esta cuenta en ${StakingState.get('activeNetwork').toUpperCase()}.</div>
-              <button class="btn btn-primary" style="margin-top:16px;" onclick="document.getElementById('validators')?.scrollIntoView({behavior:'smooth'})">Explorar Pools Auditados</button>
+              <div class="empty-state-title">Sin Posiciones Activas de tsTON</div>
+              <div class="empty-state-text">No se detectaron tokens tsTON para esta cuenta en ${StakingState.get('activeNetwork').toUpperCase()}. Fuente: TonAPI v2 (${new Date().toLocaleTimeString()}).</div>
+              <button class="btn btn-primary" style="margin-top:16px;" onclick="document.getElementById('validators')?.scrollIntoView({behavior:'smooth'})">Ver Pool Tonstakers Verificado</button>
             </div>
           </td></tr>`;
       }
@@ -1725,24 +2081,26 @@ const PortfolioController = {
         <tr>
           <td>
             <div style="display:flex;align-items:center;gap:8px;">
-              <div class="validator-logo" style="font-size:14px;">${pos.protocol === 'liquidTF' ? '⚡' : '💎'}</div>
+              <div class="validator-logo" style="font-size:14px;">⚡</div>
               <div>
                 <span style="font-weight:600;">${pos.validatorName}</span>
-                ${pos.isVerified ? '<span style="color:var(--cyan);font-size:10px;margin-left:4px;">✓ Auditado</span>' : ''}
+                <span style="color:var(--cyan);font-size:10px;margin-left:4px;">✓ Verificado</span>
+                <div style="font-size:10px;color:var(--text-muted);">${pos.dataSource} · ${pos.lastUpdated}</div>
               </div>
             </div>
           </td>
-          <td class="td-mono">${safeToFixed(pos.amount, 4)} ${pos.protocol === 'liquidTF' ? 'tsTON' : 'TON'}</td>
-          <td class="td-mono text-green">${pos.protocol === 'liquidTF' ? 'Apreciación continua' : 'Autocompound'}</td>
+          <td class="td-mono">${safeToFixed(pos.tsTonBalance, 4)} tsTON<br/><span style="font-size:10px;color:var(--text-muted);">≈ ${safeToFixed(pos.amount, 4)} TON</span></td>
+          <td class="td-mono text-green">+${safeToFixed(pos.earnedRewards, 4)} TON<br/><span style="font-size:10px;color:var(--text-muted);">1 tsTON = ${safeToFixed(pos.exchangeRateTonPerTsTon, 5)} TON</span></td>
           <td class="td-mono text-cyan">${safeToFixed(pos.readyWithdraw, 4)} TON</td>
-          <td><span class="apr-value">${pos.apr ? `${safeToFixed(pos.apr, 2)}%` : 'Variable'}</span></td>
+          <td><span class="apr-value">${pos.apr ? `${safeToFixed(pos.apr, 2)}% (Est.)` : 'Sin datos'}</span></td>
           <td class="td-mono">${pos.lockPeriod}</td>
-          <td class="td-mono">—</td>
-          <td><span class="badge ${pos.status === 'active' ? 'badge-green' : 'badge-yellow'}">${pos.status}</span></td>
+          <td class="td-mono">Inmediato (Quema)</td>
+          <td><span class="badge badge-green">${pos.status}</span></td>
           <td>
             <div style="display:flex;gap:6px;">
-              <button class="btn btn-primary btn-sm" onclick="StakeModalController.open('${pos.validatorId}')">+ Agregar</button>
-              <button class="btn btn-ghost btn-sm" onclick="UnstakeModalController.open('${pos.validatorId}')">Retirar</button>
+              <button class="btn btn-primary btn-sm" onclick="StakeModalController.open('${pos.validatorId}')">+ Depositar</button>
+              <button class="btn btn-ghost btn-sm" onclick="RewardService.openClaimModal('${pos.validatorId}')">Recompensas</button>
+              <button class="btn btn-ghost btn-sm" onclick="UnstakeModalController.open('${pos.validatorId}')">Retirar (0%)</button>
             </div>
           </td>
         </tr>
@@ -1754,74 +2112,56 @@ const PortfolioController = {
 const ValidatorTableController = {
   async init() {
     const tbody = document.getElementById('validator-tbody');
-    if (tbody) tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;"><div class="loading-spinner" style="margin:0 auto 10px;"></div>Cargando validadores auditados desde TonAPI...</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;"><div class="loading-spinner" style="margin:0 auto 10px;"></div>Verificando contrato Tonstakers y get_pool_full_data en cadena...</td></tr>`;
 
     try {
       const validators = await ValidatorService.getAll();
       StakingState.set('validators', validators);
       StakingState.set('filteredValidators', [...validators]);
+      if (validators[0]) StakingState.set('selectedValidator', validators[0]);
       this.render();
       this._bindControls();
     } catch (err) {
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state"><div class="empty-state-title">Error al consultar pools</div><div class="empty-state-text">${err.message}</div></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state"><div class="empty-state-title">Sin datos de pool</div><div class="empty-state-text">${err.message}</div></div></td></tr>`;
       }
     }
   },
 
   render() {
     const ui = StakingState.get('ui');
-    let data = [...StakingState.get('filteredValidators')];
-
-    // Sort
-    const { field, dir } = ui.validatorSort;
-    data.sort((a, b) => {
-      const av = a[field] ?? 0, bv = b[field] ?? 0;
-      if (typeof av === 'string') return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
-      return dir === 'asc' ? av - bv : bv - av;
-    });
-
-    const page = ui.validatorPage;
-    const perPage = STAKING_CONFIG.ROWS_PER_PAGE;
-    const totalPages = Math.max(1, Math.ceil(data.length / perPage));
-    const pageData = data.slice((page - 1) * perPage, page * perPage);
-
+    const data = [...StakingState.get('filteredValidators')];
     const tbody = document.getElementById('validator-tbody');
     if (!tbody) return;
 
-    if (!pageData.length) {
-      tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-title">No se encontraron validadores</div><div class="empty-state-text">Intenta ajustar tus filtros de búsqueda.</div></div></td></tr>`;
+    if (!data.length) {
+      tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-title">Sin resultados</div></div></td></tr>`;
     } else {
-      tbody.innerHTML = pageData.map((v, idx) => `
+      tbody.innerHTML = data.map((v, idx) => `
         <tr data-id="${v.id}" class="validator-row" onclick="ValidatorDetailController.open('${v.id}')">
-          <td class="td-mono" style="padding-left:20px;">#${(page - 1) * perPage + idx + 1}</td>
+          <td class="td-mono" style="padding-left:20px;">#${idx + 1}</td>
           <td>
             <div style="display:flex;align-items:center;gap:10px;">
               <div class="validator-logo">${v.logoEmoji}</div>
               <div class="validator-info">
-                <div class="validator-name">${v.name} ${v.verified ? '<span style="color:var(--cyan);font-size:10px;">✓ Auditado</span>' : ''}</div>
-                <div class="validator-addr">${v.shortAddress}</div>
+                <div class="validator-name">${v.name} <span style="color:var(--cyan);font-size:10px;">✓ Pool Único Verificado</span></div>
+                <div class="validator-addr">${v.shortAddress} · Act.: ${v.lastUpdated}</div>
               </div>
             </div>
           </td>
           <td class="td-mono" style="font-size:10px;color:var(--text-muted);">${v.shortAddress}</td>
           <td><span class="badge ${v.status === 'active' ? 'badge-green' : 'badge-yellow'}">${v.status}</span></td>
-          <td><span class="apr-value">${v.apr ? `${safeToFixed(v.apr, 2)}%` : 'Variable'}</span></td>
-          <td class="td-mono">${v.commission !== null ? `${safeToFixed(v.commission, 1)}%` : 'N/D'}</td>
+          <td><span class="apr-value">${v.apr !== null ? `${safeToFixed(v.apr, 2)}% (Est.)` : 'Sin datos'}</span></td>
+          <td class="td-mono">0.35% (35 bps)</td>
           <td class="td-mono">${safeToFixed(v.minStake, 0)} TON</td>
-          <td class="td-mono">${v.totalStaked ? _fmtCompact(v.totalStaked) + ' TON' : 'N/D'}</td>
-          <td class="td-mono">${v.delegators ? _fmtCompact(v.delegators) : 'N/D'}</td>
-          <td>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div class="perf-bar-wrap"><div class="perf-bar" style="width:${v.performanceScore || 50}%;"></div></div>
-              <span class="td-mono" style="font-size:10px;">${v.performanceScore ? v.performanceScore + '%' : 'N/D'}</span>
-            </div>
-          </td>
-          <td class="td-mono">${v.uptime !== null ? `${safeToFixed(v.uptime, 1)}%` : 'N/D'}</td>
-          <td><span class="risk-badge ${v.verified ? 'risk-aaa' : 'risk-b'}">${v.riskGrade}</span></td>
+          <td class="td-mono">${v.totalStaked !== null ? _fmtCompact(v.totalStaked) + ' TON' : 'Sin datos'}</td>
+          <td class="td-mono">${v.delegators !== null ? _fmtCompact(v.delegators) : 'Sin datos'}</td>
+          <td class="td-mono" style="font-size:11px;color:var(--text-muted);">${v.exchangeRateTonPerTsTon ? `1 tsTON = ${safeToFixed(v.exchangeRateTonPerTsTon, 4)} TON` : 'Sin datos'}</td>
+          <td class="td-mono" style="color:var(--text-muted);">No disponible</td>
+          <td><span class="risk-badge risk-aaa">${v.riskGrade}</span></td>
           <td onclick="event.stopPropagation()">
             <div style="display:flex;gap:6px;">
-              <button class="btn btn-primary btn-sm" onclick="StakeModalController.open('${v.id}')" ${!v.isSupported ? 'disabled title="Protocolo no verificado"' : ''}>Stakear</button>
+              <button class="btn btn-primary btn-sm" onclick="StakeModalController.open('${v.id}')">Stakear</button>
               <button class="row-actions-btn" onclick="ValidatorDetailController.open('${v.id}')">Detalles</button>
             </div>
           </td>
@@ -1830,7 +2170,7 @@ const ValidatorTableController = {
     }
 
     const info = document.getElementById('table-page-info');
-    if (info) info.textContent = `${data.length} pools · Página ${page} de ${totalPages}`;
+    if (info) info.textContent = `${data.length} pool público verificado · Fuente: TonAPI v2 + get_pool_full_data`;
   },
 
   _bindControls() {
@@ -1841,7 +2181,6 @@ const ValidatorTableController = {
         const all = StakingState.get('validators');
         const filtered = all.filter(v => v.name.toLowerCase().includes(q) || v.address.toLowerCase().includes(q));
         StakingState.set('filteredValidators', filtered);
-        StakingState.setDeep('ui.validatorPage', 1);
         this.render();
       };
     }
@@ -1860,7 +2199,10 @@ const ValidatorDetailController = {
 
     const v = await ValidatorService.getById(validatorId);
     if (!v) return;
+    StakingState.set('selectedValidator', v);
 
+    const net = StakingState.get('activeNetwork');
+    const telemetry = StakingState.get('poolOnChainData')[net];
     const content = document.getElementById('detail-content');
     if (content) {
       content.innerHTML = `
@@ -1873,21 +2215,21 @@ const ValidatorDetailController = {
             </div>
           </div>
           <p style="font-size:var(--text-sm);color:var(--text-secondary);line-height:1.6;">${v.description}</p>
-          <div style="margin-top:12px;display:flex;gap:10px;">
-            <a href="${v.website}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">🌐 Documentación Oficial</a>
-            <a href="${StakingState.get('activeNetwork') === 'testnet' ? STAKING_CONFIG.TONVIEWER_TESTNET : STAKING_CONFIG.TONVIEWER_MAINNET}/${v.address}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">🔍 Tonviewer</a>
+          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+            <a href="${v.website}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">🌐 Docs Tonstakers</a>
+            <a href="${net === 'testnet' ? STAKING_CONFIG.TONVIEWER_TESTNET : STAKING_CONFIG.TONVIEWER_MAINNET}/${v.address}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">🔍 Tonviewer</a>
           </div>
         </div>
 
         <div class="detail-section">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">Parámetros Verificados del Contrato</div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">Parámetros Verificados en Cadena (${v.lastUpdated})</div>
           <div class="detail-stats-grid">
-            <div class="detail-stat"><div class="detail-stat-label">APR Verificado</div><div class="detail-stat-value" style="color:var(--green);">${v.apr ? `${safeToFixed(v.apr, 2)}%` : 'Variable'}</div></div>
-            <div class="detail-stat"><div class="detail-stat-label">Comisión Pool</div><div class="detail-stat-value">${v.commission !== null ? `${safeToFixed(v.commission, 1)}%` : 'Protocol Native'}</div></div>
-            <div class="detail-stat"><div class="detail-stat-label">Comisión ANLGRAM</div><div class="detail-stat-value" style="color:#22c55e;">0.00% (Sin cobro)</div></div>
+            <div class="detail-stat"><div class="detail-stat-label">APY (Estimado)</div><div class="detail-stat-value" style="color:var(--green);">${v.apr !== null ? `${safeToFixed(v.apr, 2)}%` : 'Sin datos'}</div></div>
+            <div class="detail-stat"><div class="detail-stat-label">Tasa Realizada tsTON</div><div class="detail-stat-value">${telemetry?.exchangeRateFloat ? `${safeToFixed(telemetry.exchangeRateFloat, 6)} TON` : 'Sin datos'}</div></div>
+            <div class="detail-stat"><div class="detail-stat-label">Comisión Depósito ANLGRAM</div><div class="detail-stat-value" style="color:var(--cyan);">0.35% (35 bps)</div></div>
+            <div class="detail-stat"><div class="detail-stat-label">Comisión Retiro / Reclamo</div><div class="detail-stat-value" style="color:#22c55e;">0.00% (0 TON)</div></div>
             <div class="detail-stat"><div class="detail-stat-label">Mínimo de Stake</div><div class="detail-stat-value">${safeToFixed(v.minStake, 0)} TON</div></div>
-            <div class="detail-stat"><div class="detail-stat-label">Protocolo</div><div class="detail-stat-value">${v.protocol}</div></div>
-            <div class="detail-stat"><div class="detail-stat-label">Estado de Auditoría</div><div class="detail-stat-value">${v.verified ? 'Auditado' : 'No en Allowlist'}</div></div>
+            <div class="detail-stat"><div class="detail-stat-label">Wallet Receptora Fee</div><div class="detail-stat-value" style="font-size:10px;word-break:break-all;">${STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT}</div></div>
           </div>
         </div>
       `;
@@ -1902,7 +2244,7 @@ const ValidatorDetailController = {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   CALCULATOR & INSIGHTS CONTROLLERS
+   CALCULATOR, METRICS, INSIGHTS & NEWS CONTROLLERS
    ══════════════════════════════════════════════════════════════ */
 
 const CalculatorController = {
@@ -1915,32 +2257,43 @@ const CalculatorController = {
   },
 
   _calculate() {
-    const amount = parseFloat(document.getElementById('calc-amount')?.value) || 1000;
-    const apr = parseFloat(document.getElementById('calc-apr')?.value) || 4.5;
-    const res = RewardService.calculate({ amount, apr, days: 365, compound: true });
+    const amount = parseFloat(document.getElementById('calc-amount')?.value) || 0;
+    const aprVal = parseFloat(document.getElementById('calc-apr')?.value);
+    const liveApr = Number.isFinite(aprVal) && aprVal > 0
+      ? aprVal
+      : (StakingState.get('validators')[0]?.apr ?? null);
 
-    _setText('calc-daily', `${safeToFixed(res.daily, 4)} TON`);
-    _setText('calc-weekly', `${safeToFixed(res.weekly, 4)} TON`);
-    _setText('calc-monthly', `${safeToFixed(res.monthly, 4)} TON`);
-    _setText('calc-yearly', `${safeToFixed(res.yearly, 2)} TON`);
-    _setText('calc-roi', `${safeToFixed(res.roi, 2)}%`);
-    _setText('calc-future', `${safeToFixed(res.futureBalance, 2)} TON`);
+    if (!liveApr || amount <= 0) {
+      _setText('calc-daily', 'Sin datos');
+      _setText('calc-weekly', 'Sin datos');
+      _setText('calc-monthly', 'Sin datos');
+      _setText('calc-yearly', 'Sin datos');
+      _setText('calc-roi', 'Sin datos');
+      _setText('calc-future', amount > 0 ? `${safeToFixed(amount, 2)} TON` : 'Sin datos');
+      return;
+    }
+
+    const breakdown = calculateStakeDepositBreakdown(amount);
+    const res = RewardService.calculate({ amount, apr: liveApr, days: 365, compound: true });
+
+    _setText('calc-daily', `~${safeToFixed(res.daily, 4)} TON`);
+    _setText('calc-weekly', `~${safeToFixed(res.weekly, 4)} TON`);
+    _setText('calc-monthly', `~${safeToFixed(res.monthly, 4)} TON`);
+    _setText('calc-yearly', `~${safeToFixed(res.yearly, 2)} TON (Fee dep.: ${breakdown.feeTonStr} TON)`);
+    _setText('calc-roi', `~${safeToFixed(res.roi, 2)}% (Est.)`);
+    _setText('calc-future', `~${safeToFixed(res.futureBalance, 2)} TON`);
   },
 
   populateValidatorSelect() {
     const sel = document.getElementById('calc-validator-select');
     if (!sel) return;
     const list = StakingState.get('validators') || [];
-    sel.innerHTML = '<option value="">-- Seleccionar Pool --</option>' +
-      list.map(v => `<option value="${v.id}">${v.name} (${v.apr ? safeToFixed(v.apr, 2) + '%' : 'Variable'})</option>`).join('');
-
-    sel.onchange = () => {
-      const v = list.find(x => x.id === sel.value);
-      if (v && v.apr) {
-        const aprInput = document.getElementById('calc-apr');
-        if (aprInput) { aprInput.value = safeToFixed(v.apr, 2); this._calculate(); }
-      }
-    };
+    sel.innerHTML = list.map(v => `<option value="${v.id}">${v.name} (${v.apr !== null ? safeToFixed(v.apr, 2) + '% Est.' : 'Tasa variable'})</option>`).join('');
+    if (list[0]?.apr) {
+      const aprInput = document.getElementById('calc-apr');
+      if (aprInput) aprInput.value = safeToFixed(list[0].apr, 2);
+    }
+    this._calculate();
   },
 };
 
@@ -1949,11 +2302,24 @@ const MetricCardsController = {
     const stats = await AnalyticsService.getNetworkStats();
     StakingState.set('networkStats', stats);
 
-    _setText('metric-staked', stats.totalStakedTon ? `${safeToFixed(stats.totalStakedTon, 1)}M TON` : 'N/D');
-    _setText('metric-apr', stats.avgApr ? `${safeToFixed(stats.avgApr, 2)}%` : 'Variable');
-    _setText('metric-validators', stats.activeVal ? stats.activeVal.toString() : 'N/D');
-    _setText('metric-delegators', stats.delegators ? stats.delegators.toLocaleString() : 'N/D');
-    _setText('metric-block', stats.lastBlock ? `#${stats.lastBlock}` : 'En vivo');
+    _setText('metric-staked', stats.totalStakedTon !== null ? `${safeToFixed(stats.totalStakedTon, 2)}M TON` : 'Sin datos');
+    _setText('metric-apr', stats.avgApr !== null ? `${safeToFixed(stats.avgApr, 2)}%` : 'Sin datos');
+    _setText('metric-validators', stats.activeVal !== null ? `${stats.activeVal} Pool Público` : 'Sin datos');
+    _setText('metric-delegators', stats.delegators !== null ? stats.delegators.toLocaleString() : 'Sin datos');
+    _setText('metric-block', stats.exchangeRateTonPerTsTon ? `1 tsTON = ${safeToFixed(stats.exchangeRateTonPerTsTon, 4)} TON` : 'Sin datos');
+    _setText('topbar-ton-price', stats.tonPrice ? `$${safeToFixed(stats.tonPrice, 2)}` : 'Sin datos');
+    _setText('topbar-ton-source', `TonAPI · ${stats.lastUpdated}`);
+
+    _setText('metric-staked-footer', `Fuente: ${stats.dataSource} · ${stats.lastUpdated}`);
+    _setText('metric-apr-footer', `${stats.yieldType} · ${stats.lastUpdated}`);
+
+    // Network Section Stats
+    _setText('net-tps', 'No disponible');
+    _setText('net-block-time', stats.blockTime || 'Sin datos');
+    _setText('net-total-staked', stats.totalStakedTon !== null ? `${safeToFixed(stats.totalStakedTon, 2)}M TON` : 'Sin datos');
+    _setText('net-active-val', stats.activeVal !== null ? stats.activeVal.toString() : 'Sin datos');
+    _setText('net-delegators', stats.delegators !== null ? stats.delegators.toLocaleString() : 'Sin datos');
+    _setText('net-ton-price', stats.tonPrice ? `$${safeToFixed(stats.tonPrice, 2)}` : 'Sin datos');
 
     const statusEl = document.getElementById('metric-status');
     if (statusEl) {
@@ -1972,33 +2338,35 @@ const InsightsController = {
     if (!container) return;
 
     const net = StakingState.get('activeNetwork');
-    const allowCount = Object.values(STAKING_CONFIG.ALLOWLIST).filter(c => c.network === net).length;
+    const telemetry = StakingState.get('poolOnChainData')[net];
+    const routerCheck = StakingState.get('routerVerification')[net];
 
-    // Real, context-aware insights only (no fake whale alerts)
     const items = [
       {
         icon: '🛡️',
         type: 'info',
-        title: `Red Activa: TON ${net.toUpperCase()}`,
+        title: `Red Activa: TON ${net.toUpperCase()} (${net === 'testnet' ? '-3' : '-239'})`,
         body: net === 'mainnet'
-          ? 'Modo Consulta Activo. Las transacciones de staking en Mainnet están deshabilitadas por seguridad hasta finalizar la configuración de producción.'
-          : 'Modo Pruebas Totalmente Operativo. Puedes probar el ciclo de depósito, verificación y retiro con Tonstakers Testnet Pool.',
-        time: 'En vivo'
-      },
-      {
-        icon: '🔒',
-        type: 'success',
-        title: 'Allowlist de Contratos Verificados',
-        body: `${allowCount} contratos de staking auditados y permitidos en ${net.toUpperCase()}. Cualquier intento de interacción fuera de la allowlist es cancelado por el cliente.`,
-        time: 'Verificado'
+          ? 'Staking en Mainnet desactivado hasta auditoría independiente y aprobación del propietario.'
+          : `Pool Tonstakers Testnet verificado (${telemetry?.isPoolActive ? 'Activo' : 'Consultando'}). Router: ${routerCheck?.reason || 'Pendiente'}.`,
+        time: telemetry?.updatedAtStr || 'En vivo',
       },
       {
         icon: '💎',
+        type: 'success',
+        title: 'Comisión ANLGRAM: 0.35% (35 bps) en Depósitos Confirmados',
+        body: `Fórmula entera: feeNano = (principalNano * 35n) / 10000n. Sin cobro por retiro ni reclamo (0%). Wallet receptora: ${STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT}.`,
+        time: 'Verificado',
+      },
+      {
+        icon: '📈',
         type: 'info',
-        title: 'Política de Comisiones Transparentes',
-        body: 'Comisión de servicio ANLGRAM fijada en 0.00%. No se cobran recargos de intermediación en transacciones hacia pools de terceros.',
-        time: 'Permanente'
-      }
+        title: 'Mecanismo de Recompensas (tsTON · liquidTF)',
+        body: telemetry?.exchangeRateFloat
+          ? `Tasa realizada en cadena (get_pool_full_data): 1 tsTON = ${safeToFixed(telemetry.exchangeRateFloat, 6)} TON. Fuente: ${telemetry.dataSource}.`
+          : 'Cada tsTON representa una participación en el pool cuyo valor en TON aumenta tras cada ronda de validación.',
+        time: telemetry?.updatedAtStr || 'En cadena',
+      },
     ];
 
     container.innerHTML = items.map(ins => `
@@ -2014,6 +2382,30 @@ const InsightsController = {
   },
 };
 
+const NewsController = {
+  render() {
+    const grid = document.getElementById('alerts-grid');
+    if (!grid) return;
+    const net = StakingState.get('activeNetwork');
+    const telemetry = StakingState.get('poolOnChainData')[net];
+
+    grid.innerHTML = `
+      <div class="insight-card">
+        <div class="insight-icon info">📡</div>
+        <div class="insight-body">
+          <div class="insight-title">Estado del Pool Tonstakers (${net.toUpperCase()})</div>
+          <div class="insight-text">
+            Estado del contrato: <strong>${telemetry?.accountStatus || 'Sin datos'}</strong> ·
+            Depósitos abiertos: <strong>${telemetry ? (telemetry.depositsOpen ? 'Sí' : 'No') : 'Sin datos'}</strong> ·
+            Tasa tsTON/TON: <strong>${telemetry?.exchangeRateFloat ? safeToFixed(telemetry.exchangeRateFloat, 6) : 'Sin datos'}</strong>.
+          </div>
+          <div class="insight-time">Fuente: TonAPI v2 + get_pool_full_data · ${telemetry?.updatedAtStr || 'Sin datos'}</div>
+        </div>
+      </div>
+    `;
+  },
+};
+
 const WhaleController = {
   async init() {
     await this.renderTab('top');
@@ -2024,32 +2416,32 @@ const WhaleController = {
     if (!body) return;
 
     if (tab === 'top') {
-      body.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto 10px;"></div>Consultando tenedores de tsTON desde TonAPI...</div>';
+      body.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto 10px;"></div>Consultando tenedores reales de tsTON desde TonAPI...</div>';
       const wallets = await WhaleService.fetchStakingWallets();
       if (!wallets.length) {
-        body.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">No hay datos de tenedores disponibles en este momento (Límite de tasa de TonAPI o sin conexión). Fuente: TonAPI.</div>';
+        body.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">Sin datos de tenedores disponibles en este momento. Fuente: TonAPI v2.</div>';
         return;
       }
       body.innerHTML = `
         <div class="data-table-wrap">
           <table class="data-table">
-            <thead><tr><th>Billetera</th><th>Protocolo</th><th>Monto Delegado</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Billetera</th><th>Protocolo</th><th>Balance tsTON</th><th>Estado</th></tr></thead>
             <tbody>${wallets.map(w => `
               <tr>
                 <td class="td-mono">${w.shortAddress}</td>
                 <td>${w.validator}</td>
-                <td class="td-mono text-green">${_fmtNum(w.delegatedTON, 2)} TON</td>
-                <td><span class="badge badge-green">Activo</span></td>
+                <td class="td-mono text-green">${_fmtNum(w.delegatedTON, 2)} tsTON</td>
+                <td><span class="badge badge-green">${w.status}</span></td>
               </tr>
             `).join('')}</tbody>
           </table>
         </div>
       `;
     } else {
-      body.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto 10px;"></div>Consultando eventos recientes...</div>';
+      body.innerHTML = '<div style="text-align:center;padding:24px;"><div class="loading-spinner" style="margin:0 auto 10px;"></div>Consultando eventos recientes en cadena...</div>';
       const flows = await WhaleService.getFlows();
       if (!flows.length) {
-        body.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">Sin transferencias mayores a 1 TON registradas en el bloque actual.</div>';
+        body.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">Sin movimientos recientes disponibles. Fuente: TonAPI v2.</div>';
         return;
       }
       body.innerHTML = `
@@ -2077,26 +2469,32 @@ const TransactionController = {
     const tbody = document.getElementById('tx-tbody');
     const addr = WalletService.getAddress();
     if (!addr) {
-      if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">Conecta tu wallet para ver el historial de transacciones.</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">Conecta tu wallet para consultar el historial real de eventos en cadena.</td></tr>';
       return;
     }
     const txs = await AnalyticsService.getTransactions(addr);
     if (!txs.length) {
-      if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">Sin transacciones recientes en esta cuenta.</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">Sin eventos recientes en esta cuenta. Fuente: TonAPI v2.</td></tr>';
       return;
     }
     if (tbody) {
-      tbody.innerHTML = txs.map(tx => `
-        <tr>
-          <td><a href="${StakingState.get('activeNetwork') === 'testnet' ? STAKING_CONFIG.TONVIEWER_TESTNET : STAKING_CONFIG.TONVIEWER_MAINNET}/transaction/${tx.hash}" target="_blank" class="td-mono" style="color:var(--ton-blue);">${tx.hash_short}↗</a></td>
-          <td><span class="badge badge-blue">${tx.type}</span></td>
-          <td>${tx.validator}</td>
-          <td class="td-mono text-green">${safeToFixed(tx.amount, 4)} TON</td>
-          <td class="td-mono">${safeToFixed(tx.fee, 4)}</td>
-          <td><span class="badge badge-green">${tx.status}</span></td>
-          <td class="td-mono">${tx.timestamp.toLocaleDateString()}</td>
-        </tr>
-      `).join('');
+      const expBase = StakingState.get('activeNetwork') === 'testnet' ? STAKING_CONFIG.TONVIEWER_TESTNET : STAKING_CONFIG.TONVIEWER_MAINNET;
+      tbody.innerHTML = txs.map(tx => {
+        const badgeClass = tx.status === 'comisión cobrada' || tx.status === 'confirmada'
+          ? 'badge-green'
+          : (tx.status === 'pendiente' ? 'badge-yellow' : 'badge-red');
+        return `
+          <tr>
+            <td><a href="${expBase}/transaction/${tx.hash}" target="_blank" rel="noopener" class="td-mono" style="color:var(--ton-blue);">${tx.hash_short}↗</a></td>
+            <td><span class="badge badge-blue">${tx.type}</span></td>
+            <td>${tx.validator}</td>
+            <td class="td-mono text-green">${safeToFixed(tx.amount, 4)} TON</td>
+            <td class="td-mono">${safeToFixed(tx.fee, 4)} TON</td>
+            <td><span class="badge ${badgeClass}">${tx.status}</span></td>
+            <td class="td-mono">${tx.timestamp.toLocaleString()}</td>
+          </tr>
+        `;
+      }).join('');
     }
   },
 };
@@ -2114,9 +2512,6 @@ const SettingsUIController = {
   },
 };
 
-/**
- * Toggles Application Staking Network (Mainnet vs Testnet)
- */
 function switchStakingNetwork(network) {
   const target = network === 'mainnet' ? 'mainnet' : 'testnet';
   StakingState.set('activeNetwork', target);
@@ -2128,7 +2523,7 @@ function switchStakingNetwork(network) {
 
   if (topSelect) topSelect.value = target;
   if (netBadge) {
-    netBadge.textContent = target === 'testnet' ? 'TON Testnet' : 'TON Mainnet';
+    netBadge.textContent = target === 'testnet' ? 'TON Testnet (-3)' : 'TON Mainnet (-239)';
     netBadge.style.color = target === 'testnet' ? '#f59e0b' : '#22c55e';
   }
   if (netDot) {
@@ -2138,14 +2533,16 @@ function switchStakingNetwork(network) {
 
   NotificationService.toast(
     'Red Cambiada',
-    `Entorno de Staking configurado a ${target.toUpperCase()}. Actualizando datos de pools...`,
+    `Entorno configurado a TON ${target.toUpperCase()} (${target === 'testnet' ? '-3' : '-239'}).`,
     'info'
   );
 
   ValidatorTableController.init();
   MetricCardsController.refresh();
   InsightsController.render();
+  NewsController.render();
   WalletService.loadWalletData();
+  TransactionController.init();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2153,6 +2550,7 @@ function switchStakingNetwork(network) {
    ══════════════════════════════════════════════════════════════ */
 
 function safeNum(val, fallback = null) {
+  if (val === null || val === undefined || val === '') return fallback;
   const n = Number(val);
   return Number.isFinite(n) ? n : fallback;
 }
@@ -2170,14 +2568,14 @@ function shortenAddress(addr) {
 }
 
 function _fmtCompact(n) {
-  if (!n && n !== 0) return 'N/D';
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n === null || n === undefined || !Number.isFinite(Number(n))) return 'Sin datos';
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return n.toFixed(0);
+  return Number(n).toFixed(0);
 }
 
 function _fmtNum(n, dec = 2) {
-  if (!n && n !== 0) return 'N/D';
+  if (n === null || n === undefined || !Number.isFinite(Number(n))) return 'Sin datos';
   return Number(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
@@ -2186,25 +2584,33 @@ function _setText(id, txt) {
   if (el) el.textContent = txt;
 }
 
-// Global Exports
-window.StakeModalController = StakeModalController;
-window.UnstakeModalController = UnstakeModalController;
-window.ValidatorDetailController = ValidatorDetailController;
-window.ValidatorTableController = ValidatorTableController;
-window.CalculatorController = CalculatorController;
-window.SettingsUIController = SettingsUIController;
-window.WhaleController = WhaleController;
-window.TransactionController = TransactionController;
-window.PortfolioController = PortfolioController;
-window.switchStakingNetwork = switchStakingNetwork;
-window.buildTonstakersStakePayload = buildTonstakersStakePayload;
-window.buildTonstakersUnstakePayload = buildTonstakersUnstakePayload;
-window.buildWhalesStakePayload = buildWhalesStakePayload;
-window.buildWhalesWithdrawPayload = buildWhalesWithdrawPayload;
-window.toNanoSafe = toNanoSafe;
-window.fromNanoSafe = fromNanoSafe;
-window.STAKING_CONFIG = STAKING_CONFIG;
-window.StakingState = StakingState;
+// Global Exports for UI & Automated Testing
+if (typeof window !== 'undefined') {
+  window.StakeModalController = StakeModalController;
+  window.UnstakeModalController = UnstakeModalController;
+  window.ValidatorDetailController = ValidatorDetailController;
+  window.ValidatorTableController = ValidatorTableController;
+  window.CalculatorController = CalculatorController;
+  window.SettingsUIController = SettingsUIController;
+  window.WhaleController = WhaleController;
+  window.TransactionController = TransactionController;
+  window.PortfolioController = PortfolioController;
+  window.RewardService = RewardService;
+  window.PoolOnChainVerifier = PoolOnChainVerifier;
+  window.switchStakingNetwork = switchStakingNetwork;
+  window.calculateAnlgramStakeFeeNano = calculateAnlgramStakeFeeNano;
+  window.calculateStakeDepositBreakdown = calculateStakeDepositBreakdown;
+  window.buildAnlgramRouterStakePayload = buildAnlgramRouterStakePayload;
+  window.buildTonstakersStakePayload = buildTonstakersStakePayload;
+  window.buildTonstakersUnstakePayload = buildTonstakersUnstakePayload;
+  window.isValidTonAddress = isValidTonAddress;
+  window.friendlyToRawAddress = friendlyToRawAddress;
+  window.rawToFriendlyAddress = rawToFriendlyAddress;
+  window.toNanoSafe = toNanoSafe;
+  window.fromNanoSafe = fromNanoSafe;
+  window.STAKING_CONFIG = STAKING_CONFIG;
+  window.StakingState = StakingState;
+}
 
 /* ══════════════════════════════════════════════════════════════
    APP INITIALIZATION
@@ -2219,7 +2625,7 @@ const StakingApp = {
 
     if (topSelect) topSelect.value = net;
     if (netBadge) {
-      netBadge.textContent = net === 'testnet' ? 'TON Testnet' : 'TON Mainnet';
+      netBadge.textContent = net === 'testnet' ? 'TON Testnet (-3)' : 'TON Mainnet (-239)';
       netBadge.style.color = net === 'testnet' ? '#f59e0b' : '#22c55e';
     }
     if (netDot) {
@@ -2233,6 +2639,7 @@ const StakingApp = {
     CalculatorController.init();
     PortfolioController.render();
     InsightsController.render();
+    NewsController.render();
     TransactionController.init();
     WhaleController.init();
 
@@ -2240,11 +2647,13 @@ const StakingApp = {
       await WalletService.loadWalletData();
       WalletUIController.updateConnected();
     }
-  }
+  },
 };
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => StakingApp.init());
-} else {
-  StakingApp.init();
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => StakingApp.init());
+  } else {
+    StakingApp.init();
+  }
 }

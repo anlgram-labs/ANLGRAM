@@ -2,3 +2,4 @@
 *.fc
 *.cell
 *.compiled.json
+!anlgram-staking-router.compiled.json
