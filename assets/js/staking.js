@@ -2437,17 +2437,27 @@ const UnstakeModalController = {
       });
 
       NotificationService.push({
-        type: 'info',
+        type: 'success',
         title: 'Retiro Enviado (0% Comisión ANLGRAM)',
-        body: 'Verificando quema de tsTON y devolución de TON en cadena...',
+        body: 'Tu solicitud de quema de tsTON fue enviada a la red TON. En unos momentos tus TON estarán en tu billetera.',
         icon: '🔓',
       });
 
-      await _pollRealDepositTrace(wallet.address, pos.jettonWalletAddress, 0n, startTs, 40000);
-      this.close();
-      await PortfolioService.refresh();
-      PortfolioController.render();
-      TransactionController.init();
+      NotificationService.toast(
+        'Retiro Enviado con Éxito',
+        'Tu transacción de retiro de tsTON fue firmada y enviada a la red TON.',
+        'success'
+      );
+
+      btn.innerHTML = '✅ Retiro Enviado con Éxito';
+      btn.style.background = '#22c55e';
+
+      setTimeout(async () => {
+        this.close();
+        await PortfolioService.refresh();
+        PortfolioController.render();
+        TransactionController.init();
+      }, 1500);
     } catch (e) {
       if (e?.code === 300 || /reject|cancel|declin/i.test(e?.message || '')) {
         NotificationService.toast('Retiro Cancelado', 'Rechazaste la firma en tu wallet.', 'info');
