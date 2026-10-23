@@ -1968,6 +1968,7 @@ const StakeModalController = {
   },
 
   close() {
+    if (StakingState.get('ui')?.txInFlight) return;
     document.getElementById('stake-modal')?.classList.remove('open');
   },
 
@@ -2345,6 +2346,10 @@ const StakeModalController = {
         circle.classList.toggle('active', i === n);
       }
     }
+    const modalGlass = document.querySelector('#stake-modal .modal-glass');
+    if (modalGlass) modalGlass.scrollTop = 0;
+    const modalOverlay = document.getElementById('stake-modal');
+    if (modalOverlay) modalOverlay.scrollTop = 0;
   },
 };
 
@@ -2364,6 +2369,7 @@ const UnstakeModalController = {
       modal.classList.add('open');
       modal.dataset.validatorId = pos.validatorId;
       modal.dataset.protocol = 'liquidTF';
+      modal.querySelector('.modal-glass')?.scrollTo({ top: 0, behavior: 'instant' });
     }
     _setText('unstake-val-name', pos.validatorName);
     _setText('unstake-staked-amount', `${safeToFixed(pos.tsTonBalance, 4)} tsTON`);
@@ -3160,7 +3166,13 @@ const TransactionController = {
    ══════════════════════════════════════════════════════════════ */
 
 const SettingsUIController = {
-  open() { document.getElementById('settings-modal')?.classList.add('open'); },
+  open() {
+    const modal = document.getElementById('settings-modal');
+    if (modal) {
+      modal.classList.add('open');
+      modal.querySelector('.modal-glass')?.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  },
   close() { document.getElementById('settings-modal')?.classList.remove('open'); },
   save() {
     NotificationService.toast('Configuración Guardada', 'Preferencias actualizadas.', 'success');
