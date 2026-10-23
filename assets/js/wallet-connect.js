@@ -6,9 +6,59 @@
   let tonConnectUI = null;
   let currentAddress = localStorage.getItem('anlgram_wallet_addr') || '';
 
+  function crc16(data) {
+    let crc = 0;
+    for (let i = 0; i < data.length; i++) {
+      crc ^= data[i] << 8;
+      for (let j = 0; j < 8; j++) {
+        crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+      }
+    }
+    return crc;
+  }
+
+  function rawToFriendly(raw, bounceable = false, testnet = false) {
+    if (!raw || typeof raw !== 'string') return '';
+    if (!raw.includes(':')) return raw;
+    const parts = raw.split(':');
+    if (parts.length !== 2) return raw;
+    const wc = parseInt(parts[0], 10);
+    const hex = parts[1].trim();
+    if (hex.length !== 64) return raw;
+
+    const bytes = new Uint8Array(36);
+    let tag = bounceable ? 0x11 : 0x51;
+    if (testnet) tag |= 0x80;
+    bytes[0] = tag;
+    bytes[1] = wc === -1 ? 0xff : wc;
+
+    for (let i = 0; i < 32; i++) {
+      bytes[2 + i] = parseInt(hex.substr(i * 2, 2), 16);
+    }
+
+    const c = crc16(bytes.subarray(0, 34));
+    bytes[34] = (c >> 8) & 0xff;
+    bytes[35] = c & 0xff;
+
+    let binary = '';
+    for (let i = 0; i < 36; i++) binary += String.fromCharCode(bytes[i]);
+    const b64 = typeof btoa === 'function' ? btoa(binary) : Buffer.from(binary, 'binary').toString('base64');
+    return b64.replace(/\+/g, '-').replace(/\//g, '_');
+  }
+
+  function toFriendly(address) {
+    if (!address) return '';
+    if (address.includes(':')) {
+      const isTest = (localStorage.getItem('anlgram_wallet_network') || localStorage.getItem('anlgram_staking_network')) === 'testnet';
+      return rawToFriendly(address, false, isTest);
+    }
+    return address;
+  }
+
   function formatAddress(address) {
     if (!address) return '';
-    return address.slice(0, 4) + '...' + address.slice(-4);
+    const friendly = toFriendly(address);
+    return friendly.slice(0, 4) + '...' + friendly.slice(-4);
   }
 
   async function fetchTonBalance(address, networkOverride) {
@@ -33,6 +83,7 @@
     
     // 1. Permanent selectors (by ID, dedicated class, or data attribute)
     document.querySelectorAll('#topbarWalletBtn, #heroWalletBtn, .connect-wallet-btn, [data-wallet-btn]').forEach(btn => {
+      if (btn.id === 'anlgram-modal-disconnect-btn' || btn.getAttribute('onclick')?.includes('disconnect')) return;
       btn.setAttribute('data-wallet-btn', 'true');
       btn.classList.add('connect-wallet-btn');
       list.add(btn);
@@ -40,6 +91,7 @@
 
     // 2. Elements with explicit click handlers for wallet modal
     document.querySelectorAll('[onclick*="openWalletModal"], [onclick*="connectWallet"]').forEach(btn => {
+      if (btn.id === 'anlgram-modal-disconnect-btn' || btn.getAttribute('onclick')?.includes('disconnect')) return;
       btn.setAttribute('data-wallet-btn', 'true');
       btn.classList.add('connect-wallet-btn');
       list.add(btn);
@@ -47,6 +99,7 @@
 
     // 3. Elements with wallet/conectado in title or aria-label
     document.querySelectorAll('button[title*="Wallet" i], button[title*="billetera" i], button[title*="conectado" i], button[aria-label*="wallet" i], button[aria-label*="billetera" i]').forEach(btn => {
+      if (btn.id === 'anlgram-modal-disconnect-btn' || btn.getAttribute('onclick')?.includes('disconnect')) return;
       btn.setAttribute('data-wallet-btn', 'true');
       btn.classList.add('connect-wallet-btn');
       list.add(btn);
@@ -54,7 +107,9 @@
     
     // 4. Initial button text discovery (marked so they are never lost on text updates)
     document.querySelectorAll('button, a.btn, a.btn-premium, a.btn-glass').forEach(btn => {
+      if (btn.id === 'anlgram-modal-disconnect-btn' || btn.getAttribute('onclick')?.includes('disconnect')) return;
       const text = (btn.textContent || '').trim().toLowerCase();
+      if (text.includes('disconnect') || text.includes('desconectar')) return;
       if (text.includes('connect wallet') || text.includes('connect web3 wallet') || text.includes('connect ton wallet')) {
         btn.setAttribute('data-wallet-btn', 'true');
         btn.classList.add('connect-wallet-btn');
@@ -120,14 +175,14 @@
               <span style="width:10px; height:10px; border-radius:50%; background:#00e676; box-shadow:0 0 10px #00e676;"></span>
               <h3 style="margin:0; font-size:20px; font-weight:800; color:#fff;">Wallet Connected</h3>
             </div>
-            <div id="anlgram-modal-full-addr" style="font-family:monospace; font-size:12px; color:#00f0ff; background:rgba(0,240,255,0.08); border:1px solid rgba(0,240,255,0.3); border-radius:12px; padding:12px; margin:16px 0; word-break:break-all;"></div>
+            <div id="anlgram-modal-full-addr" style="font-family:monospace; font-size:12px; color:#00f0ff; background:rgba(0,240,255,0.08); border:1px solid rgba(0,240,255,0.3); border-radius:12px; padding:14px; margin:16px 0; word-break:break-all; text-align:left;"></div>
             
             <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:14px; border-radius:12px; margin-bottom:20px;">
               <span style="color:#94a3b8; font-size:13px;">TON Balance:</span>
               <span id="anlgram-modal-balance-val" style="font-weight:700; font-size:16px; color:#fff;">Fetching...</span>
             </div>
 
-            <button onclick="window.disconnectWallet()" style="width:100%; background:rgba(255,75,75,0.15); border:1px solid #ff4b4b; color:#ff4b4b; font-weight:700; padding:12px; border-radius:12px; cursor:pointer; font-size:14px; transition:all 0.2s;">
+            <button id="anlgram-modal-disconnect-btn" onclick="window.disconnectWallet()" style="width:100%; background:rgba(255,75,75,0.15); border:1px solid #ff4b4b; color:#ff4b4b; font-weight:700; padding:12px; border-radius:12px; cursor:pointer; font-size:14px; transition:all 0.2s;">
               🚫 Disconnect Wallet
             </button>
           </div>
@@ -165,7 +220,18 @@
       if (currentAddress) {
         connectView.style.display = 'none';
         accountView.style.display = 'block';
-        document.getElementById('anlgram-modal-full-addr').textContent = currentAddress;
+        const friendlyAddr = toFriendly(currentAddress);
+        const fullAddrEl = document.getElementById('anlgram-modal-full-addr');
+        if (fullAddrEl) {
+          fullAddrEl.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:#00f0ff;letter-spacing:0.5px;">💎 Dirección Tonkeeper (UQ)</span>
+              <button id="copy-friendly-btn" onclick="navigator.clipboard.writeText('${friendlyAddr}');this.textContent='✓ Copiado';setTimeout(()=>this.textContent='Copiar',2000)" style="background:rgba(0,240,255,0.15);border:1px solid rgba(0,240,255,0.4);border-radius:6px;color:#00f0ff;cursor:pointer;font-size:11px;font-weight:700;padding:2px 8px;">Copiar</button>
+            </div>
+            <div style="font-weight:700;color:#fff;margin-bottom:10px;word-break:break-all;font-size:13px;line-height:1.4;">${friendlyAddr}</div>
+            ${currentAddress.includes(':') ? `<div style="font-size:10px;color:#64748b;border-top:1px dashed rgba(255,255,255,0.1);padding-top:6px;word-break:break-all;text-align:left;"><span style="color:#94a3b8;">Formato Raw Blockchain:</span> ${currentAddress}</div>` : ''}
+          `;
+        }
         fetchTonBalance(currentAddress).then(bal => {
           const balEl = document.getElementById('anlgram-modal-balance-val');
           if (balEl) balEl.textContent = `${bal.toFixed(2)} TON`;
