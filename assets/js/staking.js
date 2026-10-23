@@ -1793,7 +1793,9 @@ const WalletUIController = {
       if (addrEl) {
         let netLabel = w.network === 'testnet' ? 'Testnet -3' : 'Mainnet -239';
         if (w.isWrongNetwork) {
-          netLabel = '⚠️ Red Errónea: Mainnet -239 (Cambia a Testnet)';
+          const targetNetName = StakingState.get('activeNetwork') === 'mainnet' ? 'Mainnet (-239)' : 'Testnet (-3)';
+          const currentNetName = w.chainId === '-239' ? 'Mainnet (-239)' : (w.chainId === '-3' ? 'Testnet (-3)' : (w.chainId || 'red desconocida'));
+          netLabel = `⚠️ Red Errónea: ${currentNetName} (Cambia a ${targetNetName})`;
         }
         addrEl.textContent = `${shortenAddress(w.address)} (${netLabel})${w.isReadOnly ? ' · Solo Lectura' : ''}`;
       }
@@ -1940,7 +1942,9 @@ const StakeModalController = {
       if (!wallet.connected) {
         maxEl.textContent = 'Conecta tu wallet para ver tu balance';
       } else if (wallet.isWrongNetwork) {
-        maxEl.textContent = 'Disponible: No disponible (Wallet en Mainnet -239. Cambia a Testnet)';
+        const targetNetName = activeNet === 'mainnet' ? 'Mainnet (-239)' : 'Testnet (-3)';
+        const currentNetName = wallet.chainId === '-239' ? 'Mainnet (-239)' : 'Testnet (-3)';
+        maxEl.textContent = `Disponible: No disponible (Wallet en ${currentNetName}. Cambia a ${targetNetName})`;
       } else {
         maxEl.textContent = `Disponible: ${wallet.balanceDisplay} ${wallet.isReadOnly ? '(Solo Lectura)' : ''}`;
       }
@@ -1965,8 +1969,10 @@ const StakeModalController = {
   setMax() {
     const wallet = StakingState.get('wallet');
     if (!wallet.connected) { window.openWalletModal?.(); return; }
-    if (wallet.isWrongNetwork || wallet.chainId !== '-3') {
-      NotificationService.toast('Red Errónea', 'Cambia tu wallet a TON Testnet (-3) para operar.', 'warning');
+    const activeNet = StakingState.get('activeNetwork');
+    const expectedChainId = activeNet === 'mainnet' ? STAKING_CONFIG.CHAIN_ID_MAINNET : STAKING_CONFIG.CHAIN_ID_TESTNET;
+    if (wallet.isWrongNetwork || (wallet.chainId && wallet.chainId !== expectedChainId)) {
+      NotificationService.toast('Red Errónea', `Cambia tu wallet a ${activeNet === 'mainnet' ? 'TON Mainnet (-239)' : 'TON Testnet (-3)'} para operar.`, 'warning');
       return;
     }
     const gasReserveTotalNano = STAKING_CONFIG.VAULT_TOTAL_GAS_RESERVE_NANO || 1155000000n;
@@ -2151,12 +2157,13 @@ const StakeModalController = {
       return;
     }
 
-    // Strict Chain ID Verification (-3 Testnet)
+    // Strict Chain ID Verification
+    const expectedChainId = activeNet === 'mainnet' ? STAKING_CONFIG.CHAIN_ID_MAINNET : STAKING_CONFIG.CHAIN_ID_TESTNET;
     const walletChainId = String(window.tonConnectUI?.wallet?.account?.chain || wallet.chainId || '');
-    if (walletChainId !== '-3') {
+    if (walletChainId !== expectedChainId) {
       NotificationService.toast(
         'Bloqueado por Cadena Incorrecta',
-        `Tu billetera está conectada en ${walletChainId === '-239' ? 'Mainnet (-239)' : (walletChainId || 'red desconocida')}. Cambia a TON Testnet (-3) en Tonkeeper para continuar.`,
+        `Tu billetera está conectada en ${walletChainId === '-239' ? 'Mainnet (-239)' : (walletChainId === '-3' ? 'Testnet (-3)' : (walletChainId || 'red desconocida'))}. Cambia a ${activeNet === 'mainnet' ? 'TON Mainnet (-239)' : 'TON Testnet (-3)'} en Tonkeeper para continuar.`,
         'error'
       );
       return;
@@ -2181,7 +2188,7 @@ const StakeModalController = {
 
     if (wallet.balanceNano !== null && wallet.balanceNano < breakdown.totalNano) {
       NotificationService.toast(
-        'Balance Insuficiente en Testnet',
+        `Balance Insuficiente en ${activeNet === 'mainnet' ? 'Mainnet' : 'Testnet'}`,
         `Se requieren ${breakdown.totalTonStr} TON (principal + comisión + gas). Tu saldo es ${wallet.balanceDisplay}.`,
         'error'
       );
@@ -2739,8 +2746,10 @@ const CalculatorController = {
       window.openWalletModal?.();
       return;
     }
-    if (wallet.isWrongNetwork || wallet.chainId !== '-3') {
-      NotificationService.toast('Red Errónea', 'Cambia tu wallet a TON Testnet (-3) para operar.', 'warning');
+    const activeNet = StakingState.get('activeNetwork');
+    const expectedChainId = activeNet === 'mainnet' ? STAKING_CONFIG.CHAIN_ID_MAINNET : STAKING_CONFIG.CHAIN_ID_TESTNET;
+    if (wallet.isWrongNetwork || (wallet.chainId && wallet.chainId !== expectedChainId)) {
+      NotificationService.toast('Red Errónea', `Cambia tu wallet a ${activeNet === 'mainnet' ? 'TON Mainnet (-239)' : 'TON Testnet (-3)'} para operar.`, 'warning');
       return;
     }
     const gasReserveTotalNano = STAKING_CONFIG.VAULT_TOTAL_GAS_RESERVE_NANO || 1155000000n;

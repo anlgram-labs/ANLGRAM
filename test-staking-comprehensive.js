@@ -1248,8 +1248,8 @@ async function runTests() {
   assert(vaultBreakdown1.storageReserveNano === 50000000n, 'Reserva de almacenamiento: 50,000,000 nanoTON (0.05 TON)');
   assert(vaultBreakdown1.totalNano === 2158500000n, 'Total a firmar en TON Connect: 2,158,500,000 nanoTON (2.1585 TON)');
 
-  // 5.2 Protección contra red errónea (Mainnet -239 conectada en Testnet)
-  assert(stakingJsSource.includes("walletChainId !== '-3'"), 'Bloqueo explícito si la wallet conectada no tiene network ID -3 (Testnet)');
+  // 5.2 Protección contra red errónea (Mainnet vs Testnet)
+  assert(stakingJsSource.includes('walletChainId !== expectedChainId'), 'Bloqueo explícito si la wallet conectada no coincide con el network ID activo');
   assert(stakingJsSource.includes("isWrongNetwork = true") || stakingJsSource.includes("isWrongNetwork = isMainnetWallet"), 'Detección automática de wallet conectada en Mainnet (-239)');
   assert(stakingJsSource.includes('No disponible (Wallet en Mainnet -239)'), 'Saldo de Mainnet protegido: no se muestra como saldo utilizable en Testnet');
 
