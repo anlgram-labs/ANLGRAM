@@ -2019,41 +2019,41 @@
 <div id="unstake-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="unstake-modal-title">
   <div class="modal-glass" onclick="event.stopPropagation()">
     <button class="modal-close-top" onclick="UnstakeModalController.close()" aria-label="Close">✕</button>
-    <h2 class="modal-title" id="unstake-modal-title">🔓 Retirar Staking (Burn tsTON)</h2>
-    <p class="modal-sub">Retirar participación de <strong id="unstake-val-name">—</strong></p>
+    <h2 class="modal-title" id="unstake-modal-title">🔓 Unstake (Burn tsTON)</h2>
+    <p class="modal-sub">Redeem staking delegation from <strong id="unstake-val-name">—</strong></p>
 
     <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:14px;margin-bottom:16px;">
       <div class="modal-row">
-        <span class="modal-row-label">Balance tsTON en Wallet</span>
+        <span class="modal-row-label">tsTON Balance in Wallet</span>
         <span class="modal-row-value td-mono" id="unstake-staked-amount">—</span>
       </div>
       <div class="modal-row">
-        <span class="modal-row-label">Valor Subyacente Estimado (TON)</span>
+        <span class="modal-row-label">Estimated Underlying Value (TON)</span>
         <span class="modal-row-value td-mono" id="unstake-ton-equivalent" style="color:#22c55e;">—</span>
       </div>
       <div class="modal-divider"></div>
       <div class="modal-row">
-        <span class="modal-row-label">Comisión ANLGRAM por Retiro</span>
-        <span class="modal-row-value" style="color:#22c55e;font-weight:700;">0.00% (0 TON · Sin cobro)</span>
+        <span class="modal-row-label">ANLGRAM Unstake Fee</span>
+        <span class="modal-row-value" style="color:#22c55e;font-weight:700;">0.00% (0 TON · Zero Fee)</span>
       </div>
       <div class="modal-row">
-        <span class="modal-row-label">Mecanismo de Retiro</span>
-        <span class="modal-row-value" id="unstake-lock-period">Quema de tsTON (0x595f07bc)</span>
+        <span class="modal-row-label">Withdrawal Mechanism</span>
+        <span class="modal-row-value" id="unstake-lock-period">tsTON Burn (0x595f07bc)</span>
       </div>
       <div class="modal-row">
-        <span class="modal-row-label">Gas de Red Adjunto</span>
-        <span class="modal-row-value td-mono">1.0500 TON (Sobrante reembolsado)</span>
+        <span class="modal-row-label">Attached Network Gas</span>
+        <span class="modal-row-value td-mono">1.0500 TON (Excess refunded)</span>
       </div>
     </div>
 
     <div class="modal-warning" role="note">
       <span>⚠️</span>
-      <span id="unstake-warning-text">El retiro envía una instrucción de quema (<code>0x595f07bc</code>) a tu contrato Jetton Wallet de <strong>tsTON</strong>. El pool de Tonstakers convierte tus tsTON a TON según la tasa de cambio vigente del contrato (incluyendo todas las recompensas acumuladas) y devuelve los TON directamente a tu billetera. ANLGRAM cobra 0% por retiro.</span>
+      <span id="unstake-warning-text">Unstaking dispatches an official burn message (<code>0x595f07bc</code>) to your <strong>tsTON</strong> Jetton Wallet contract. The Tonstakers pool redeems your tsTON to TON at the live contract exchange rate (including all compound rewards) and delivers TON directly to your connected wallet. ANLGRAM charges 0% unstaking fee.</span>
     </div>
 
     <div class="modal-actions">
-      <button class="btn btn-ghost" style="flex:1;" onclick="UnstakeModalController.close()">Cancelar</button>
-      <button class="btn btn-primary" style="flex:2;background:rgba(239,68,68,0.15);border-color:#ef4444;color:#ef4444;" id="unstake-execute-btn" onclick="UnstakeModalController.execute()">Confirmar Retiro (0% Fee)</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="UnstakeModalController.close()">Cancel</button>
+      <button class="btn btn-primary" style="flex:2;background:rgba(239,68,68,0.15);border-color:#ef4444;color:#ef4444;" id="unstake-execute-btn" onclick="UnstakeModalController.execute()">Confirm Unstake (0% Fee)</button>
     </div>
   </div>
 </div><!-- /unstake-modal -->
@@ -2064,32 +2064,32 @@
 <div id="claim-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="claim-modal-title">
   <div class="modal-glass" onclick="event.stopPropagation()">
     <button class="modal-close-top" onclick="document.getElementById('claim-modal').classList.remove('open')" aria-label="Close">✕</button>
-    <h2 class="modal-title" id="claim-modal-title">💰 Recompensas de Staking (tsTON)</h2>
-    <p class="modal-sub">Mecanismo de rendimiento verificado en <strong id="claim-validator-name">Tonstakers Liquid Pool</strong></p>
+    <h2 class="modal-title" id="claim-modal-title">💰 Staking Rewards (tsTON)</h2>
+    <p class="modal-sub">Verified yield mechanism on <strong id="claim-validator-name">Tonstakers Liquid Pool</strong></p>
 
     <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:14px;margin-bottom:16px;">
       <div class="modal-row">
-        <span class="modal-row-label">Valor Acumulado en Posición</span>
+        <span class="modal-row-label">Total Accumulated Position Value</span>
         <span class="modal-row-value td-mono" style="color:#22c55e;" id="claim-amount">— TON</span>
       </div>
       <div class="modal-row">
-        <span class="modal-row-label">Mecanismo del Protocolo</span>
-        <span class="modal-row-value" id="claim-reward-mode" style="color:var(--cyan);">Token de Participación (Apreciación tsTON)</span>
+        <span class="modal-row-label">Protocol Mechanism</span>
+        <span class="modal-row-value" id="claim-reward-mode" style="color:var(--cyan);">Liquid Staking Token (tsTON Appreciation)</span>
       </div>
       <div class="modal-row">
-        <span class="modal-row-label">Comisión ANLGRAM por Reclamo</span>
+        <span class="modal-row-label">ANLGRAM Claim Fee</span>
         <span class="modal-row-value" style="color:#22c55e;font-weight:700;">0.00% (0 TON)</span>
       </div>
     </div>
 
     <div id="claim-explainer-box" style="background:var(--bg-secondary);border:1px solid var(--border-subtle);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--text-secondary);line-height:1.5;">
-      💡 <strong>Cómo recibes tus recompensas en Tonstakers (liquidTF):</strong><br/>
-      Al hacer staking recibes el token líquido <strong>tsTON</strong> en tu wallet. En este protocolo no existe un reclamo manual separado: al finalizar cada ciclo de validación (~18–36h), las recompensas aumentan el <code>total_balance</code> de TON del pool frente al suministro de <code>tsTON</code> (<code>get_pool_full_data</code>), por lo que cada <code>tsTON</code> vale progresivamente más TON. Para realizar tus recompensas en TON, utiliza la opción <strong>Retirar (Burn tsTON)</strong> sin comisión de ANLGRAM (0%).
+      💡 <strong>How rewards work in Tonstakers (liquidTF):</strong><br/>
+      When you stake TON, you receive the liquid token <strong>tsTON</strong> in your wallet. In this protocol, there is no manual reward claiming: at the end of each network validation round (~18–36h), staking rewards increase the pool's <code>total_balance</code> relative to the <code>tsTON</code> supply (<code>get_pool_full_data</code>), so each <code>tsTON</code> becomes worth progressively more TON. To realize your accumulated rewards in TON, use <strong>Unstake (Burn tsTON)</strong> with 0% ANLGRAM platform fee.
     </div>
 
     <div class="modal-actions">
-      <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('claim-modal').classList.remove('open')">Cerrar</button>
-      <button class="btn btn-primary" style="flex:2;" id="claim-action-btn" onclick="RewardService.executeClaim()">Ir a Retirar / Canjear tsTON</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('claim-modal').classList.remove('open')">Close</button>
+      <button class="btn btn-primary" style="flex:2;" id="claim-action-btn" onclick="RewardService.executeClaim()">Proceed to Unstake / Redeem tsTON</button>
     </div>
   </div>
 </div><!-- /claim-modal -->
@@ -2254,7 +2254,9 @@
   function tfSet(btn, range) {
     btn.closest('.time-filter')?.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    // Charts will re-render on next data fetch; this primarily updates UI
+    if (window.PortfolioController?.setTimeRange) {
+      window.PortfolioController.setTimeRange(range);
+    }
   }
 
   /* ── Sidebar toggle (mobile) ─────────────────────────────────── */
