@@ -19,6 +19,7 @@ const {
   beginCell,
   Slice,
   InternalMessage,
+  ExternalMessage,
   CommonMessageInfo,
   CellMessage,
   StateInit,
@@ -51,24 +52,29 @@ function addrToRawString(addr) {
   return `${addr.workChain}:${addr.hash.toString('hex')}`;
 }
 
-function buildInitialVaultData({ clientAddr, feeRecipientAddr, poolAddr, networkId, queryId }) {
-  const metaCell = beginCell()
-    .storeUint(0, 8) // status = STATUS_UNINITIALIZED
-    .storeUint(queryId, 64)
-    .storeInt(networkId, 16)
+function buildInitialVaultData({ clientAddr, feeRecipientAddr, poolAddr, networkId, queryId, partnerCode = 0x000000106796caefn }) {
+  const jettonRef = beginCell()
+    .storeUint(0, 2) // vault_jwallet: addr_none
+    .storeUint(0, 2) // client_jwallet: addr_none
+    .endCell();
+
+  const staticRef = beginCell()
     .storeAddress(clientAddr)
     .storeAddress(feeRecipientAddr)
     .storeAddress(poolAddr)
+    .storeRef(jettonRef)
     .endCell();
 
   return beginCell()
-    .storeRef(metaCell)
-    .storeAddress(null) // vault_jwallet_address (set in op::vault_init)
-    .storeAddress(null) // client_jwallet_address (set in op::vault_init)
-    .storeCoins(0)      // principal_nano = 0
-    .storeCoins(0)      // fee_nano = 0
-    .storeCoins(0)      // jetton_amount = 0
-    .storeUint(0, 64)   // deposit_timestamp = 0
+    .storeUint(0, 8) // status = STATUS_UNINITIALIZED (0)
+    .storeInt(networkId, 16)
+    .storeUint(queryId, 64)
+    .storeCoins(0)   // principal_nano = 0
+    .storeCoins(0)   // fee_nano = 0
+    .storeCoins(0)   // ts_ton_minted = 0
+    .storeUint(0, 64)// created_at = 0
+    .storeUint(partnerCode, 64)
+    .storeRef(staticRef)
     .endCell();
 }
 
@@ -227,19 +233,58 @@ async function main() {
   const transfer = walletContract.createTransfer({
     secretKey: walletKey.secretKey,
     seqno,
-    sendMode: SendMode.PAY_GAS_SEPARATELY + SendMode.IGNORE_ERRORS,
+    sendMode: 3, // PAY_GAS_SEPARATLY (1) + IGNORE_ERRORS (2)
     order: new InternalMessage({
       to: vaultAddress,
       value: new BN(totalMessageValueNano.toString()),
       bounce: false,
-      stateInit,
-      body: new CellMessage(initBody),
+      body: new CommonMessageInfo({
+        stateInit,
+        body: new CellMessage(initBody),
+      }),
     }),
   });
 
-  await client.sendExternalMessage(walletContract, transfer);
-  console.log(`   ✅ Mensaje transmitido con éxito al RPC Testnet.`);
-  console.log(`   - Esperando confirmación de bloque (SeqNo ${seqno} -> ${seqno + 1})...\n`);
+  const isDeployed = status === 'active';
+  const extMsg = new ExternalMessage({
+    to: walletContract.address,
+    body: new CommonMessageInfo({
+      stateInit: isDeployed ? null : new StateInit({ code: walletContract.source.initialCode, data: walletContract.source.initialData }),
+      body: new CellMessage(transfer),
+    }),
+  });
+
+  const extCell = new Cell();
+  extMsg.writeTo(extCell);
+  const bocBase64 = (await extCell.toBoc({ idx: false })).toString('base64');
+
+  // Broadcast via TonAPI (primary) and Toncenter (fallback)
+  let broadcastSuccess = false;
+  try {
+    const apiRes = await fetch(`${TESTNET_TONAPI_BASE}/blockchain/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ boc: bocBase64 }),
+    });
+    if (apiRes.ok) {
+      broadcastSuccess = true;
+      console.log(`   ✅ Mensaje transmitido con éxito a la blockchain vía TonAPI Testnet.`);
+    } else {
+      const errText = await apiRes.text();
+      console.log(`   ⚠️ TonAPI broadcast retorno: ${errText}`);
+    }
+  } catch (err) {
+    console.log(`   ⚠️ TonAPI broadcast error: ${err.message}`);
+  }
+
+  if (!broadcastSuccess) {
+    console.log(`   - Reintentando transmisión vía Toncenter RPC...`);
+    await sleep(2000);
+    await client.sendExternalMessage(walletContract, transfer);
+    console.log(`   ✅ Mensaje transmitido con éxito vía Toncenter RPC.`);
+  }
+
+  console.log(`   - Esperando confirmación de bloque en Testnet...\n`);
 
   // Wait for SeqNo increment
   let confirmed = false;
@@ -264,21 +309,43 @@ async function main() {
   console.log(`8. Siguiendo Traza de Ejecución en Cadena (TonAPI Testnet):`);
   console.log(`   - URL de Consulta: ${TESTNET_TONAPI_BASE}/accounts/${encodeURIComponent(vaultRaw)}/events?limit=5`);
 
-  for (let poll = 1; poll <= 15; poll++) {
+  let foundEvent = null;
+  for (let poll = 1; poll <= 25; poll++) {
     await sleep(4000);
     try {
       const events = await fetch(`${TESTNET_TONAPI_BASE}/accounts/${encodeURIComponent(vaultRaw)}/events?limit=5`).then(r => r.json());
       if (events?.events && events.events.length > 0) {
-        const ev = events.events[0];
+        foundEvent = events.events[0];
         console.log(`\n   🎉 Traza Confirmada en TonAPI!`);
-        console.log(`   - Event ID:    ${ev.event_id}`);
-        console.log(`   - Timestamp:   ${new Date(ev.timestamp * 1000).toISOString()}`);
-        console.log(`   - Acciones:    ${ev.actions?.length || 0}`);
-        console.log(`   - Tonviewer:   ${TESTNET_TONVIEWER}/transaction/${ev.event_id}`);
+        console.log(`   - Event ID:       ${foundEvent.event_id}`);
+        console.log(`   - Timestamp:      ${new Date(foundEvent.timestamp * 1000).toISOString()}`);
+        console.log(`   - Total Acciones: ${foundEvent.actions?.length || 0}`);
+        console.log(`   - Tonviewer:      ${TESTNET_TONVIEWER}/transaction/${foundEvent.event_id}`);
         break;
       }
     } catch (_) {}
-    process.stdout.write(`   ...consultando eventos de la bóveda (${poll}/15)\r`);
+    process.stdout.write(`   ...consultando eventos de la bóveda (${poll}/25)\r`);
+  }
+
+  // 9. Inspect On-Chain State of the StakeVault
+  console.log(`\n9. Inspeccionando Estado On-Chain de la Bóveda en Testnet:`);
+  try {
+    const vaultAcct = await fetch(`${TESTNET_TONAPI_BASE}/accounts/${encodeURIComponent(vaultRaw)}`).then(r => r.json());
+    console.log(`   - Estado de Cuenta: ${vaultAcct?.status} (Balance: ${Number(vaultAcct?.balance || 0) / 1e9} TON)`);
+
+    const methodRes = await fetch(`${TESTNET_TONAPI_BASE}/blockchain/accounts/${encodeURIComponent(vaultRaw)}/methods/get_vault_data`).then(r => r.json());
+    if (methodRes.success && methodRes.decoded) {
+      console.log(`   - Get-Method get_vault_data decodificado con éxito:`);
+      console.log(`     * Status:         ${methodRes.decoded.status}`);
+      console.log(`     * Query ID:       ${methodRes.decoded.query_id}`);
+      console.log(`     * Principal Nano: ${methodRes.decoded.principal_nano} (${Number(methodRes.decoded.principal_nano) / 1e9} TON)`);
+      console.log(`     * Fee Nano:       ${methodRes.decoded.fee_nano} (${Number(methodRes.decoded.fee_nano) / 1e9} TON)`);
+      console.log(`     * Jettons:        ${methodRes.decoded.jetton_amount}`);
+    } else {
+      console.log(`   - get_vault_data raw:`, methodRes);
+    }
+  } catch (err) {
+    console.warn(`   ⚠️ Error al consultar get_vault_data:`, err.message);
   }
 
   console.log('\n========================================================================');
