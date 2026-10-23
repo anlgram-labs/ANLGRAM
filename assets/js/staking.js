@@ -1303,7 +1303,12 @@ const WalletService = (() => {
     window.addEventListener('anlgramWalletChanged', async (e) => {
       const { address, network, isTonConnect: isTC } = e.detail || {};
       if (address) {
-        if (network) localStorage.setItem('anlgram_wallet_network', network);
+        if (network && (network === 'mainnet' || network === 'testnet')) {
+          localStorage.setItem('anlgram_wallet_network', network);
+          if (STAKING_CONFIG.MAINNET_STAKING_ENABLED || network === 'testnet') {
+            switchStakingNetwork(network);
+          }
+        }
         await loadWalletData();
         WalletUIController.updateConnected();
         NotificationService.push({
@@ -1828,7 +1833,13 @@ const StakeModalController = {
     if (!modal) return;
     modal.classList.add('open');
 
-    const activeNet = StakingState.get('activeNetwork');
+    let activeNet = StakingState.get('activeNetwork');
+    const wallet = StakingState.get('wallet');
+    if (wallet.connected && (wallet.chainId === '-239' || wallet.network === 'mainnet') && activeNet !== 'mainnet' && STAKING_CONFIG.MAINNET_STAKING_ENABLED) {
+      switchStakingNetwork('mainnet');
+      activeNet = 'mainnet';
+    }
+
     const poolTelemetry = await PoolOnChainVerifier.fetchVerifiedPoolTelemetry(activeNet);
     const vaultReq = await PoolOnChainVerifier.verifyStakeVaultRequirements(activeNet);
 
@@ -1866,21 +1877,30 @@ const StakeModalController = {
     }
 
     // 2. Connected Wallet Network Check (Mainnet vs Testnet)
-    const wallet = StakingState.get('wallet');
     const expectedChainId = activeNet === 'mainnet' ? STAKING_CONFIG.CHAIN_ID_MAINNET : STAKING_CONFIG.CHAIN_ID_TESTNET;
     if (wallet.connected && (wallet.isWrongNetwork || (wallet.chainId && wallet.chainId !== expectedChainId))) {
+      const targetNet = wallet.chainId === '-239' ? 'mainnet' : 'testnet';
       if (alertBox) {
         alertBox.style.display = 'block';
         alertBox.style.background = 'rgba(239,68,68,0.15)';
         alertBox.style.borderColor = '#ef4444';
         alertBox.style.color = '#fca5a5';
         alertBox.innerHTML = `
-          <strong>⚠️ Billetera en Red Incorrecta:</strong><br/>
-          Tu billetera conectada está en <strong>${wallet.chainId === '-239' ? 'TON Mainnet (-239)' : 'TON Testnet (-3)'}</strong>, pero la plataforma está en modo <strong>${activeNet === 'mainnet' ? 'TON Mainnet (-239)' : 'TON Testnet (-3)'}</strong>.<br/>
-          Por favor cambia la red en tu billetera (Tonkeeper / MyTonWallet / etc.) o usa el selector arriba para coincidir.<br/>
+          <strong>⚠️ Billetera en ${wallet.chainId === '-239' ? 'TON Mainnet (-239)' : 'TON Testnet (-3)'}:</strong><br/>
+          Tu billetera conectada está en <strong>${wallet.chainId === '-239' ? 'Mainnet (-239)' : 'Testnet (-3)'}</strong>, pero la plataforma está en <strong>${activeNet === 'mainnet' ? 'Mainnet (-239)' : 'Testnet (-3)'}</strong>.<br/>
+          <button type="button" class="btn btn-sm" style="margin-top:8px;background:#22c55e;color:#000;font-weight:700;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;" onclick="window.switchStakingNetwork('${targetNet}'); StakeModalController.open();">
+            👉 Cambiar Plataforma a ${wallet.chainId === '-239' ? 'Mainnet (-239)' : 'Testnet (-3)'} Ahora
+          </button>
         `;
       }
-      if (reviewBtn) { reviewBtn.disabled = true; reviewBtn.textContent = 'Red Errónea: Cambia de Red'; }
+      if (reviewBtn) {
+        reviewBtn.disabled = false;
+        reviewBtn.textContent = `Cambiar a ${wallet.chainId === '-239' ? 'TON Mainnet (-239)' : 'TON Testnet (-3)'}`;
+        reviewBtn.onclick = () => {
+          window.switchStakingNetwork(targetNet);
+          this.open();
+        };
+      }
       this._bindAmountInput();
       this._updatePreview();
       this._showStep(1);
@@ -3237,7 +3257,12 @@ if (typeof window !== 'undefined') {
 
 const StakingApp = {
   async init() {
-    const net = StakingState.get('activeNetwork');
+    // Auto-detect network preference from connected wallet or storage
+    const savedNet = localStorage.getItem('anlgram_staking_network') || localStorage.getItem('anlgram_wallet_network');
+    const chainId = typeof window.getConnectedWalletChainId === 'function' ? window.getConnectedWalletChainId() : null;
+    let net = (chainId === '-239' || savedNet === 'mainnet') && STAKING_CONFIG.MAINNET_STAKING_ENABLED ? 'mainnet' : 'testnet';
+    StakingState.set('activeNetwork', net);
+
     const netBadge = document.getElementById('network-badge-label');
     const netDot = document.getElementById('sidebar-net-dot');
     const topSelect = document.getElementById('topbar-network-select');
