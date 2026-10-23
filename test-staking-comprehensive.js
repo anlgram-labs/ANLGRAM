@@ -557,13 +557,31 @@ async function runTests() {
     'Riesgo de Timeout Eliminado (>900s y +36h): Jamás reembolsa por reloj si Tonstakers aceptó el depósito o aún puede completarse (exit_code=311)'
   );
 
-  // Now Tonstakers completes the deposit at +36 hours, AND suppose round-end minting altered query_id to 0!
-  // Router matches earliest FIFO deposit in status=0 (4001) so tsTON is never stranded!
-  const delayedNotify4001 = await routerContract.sendInternalMessage(buildInternalMsg({
+  // Altered or unknown query_id (query_id = 0 or 9999) on 0x7362d09c MUST BE REJECTED with exit code 309!
+  // Zero FIFO fallback, zero guessing!
+  const alteredNotify0 = await routerContract.sendInternalMessage(buildInternalMsg({
     src: routerJWalletAddr,
     dest: routerSelfAddr,
     valueNano: 100000000n,
     bodyCell: beginCell().storeUint(0x7362d09c, 32).storeUint(0, 64).storeCoins(new BN('8380479647')).storeAddress(poolAddr).endCell(),
+  }));
+  const alteredNotify9999 = await routerContract.sendInternalMessage(buildInternalMsg({
+    src: routerJWalletAddr,
+    dest: routerSelfAddr,
+    valueNano: 100000000n,
+    bodyCell: beginCell().storeUint(0x7362d09c, 32).storeUint(9999, 64).storeCoins(new BN('8380479647')).storeAddress(poolAddr).endCell(),
+  }));
+  assert(
+    alteredNotify0.exit_code === 309 && alteredNotify9999.exit_code === 309,
+    'Eliminación de FIFO: Rechaza estrictamente transfer_notification con query_id alterado o desconocido (0 y 9999) con exit_code=309'
+  );
+
+  // Exact query_id (4001) succeeds, delivers tsTON to Client A, and completes upon 0xd53276db
+  const exactNotify4001 = await routerContract.sendInternalMessage(buildInternalMsg({
+    src: routerJWalletAddr,
+    dest: routerSelfAddr,
+    valueNano: 100000000n,
+    bodyCell: beginCell().storeUint(0x7362d09c, 32).storeUint(4001, 64).storeCoins(new BN('8380479647')).storeAddress(poolAddr).endCell(),
   }));
   const delayedConfirm4001 = await routerContract.sendInternalMessage(buildInternalMsg({
     src: clientAJWallet,
@@ -572,10 +590,10 @@ async function runTests() {
     bodyCell: beginCell().storeUint(0xd53276db, 32).storeUint(4001, 64).endCell(),
   }));
   assert(
-    delayedNotify4001.exit_code === 0 && delayedNotify4001.actionList.length === 1 &&
+    exactNotify4001.exit_code === 0 && exactNotify4001.actionList.length === 1 &&
     delayedConfirm4001.exit_code === 0 && delayedConfirm4001.actionList.length === 2 &&
     delayedConfirm4001.actionList[0].message.info.value.coins.toString() === '35000000',
-    'Completado Tardío (+36h con resolución FIFO de query_id=0 -> 4001): Entrega tsTON al Cliente A y cobra 0.035 TON tras confirmación'
+    'Vinculación Estricta 1-a-1: Notificación con query_id exacto (4001) entrega tsTON al Cliente A y cobra 0.035 TON tras confirmación'
   );
 
   // Duplicate 0x7362d09c for already-confirmed query_id 4001 -> rejected with 309 (zero double fee collection)
@@ -661,12 +679,12 @@ async function runTests() {
     'Rebote de 0x0f8a7ea5 Manejado con Seguridad: Pasa a status=2 (TSTON_BOUNCED), NO marca completado y NO cobra comisión si el cliente no recibió sus tsTON'
   );
 
-  // Retry tsTON delivery via 0x414e4c55 (op::retry_tston_delivery) called by third-party relayer (clientB) -> MUST still send tsTON strictly to clientA!
+  // Retry tsTON delivery via 0x414e4c55 (op::retry_tston_delivery) called by third-party relayer or attacker (clientB) -> MUST still send tsTON strictly to clientA!
   const retry6001Res = await routerContract.sendInternalMessage(buildInternalMsg({
     src: clientB,
     dest: routerSelfAddr,
     valueNano: 120000000n, // 0.12 TON fresh gas
-    bodyCell: beginCell().storeUint(0x414e4c55, 32).storeUint(6001, 64).storeCoins(1).endCell(),
+    bodyCell: beginCell().storeUint(0x414e4c55, 32).storeUint(6001, 64).endCell(),
   }));
   const retryJettonMsg = retry6001Res.actionList[0]?.message;
   const retryJettonBody = Slice.fromCell(retryJettonMsg.body.refs[0] || retryJettonMsg.body);
@@ -718,7 +736,7 @@ async function runTests() {
     src: clientA,
     dest: routerSelfAddr,
     valueNano: 110000000n,
-    bodyCell: beginCell().storeUint(0x414e4c55, 32).storeUint(6002, 64).storeCoins(1).endCell(),
+    bodyCell: beginCell().storeUint(0x414e4c55, 32).storeUint(6002, 64).endCell(),
   }));
   await routerContract.sendInternalMessage(buildInternalMsg({
     src: clientAJWallet,
@@ -727,8 +745,8 @@ async function runTests() {
     bodyCell: beginCell().storeUint(0xd53276db, 32).storeUint(6002, 64).endCell(),
   }));
 
-  // 2.12 Risk 1 Verification: What if 0x7362d09c NEVER arrives at all (status == 0 after timeout_sec)?
-  // Case 2.12a: Tonstakers minted tsTON to routerJWalletAddr without sending 0x7362d09c (query_id = 7001, 10 TON)
+  // 2.12 Security Verification: Elimination of Arbitrary claim_jetton_amount and Cross-Client Token Theft
+  // Deposit 10 TON from Client A (query_id = 7001)
   routerContract.setUnixTime(1700200000);
   await routerContract.sendInternalMessage(buildInternalMsg({
     src: clientA,
@@ -736,77 +754,66 @@ async function runTests() {
     valueNano: 10000000000n + 35000000n + 1150000000n,
     bodyCell: beginCell().storeUint(0x414e4c53, 32).storeUint(7001, 64).storeCoins(new BN('10000000000')).storeInt(-3, 16).endCell(),
   }));
-  // Calling 0x414e4c55 on status=0 BEFORE timeout_sec -> rejected with 311
-  routerContract.setUnixTime(1700200500);
-  const earlyRec7001 = await routerContract.sendInternalMessage(buildInternalMsg({
-    src: clientA,
-    dest: routerSelfAddr,
-    valueNano: 110000000n,
-    bodyCell: beginCell().storeUint(0x414e4c55, 32).storeUint(7001, 64).storeCoins(new BN('8380479647')).endCell(),
-  }));
-  // Calling 0x414e4c55 on status=0 AFTER timeout_sec by unauthorized user (clientB) -> rejected with 301
-  routerContract.setUnixTime(1700201000);
-  const unauthRec7001 = await routerContract.sendInternalMessage(buildInternalMsg({
+
+  // Attempt A: Client B (attacker) tries calling 0x414e4c55 on Client A's deposit while status == 0 (pending_pool)
+  const attackerRetryRes = await routerContract.sendInternalMessage(buildInternalMsg({
     src: clientB,
     dest: routerSelfAddr,
     valueNano: 110000000n,
-    bodyCell: beginCell().storeUint(0x414e4c55, 32).storeUint(7001, 64).storeCoins(new BN('8380479647')).endCell(),
+    bodyCell: beginCell().storeUint(0x414e4c55, 32).storeUint(7001, 64).endCell(),
   }));
-  assert(
-    earlyRec7001.exit_code === 311 && unauthRec7001.exit_code === 301,
-    'Seguridad Recuperación status=0: Bloquea antes de timeout_sec (311) y bloquea a terceros no propietarios (301)'
-  );
-
-  // Calling 0x414e4c55 on status=0 AFTER timeout_sec by owner (clientA) -> sends 0x0f8a7ea5 (status=3) and completes upon 0xd53276db!
-  const validRec7001 = await routerContract.sendInternalMessage(buildInternalMsg({
+  // Attempt B: Client A (owner) tries calling 0x414e4c55 before 0x7362d09c arrives (status == 0)
+  const ownerEarlyRetryRes = await routerContract.sendInternalMessage(buildInternalMsg({
     src: clientA,
     dest: routerSelfAddr,
     valueNano: 110000000n,
-    bodyCell: beginCell().storeUint(0x414e4c55, 32).storeUint(7001, 64).storeCoins(new BN('8380479647')).endCell(),
+    bodyCell: beginCell().storeUint(0x414e4c55, 32).storeUint(7001, 64).endCell(),
   }));
-  const confirmRec7001 = await routerContract.sendInternalMessage(buildInternalMsg({
+  assert(
+    attackerRetryRes.exit_code === 314 && ownerEarlyRetryRes.exit_code === 314,
+    'Imposibilidad de Retiro Arbitrario en status=0: 0x414e4c55 es estrictamente rechazado con exit_code=314 para atacantes y propietarios si tsTON no rebotó'
+  );
+
+  // Now legitimate 0x7362d09c arrives for 7001, delivering 8.380479647 tsTON to Client A, then confirms
+  await routerContract.sendInternalMessage(buildInternalMsg({
+    src: routerJWalletAddr,
+    dest: routerSelfAddr,
+    valueNano: 100000000n,
+    bodyCell: beginCell().storeUint(0x7362d09c, 32).storeUint(7001, 64).storeCoins(new BN('8380479647')).storeAddress(poolAddr).endCell(),
+  }));
+  await routerContract.sendInternalMessage(buildInternalMsg({
     src: clientAJWallet,
     dest: routerSelfAddr,
     valueNano: 50000000n,
     bodyCell: beginCell().storeUint(0xd53276db, 32).storeUint(7001, 64).endCell(),
   }));
-  assert(
-    validRec7001.exit_code === 0 && validRec7001.actionList.length === 1 &&
-    confirmRec7001.exit_code === 0 && confirmRec7001.actionList.length === 2,
-    'Recuperación Sin 0x7362d09c (7001): Si la notificación nunca llega pero tsTON fue emitido, el Cliente A recupera sus tsTON vía 0x414e4c55'
-  );
 
-  // Case 2.12b: 0x7362d09c never arrives AND routerJWalletAddr has 0 tsTON (probe claim_jetton_amount=1 bounces -> refunds escrowed fee + gas!)
+  // Deposit 10 TON from Client A (query_id = 7002, fee = 0.035 TON) which will bounce from Pool
   routerContract.setUnixTime(1700300000);
   await routerContract.sendInternalMessage(buildInternalMsg({
     src: clientA,
     dest: routerSelfAddr,
-    valueNano: 10000000000n + 35000000n + 1150000000n, // 10 TON (query_id = 7002, fee = 0.035 TON)
+    valueNano: 10000000000n + 35000000n + 1150000000n,
     bodyCell: beginCell().storeUint(0x414e4c53, 32).storeUint(7002, 64).storeCoins(new BN('10000000000')).storeInt(-3, 16).endCell(),
   }));
-  routerContract.setUnixTime(1700301000);
-  await routerContract.sendInternalMessage(buildInternalMsg({
-    src: clientA,
-    dest: routerSelfAddr,
-    valueNano: 110000000n,
-    bodyCell: beginCell().storeUint(0x414e4c55, 32).storeUint(7002, 64).storeCoins(1).endCell(), // 1 nano-tsTON probe
-  }));
-  // routerJWalletAddr bounces the 1 nano-tsTON probe (proving 0 tsTON balance on-chain)
-  const probeBounce7002 = await routerContract.sendInternalMessage(buildInternalMsg({
+  // Authentic pool bounce of 7002 -> refunds 10 TON + 0.035 TON fee + gas to Client A with 0 fee charged
+  const poolBounce7002 = await routerContract.sendInternalMessage(buildInternalMsg({
     bounced: true,
-    src: routerJWalletAddr,
+    src: poolAddr,
     dest: routerSelfAddr,
-    valueNano: 95000000n,
-    bodyCell: beginCell().storeUint(0xffffffff, 32).storeUint(0x0f8a7ea5, 32).storeUint(7002, 64).storeCoins(1).endCell(),
+    valueNano: 10950000000n,
+    bodyCell: beginCell().storeUint(0xffffffff, 32).storeUint(0x47d54391, 32).storeUint(7002, 64).storeUint(0, 64).endCell(),
   }));
   const ref7002 = await routerContract.invokeGetMethod('get_refunded_deposit', [{ type: 'int', value: '7002' }]);
   assert(
-    probeBounce7002.exit_code === 0 && probeBounce7002.actionList.length === 1 &&
-    ref7002.result[0].toNumber() === -1,
-    'Prueba Criptográfica de No-Emisión (7002): Si el probe de 1 nano-tsTON rebota tras timeout_sec, reembolsa el escrow al Cliente A con 0 comisión'
+    poolBounce7002.exit_code === 0 && poolBounce7002.actionList.length === 1 &&
+    ref7002.result[0].toNumber() === -1 && ref7002.result[2].toString() === '10000000000' &&
+    ref7002.result[3].toString() === '35000000',
+    'Reembolso Auténtico de Rebote del Pool (7002): Reembolsa 10 TON + comisión (0.035 TON) al Cliente A sin cobrar comisión'
   );
 
-  // 2.13 Multi-Client Concurrent Accounting Test (Client A: +1 TON = 51 TON total confirmed, Client B: 100 TON, Client C: 1,000 TON)
+  // 2.13 Multi-Client Concurrent Staking & Out-of-Order Execution (Client A: 1 TON, Client C: 1,000 TON)
+  // Simultaneous deposits
   await routerContract.sendInternalMessage(buildInternalMsg({
     src: clientA,
     dest: routerSelfAddr,
@@ -820,25 +827,49 @@ async function runTests() {
     bodyCell: beginCell().storeUint(0x414e4c53, 32).storeUint(5002, 64).storeCoins(new BN('1000000000000')).storeInt(-3, 16).endCell(),
   }));
 
-  // Confirm Client C first (out-of-order async completion), then Client A (both Phase 2a 0x7362d09c + Phase 2b 0xd53276db)
-  await routerContract.sendInternalMessage(buildInternalMsg({
+  // Confirm Client C FIRST (out-of-order notification: 5002 arrives before 5001)
+  const notifyC = await routerContract.sendInternalMessage(buildInternalMsg({
     src: routerJWalletAddr,
     dest: routerSelfAddr,
     valueNano: 100000000n,
     bodyCell: beginCell().storeUint(0x7362d09c, 32).storeUint(5002, 64).storeCoins(new BN('838047964720')).storeAddress(poolAddr).endCell(),
   }));
+  const transferMsgC = notifyC.actionList[0]?.message;
+  const transferBodyC = Slice.fromCell(transferMsgC.body.refs[0] || transferMsgC.body);
+  transferBodyC.readUint(32); transferBodyC.readUint(64);
+  const amtC = transferBodyC.readCoins().toString();
+  const destC = transferBodyC.readAddress();
+
+  assert(
+    notifyC.exit_code === 0 && amtC === '838047964720' && destC.equals(clientC),
+    'Desorden Asíncrono Multi-Cliente: Notificación de Cliente C (5002) entregada primero con 838.047964720 tsTON estrictamente a Cliente C'
+  );
+
   await routerContract.sendInternalMessage(buildInternalMsg({
     src: clientCJWallet,
     dest: routerSelfAddr,
     valueNano: 53000000n,
     bodyCell: beginCell().storeUint(0xd53276db, 32).storeUint(5002, 64).endCell(),
   }));
-  await routerContract.sendInternalMessage(buildInternalMsg({
+
+  // Confirm Client A SECOND (5001 arrives after 5002)
+  const notifyA = await routerContract.sendInternalMessage(buildInternalMsg({
     src: routerJWalletAddr,
     dest: routerSelfAddr,
     valueNano: 100000000n,
     bodyCell: beginCell().storeUint(0x7362d09c, 32).storeUint(5001, 64).storeCoins(new BN('838047964')).storeAddress(poolAddr).endCell(),
   }));
+  const transferMsgA = notifyA.actionList[0]?.message;
+  const transferBodyA = Slice.fromCell(transferMsgA.body.refs[0] || transferMsgA.body);
+  transferBodyA.readUint(32); transferBodyA.readUint(64);
+  const amtA = transferBodyA.readCoins().toString();
+  const destA = transferBodyA.readAddress();
+
+  assert(
+    notifyA.exit_code === 0 && amtA === '838047964' && destA.equals(clientA),
+    'Desorden Asíncrono Multi-Cliente: Notificación de Cliente A (5001) entregada segundo con 0.838047964 tsTON estrictamente a Cliente A'
+  );
+
   await routerContract.sendInternalMessage(buildInternalMsg({
     src: clientAJWallet,
     dest: routerSelfAddr,
@@ -856,15 +887,15 @@ async function runTests() {
   const globalStats = await routerContract.invokeGetMethod('get_router_stats', []);
 
   // Client A confirmed deposits: 4001 (10 TON), 6001 (20 TON), 6002 (10 TON), 7001 (10 TON), 5001 (1 TON) = 51 TON (5 deposits), fees = 0.1785 TON (178,500,000 nanoTON)
-  // Client A refunded deposits: 3001 (50.175 TON) + 7002 (0.035 TON fee escrow) = 50,210,000,000 nanoTON
+  // Client A refunded deposits: 3001 (50.175 TON) + 7002 (10.035 TON) = 60,210,000,000 nanoTON
   assert(
     acctA.result[0].toNumber() === -1 &&
     acctA.result[1].toString() === '51000000000' &&
     acctA.result[2].toString() === '42740446199' &&
     acctA.result[3].toString() === '178500000' &&
-    acctA.result[4].toString() === '50210000000' &&
+    acctA.result[4].toString() === '60210000000' &&
     acctA.result[5].toNumber() === 5,
-    'Contabilidad Cliente A exacta: 51 TON principal confirmado (5 depósitos), 0.1785 TON comisión, 50.21 TON reembolsado (3001 y 7002)'
+    'Contabilidad Cliente A exacta: 51 TON principal confirmado (5 depósitos), 0.1785 TON comisión, 60.21 TON reembolsado (3001 y 7002)'
   );
   assert(
     acctB.result[0].toNumber() === -1 &&
@@ -889,7 +920,199 @@ async function runTests() {
     'Totales globales del Router exactos: 1,151 TON principal confirmado, 4.0285 TON comisiones cobradas, 7 confirmados, 2 reembolsados'
   );
 
-  // 2.14 Excess Gas Refund Forwarding (0xd53276db from Pool for completed query_id 2001 -> forwarded to Client B)
+  // 2.14 Pruebas Rigurosas de Concurrencia Multi-Cliente, Intento de Extracción de Fondos y Desorden Asíncrono
+  // Tres clientes depositan concurrentemente:
+  // Client A: 10 TON (query_id = 8001)
+  // Client B: 20 TON (query_id = 8002)
+  // Client C: 50 TON (query_id = 8003)
+  await routerContract.sendInternalMessage(buildInternalMsg({
+    src: clientA,
+    dest: routerSelfAddr,
+    valueNano: 10000000000n + 35000000n + 1150000000n,
+    bodyCell: beginCell().storeUint(0x414e4c53, 32).storeUint(8001, 64).storeCoins(new BN('10000000000')).storeInt(-3, 16).endCell(),
+  }));
+  await routerContract.sendInternalMessage(buildInternalMsg({
+    src: clientB,
+    dest: routerSelfAddr,
+    valueNano: 20000000000n + 70000000n + 1150000000n,
+    bodyCell: beginCell().storeUint(0x414e4c53, 32).storeUint(8002, 64).storeCoins(new BN('20000000000')).storeInt(-3, 16).endCell(),
+  }));
+  await routerContract.sendInternalMessage(buildInternalMsg({
+    src: clientC,
+    dest: routerSelfAddr,
+    valueNano: 50000000000n + 175000000n + 1150000000n,
+    bodyCell: beginCell().storeUint(0x414e4c53, 32).storeUint(8003, 64).storeCoins(new BN('50000000000')).storeInt(-3, 16).endCell(),
+  }));
+
+  // Ataque 1: Notificación alterada (query_id = 0 o inexistente 8999) con tsTON en el Router -> El Router rechaza con 309 y NO asigna tsTON a ningún cliente por FIFO
+  const rogueNotify0 = await routerContract.sendInternalMessage(buildInternalMsg({
+    src: routerJWalletAddr,
+    dest: routerSelfAddr,
+    valueNano: 100000000n,
+    bodyCell: beginCell().storeUint(0x7362d09c, 32).storeUint(0, 64).storeCoins(new BN('50000000000')).storeAddress(poolAddr).endCell(),
+  }));
+  const rogueNotify8999 = await routerContract.sendInternalMessage(buildInternalMsg({
+    src: routerJWalletAddr,
+    dest: routerSelfAddr,
+    valueNano: 100000000n,
+    bodyCell: beginCell().storeUint(0x7362d09c, 32).storeUint(8999, 64).storeCoins(new BN('50000000000')).storeAddress(poolAddr).endCell(),
+  }));
+  assert(
+    rogueNotify0.exit_code === 309 && rogueNotify8999.exit_code === 309,
+    'Resistencia Anti-Spoofing en Concurrencia: Rechaza 0x7362d09c con query_id=0 o inexistente sin contaminar los depósitos 8001, 8002, 8003'
+  );
+
+  // Ataque 2: Intento de extracción en status=0 (falta de notificación):
+  // Cliente B intenta extraer tokens del depósito 8001 de Cliente A llamando a 0x414e4c55(8001)
+  const stealPendingRes = await routerContract.sendInternalMessage(buildInternalMsg({
+    src: clientB,
+    dest: routerSelfAddr,
+    valueNano: 110000000n,
+    bodyCell: beginCell().storeUint(0x414e4c55, 32).storeUint(8001, 64).endCell(),
+  }));
+  assert(
+    stealPendingRes.exit_code === 314,
+    'Protección Anti-Extracción en status=0: Intento de Cliente B de retirar tsTON de 8001 es rechazado (exit_code=314)'
+  );
+
+  // Desorden Asíncrono Legítimo:
+  // Notificación de Cliente C (8003, 50 TON -> 41.902398236 tsTON) llega PRIMERO
+  const notify8003Res = await routerContract.sendInternalMessage(buildInternalMsg({
+    src: routerJWalletAddr,
+    dest: routerSelfAddr,
+    valueNano: 100000000n,
+    bodyCell: beginCell().storeUint(0x7362d09c, 32).storeUint(8003, 64).storeCoins(new BN('41902398236')).storeAddress(poolAddr).endCell(),
+  }));
+  const msg8003 = notify8003Res.actionList[0]?.message;
+  const body8003 = Slice.fromCell(msg8003.body.refs[0] || msg8003.body);
+  body8003.readUint(32); body8003.readUint(64);
+  const amt8003 = body8003.readCoins().toString();
+  const dest8003 = body8003.readAddress();
+  assert(
+    notify8003Res.exit_code === 0 && amt8003 === '41902398236' && dest8003.equals(clientC),
+    'Aislamiento Concurrente 8003: tsTON de Cliente C va estrictamente a Cliente C (41.902398236 tsTON) en entrega desordenada'
+  );
+  // Confirmar 8003 vía 0xd53276db
+  await routerContract.sendInternalMessage(buildInternalMsg({
+    src: clientCJWallet,
+    dest: routerSelfAddr,
+    valueNano: 53000000n,
+    bodyCell: beginCell().storeUint(0xd53276db, 32).storeUint(8003, 64).endCell(),
+  }));
+
+  // Notificación de Cliente A (8001, 10 TON -> 8.380479647 tsTON) llega SEGUNDO
+  const notify8001Res = await routerContract.sendInternalMessage(buildInternalMsg({
+    src: routerJWalletAddr,
+    dest: routerSelfAddr,
+    valueNano: 100000000n,
+    bodyCell: beginCell().storeUint(0x7362d09c, 32).storeUint(8001, 64).storeCoins(new BN('8380479647')).storeAddress(poolAddr).endCell(),
+  }));
+  const msg8001 = notify8001Res.actionList[0]?.message;
+  const body8001 = Slice.fromCell(msg8001.body.refs[0] || msg8001.body);
+  body8001.readUint(32); body8001.readUint(64);
+  const amt8001 = body8001.readCoins().toString();
+  const dest8001 = body8001.readAddress();
+  assert(
+    notify8001Res.exit_code === 0 && amt8001 === '8380479647' && dest8001.equals(clientA),
+    'Aislamiento Concurrente 8001: tsTON de Cliente A va estrictamente a Cliente A (8.380479647 tsTON)'
+  );
+  // Confirmar 8001 vía 0xd53276db
+  await routerContract.sendInternalMessage(buildInternalMsg({
+    src: clientAJWallet,
+    dest: routerSelfAddr,
+    valueNano: 53000000n,
+    bodyCell: beginCell().storeUint(0xd53276db, 32).storeUint(8001, 64).endCell(),
+  }));
+
+  // Notificación de Cliente B (8002, 20 TON -> 16.760959294 tsTON) llega TERCERO pero REBOTA en routerJWallet
+  await routerContract.sendInternalMessage(buildInternalMsg({
+    src: routerJWalletAddr,
+    dest: routerSelfAddr,
+    valueNano: 100000000n,
+    bodyCell: beginCell().storeUint(0x7362d09c, 32).storeUint(8002, 64).storeCoins(new BN('16760959294')).storeAddress(poolAddr).endCell(),
+  }));
+  // Simular rebote de 0x0f8a7ea5 desde routerJWalletAddr
+  await routerContract.sendInternalMessage(buildInternalMsg({
+    bounced: true,
+    src: routerJWalletAddr,
+    dest: routerSelfAddr,
+    valueNano: 95000000n,
+    bodyCell: beginCell().storeUint(0xffffffff, 32).storeUint(0x0f8a7ea5, 32).storeUint(8002, 64).storeCoins(new BN('16760959294')).endCell(),
+  }));
+  const pend8002Bounced = await routerContract.invokeGetMethod('get_pending_deposit', [{ type: 'int', value: '8002' }]);
+  assert(
+    pend8002Bounced.result[6].toNumber() === 2,
+    'Estado Rebote Verificado: Depósito 8002 pasa a status=2 (TSTON_BOUNCED) con jetton_amount=16760959294 en storage'
+  );
+
+  // Ataque 3: Cliente A (atacante) intenta robar los tsTON de Cliente B llamando a 0x414e4c55(8002)
+  // El Router reintenta la transferencia, pero el destino forzoso es Cliente B y el monto es 16760959294
+  const attackerRetry8002Res = await routerContract.sendInternalMessage(buildInternalMsg({
+    src: clientA,
+    dest: routerSelfAddr,
+    valueNano: 120000000n,
+    bodyCell: beginCell().storeUint(0x414e4c55, 32).storeUint(8002, 64).endCell(),
+  }));
+  const retryMsg8002 = attackerRetry8002Res.actionList[0]?.message;
+  const retryBody8002 = Slice.fromCell(retryMsg8002.body.refs[0] || retryMsg8002.body);
+  retryBody8002.readUint(32); retryBody8002.readUint(64);
+  const retryAmt8002 = retryBody8002.readCoins().toString();
+  const retryDest8002 = retryBody8002.readAddress();
+  assert(
+    attackerRetry8002Res.exit_code === 0 && retryAmt8002 === '16760959294' && retryDest8002.equals(clientB),
+    'Imposibilidad de Apropiación Indebida: Ataque de Cliente A sobre 8002 reenvía tsTON estrictamente a Cliente B (Cliente A recibe 0)'
+  );
+  // Cliente B confirma la recepción de 8002
+  await routerContract.sendInternalMessage(buildInternalMsg({
+    src: clientBJWallet,
+    dest: routerSelfAddr,
+    valueNano: 53000000n,
+    bodyCell: beginCell().storeUint(0xd53276db, 32).storeUint(8002, 64).endCell(),
+  }));
+
+  // Verificación Contable Final tras Rondas Multi-Cliente
+  const finalAcctA = await routerContract.invokeGetMethod('get_user_accounting', [{ type: 'cell_slice', value: sliceBocA }]);
+  const finalAcctB = await routerContract.invokeGetMethod('get_user_accounting', [{ type: 'cell_slice', value: sliceBocB }]);
+  const finalAcctC = await routerContract.invokeGetMethod('get_user_accounting', [{ type: 'cell_slice', value: sliceBocC }]);
+  const finalStats = await routerContract.invokeGetMethod('get_router_stats', []);
+
+  // Client A: 51 + 10 = 61 TON principal, tsTON = 42.740446199 + 8.380479647 = 51.120925846, fees = 0.1785 + 0.035 = 0.2135 TON, 6 depósitos confirmados
+  assert(
+    finalAcctA.result[0].toNumber() === -1 &&
+    finalAcctA.result[1].toString() === '61000000000' &&
+    finalAcctA.result[2].toString() === '51120925846' &&
+    finalAcctA.result[3].toString() === '213500000' &&
+    finalAcctA.result[5].toNumber() === 6,
+    'Contabilidad Cliente A acumulada exacta: 61 TON principal (6 depósitos confirmados), 0.2135 TON comisión'
+  );
+  // Client B: 100 + 20 = 120 TON principal, tsTON = 83.804796472 + 16.760959294 = 100.565755766, fees = 0.35 + 0.070 = 0.420 TON, 2 depósitos confirmados
+  assert(
+    finalAcctB.result[0].toNumber() === -1 &&
+    finalAcctB.result[1].toString() === '120000000000' &&
+    finalAcctB.result[2].toString() === '100565755766' &&
+    finalAcctB.result[3].toString() === '420000000' &&
+    finalAcctB.result[5].toNumber() === 2,
+    'Contabilidad Cliente B acumulada exacta: 120 TON principal (2 depósitos confirmados), 0.420 TON comisión'
+  );
+  // Client C: 1,000 + 50 = 1,050 TON principal, tsTON = 838.047964720 + 41.902398236 = 879.950362956, fees = 3.5 + 0.175 = 3.675 TON, 2 depósitos confirmados
+  assert(
+    finalAcctC.result[0].toNumber() === -1 &&
+    finalAcctC.result[1].toString() === '1050000000000' &&
+    finalAcctC.result[2].toString() === '879950362956' &&
+    finalAcctC.result[3].toString() === '3675000000' &&
+    finalAcctC.result[5].toNumber() === 2,
+    'Contabilidad Cliente C acumulada exacta: 1,050 TON principal (2 depósitos confirmados), 3.675 TON comisión'
+  );
+  // Global stats: 1,231 TON principal, 4.3085 TON comisiones cobradas, 10 confirmados, 2 reembolsados
+  assert(
+    finalStats.result[0].toString() === '1231000000000' &&
+    finalStats.result[1].toString() === '4308500000' &&
+    finalStats.result[3].toNumber() === 10 &&
+    finalStats.result[4].toNumber() === 2,
+    'Totales globales acumulados exactos: 1,231 TON principal, 4.3085 TON comisiones cobradas, 10 depósitos confirmados, 2 reembolsados'
+  );
+
+  // 2.15 Excess Gas Refund Forwarding (0xd53276db from Pool for completed query_id 2001 -> forwarded to Client B)
   const excessBody = beginCell()
     .storeUint(0xd53276db, 32)
     .storeUint(2001, 64)
@@ -977,9 +1200,9 @@ async function runTests() {
 
   assert(cfg.MAINNET_STAKING_ENABLED === false, 'MAINNET_STAKING_ENABLED está en false (Mainnet bloqueado hasta auditoría y aprobación)');
   assert(
-    cfg.ROUTER_ADDRESS_TESTNET === 'kQB0zhRVcCVnnApIlxowyk4yvgFuXXRSdDea2e-bKCei2z-M' &&
+    cfg.ROUTER_ADDRESS_TESTNET === 'kQDd9FJmHX6-A2T1XsF4oSS04KFq_13gQyKco_ZYwmuDIREK' &&
     StakingModule.isValidTonAddress(cfg.ROUTER_ADDRESS_TESTNET) &&
-    cfg.ROUTER_JWALLET_TESTNET === 'kQBccUarychCErZG-4S8a_jKuIzRgon-1h4z9b7uI4n8yjjH' &&
+    cfg.ROUTER_JWALLET_TESTNET === 'kQCulIZF_pX3SEaTp4QobY9oMkVlt-imEIexJV7eak8CxY6G' &&
     StakingModule.isValidTonAddress(cfg.ROUTER_JWALLET_TESTNET),
     'ROUTER_ADDRESS_TESTNET y ROUTER_JWALLET_TESTNET registrados con CRC16 válido',
     `Router=${cfg.ROUTER_ADDRESS_TESTNET}, JWallet=${cfg.ROUTER_JWALLET_TESTNET}`

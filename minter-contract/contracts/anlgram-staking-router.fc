@@ -18,34 +18,30 @@
 ;;      Moves query_id from pending_deposits (status=0) to refunded_deposits and
 ;;      refunds principal + escrowed fee + unused gas to user_address. Zero fee charged.
 ;;   3. Phase 2a (op::transfer_notification 0x7362d09c from router_jwallet_address):
-;;      - If query_id was altered by delayed round-end minting, matches earliest
-;;        FIFO deposit in status=0 so notifications are never dropped.
+;;      - Strict 1-to-1 correlation: query_id MUST match pending_deposits[query_id]
+;;        in status=0. Zero guessing. Zero FIFO fallback. If query_id is altered
+;;        or unknown, throws error::unknown_pending_deposit (309) immediately.
 ;;      - If msg_value / balance is insufficient to attach 0.105 TON gas to
-;;        0x0f8a7ea5, sets status=2 (STATUS_TSTON_BOUNCED_OR_QUEUED) without throwing.
+;;        0x0f8a7ea5, sets status=2 (STATUS_TSTON_BOUNCED) without throwing.
 ;;      - Otherwise sets status=1 (STATUS_DELIVERING_TSTON) and sends 0x0f8a7ea5
 ;;        (bounce=true, 0.105 TON + extra_gas, destination=user_address,
 ;;        response_destination=my_address()) to router_jwallet_address.
 ;;      - Does NOT mark completed and does NOT pay the 0.35% fee yet!
 ;;   4. Authenticated Jetton Transfer Bounce (0x0f8a7ea5 from router_jwallet_address):
 ;;      - If status==1 (normal delivery bounced): transitions to status=2
-;;        (STATUS_TSTON_BOUNCED_OR_QUEUED). Zero fee is charged, deposit is NOT
+;;        (STATUS_TSTON_BOUNCED). Zero fee is charged, deposit is NOT
 ;;        marked completed, and tsTON can be re-sent via 0x414e4c55.
-;;      - If status==3 (recovery/probe after timeout_sec when 0x7362d09c never arrived):
-;;        if jetton_amount==1 (1 nano-tsTON probe bounced, proving 0 tsTON minted
-;;        in router_jwallet_address), moves query_id to refunded_deposits and
-;;        refunds escrowed fee + extra_gas + bounced value to user_address.
 ;;   5. Phase 2b (op::excesses 0xd53276db from user_jwallet_address):
 ;;      - Sent by user_jwallet_address ONLY AFTER crediting tsTON to user_address.
-;;      - Atomically moves query_id from pending_deposits (status=1 or 3) to
+;;      - Atomically moves query_id from pending_deposits (status=1) to
 ;;        completed_deposits, sends 0.35% fee_nano to fee_recipient, and forwards
 ;;        excess gas to user_address.
-;;   6. Non-Custodial Recovery (op::retry_tston_delivery 0x414e4c55):
-;;      - For status==2: re-sends 0x0f8a7ea5 for recorded jetton_amount strictly
+;;   6. Non-Custodial Retry (op::retry_tston_delivery 0x414e4c55):
+;;      - Only valid for status==2 (STATUS_TSTON_BOUNCED).
+;;      - Re-sends 0x0f8a7ea5 for the exact recorded jetton_amount strictly
 ;;        to the original user_address.
-;;      - For status==0 after timeout_sec (if 0x7362d09c never arrived): allows
-;;        user_address to pass claim_jetton_amount (<= principal_nano) to deliver
-;;        minted tsTON from router_jwallet_address, or claim_jetton_amount=1 to
-;;        cryptographically prove 0 tsTON balance and trigger refund on bounce.
+;;      - Rejects status==0 (throw 314). Never accepts arbitrary user-supplied
+;;        claim_jetton_amount, making cross-client token theft impossible.
 ;;   7. Admin has zero ability to withdraw client principal, escrowed fees, or tsTON.
 ;; ═══════════════════════════════════════════════════════════════════════════
 
@@ -56,7 +52,7 @@
 int op::router_stake()          asm "0x414e4c53 PUSHINT"; ;; Client -> Router deposit
 int op::stake_refunded()        asm "0x414e4c52 PUSHINT"; ;; Router -> Client bounce refund
 int op::reclaim_timeout()       asm "0x414e4c54 PUSHINT"; ;; Disabled unilateral timeout (always throws 311)
-int op::retry_tston_delivery()  asm "0x414e4c55 PUSHINT"; ;; Retry / recover tsTON delivery
+int op::retry_tston_delivery()  asm "0x414e4c55 PUSHINT"; ;; Retry bounced tsTON delivery
 int op::set_router_jwallet()    asm "0x414e4c60 PUSHINT"; ;; Admin -> Router set tsTON jwallet
 int op::set_paused()            asm "0x414e4c61 PUSHINT"; ;; Admin -> Router pause/unpause
 
@@ -70,7 +66,6 @@ int op::excesses()              asm "0xd53276db PUSHINT"; ;; Excess gas & delive
 int status::pending_pool()      asm "0 PUSHINT"; ;; Waiting for Pool / 0x7362d09c
 int status::delivering_tston()  asm "1 PUSHINT"; ;; 0x0f8a7ea5 in flight to user_address
 int status::tston_bounced()     asm "2 PUSHINT"; ;; 0x0f8a7ea5 bounced or low gas; retryable via 0x414e4c55
-int status::recovery_delivery() asm "3 PUSHINT"; ;; Post-timeout recovery/probe in flight to router_jwallet
 
 ;; ── Error Codes ────────────────────────────────────────────────────────────
 int error::router_paused()              asm "300 PUSHINT";
@@ -134,20 +129,6 @@ builder pack_pending_deposit(
     int   created_at     = s~load_uint(64);
     int   status         = s.slice_bits() >= 8 ? s~load_uint(8) : 0;
     return (user_address, principal_nano, fee_nano, extra_gas, jetton_amount, created_at, status);
-}
-
-;; ── Helper: Find Earliest Deposit in status::pending_pool() (FIFO) ─────────
-(int, slice, int) find_earliest_pending_pool(cell pending_deposits) inline {
-    (int k, slice s, int f) = udict_get_min?(pending_deposits, 64);
-    while (f) {
-        slice copy_s = s;
-        (_, _, _, _, _, _, int st) = unpack_pending_deposit(copy_s);
-        if (st == status::pending_pool()) {
-            return (k, s, -1);
-        }
-        (k, s, f) = udict_get_next?(pending_deposits, 64, k);
-    }
-    return (0, begin_cell().end_cell().begin_parse(), 0);
 }
 
 ;; ── Helper: Build Outgoing 0x0f8a7ea5 (op::jetton_transfer) Message ────────
@@ -464,70 +445,7 @@ cell update_user_stats(
             );
             return ();
         }
-
-        ;; B2: Recovery / no-mint probe after timeout_sec (status == 3) bounced:
-        if (status == status::recovery_delivery()) {
-            ;; If jetton_amount == 1 (the 1 nano-tsTON probe bounced with >= 0.105 TON gas),
-            ;; router_jwallet_address cryptographically proved it holds 0 tsTON after timeout_sec!
-            ;; Refund escrowed fee_nano + extra_gas + bounced msg_value to user_address.
-            if (jetton_amount == 1) {
-                pending_deposits~udict_delete?(64, query_id);
-
-                int escrow_release = fee_nano + extra_gas;
-                if (total_pending_escrow >= escrow_release) {
-                    total_pending_escrow -= escrow_release;
-                } else {
-                    total_pending_escrow = 0;
-                }
-
-                builder refunded_val = begin_cell()
-                    .store_slice(user_address)
-                    .store_coins(principal_nano)
-                    .store_coins(fee_nano)
-                    .store_uint(now(), 64);
-                refunded_deposits~udict_set_builder(64, query_id, refunded_val);
-
-                total_deposits_refunded += 1;
-                user_accounting = update_user_stats(
-                    user_accounting, user_address, 0, 0, 0, fee_nano, 0
-                );
-
-                int refund_amount = msg_value + fee_nano + extra_gas;
-                var refund_msg = begin_cell()
-                    .store_uint(0x10, 6)
-                    .store_slice(user_address)
-                    .store_coins(refund_amount)
-                    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-                    .store_uint(op::stake_refunded(), 32)
-                    .store_uint(query_id, 64)
-                    .store_coins(principal_nano)
-                    .store_coins(fee_nano)
-                    .end_cell();
-                send_raw_message(refund_msg, 1);
-            } else {
-                ;; User requested claim_jetton_amount > jwallet balance; revert status to 0
-                ;; so user can retry with exact balance or probe with claim_jetton_amount = 1.
-                builder reset_pending = pack_pending_deposit(
-                    user_address,
-                    principal_nano,
-                    fee_nano,
-                    extra_gas,
-                    0,
-                    created_at,
-                    status::pending_pool()
-                );
-                pending_deposits~udict_set_builder(64, query_id, reset_pending);
-            }
-
-            save_router_data(
-                admin_address, fee_recipient, fee_bps, paused, network_id, total_pending_escrow,
-                pool_address, router_jwallet_address, min_stake_nano, partner_code, timeout_sec,
-                total_principal_routed, total_fees_collected, total_tston_forwarded,
-                total_deposits_confirmed, total_deposits_refunded,
-                pending_deposits, completed_deposits, user_accounting, refunded_deposits
-            );
-            return ();
-        }
+        return ();
     }
 }
 
@@ -630,16 +548,10 @@ cell update_user_stats(
         int jetton_amount = in_msg_body~load_coins();
         throw_unless(error::zero_minted_jettons(), jetton_amount > 0);
 
+        ;; Strict 1-to-1 correlation: query_id MUST match pending_deposits[query_id] in status=0.
+        ;; Zero guessing. Zero FIFO fallback. If unknown or altered, reject immediately.
         (slice pending_slice, int found) = udict_get?(pending_deposits, 64, query_id);
-
-        ;; If query_id was altered by delayed round-end minting (e.g. query_id == 0),
-        ;; match earliest FIFO deposit in status::pending_pool() so tsTON is never stranded!
-        if (~ found) {
-            (int fifo_key, slice fifo_slice, int fifo_found) = find_earliest_pending_pool(pending_deposits);
-            throw_unless(error::unknown_pending_deposit(), fifo_found);
-            query_id      = fifo_key;
-            pending_slice = fifo_slice;
-        }
+        throw_unless(error::unknown_pending_deposit(), found);
 
         var (user_address, principal_nano, fee_nano, extra_gas, _, created_at, status) = unpack_pending_deposit(pending_slice);
         throw_unless(error::unknown_pending_deposit(), status == status::pending_pool());
@@ -707,14 +619,14 @@ cell update_user_stats(
                                         equal_slices(sender_address, router_jwallet_address);
 
         ;; 3A. If 0xd53276db comes from user_jwallet_address (neither pool nor router_jwallet)
-        ;;     for a deposit in status==1 (DELIVERING) or status==3 (RECOVERY_DELIVERY):
+        ;;     for a deposit in status==1 (DELIVERING):
         ;;     This confirms user_jwallet_address credited jetton_amount to user_address!
         ;;     Now we finalize completed_deposits[query_id] and pay the 0.35% fee!
         if (~ is_pool_or_router_jwallet) {
             (slice pending_slice, int found_pending) = udict_get?(pending_deposits, 64, query_id);
             if (found_pending) {
                 var (user_address, principal_nano, fee_nano, extra_gas, jetton_amount, created_at, status) = unpack_pending_deposit(pending_slice);
-                if ((status == status::delivering_tston()) | (status == status::recovery_delivery())) {
+                if (status == status::delivering_tston()) {
                     pending_deposits~udict_delete?(64, query_id);
 
                     int escrow_release = fee_nano + extra_gas;
@@ -818,7 +730,10 @@ cell update_user_stats(
         return ();
     }
 
-    ;; ── 4. NON-CUSTODIAL RETRY / RECOVERY OF tsTON DELIVERY (0x414e4c55) ───
+    ;; ── 4. NON-CUSTODIAL RETRY OF tsTON DELIVERY (0x414e4c55) ─────────────
+    ;; Strictly restricted to deposits whose initial 0x0f8a7ea5 bounced or queued (status == 2).
+    ;; NO user-supplied jetton amounts are accepted. Amount and recipient are loaded exclusively
+    ;; from authenticated storage recorded by 0x7362d09c.
     if (op == op::retry_tston_delivery()) {
         throw_unless(error::insufficient_msg_value(), msg_value >= const::jetton_transfer_gas());
 
@@ -827,85 +742,44 @@ cell update_user_stats(
 
         var (user_address, principal_nano, fee_nano, extra_gas, jetton_amount, created_at, status) = unpack_pending_deposit(pending_slice);
 
-        ;; Branch 4A: Retry bounced or gas-queued delivery (status == 2, jetton_amount already verified by 0x7362d09c)
-        if (status == status::tston_bounced()) {
-            throw_unless(error::zero_minted_jettons(), jetton_amount > 0);
+        ;; Only status == 2 (TSTON_BOUNCED) can be retried!
+        throw_unless(error::no_bounced_tston(), status == status::tston_bounced());
+        throw_unless(error::zero_minted_jettons(), jetton_amount > 0);
 
-            if (total_pending_escrow >= extra_gas) {
-                total_pending_escrow -= extra_gas;
-            } else {
-                total_pending_escrow = 0;
-            }
-
-            builder retry_val = pack_pending_deposit(
-                user_address,
-                principal_nano,
-                fee_nano,
-                0,
-                jetton_amount,
-                created_at,
-                status::delivering_tston()
-            );
-            pending_deposits~udict_set_builder(64, query_id, retry_val);
-
-            cell jetton_msg = build_tston_transfer_msg(
-                router_jwallet_address,
-                msg_value + extra_gas,
-                query_id,
-                jetton_amount,
-                user_address
-            );
-            send_raw_message(jetton_msg, 1);
-
-            save_router_data(
-                admin_address, fee_recipient, fee_bps, paused, network_id, total_pending_escrow,
-                pool_address, router_jwallet_address, min_stake_nano, partner_code, timeout_sec,
-                total_principal_routed, total_fees_collected, total_tston_forwarded,
-                total_deposits_confirmed, total_deposits_refunded,
-                pending_deposits, completed_deposits, user_accounting, refunded_deposits
-            );
-            return ();
+        if (total_pending_escrow >= extra_gas) {
+            total_pending_escrow -= extra_gas;
+        } else {
+            total_pending_escrow = 0;
         }
 
-        ;; Branch 4B: Post-timeout recovery when 0x7362d09c never arrived (status == 0)
-        if (status == status::pending_pool()) {
-            throw_unless(error::access_denied(), equal_slices(sender_address, user_address));
-            throw_unless(error::timeout_refund_disabled(), now() >= (created_at + timeout_sec));
+        builder retry_val = pack_pending_deposit(
+            user_address,
+            principal_nano,
+            fee_nano,
+            0,
+            jetton_amount,
+            created_at,
+            status::delivering_tston()
+        );
+        pending_deposits~udict_set_builder(64, query_id, retry_val);
 
-            int claim_jetton_amount = in_msg_body.slice_bits() >= 4 ? in_msg_body~load_coins() : 1;
-            throw_unless(error::zero_minted_jettons(), (claim_jetton_amount > 0) & (claim_jetton_amount <= principal_nano));
+        cell jetton_msg = build_tston_transfer_msg(
+            router_jwallet_address,
+            msg_value + extra_gas,
+            query_id,
+            jetton_amount,
+            user_address
+        );
+        send_raw_message(jetton_msg, 1);
 
-            builder rec_val = pack_pending_deposit(
-                user_address,
-                principal_nano,
-                fee_nano,
-                extra_gas,
-                claim_jetton_amount,
-                created_at,
-                status::recovery_delivery()
-            );
-            pending_deposits~udict_set_builder(64, query_id, rec_val);
-
-            cell jetton_msg = build_tston_transfer_msg(
-                router_jwallet_address,
-                msg_value,
-                query_id,
-                claim_jetton_amount,
-                user_address
-            );
-            send_raw_message(jetton_msg, 1);
-
-            save_router_data(
-                admin_address, fee_recipient, fee_bps, paused, network_id, total_pending_escrow,
-                pool_address, router_jwallet_address, min_stake_nano, partner_code, timeout_sec,
-                total_principal_routed, total_fees_collected, total_tston_forwarded,
-                total_deposits_confirmed, total_deposits_refunded,
-                pending_deposits, completed_deposits, user_accounting, refunded_deposits
-            );
-            return ();
-        }
-
-        throw(error::no_bounced_tston());
+        save_router_data(
+            admin_address, fee_recipient, fee_bps, paused, network_id, total_pending_escrow,
+            pool_address, router_jwallet_address, min_stake_nano, partner_code, timeout_sec,
+            total_principal_routed, total_fees_collected, total_tston_forwarded,
+            total_deposits_confirmed, total_deposits_refunded,
+            pending_deposits, completed_deposits, user_accounting, refunded_deposits
+        );
+        return ();
     }
 
     ;; ── 5. UNILATERAL WALL-CLOCK TIMEOUT REFUND STRICTLY DISABLED (0x414e4c54) ──

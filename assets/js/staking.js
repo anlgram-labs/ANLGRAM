@@ -65,12 +65,12 @@ const STAKING_CONFIG = {
 
   // ── ANLGRAM STAKING ROUTER (2-PHASE ESCROW) ────────────────
   // Compiled FunC contract: minter-contract/contracts/anlgram-staking-router.fc
-  // Code Cell SHA-256: 73a2638e5ee06d1f1762d48f282f4d79649d3ed64d3f39bdf060ab65a37632ba
+  // Code Cell SHA-256: 1d21bbaebf3601577c4dc1dd2e8296d691edcec13d6c38fb26d5b8b884f5af6a
   ROUTER_ADDRESS_MAINNET:       null, // Do NOT deploy on Mainnet without independent audit & owner approval
-  ROUTER_ADDRESS_TESTNET:       (typeof localStorage !== 'undefined' && localStorage.getItem('anlgram_staking_router_testnet')) || 'kQB0zhRVcCVnnApIlxowyk4yvgFuXXRSdDea2e-bKCei2z-M',
-  ROUTER_ADDRESS_TESTNET_RAW:   '0:74ce14557025679c0a48971a30ca4e32be016e5d745274379ad9ef9b2827a2db',
-  ROUTER_JWALLET_TESTNET:       'kQBccUarychCErZG-4S8a_jKuIzRgon-1h4z9b7uI4n8yjjH',
-  ROUTER_JWALLET_TESTNET_RAW:   '0:5c7146abc9c84212b646fb84bc6bf8cab88cd18289fed61e33f5beee2389fcca',
+  ROUTER_ADDRESS_TESTNET:       (typeof localStorage !== 'undefined' && localStorage.getItem('anlgram_staking_router_testnet')) || 'kQDd9FJmHX6-A2T1XsF4oSS04KFq_13gQyKco_ZYwmuDIREK',
+  ROUTER_ADDRESS_TESTNET_RAW:   '0:ddf452661d7ebe0364f55ec178a124b4e0a16aff5de043229ca3f658c26b8321',
+  ROUTER_JWALLET_TESTNET:       'kQCulIZF_pX3SEaTp4QobY9oMkVlt-imEIexJV7eak8CxY6G',
+  ROUTER_JWALLET_TESTNET_RAW:   '0:ae948645fe95f7484693a784286d8f68324565b7e8a61087b1255ede6a4f02c5',
   ROUTER_OP_STAKE:              0x414e4c53,
   ROUTER_OP_REFUND_BOUNCE:      0x414e4c52,
   ROUTER_OP_REFUND_TIMEOUT:     0x414e4c54, // Disabled on-chain (throws exit_code 311) to prevent double-refund
@@ -509,23 +509,20 @@ async function buildAnlgramRouterStakePayload(queryId, principalNano, expectedNe
 }
 
 /**
- * Builds ANLGRAM Staking Router Non-Custodial tsTON Recovery / Retry BoC
- * TL-B: retry_tston_delivery#414e4c55 query_id:uint64 claim_jetton_amount:Coins = InternalMsgBody;
+ * Builds ANLGRAM Staking Router Non-Custodial tsTON Delivery Retry BoC
+ * TL-B: retry_tston_delivery#414e4c55 query_id:uint64 = InternalMsgBody;
  *
- * Used if 0x0f8a7ea5 bounced from router_jwallet_address (status=2) or if 0x7362d09c
- * never arrived after timeout_sec (status=0). Always delivers tsTON strictly to the
- * original depositor (user_address) recorded on-chain.
+ * Used if 0x0f8a7ea5 bounced from router_jwallet_address or queued due to low gas (status=2).
+ * Strictly delivers tsTON for the authenticated jetton_amount recorded on-chain by 0x7362d09c
+ * to the original depositor (user_address). Never accepts arbitrary user-supplied token amounts.
  */
-async function buildAnlgramRouterRetryTsTonPayload(queryId, claimJettonAmountNano = 1n) {
+async function buildAnlgramRouterRetryTsTonPayload(queryId) {
   const core = await getTonCore();
   const qId = BigInt(queryId);
-  const cAmount = BigInt(claimJettonAmountNano || 1n);
-  if (qId <= 0n) throw new Error('query_id inválido para recuperación de tsTON.');
-  if (cAmount <= 0n) throw new Error('claim_jetton_amount debe ser mayor a 0.');
+  if (qId <= 0n) throw new Error('query_id inválido para reintento de entrega tsTON.');
   return core.beginCell()
     .storeUint(STAKING_CONFIG.ROUTER_OP_RETRY_TSTON, 32)
     .storeUint(qId, 64)
-    .storeCoins(cAmount)
     .endCell()
     .toBoc()
     .toString('base64');
