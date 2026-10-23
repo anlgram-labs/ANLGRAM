@@ -13,7 +13,7 @@
 
   async function fetchTonBalance(address, networkOverride) {
     try {
-      const net = networkOverride || localStorage.getItem('anlgram_wallet_network') || localStorage.getItem('anlgram_staking_network') || 'testnet';
+      const net = networkOverride || localStorage.getItem('anlgram_wallet_network') || localStorage.getItem('anlgram_staking_network') || 'mainnet';
       const base = net === 'testnet' ? 'https://testnet.tonapi.io/v2' : 'https://tonapi.io/v2';
       const response = await fetch(`${base}/accounts/${encodeURIComponent(address)}`);
       if (!response.ok) throw new Error('Network response error');
@@ -30,14 +30,38 @@
 
   function getWalletButtons() {
     const list = new Set();
-    document.querySelectorAll('#topbarWalletBtn, .connect-wallet-btn, button[title*="Wallet"], button[title*="wallet"]').forEach(btn => list.add(btn));
     
+    // 1. Permanent selectors (by ID, dedicated class, or data attribute)
+    document.querySelectorAll('#topbarWalletBtn, #heroWalletBtn, .connect-wallet-btn, [data-wallet-btn]').forEach(btn => {
+      btn.setAttribute('data-wallet-btn', 'true');
+      btn.classList.add('connect-wallet-btn');
+      list.add(btn);
+    });
+
+    // 2. Elements with explicit click handlers for wallet modal
+    document.querySelectorAll('[onclick*="openWalletModal"], [onclick*="connectWallet"]').forEach(btn => {
+      btn.setAttribute('data-wallet-btn', 'true');
+      btn.classList.add('connect-wallet-btn');
+      list.add(btn);
+    });
+
+    // 3. Elements with wallet/conectado in title or aria-label
+    document.querySelectorAll('button[title*="Wallet" i], button[title*="billetera" i], button[title*="conectado" i], button[aria-label*="wallet" i], button[aria-label*="billetera" i]').forEach(btn => {
+      btn.setAttribute('data-wallet-btn', 'true');
+      btn.classList.add('connect-wallet-btn');
+      list.add(btn);
+    });
+    
+    // 4. Initial button text discovery (marked so they are never lost on text updates)
     document.querySelectorAll('button, a.btn, a.btn-premium, a.btn-glass').forEach(btn => {
       const text = (btn.textContent || '').trim().toLowerCase();
       if (text.includes('connect wallet') || text.includes('connect web3 wallet') || text.includes('connect ton wallet')) {
+        btn.setAttribute('data-wallet-btn', 'true');
+        btn.classList.add('connect-wallet-btn');
         list.add(btn);
       }
     });
+
     return Array.from(list);
   }
 
@@ -205,9 +229,25 @@
   };
 
   window.getConnectedWalletChainId = function() {
+    // 1. Live chain directly from connected TonConnect wallet instance
     const rawChain = window.tonConnectUI?.wallet?.account?.chain;
     if (rawChain === '-3' || rawChain === -3) return '-3';
     if (rawChain === '-239' || rawChain === -239) return '-239';
+
+    // 2. Fallback to stored network preference if TonConnect session is still restoring or watch-only mode
+    const storedNet = localStorage.getItem('anlgram_wallet_network') || localStorage.getItem('anlgram_staking_network');
+    if (storedNet === 'mainnet') return '-239';
+    if (storedNet === 'testnet') return '-3';
+
+    // 3. Fallback based on address prefix if available
+    const addr = currentAddress || localStorage.getItem('anlgram_wallet_addr');
+    if (addr) {
+      if (addr.startsWith('kQ') || addr.startsWith('0Q')) return '-3';
+      if (addr.startsWith('EQ') || addr.startsWith('UQ')) return '-239';
+      // Workchain 0 raw format (0:...), default to Mainnet
+      return '-239';
+    }
+
     return null;
   };
 
@@ -338,17 +378,39 @@
           return (chain === '-3' || chain === -3) ? 'testnet' : 'mainnet';
         };
 
+        let hasRestoredAttempted = false;
+
+        // Listen for restored session from IndexedDB / Storage asynchronously
+        if (tonConnectUI.connectionRestored) {
+          tonConnectUI.connectionRestored.then(restored => {
+            hasRestoredAttempted = true;
+            if (restored && tonConnectUI.wallet && tonConnectUI.wallet.account) {
+              const addr = tonConnectUI.wallet.account.address || tonConnectUI.wallet.account.friendlyAddress;
+              const net = getChainNetwork(tonConnectUI.wallet);
+              window.setConnectedWallet(addr, tonConnectUI.wallet.device?.appName || 'TON Connect', net, true);
+            }
+            updateAllButtons();
+          }).catch(e => {
+            hasRestoredAttempted = true;
+            console.warn('[ANLGRAM] connectionRestored note:', e);
+            updateAllButtons();
+          });
+        }
+
         tonConnectUI.onStatusChange(wallet => {
           if (wallet && wallet.account) {
             const addr = wallet.account.address || wallet.account.friendlyAddress;
             const net = getChainNetwork(wallet);
             window.setConnectedWallet(addr, wallet.device?.appName || 'TON Connect', net, true);
-          } else if (!wallet && currentAddress) {
-            window.disconnectWallet();
+          } else if (!wallet && currentAddress && hasRestoredAttempted) {
+            const isTonConnect = localStorage.getItem('anlgram_wallet_is_tonconnect') === 'true';
+            if (isTonConnect) {
+              window.disconnectWallet();
+            }
           }
         });
 
-        // Restore session if wallet was previously connected
+        // Restore session if wallet was synchronously available
         if (tonConnectUI.wallet && tonConnectUI.wallet.account) {
           const addr = tonConnectUI.wallet.account.address || tonConnectUI.wallet.account.friendlyAddress;
           const net = getChainNetwork(tonConnectUI.wallet);
@@ -366,7 +428,7 @@
 
   // Global event listener for any button click
   document.addEventListener('click', function(e) {
-    const target = e.target.closest('#topbarWalletBtn, .connect-wallet-btn');
+    const target = e.target.closest('#topbarWalletBtn, #heroWalletBtn, .connect-wallet-btn, [data-wallet-btn]');
     if (target) {
       e.preventDefault();
       window.openWalletModal();
@@ -375,11 +437,11 @@
 
   const style = document.createElement('style');
   style.textContent = `
-    #topbarWalletBtn, .connect-wallet-btn {
+    #topbarWalletBtn, #heroWalletBtn, .connect-wallet-btn, [data-wallet-btn] {
       transition: all 0.3s ease;
       cursor: pointer !important;
     }
-    #topbarWalletBtn:hover, .connect-wallet-btn:hover {
+    #topbarWalletBtn:hover, #heroWalletBtn:hover, .connect-wallet-btn:hover, [data-wallet-btn]:hover {
       box-shadow: 0 0 20px rgba(0,240,255,0.4) !important;
       transform: translateY(-1px);
     }

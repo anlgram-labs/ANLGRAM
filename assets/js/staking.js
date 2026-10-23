@@ -1132,7 +1132,7 @@ const WalletService = (() => {
     return Boolean(getAddress());
   }
   function getNetwork() {
-    return localStorage.getItem('anlgram_wallet_network') || 'testnet';
+    return localStorage.getItem('anlgram_wallet_network') || localStorage.getItem('anlgram_staking_network') || (STAKING_CONFIG.MAINNET_STAKING_ENABLED ? 'mainnet' : 'testnet');
   }
   function getChainId() {
     if (typeof window.getConnectedWalletChainId === 'function') {
@@ -1142,7 +1142,19 @@ const WalletService = (() => {
     const rawChain = window.tonConnectUI?.wallet?.account?.chain;
     if (rawChain === '-3' || rawChain === -3) return '-3';
     if (rawChain === '-239' || rawChain === -239) return '-239';
-    return null; // Unverified / Unknown
+
+    const savedNet = localStorage.getItem('anlgram_wallet_network') || localStorage.getItem('anlgram_staking_network');
+    if (savedNet === 'mainnet') return '-239';
+    if (savedNet === 'testnet') return '-3';
+
+    const addr = getAddress();
+    if (addr) {
+      if (addr.startsWith('kQ') || addr.startsWith('0Q')) return '-3';
+      if (addr.startsWith('EQ') || addr.startsWith('UQ')) return '-239';
+      return '-239';
+    }
+
+    return null;
   }
 
   async function getAccountInfo(address, network = 'testnet') {
@@ -3286,6 +3298,32 @@ const StakingApp = {
       netDot.style.boxShadow = net === 'testnet' ? '0 0 6px #f59e0b' : '0 0 6px #22c55e';
     }
 
+    // Immediately display connected wallet bar if wallet session exists, rather than waiting for heavy tables/metrics
+    if (WalletService.isConnected()) {
+      const savedAddr = WalletService.getAddress();
+      const isTC = WalletService.isTonConnect();
+      const resolvedChainId = WalletService.getChainId() || (net === 'mainnet' ? '-239' : '-3');
+      
+      StakingState.set('wallet', {
+        address: savedAddr,
+        rawAddress: friendlyToRawAddress(savedAddr),
+        name: WalletService.getName(),
+        balanceTon: null,
+        balanceNano: 0n,
+        balanceDisplay: 'Consultando saldo...',
+        balanceStatus: 'loading',
+        isWrongNetwork: false,
+        network: net,
+        chainId: resolvedChainId,
+        connected: true,
+        isTonConnect: isTC,
+        isReadOnly: !isTC,
+      });
+      WalletUIController.updateConnected();
+      // Load full balances, jettons and positions asynchronously
+      WalletService.loadWalletData().catch(e => console.warn('[WalletService] Async load error:', e));
+    }
+
     await MetricCardsController.render();
     await ValidatorTableController.init();
     CalculatorController.populateValidatorSelect();
@@ -3295,11 +3333,6 @@ const StakingApp = {
     NewsController.render();
     TransactionController.init();
     WhaleController.init();
-
-    if (WalletService.isConnected()) {
-      await WalletService.loadWalletData();
-      WalletUIController.updateConnected();
-    }
   },
 };
 

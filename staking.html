@@ -958,7 +958,7 @@
               </div>
             </div>
             <div class="staking-header-actions">
-              <button class="btn btn-primary" onclick="window.openWalletModal?.()">🔗 Connect Wallet</button>
+              <button id="heroWalletBtn" class="btn btn-primary connect-wallet-btn" data-wallet-btn="true" onclick="window.openWalletModal?.()" aria-label="Connect TON wallet">🔗 Connect Wallet</button>
               <button class="btn btn-ghost" onclick="StakeModalController.open(StakingState.get('validators')[0]?.id)">⚡ Quick Stake</button>
               <button class="btn btn-ghost" onclick="document.getElementById('validators')?.scrollIntoView({behavior:'smooth'})">🏆 Validators</button>
               <button class="btn btn-ghost" onclick="document.getElementById('calculator')?.scrollIntoView({behavior:'smooth'})">🧮 Calculator</button>
