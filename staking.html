@@ -1848,7 +1848,7 @@
             <span style="color:var(--text-muted);">Gas transferencia tsTON (Jetton):</span>
             <span id="stake-preview-jetton-gas" class="td-mono">0.1050 TON</span>
           </div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;display:none;">
             <span style="color:var(--text-muted);">Reserva almacenamiento bóveda:</span>
             <span id="stake-preview-storage-gas" class="td-mono">0.0500 TON</span>
           </div>
@@ -1861,8 +1861,8 @@
             <span id="stake-preview-total" class="td-mono" style="font-weight:700;color:#22c55e;">0.0000 TON</span>
           </div>
           <div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--border-subtle);color:var(--text-muted);font-size:10px;">
-            <div>Retorno estimado de excesos de red al cliente: <span id="stake-preview-excess-return" class="td-mono" style="color:#22c55e;">~0.98 - 1.02 TON</span> <em>(tarifas variables)</em></div>
-            <div style="margin-top:2px;">Wallet receptora comisión (0.35%): <span id="stake-preview-fee-wallet" class="td-mono" style="color:var(--text-secondary);word-break:break-all;">UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd</span></div>
+            <span id="stake-preview-excess-return" style="display:none;"></span>
+            <div>Wallet receptora comisión (0.35%): <span id="stake-preview-fee-wallet" class="td-mono" style="color:var(--text-secondary);word-break:break-all;">UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd</span></div>
           </div>
         </div>
 
@@ -1937,7 +1937,7 @@
           <span class="modal-row-label">Gas transferencia tsTON</span>
           <span class="modal-row-value td-mono" id="stake-confirm-jetton-gas">0.1050 TON</span>
         </div>
-        <div class="modal-row">
+        <div class="modal-row" style="display:none;">
           <span class="modal-row-label">Reserva almacenamiento bóveda</span>
           <span class="modal-row-value td-mono" id="stake-confirm-storage-gas">0.0500 TON</span>
         </div>
@@ -1949,7 +1949,7 @@
           <span class="modal-row-label" style="font-weight:700;color:var(--text-primary);">Total Exacto a Firmar</span>
           <span class="modal-row-value td-mono" id="stake-confirm-total" style="color:#22c55e;font-weight:800;font-size:14px;">—</span>
         </div>
-        <div class="modal-row" style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+        <div class="modal-row" style="display:none;">
           <span class="modal-row-label">Retorno estimado de excesos</span>
           <span class="modal-row-value td-mono" id="stake-confirm-excess" style="color:#22c55e;">~0.98 - 1.02 TON (variable de red)</span>
         </div>
