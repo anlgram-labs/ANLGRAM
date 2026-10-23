@@ -1120,7 +1120,11 @@ async function _pollRealDepositTrace(userAddress, targetContract, expectedFeeNan
 
 const WalletService = (() => {
   function getAddress() {
-    return localStorage.getItem('anlgram_wallet_addr') || null;
+    return localStorage.getItem('anlgram_wallet_addr') ||
+      (window.tonConnectUI?.account?.address) ||
+      (typeof StakingState !== 'undefined' ? StakingState.get('wallet')?.address : null) ||
+      sessionStorage.getItem('anlgram_wallet_addr') ||
+      null;
   }
   function getName() {
     return localStorage.getItem('anlgram_wallet_name') || 'TON Wallet';
@@ -1700,6 +1704,9 @@ const AnalyticsService = (() => {
         statusBadge: ev.in_progress ? 'badge-yellow' : (hasBounce ? 'badge-red' : 'badge-green'),
         timestamp,
         timeFormatted,
+        comment: feeAct?.TonTransfer?.comment || 'Tonstakers Liquid Staking Deposit',
+        sender: shortenAddress(userRaw),
+        recipient: 'Tonstakers Pool (0:a45b...)',
       });
 
       if (feeAmt > 0) {
@@ -1716,6 +1723,9 @@ const AnalyticsService = (() => {
           statusBadge: 'badge-green',
           timestamp,
           timeFormatted,
+          comment: 'ANLGRAM Stake Fee 0.35%',
+          sender: shortenAddress(userRaw),
+          recipient: 'UQDW_Psjm...dSYd',
         });
       }
       return rows;
@@ -1740,6 +1750,9 @@ const AnalyticsService = (() => {
           statusBadge: ev.in_progress ? 'badge-yellow' : (hasBounce ? 'badge-red' : 'badge-green'),
           timestamp,
           timeFormatted,
+          comment: 'Liquid Staking Withdrawal (0% Fee)',
+          sender: poolName,
+          recipient: shortenAddress(userRaw),
         });
       }
       for (const bAct of jettonBurnActs) {
@@ -1758,6 +1771,9 @@ const AnalyticsService = (() => {
           statusBadge: ev.in_progress ? 'badge-yellow' : (hasBounce ? 'badge-red' : 'badge-green'),
           timestamp,
           timeFormatted,
+          comment: 'tsTON Burn (0x595f07bc)',
+          sender: shortenAddress(userRaw),
+          recipient: 'Tonstakers Pool',
         });
       }
       return rows;
@@ -1783,6 +1799,9 @@ const AnalyticsService = (() => {
           statusBadge: 'badge-green',
           timestamp,
           timeFormatted,
+          comment: t.comment || 'ANLGRAM Stake Fee 0.35%',
+          sender: shortenAddress(t.sender?.address || ''),
+          recipient: shortenAddress(t.recipient?.address || ''),
         });
       }
       return rows;
@@ -1814,6 +1833,9 @@ const AnalyticsService = (() => {
           statusBadge: ev.in_progress ? 'badge-yellow' : (hasBounce ? 'badge-red' : 'badge-green'),
           timestamp,
           timeFormatted,
+          comment: t.comment || '',
+          sender: isOut ? shortenAddress(userRaw) : otherParty,
+          recipient: isOut ? otherParty : shortenAddress(userRaw),
         });
       }
       if (rows.length > 0) return rows;
@@ -1835,6 +1857,9 @@ const AnalyticsService = (() => {
       statusBadge: ev.in_progress ? 'badge-yellow' : (hasBounce ? 'badge-red' : 'badge-green'),
       timestamp,
       timeFormatted,
+      comment: '',
+      sender: shortenAddress(userRaw),
+      recipient: shortenAddress(sc.contract?.address || ''),
     });
 
     return rows;
@@ -3672,6 +3697,16 @@ const WhaleController = {
 };
 
 const TransactionController = {
+  _allTxs: [],
+  _filter: 'all',
+
+  setFilter(filter, btn) {
+    this._filter = filter;
+    btn?.closest('.time-filter')?.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+    btn?.classList.add('active');
+    this.render();
+  },
+
   async init() {
     const tbody = document.getElementById('tx-tbody');
     const addr = WalletService.getAddress();
@@ -3701,45 +3736,112 @@ const TransactionController = {
         </tr>`;
     }
 
-    const txs = await AnalyticsService.getTransactions(addr);
-    if (!txs.length) {
-      if (tbody) {
-        const netName = StakingState.get('activeNetwork') === 'testnet' ? 'TON Testnet (-3)' : 'TON Mainnet (-239)';
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="7" style="text-align:center;padding:36px;color:var(--text-muted);">
-              <div style="font-size:24px;margin-bottom:8px;">📜</div>
-              <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">No Transactions Found</div>
-              <div>No recent on-chain events found for this account on ${netName}. Source: TonAPI v2.</div>
-            </td>
-          </tr>`;
-      }
+    this._allTxs = await AnalyticsService.getTransactions(addr);
+    this.render();
+  },
+
+  render() {
+    const tbody = document.getElementById('tx-tbody');
+    if (!tbody) return;
+
+    if (!this._allTxs || !this._allTxs.length) {
+      const netName = StakingState.get('activeNetwork') === 'testnet' ? 'TON Testnet (-3)' : 'TON Mainnet (-239)';
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align:center;padding:36px;color:var(--text-muted);">
+            <div style="font-size:24px;margin-bottom:8px;">📜</div>
+            <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">No Transactions Found</div>
+            <div>No recent on-chain events found for this account on ${netName}. Source: TonAPI v2.</div>
+          </td>
+        </tr>`;
       return;
     }
 
-    if (tbody) {
-      const expBase = StakingState.get('activeNetwork') === 'testnet' ? STAKING_CONFIG.TONVIEWER_TESTNET : STAKING_CONFIG.TONVIEWER_MAINNET;
-      tbody.innerHTML = txs.map(tx => {
-        const amountClass = String(tx.amount || '').startsWith('-') ? 'text-amber' : 'text-green';
-        return `
-          <tr>
-            <td>
-              <a href="${expBase}/transaction/${tx.hash}" target="_blank" rel="noopener" class="td-mono" style="color:var(--ton-blue);font-weight:500;" title="View on Tonviewer">
-                ${tx.hash_short}↗
-              </a>
-            </td>
-            <td><span class="badge ${tx.badgeType || 'badge-blue'}">${tx.type}</span></td>
-            <td>
-              <div style="font-weight:500;">${tx.validator}</div>
-            </td>
-            <td class="td-mono ${amountClass}" style="font-weight:600;">${tx.amount}</td>
-            <td class="td-mono" style="color:var(--text-muted);font-size:11px;">${tx.fee}</td>
-            <td><span class="badge ${tx.statusBadge || 'badge-green'}">${tx.status}</span></td>
-            <td class="td-mono" style="font-size:11px;color:var(--text-muted);">${tx.timeFormatted || tx.timestamp.toLocaleString('en-US')}</td>
-          </tr>
-        `;
-      }).join('');
+    let filtered = this._allTxs;
+    if (this._filter === 'stakes') {
+      filtered = this._allTxs.filter(tx => (tx.type || '').toLowerCase().includes('stake deposit'));
+    } else if (this._filter === 'unstakes') {
+      filtered = this._allTxs.filter(tx => (tx.type || '').toLowerCase().includes('unstake'));
+    } else if (this._filter === 'fees') {
+      filtered = this._allTxs.filter(tx => (tx.type || '').toLowerCase().includes('fee'));
+    } else if (this._filter === 'transfers') {
+      filtered = this._allTxs.filter(tx => (tx.type || '').toLowerCase().includes('ton transfer'));
     }
+
+    if (!filtered.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align:center;padding:28px;color:var(--text-muted);">
+            <div>No transactions match the selected filter "${this._filter}".</div>
+          </td>
+        </tr>`;
+      return;
+    }
+
+    const expBase = StakingState.get('activeNetwork') === 'testnet' ? STAKING_CONFIG.TONVIEWER_TESTNET : STAKING_CONFIG.TONVIEWER_MAINNET;
+    tbody.innerHTML = filtered.map((tx, idx) => {
+      const amountClass = String(tx.amount || '').startsWith('-') ? 'text-amber' : 'text-green';
+      return `
+        <tr onclick="TransactionController.openDetail(${idx})" style="cursor:pointer;" class="tx-row" title="Click to inspect on-chain details">
+          <td>
+            <a href="${expBase}/transaction/${tx.hash}" target="_blank" rel="noopener" class="td-mono" style="color:var(--ton-blue);font-weight:500;" onclick="event.stopPropagation();" title="View on Tonviewer">
+              ${tx.hash_short}↗
+            </a>
+          </td>
+          <td><span class="badge ${tx.badgeType || 'badge-blue'}">${tx.type}</span></td>
+          <td>
+            <div style="font-weight:500;">${tx.validator}</div>
+            ${tx.comment ? `<div style="font-size:10px;color:var(--text-muted);font-style:italic;">"${tx.comment}"</div>` : ''}
+          </td>
+          <td class="td-mono ${amountClass}" style="font-weight:600;">${tx.amount}</td>
+          <td class="td-mono" style="color:var(--text-muted);font-size:11px;">${tx.fee}</td>
+          <td><span class="badge ${tx.statusBadge || 'badge-green'}">${tx.status}</span></td>
+          <td class="td-mono" style="font-size:11px;color:var(--text-muted);">${tx.timeFormatted || tx.timestamp.toLocaleString('en-US')}</td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  openDetail(idx) {
+    const tx = this._allTxs[idx];
+    if (!tx) return;
+    const modal = document.getElementById('tx-detail-modal');
+    if (!modal) return;
+
+    _setText('txd-hash', tx.hash || '—');
+    _setText('txd-type', tx.type || '—');
+    _setText('txd-validator', tx.validator || '—');
+    _setText('txd-amount', tx.amount || '—');
+    _setText('txd-fee', tx.fee || '—');
+    _setText('txd-time', tx.timeFormatted || '—');
+    _setText('txd-sender', tx.sender || '—');
+    _setText('txd-recipient', tx.recipient || '—');
+
+    const statusEl = document.getElementById('txd-status');
+    if (statusEl) {
+      statusEl.innerHTML = `<span class="badge ${tx.statusBadge || 'badge-green'}">${tx.status}</span>`;
+    }
+
+    const memoRow = document.getElementById('txd-memo-row');
+    const memoEl = document.getElementById('txd-memo');
+    if (tx.comment && memoRow && memoEl) {
+      memoRow.style.display = 'flex';
+      memoEl.textContent = tx.comment;
+    } else if (memoRow) {
+      memoRow.style.display = 'none';
+    }
+
+    const btn = document.getElementById('txd-explorer-btn');
+    if (btn) {
+      const expBase = StakingState.get('activeNetwork') === 'testnet' ? STAKING_CONFIG.TONVIEWER_TESTNET : STAKING_CONFIG.TONVIEWER_MAINNET;
+      btn.href = `${expBase}/transaction/${tx.hash}`;
+    }
+
+    modal.classList.add('open');
+  },
+
+  closeDetail() {
+    document.getElementById('tx-detail-modal')?.classList.remove('open');
   },
 };
 

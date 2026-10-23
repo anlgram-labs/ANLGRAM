@@ -1496,6 +1496,52 @@
             </div>
           </div>
         </div>
+
+        <!-- ─────────────────────────────────────────────────────
+             PORTFOLIO TRANSACTION HISTORY LEDGER
+        ──────────────────────────────────────────────────────── -->
+        <div class="card" style="margin-top:20px;padding:0;overflow:hidden;" id="transactions">
+          <div style="padding:16px 20px;border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="font-weight:700;font-size:16px;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
+                <span>📋</span> Staking & Wallet Transaction History
+              </div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+                Complete verified on-chain history of your stakes, unstakes, 0.35% platform fees, and transfers
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <!-- Filter Tabs -->
+              <div class="time-filter" role="group" aria-label="Transaction type filter">
+                <button class="tf-btn active" onclick="TransactionController.setFilter('all', this)">All</button>
+                <button class="tf-btn" onclick="TransactionController.setFilter('stakes', this)">Stakes</button>
+                <button class="tf-btn" onclick="TransactionController.setFilter('unstakes', this)">Unstakes</button>
+                <button class="tf-btn" onclick="TransactionController.setFilter('fees', this)">Fees (0.35%)</button>
+                <button class="tf-btn" onclick="TransactionController.setFilter('transfers', this)">Transfers</button>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="TransactionController.init()" title="Refresh on-chain transactions">↻ Refresh</button>
+            </div>
+          </div>
+
+          <div class="data-table-wrap" style="max-height:480px;overflow-y:auto;" role="region" aria-label="Transaction history">
+            <table class="data-table" id="tx-table" aria-label="Staking transaction history">
+              <thead>
+                <tr>
+                  <th>TX Hash</th>
+                  <th>Type</th>
+                  <th>Validator / Pool</th>
+                  <th>Amount</th>
+                  <th>Fee</th>
+                  <th>Status</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="tx-tbody">
+                <!-- Populated by TransactionController -->
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section><!-- /portfolio -->
 
       <!-- ─────────────────────────────────────────────────────
@@ -1623,48 +1669,6 @@
           </div>
         </div>
       </section><!-- /risk-engine -->
-
-      <!-- ─────────────────────────────────────────────────────
-           SECTION 8 · LATEST TRANSACTIONS
-      ──────────────────────────────────────────────────────── -->
-      <section class="staking-section" id="transactions" aria-labelledby="transactions-heading">
-        <div class="section-header">
-          <div>
-            <div class="section-title" id="transactions-heading">
-              <div class="section-icon" aria-hidden="true">📋</div>
-              Transaction History
-            </div>
-            <div class="section-sub">Latest staking operations — refreshes automatically every 30 seconds</div>
-          </div>
-          <div class="section-actions">
-            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);">
-              <span class="dot-live" style="width:5px;height:5px;"></span> Live
-            </div>
-            <button class="btn btn-ghost btn-sm" onclick="TransactionController.init()">↻ Refresh</button>
-          </div>
-        </div>
-
-        <div class="card" style="padding:0;overflow:hidden;">
-          <div class="data-table-wrap" style="max-height:400px;overflow-y:auto;" role="region" aria-label="Transaction history">
-            <table class="data-table" id="tx-table" aria-label="Staking transaction history">
-              <thead>
-                <tr>
-                  <th>TX Hash</th>
-                  <th>Type</th>
-                  <th>Validator / Pool</th>
-                  <th>Amount</th>
-                  <th>Fee</th>
-                  <th>Status</th>
-                  <th>Time</th>
-                </tr>
-              </thead>
-              <tbody id="tx-tbody">
-                <!-- Populated by TransactionController -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section><!-- /transactions -->
 
       <!-- ─────────────────────────────────────────────────────
            SECTION 9 · WHALE INTELLIGENCE
@@ -2093,6 +2097,70 @@
     </div>
   </div>
 </div><!-- /claim-modal -->
+
+<!-- ════════════════════════════════════════════════════════════
+     TRANSACTION DETAIL MODAL
+════════════════════════════════════════════════════════════════ -->
+<div id="tx-detail-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="tx-detail-title">
+  <div class="modal-glass" onclick="event.stopPropagation()" style="max-width:540px;">
+    <button class="modal-close-top" onclick="TransactionController.closeDetail()" aria-label="Close">✕</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span style="font-size:24px;">🧾</span>
+      <h2 class="modal-title" id="tx-detail-title" style="margin:0;">Transaction Details</h2>
+    </div>
+    <p class="modal-sub" id="tx-detail-sub">On-chain transaction receipt & verification</p>
+
+    <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div class="modal-row">
+        <span class="modal-row-label">Transaction Hash</span>
+        <span class="modal-row-value td-mono" id="txd-hash" style="color:var(--ton-blue);word-break:break-all;font-size:11px;">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">Operation Type</span>
+        <span class="modal-row-value" id="txd-type">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">Validator / Protocol</span>
+        <span class="modal-row-value" id="txd-validator">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">Amount</span>
+        <span class="modal-row-value td-mono" id="txd-amount" style="font-size:14px;font-weight:700;">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">Fee (Gas + 0.35% Platform)</span>
+        <span class="modal-row-value td-mono" id="txd-fee">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">Status</span>
+        <span class="modal-row-value" id="txd-status">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">Timestamp</span>
+        <span class="modal-row-value td-mono" id="txd-time">—</span>
+      </div>
+      <div class="modal-row" id="txd-memo-row" style="display:none;">
+        <span class="modal-row-label">Memo / Comment</span>
+        <span class="modal-row-value td-mono" id="txd-memo" style="color:var(--cyan);">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">Sender</span>
+        <span class="modal-row-value td-mono" id="txd-sender" style="font-size:11px;">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">Recipient</span>
+        <span class="modal-row-value td-mono" id="txd-recipient" style="font-size:11px;">—</span>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" style="flex:1;" onclick="TransactionController.closeDetail()">Close</button>
+      <a class="btn btn-primary" style="flex:2;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;" id="txd-explorer-btn" href="#" target="_blank" rel="noopener">
+        View on Tonviewer ↗
+      </a>
+    </div>
+  </div>
+</div><!-- /tx-detail-modal -->
 
 <!-- ════════════════════════════════════════════════════════════
      SETTINGS MODAL
