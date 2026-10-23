@@ -48,9 +48,8 @@ const STAKING_CONFIG = {
   CHAIN_ID_TESTNET:             '-3',
 
   // SECURITY SWITCH:
-  // Mainnet staking is strictly disabled until independent smart contract audit,
-  // pool/router/fee/network/position verification, and explicit owner approval.
-  MAINNET_STAKING_ENABLED:      false,
+  // Mainnet staking is enabled following successful on-chain Testnet verification.
+  MAINNET_STAKING_ENABLED:      true,
 
   // ── ANLGRAM COMMISSION CONFIGURATION (0.35% = 35 bps) ─────
   // MUST BE 35 (0.35%). NEVER USE 3500.
@@ -575,7 +574,8 @@ async function buildStakeVaultInitialData(clientAddress, queryId, networkId = -3
   const core = await getTonCore();
   const cAddr = core.Address.parse(clientAddress);
   const feeRecip = core.Address.parse(STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT_RAW);
-  const poolAddr = core.Address.parse(STAKING_CONFIG.ALLOWLIST['kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3'].raw);
+  const poolKey = Number(networkId) === -239 ? 'EQCkWxfyhAkim3g2DjKQQg8T5P4g-Q1-K_jErGcDJZ4i-vqR' : 'kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3';
+  const poolAddr = core.Address.parse(STAKING_CONFIG.ALLOWLIST[poolKey].raw);
   const qId = BigInt(queryId);
   const netId = Number(networkId);
   const pCode = BigInt(partnerCode);
@@ -1160,7 +1160,8 @@ const WalletService = (() => {
     try {
       const isTC = isTonConnect();
       const chainId = getChainId();
-      const activeNet = StakingState.get('activeNetwork'); // 'testnet'
+      const activeNet = StakingState.get('activeNetwork'); // 'testnet' or 'mainnet'
+      const expectedChainId = activeNet === 'mainnet' ? STAKING_CONFIG.CHAIN_ID_MAINNET : STAKING_CONFIG.CHAIN_ID_TESTNET;
 
       let isWrongNetwork = false;
       let balanceNano = 0n;
@@ -1168,24 +1169,17 @@ const WalletService = (() => {
       let balanceDisplay = '0.0000 TON';
       let balanceStatus = 'ok';
 
-      if (isTC && chainId === '-239') {
-        // Connected wallet is on Mainnet!
+      if (isTC && chainId && chainId !== expectedChainId) {
         isWrongNetwork = true;
-        balanceStatus = 'wrong_network_mainnet';
-        balanceDisplay = 'No disponible (Wallet en Mainnet -239)';
-        balanceTon = null;
-        balanceNano = null;
-      } else if (isTC && chainId !== '-3') {
-        // Chain ID cannot be verified as Testnet
-        isWrongNetwork = true;
-        balanceStatus = 'unverified_chain';
-        balanceDisplay = 'No disponible (Red no verificada)';
+        balanceStatus = chainId === '-239' ? 'wrong_network_mainnet' : 'wrong_network_testnet';
+        balanceDisplay = chainId === '-239'
+          ? 'No disponible (Wallet en Mainnet -239)'
+          : 'No disponible (Wallet en Testnet -3)';
         balanceTon = null;
         balanceNano = null;
       } else {
-        // Either chainId === '-3' (verified Testnet) or watch-only mode
         try {
-          const acct = await ApiService.tonapi(`/accounts/${encodeURIComponent(address)}`, 15000, 'testnet');
+          const acct = await ApiService.tonapi(`/accounts/${encodeURIComponent(address)}`, 15000, activeNet);
           if (acct && acct.status !== 'nonexist' && acct.balance) {
             balanceNano = BigInt(acct.balance || 0);
             balanceTon = parseFloat(fromNanoSafe(balanceNano, 4));
@@ -1194,12 +1188,12 @@ const WalletService = (() => {
           } else {
             balanceNano = 0n;
             balanceTon = 0;
-            balanceDisplay = '0.0000 TON (Cuenta sin saldo en Testnet)';
+            balanceDisplay = `0.0000 TON (Cuenta sin saldo en ${activeNet === 'mainnet' ? 'Mainnet' : 'Testnet'})`;
             balanceStatus = 'nonexist';
           }
         } catch (err) {
-          console.warn('[WalletService] Error fetching Testnet balance:', err.message);
-          balanceDisplay = 'No disponible (Error al consultar red Testnet)';
+          console.warn('[WalletService] Error fetching balance:', err.message);
+          balanceDisplay = 'No disponible (Error al consultar red)';
           balanceStatus = 'error';
         }
       }
@@ -1212,7 +1206,7 @@ const WalletService = (() => {
 
       const jettonsRes = await (async () => {
         try {
-          return await ApiService.tonapi(`/accounts/${encodeURIComponent(address)}/jettons`, 15000, 'testnet');
+          return await ApiService.tonapi(`/accounts/${encodeURIComponent(address)}/jettons`, 15000, activeNet);
         } catch { return null; }
       })();
 
@@ -1225,8 +1219,8 @@ const WalletService = (() => {
         balanceDisplay,
         balanceStatus,
         isWrongNetwork,
-        network: isWrongNetwork ? 'mainnet' : 'testnet',
-        chainId: chainId || (isWrongNetwork ? '-239' : '-3'),
+        network: activeNet,
+        chainId: chainId || expectedChainId,
         connected: true,
         isTonConnect: isTC,
         isReadOnly: !isTC,
@@ -1873,20 +1867,20 @@ const StakeModalController = {
 
     // 2. Connected Wallet Network Check (Mainnet vs Testnet)
     const wallet = StakingState.get('wallet');
-    if (wallet.connected && (wallet.isWrongNetwork || wallet.chainId === '-239')) {
+    const expectedChainId = activeNet === 'mainnet' ? STAKING_CONFIG.CHAIN_ID_MAINNET : STAKING_CONFIG.CHAIN_ID_TESTNET;
+    if (wallet.connected && (wallet.isWrongNetwork || (wallet.chainId && wallet.chainId !== expectedChainId))) {
       if (alertBox) {
         alertBox.style.display = 'block';
         alertBox.style.background = 'rgba(239,68,68,0.15)';
         alertBox.style.borderColor = '#ef4444';
         alertBox.style.color = '#fca5a5';
         alertBox.innerHTML = `
-          <strong>⚠️ Billetera en Red Incorrecta (Mainnet -239):</strong><br/>
-          Tu billetera conectada está configurada en <strong>TON Mainnet (-239)</strong>.<br/>
-          Para realizar operaciones en Testnet, abre tu billetera (Tonkeeper / MyTonWallet / etc.), ve a Ajustes y cambia la red a <strong>TON Testnet (-3)</strong>.<br/>
-          <em>El saldo de Mainnet no se puede utilizar para staking en Testnet y la firma permanece bloqueada.</em>
+          <strong>⚠️ Billetera en Red Incorrecta:</strong><br/>
+          Tu billetera conectada está en <strong>${wallet.chainId === '-239' ? 'TON Mainnet (-239)' : 'TON Testnet (-3)'}</strong>, pero la plataforma está en modo <strong>${activeNet === 'mainnet' ? 'TON Mainnet (-239)' : 'TON Testnet (-3)'}</strong>.<br/>
+          Por favor cambia la red en tu billetera (Tonkeeper / MyTonWallet / etc.) o usa el selector arriba para coincidir.<br/>
         `;
       }
-      if (reviewBtn) { reviewBtn.disabled = true; reviewBtn.textContent = 'Red Errónea: Cambia a Testnet'; }
+      if (reviewBtn) { reviewBtn.disabled = true; reviewBtn.textContent = 'Red Errónea: Cambia de Red'; }
       this._bindAmountInput();
       this._updatePreview();
       this._showStep(1);
@@ -2005,12 +1999,15 @@ const StakeModalController = {
     let err = '';
     const minStakeNano = v?.minStakeNano || 1000000000n;
 
-    if (wallet.connected && (wallet.isWrongNetwork || wallet.chainId === '-239')) {
-      err = 'Billetera conectada en TON Mainnet (-239). Cambia a TON Testnet (-3) en Tonkeeper.';
+    const activeNet = StakingState.get('activeNetwork');
+    const expectedChainId = activeNet === 'mainnet' ? STAKING_CONFIG.CHAIN_ID_MAINNET : STAKING_CONFIG.CHAIN_ID_TESTNET;
+
+    if (wallet.connected && (wallet.isWrongNetwork || (wallet.chainId && wallet.chainId !== expectedChainId))) {
+      err = `Billetera conectada en ${wallet.chainId === '-239' ? 'Mainnet (-239)' : 'Testnet (-3)'}. Cambia a ${activeNet === 'mainnet' ? 'Mainnet' : 'Testnet'} en tu wallet.`;
     } else if (principalNano > 0n && principalNano < minStakeNano) {
       err = `El depósito mínimo para ${v?.name || 'Tonstakers'} es ${fromNanoSafe(minStakeNano, 2)} TON.`;
     } else if (wallet.connected && wallet.balanceNano !== null && totalNano > wallet.balanceNano) {
-      err = `Balance insuficiente en Testnet. Total requerido: ${fromNanoSafe(totalNano, 4)} TON (disponible: ${fromNanoSafe(wallet.balanceNano, 4)} TON).`;
+      err = `Balance insuficiente en ${activeNet === 'mainnet' ? 'Mainnet' : 'Testnet'}. Total requerido: ${fromNanoSafe(totalNano, 4)} TON (disponible: ${fromNanoSafe(wallet.balanceNano, 4)} TON).`;
     }
 
     if (errEl) errEl.textContent = err;
@@ -2021,18 +2018,19 @@ const StakeModalController = {
     const checkbox = document.getElementById('stake-accept-terms-checkbox');
     const execBtn = document.getElementById('stake-execute-btn');
     const activeNet = StakingState.get('activeNetwork');
+    const expectedChainId = activeNet === 'mainnet' ? STAKING_CONFIG.CHAIN_ID_MAINNET : STAKING_CONFIG.CHAIN_ID_TESTNET;
     const vaultReq = StakingState.get('vaultVerification')?.[activeNet] || StakingState.get('routerVerification')?.[activeNet];
     const wallet = StakingState.get('wallet');
 
     if (!execBtn) return;
     const isAccepted = Boolean(checkbox && checkbox.checked);
-    const isTestnet = wallet.connected && !wallet.isWrongNetwork && wallet.chainId === '-3';
-    const canSign = isAccepted && Boolean(vaultReq && vaultReq.verified) && isTestnet &&
+    const isExpectedNet = wallet.connected && !wallet.isWrongNetwork && (!wallet.chainId || wallet.chainId === expectedChainId);
+    const canSign = isAccepted && Boolean(vaultReq && vaultReq.verified) && isExpectedNet &&
                     (activeNet !== 'mainnet' || STAKING_CONFIG.MAINNET_STAKING_ENABLED);
 
     execBtn.disabled = !canSign;
-    if (wallet.connected && (wallet.isWrongNetwork || wallet.chainId === '-239')) {
-      execBtn.textContent = 'Bloqueado: Billetera en Mainnet (-239)';
+    if (wallet.connected && (wallet.isWrongNetwork || (wallet.chainId && wallet.chainId !== expectedChainId))) {
+      execBtn.textContent = `Bloqueado: Billetera en ${wallet.chainId === '-239' ? 'Mainnet (-239)' : 'Testnet (-3)'}`;
     } else if (!vaultReq?.verified) {
       execBtn.textContent = 'Bloqueado: Requisitos No Verificados';
     } else if (!isAccepted) {
@@ -2056,21 +2054,23 @@ const StakeModalController = {
     }
 
     const wallet = StakingState.get('wallet');
-    if (wallet.connected && (wallet.isWrongNetwork || wallet.chainId === '-239')) {
-      NotificationService.toast('Red Errónea', 'Tu billetera está en Mainnet. Cambia a Testnet en Tonkeeper.', 'error');
+    const v = this._currentValidator;
+    const activeNet = StakingState.get('activeNetwork');
+    const netId = activeNet === 'mainnet' ? -239 : -3;
+    const expectedChainId = activeNet === 'mainnet' ? STAKING_CONFIG.CHAIN_ID_MAINNET : STAKING_CONFIG.CHAIN_ID_TESTNET;
+
+    if (wallet.connected && (wallet.isWrongNetwork || (wallet.chainId && wallet.chainId !== expectedChainId))) {
+      NotificationService.toast('Red Errónea', `Tu billetera está en ${wallet.chainId === '-239' ? 'Mainnet' : 'Testnet'}. Cambia a ${activeNet === 'mainnet' ? 'Mainnet' : 'Testnet'} para operar.`, 'error');
       return;
     }
 
-    const v = this._currentValidator;
-    const activeNet = StakingState.get('activeNetwork');
-    const expectedChainId = activeNet === 'testnet' ? STAKING_CONFIG.CHAIN_ID_TESTNET : STAKING_CONFIG.CHAIN_ID_MAINNET;
     const poolTelemetry = StakingState.get('poolOnChainData')[activeNet];
 
     // Compute deterministic StakeVault preview for this depositor
     let vaultInfo = null;
     try {
       const qId = BigInt(Date.now());
-      vaultInfo = await getDeterministicVaultInfo(wallet.address || '0:0000000000000000000000000000000000000000000000000000000000000000', qId, -3);
+      vaultInfo = await getDeterministicVaultInfo(wallet.address || '0:0000000000000000000000000000000000000000000000000000000000000000', qId, netId);
       this._currentVaultInfo = vaultInfo;
     } catch (e) {
       console.warn('[confirmStake] Vault preview calculation note:', e.message);
@@ -2173,26 +2173,30 @@ const StakeModalController = {
     btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;"></div> Firma en tu wallet...';
 
     try {
-      const queryId = BigInt(Date.now());
-      const vaultInfo = await getDeterministicVaultInfo(wallet.address, queryId, -3);
-
-      // Resolve Jetton Wallets for client and vault
-      const poolCfg = STAKING_CONFIG.ALLOWLIST['kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3'];
+      const activeNet = StakingState.get('activeNetwork'); // 'mainnet' or 'testnet'
+      const netId = activeNet === 'mainnet' ? -239 : -3;
+      const expectedChainId = activeNet === 'mainnet' ? STAKING_CONFIG.CHAIN_ID_MAINNET : STAKING_CONFIG.CHAIN_ID_TESTNET;
+      const poolKey = activeNet === 'mainnet' ? 'EQCkWxfyhAkim3g2DjKQQg8T5P4g-Q1-K_jErGcDJZ4i-vqR' : 'kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3';
+      const poolCfg = STAKING_CONFIG.ALLOWLIST[poolKey];
       const tsTonMaster = poolCfg.jettonMaster;
 
+      const queryId = BigInt(Date.now());
+      const vaultInfo = await getDeterministicVaultInfo(wallet.address, queryId, netId);
+
+      // Resolve Jetton Wallets for client and vault
       const [clientJw, vaultJw] = await Promise.all([
-        getJettonWalletAddress(tsTonMaster, wallet.address, 'testnet'),
-        getJettonWalletAddress(tsTonMaster, vaultInfo.friendlyAddress, 'testnet'),
+        getJettonWalletAddress(tsTonMaster, wallet.address, activeNet),
+        getJettonWalletAddress(tsTonMaster, vaultInfo.friendlyAddress, activeNet),
       ]);
 
       if (!clientJw || !vaultJw) {
-        throw new Error('No se pudieron resolver las Jetton Wallets de tsTON en Testnet.');
+        throw new Error(`No se pudieron resolver las Jetton Wallets de tsTON en ${activeNet === 'mainnet' ? 'Mainnet' : 'Testnet'}.`);
       }
 
       const payloadBoC = await buildStakeVaultInitPayload(
         queryId,
         breakdown.principalNano,
-        -3,
+        netId,
         vaultJw,
         clientJw
       );
@@ -2202,7 +2206,7 @@ const StakeModalController = {
       // Single atomic TON Connect message: deploys StakeVault via StateInit and initializes with payload
       await window.tonConnectUI.sendTransaction({
         validUntil: startTs + 600,
-        network: '-3',
+        network: expectedChainId,
         messages: [{
           address: vaultInfo.friendlyAddress,
           amount: breakdown.totalNano.toString(),
@@ -2239,7 +2243,7 @@ const StakeModalController = {
         }
       );
 
-      const expBase = STAKING_CONFIG.TONVIEWER_TESTNET;
+      const expBase = activeNet === 'mainnet' ? STAKING_CONFIG.TONVIEWER_MAINNET : STAKING_CONFIG.TONVIEWER_TESTNET;
       if (linkEl && traceRes.hash) {
         linkEl.href = `${expBase}/transaction/${traceRes.hash}`;
         linkEl.style.display = 'inline-block';

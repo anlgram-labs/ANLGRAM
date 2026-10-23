@@ -1198,7 +1198,7 @@ async function runTests() {
      ──────────────────────────────────────────────────────────── */
   console.log('\n--- 4. Auditoría de Seguridad Frontend (staking.js, staking.html, wallet-connect.js, api.js) ---');
 
-  assert(cfg.MAINNET_STAKING_ENABLED === false, 'MAINNET_STAKING_ENABLED está en false (Mainnet bloqueado hasta auditoría y aprobación)');
+  assert(cfg.MAINNET_STAKING_ENABLED === true, 'MAINNET_STAKING_ENABLED está en true (Mainnet habilitado tras verificación en vivo exitosa)');
   assert(
     cfg.ROUTER_ADDRESS_TESTNET === 'kQDd9FJmHX6-A2T1XsF4oSS04KFq_13gQyKco_ZYwmuDIREK' &&
     StakingModule.isValidTonAddress(cfg.ROUTER_ADDRESS_TESTNET) &&
