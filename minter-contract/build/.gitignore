@@ -3,3 +3,4 @@
 *.cell
 *.compiled.json
 !anlgram-staking-router.compiled.json
+!anlgram-stake-vault.compiled.json

@@ -76,6 +76,16 @@ const STAKING_CONFIG = {
   ROUTER_OP_REFUND_TIMEOUT:     0x414e4c54, // Disabled on-chain (throws exit_code 311) to prevent double-refund
   ROUTER_OP_RETRY_TSTON:        0x414e4c55, // Non-custodial tsTON delivery retry / post-timeout recovery
   ROUTER_OP_FEE_PAYOUT:         0x414e4c46,
+
+  // ── ANLGRAM ISOLATED STAKE VAULT (1-VAULT-PER-DEPOSIT ARCHITECTURE) ──
+  // Compiled FunC contract: minter-contract/contracts/anlgram-stake-vault.fc
+  // Code Cell SHA-256: fdc7d19f9d9e554e10f4d0091532c6f9966a1eb85e36e9ce02836bf33a1a9505
+  VAULT_CODE_HASH:              'fdc7d19f9d9e554e10f4d0091532c6f9966a1eb85e36e9ce02836bf33a1a9505',
+  VAULT_OP_INIT:                0x414e4c70,
+  VAULT_OP_RESCUE:              0x414e4c72,
+  VAULT_OP_RETRY:               0x414e4c73,
+  VAULT_OP_REFUNDED:            0x414e4c74,
+
   ROUTER_GAS_RESERVE_NANO:      1150000000n, // 1.00 TON pool deposit gas + 0.15 TON router forwarding gas (excess refunded)
   POOL_DIRECT_GAS_RESERVE_NANO: 1000000000n, // 1.00 TON Tonstakers deposit gas reserve
   UNSTAKE_GAS_RESERVE_NANO:     1050000000n, // 1.05 TON Tonstakers burn gas reserve
@@ -522,6 +532,105 @@ async function buildAnlgramRouterRetryTsTonPayload(queryId) {
   if (qId <= 0n) throw new Error('query_id inválido para reintento de entrega tsTON.');
   return core.beginCell()
     .storeUint(STAKING_CONFIG.ROUTER_OP_RETRY_TSTON, 32)
+    .storeUint(qId, 64)
+    .endCell()
+    .toBoc()
+    .toString('base64');
+}
+
+/**
+ * Builds StakeVault Initial Data Cell (StateInit) for 1-Vault-Per-Deposit Architecture
+ * Storage layout:
+ *   Root: status:0, network_id, query_id, principal:0, fee:0, ts_ton:0, created_at:0, partner_code
+ *   ref1: client_address, fee_recipient, pool_address
+ *   ref2: vault_jwallet:addr_none, client_jwallet:addr_none
+ */
+async function buildStakeVaultInitialData(clientAddress, queryId, networkId = -3, partnerCode = STAKING_CONFIG.ANLGRAM_PARTNER_CODE) {
+  const core = await getTonCore();
+  const cAddr = core.Address.parse(clientAddress);
+  const feeRecip = core.Address.parse(STAKING_CONFIG.FEE_RECIPIENT_TESTNET);
+  const poolAddr = core.Address.parse(STAKING_CONFIG.ALLOWLIST['kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3'].raw);
+  const qId = BigInt(queryId);
+  const netId = Number(networkId);
+  const pCode = BigInt(partnerCode);
+
+  const jettonRef = core.beginCell()
+    .storeUint(0, 2) // vault_jwallet: addr_none
+    .storeUint(0, 2) // client_jwallet: addr_none
+    .endCell();
+
+  const staticRef = core.beginCell()
+    .storeAddress(cAddr)
+    .storeAddress(feeRecip)
+    .storeAddress(poolAddr)
+    .storeRef(jettonRef)
+    .endCell();
+
+  return core.beginCell()
+    .storeUint(0, 8) // status = uninitialized
+    .storeInt(netId, 16)
+    .storeUint(qId, 64)
+    .storeCoins(0n)
+    .storeCoins(0n)
+    .storeCoins(0n)
+    .storeUint(0n, 64)
+    .storeUint(pCode, 64)
+    .storeRef(staticRef)
+    .endCell();
+}
+
+/**
+ * Builds StakeVault op::vault_init (0x414e4c70) Payload BoC
+ */
+async function buildStakeVaultInitPayload(queryId, principalNano, expectedNetworkId, vaultJwalletAddress, clientJwalletAddress) {
+  const core = await getTonCore();
+  const qId = BigInt(queryId);
+  const pNano = BigInt(principalNano);
+  const netId = Number(expectedNetworkId);
+  const vJw = core.Address.parse(vaultJwalletAddress);
+  const cJw = core.Address.parse(clientJwalletAddress);
+
+  return core.beginCell()
+    .storeUint(STAKING_CONFIG.VAULT_OP_INIT, 32)
+    .storeUint(qId, 64)
+    .storeCoins(pNano)
+    .storeInt(netId, 16)
+    .storeAddress(vJw)
+    .storeAddress(cJw)
+    .endCell()
+    .toBoc()
+    .toString('base64');
+}
+
+/**
+ * Builds StakeVault op::vault_rescue (0x414e4c72) Payload BoC
+ */
+async function buildStakeVaultRescuePayload(queryId, claimAmountNano) {
+  const core = await getTonCore();
+  const qId = BigInt(queryId);
+  const amount = BigInt(claimAmountNano);
+  if (qId <= 0n) throw new Error('query_id inválido para rescate de tsTON.');
+  if (amount <= 0n) throw new Error('claim_amount debe ser mayor a 0.');
+
+  return core.beginCell()
+    .storeUint(STAKING_CONFIG.VAULT_OP_RESCUE, 32)
+    .storeUint(qId, 64)
+    .storeCoins(amount)
+    .endCell()
+    .toBoc()
+    .toString('base64');
+}
+
+/**
+ * Builds StakeVault op::vault_retry (0x414e4c73) Payload BoC
+ */
+async function buildStakeVaultRetryPayload(queryId) {
+  const core = await getTonCore();
+  const qId = BigInt(queryId);
+  if (qId <= 0n) throw new Error('query_id inválido para reintento de tsTON.');
+
+  return core.beginCell()
+    .storeUint(STAKING_CONFIG.VAULT_OP_RETRY, 32)
     .storeUint(qId, 64)
     .endCell()
     .toBoc()
@@ -2598,6 +2707,10 @@ if (typeof window !== 'undefined') {
   window.calculateAnlgramStakeFeeNano = calculateAnlgramStakeFeeNano;
   window.calculateStakeDepositBreakdown = calculateStakeDepositBreakdown;
   window.buildAnlgramRouterStakePayload = buildAnlgramRouterStakePayload;
+  window.buildStakeVaultInitialData = buildStakeVaultInitialData;
+  window.buildStakeVaultInitPayload = buildStakeVaultInitPayload;
+  window.buildStakeVaultRescuePayload = buildStakeVaultRescuePayload;
+  window.buildStakeVaultRetryPayload = buildStakeVaultRetryPayload;
   window.buildTonstakersStakePayload = buildTonstakersStakePayload;
   window.buildTonstakersUnstakePayload = buildTonstakersUnstakePayload;
   window.isValidTonAddress = isValidTonAddress;

@@ -1,0 +1,62 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ANLGRAM Stake Vault TL-B Schema (Isolated Single-Deposit Architecture)
+// File: minter-contract/contracts/anlgram-stake-vault.tlb
+// ═══════════════════════════════════════════════════════════════════════════
+
+// 1. Client deploys and initializes isolated vault:
+//    Sends principal_nano + fee_nano (0.35%) + pool_deposit_gas (1.0 TON) + vault gas.
+//    Vault forwards principal_nano + 1.0 TON to Tonstakers Pool (0x47d54391, bounce=true)
+//    and escrows fee_nano inside the vault. Zero fee is charged at deployment.
+vault_init#414e4c70 query_id:uint64 principal_nano:Coins expected_network_id:int16 vault_jwallet_address:MsgAddress client_jwallet_address:MsgAddress = InternalMsgBody;
+
+// 2. Client manual rescue of tsTON (used if 0x7362d09c missing or query_id corrupted):
+//    Because vault_jwallet_address is 100% isolated to this single deposit,
+//    tokens are transferred strictly to client_address. Cannot touch other clients' tokens.
+vault_rescue#414e4c72 query_id:uint64 claim_amount:Coins = InternalMsgBody;
+
+// 3. Retry delivery after jetton transfer bounce (status == 3):
+//    Re-sends 0x0f8a7ea5 strictly to client_address with recorded ts_ton_minted.
+vault_retry#414e4c73 query_id:uint64 = InternalMsgBody;
+
+// 4. Refund notification sent to client on authenticated pool bounce:
+//    Refunds principal_nano + fee_nano + gas directly to client_address (0 fee charged).
+vault_refunded#414e4c74 query_id:uint64 principal_nano:Coins fee_nano:Coins = InternalMsgBody;
+
+// 5. Outgoing to Tonstakers Pool:
+tonstakers_deposit#47d54391 query_id:uint64 partner_code:uint64 = InternalMsgBody;
+
+// 6. Incoming from Vault tsTON Jetton Wallet (TEP-74 notification):
+transfer_notification#7362d09c query_id:uint64 amount:Coins sender:MsgAddress forward_payload:(Either Cell ^Cell) = InternalMsgBody;
+
+// 7. Outgoing to Vault tsTON Jetton Wallet (TEP-74 transfer to client):
+jetton_transfer#0f8a7ea5 query_id:uint64 amount:Coins destination:MsgAddress response_destination:MsgAddress custom_payload:(Maybe ^Cell) forward_ton_amount:Coins forward_payload:(Either Cell ^Cell) = InternalMsgBody;
+
+// 8. TEP-74 Excesses & client delivery confirmation:
+//    - From client_jwallet: confirms client received tsTON -> releases 0.35% fee to fee_recipient.
+//    - From pool / vault_jwallet: forwards unused pool gas to client_address.
+excesses#d53276db query_id:uint64 = InternalMsgBody;
+
+// 9. Vault Storage:
+static_addresses$_
+  client_address:MsgAddressInt
+  fee_recipient:MsgAddressInt
+  pool_address:MsgAddressInt
+  jetton_addresses:^jetton_addresses
+  = StaticAddresses;
+
+jetton_addresses$_
+  vault_jwallet_address:MsgAddress
+  client_jwallet_address:MsgAddress
+  = JettonAddresses;
+
+vault_storage$_
+  status:uint8
+  network_id:int16
+  query_id:uint64
+  principal_nano:Coins
+  fee_nano:Coins
+  ts_ton_minted:Coins
+  created_at:uint64
+  partner_code:uint64
+  addresses:^static_addresses
+  = VaultStorage;

@@ -1,0 +1,508 @@
+;; ═══════════════════════════════════════════════════════════════════════════
+;; ANLGRAM Isolated Stake Vault Contract (Single-Deposit Ephemeral Vault)
+;; File: minter-contract/contracts/anlgram-stake-vault.fc
+;;
+;; Architecture:
+;;   - Deployed individually per client deposit via single TON Connect StateInit.
+;;   - 100% Isolated: Owns its unique tsTON Jetton Wallet (vault_jwallet_address).
+;;   - Zero Co-Mingling: Never shares tsTON balance or state with any other client.
+;;   - Single verified pool: Tonstakers Official Liquid Staking (liquidTF).
+;;   - Exact Fee: 35 bps (0.35%) of principal accepted & confirmed on-chain.
+;;   - Fee Recipient: UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd
+;;   - Fee is sent ONLY after receiving 0xd53276db from client_jwallet confirming
+;;     the client has physically received their tsTON tokens!
+;;   - Pool Bounce: 100% refund of principal + fee to client_address (0 fee charged).
+;;   - Non-Destruction Invariant: Never destroys itself while tokens can be recovered;
+;;     remains intact in STATUS_COMPLETED to catch and forward any late tokens.
+;; ═══════════════════════════════════════════════════════════════════════════
+
+#include "imports/stdlib.fc";
+#pragma version >=0.2.0;
+
+;; ── Opcodes ────────────────────────────────────────────────────────────────
+int op::vault_init()            asm "0x414e4c70 PUSHINT"; ;; Client -> Vault: deploy, configure & forward to pool
+int op::vault_rescue()          asm "0x414e4c72 PUSHINT"; ;; Client -> Vault: manual rescue when 0x7362d09c missing
+int op::vault_retry()           asm "0x414e4c73 PUSHINT"; ;; Client -> Vault: retry bounced tsTON delivery
+int op::vault_refunded()        asm "0x414e4c74 PUSHINT"; ;; Vault -> Client: pool bounce refund notification
+
+;; Protocol Opcodes (Tonstakers liquidTF & TEP-74 Jettons)
+int op::tonstakers_deposit()    asm "0x47d54391 PUSHINT"; ;; Vault -> Tonstakers Pool
+int op::transfer_notification() asm "0x7362d09c PUSHINT"; ;; Vault tsTON JWallet -> Vault
+int op::jetton_transfer()       asm "0x0f8a7ea5 PUSHINT"; ;; Vault -> Vault tsTON JWallet
+int op::excesses()              asm "0xd53276db PUSHINT"; ;; Excess gas & client delivery confirmation
+
+;; ── Status Codes ───────────────────────────────────────────────────────────
+int status::uninitialized()     asm "0 PUSHINT"; ;; Pre-init StateInit
+int status::pending_pool()      asm "1 PUSHINT"; ;; Principal forwarded to pool, awaiting 0x7362d09c or bounce
+int status::delivering_tston()  asm "2 PUSHINT"; ;; 0x0f8a7ea5 in flight to client_address
+int status::tston_bounced()     asm "3 PUSHINT"; ;; 0x0f8a7ea5 bounced from vault_jwallet (retryable)
+int status::completed()         asm "4 PUSHINT"; ;; 0xd53276db confirmed receipt by client_jwallet, fee paid
+int status::refunded()          asm "5 PUSHINT"; ;; Pool bounced 0x47d54391, principal + fee refunded, 0 fee
+
+;; ── Error Codes ────────────────────────────────────────────────────────────
+int error::access_denied()              asm "401 PUSHINT";
+int error::already_initialized()        asm "402 PUSHINT";
+int error::wrong_network()              asm "403 PUSHINT";
+int error::below_min_stake()            asm "404 PUSHINT";
+int error::insufficient_msg_value()     asm "405 PUSHINT";
+int error::unauthorized_jwallet()       asm "406 PUSHINT";
+int error::not_pending_pool()           asm "407 PUSHINT";
+int error::zero_minted_jettons()        asm "408 PUSHINT";
+int error::not_bounced_or_missing()     asm "409 PUSHINT";
+int error::already_completed()          asm "410 PUSHINT";
+int error::already_delivering()         asm "411 PUSHINT";
+int error::unknown_op()                 asm "499 PUSHINT";
+
+;; ── Constants (nanoTON) ────────────────────────────────────────────────────
+int const::fee_bps_exact()          asm "35 PUSHINT";         ;; 35 bps = 0.35% (NEVER 3500)
+int const::bps_denominator()        asm "10000 PUSHINT";      ;; 10,000 bps = 100%
+int const::pool_deposit_gas()       asm "1000000000 PUSHINT"; ;; 1.00 TON attached to Tonstakers Pool
+int const::jetton_transfer_gas()    asm "105000000 PUSHINT";  ;; 0.105 TON attached to 0x0f8a7ea5
+int const::jetton_notify_gas()      asm "15000000 PUSHINT";   ;; 0.015 TON forward_ton_amount to client
+int const::min_storage_reserve()    asm "50000000 PUSHINT";   ;; 0.050 TON minimum storage rent reserve
+int const::min_forward_gas()        asm "10000000 PUSHINT";   ;; 0.010 TON threshold for excess gas forwarding
+
+;; ── Storage Structure ──────────────────────────────────────────────────────
+;; Root Cell (312 bits, 1 ref):
+;;   status:uint8
+;;   network_id:int16
+;;   query_id:uint64
+;;   principal_nano:Coins
+;;   fee_nano:Coins
+;;   ts_ton_minted:Coins
+;;   created_at:uint64
+;;   partner_code:uint64
+;;   ref1: static_addresses_cell (801 bits, 1 ref)
+;;     client_address:MsgAddressInt
+;;     fee_recipient:MsgAddressInt
+;;     pool_address:MsgAddressInt
+;;     ref2: jetton_addresses_cell (534 bits, 0 refs)
+;;       vault_jwallet_address:MsgAddress
+;;       client_jwallet_address:MsgAddress
+
+(slice, slice, slice, slice, slice, int, int, int, int, int, int, int, int) load_vault_data() inline {
+    slice ds = get_data().begin_parse();
+    int status         = ds~load_uint(8);
+    int network_id     = ds~load_int(16);
+    int query_id       = ds~load_uint(64);
+    int principal_nano = ds~load_coins();
+    int fee_nano       = ds~load_coins();
+    int ts_ton_minted  = ds~load_coins();
+    int created_at     = ds~load_uint(64);
+    int partner_code   = ds~load_uint(64);
+
+    cell c_static = ds~load_ref();
+    slice s_static = c_static.begin_parse();
+    slice client_address = s_static~load_msg_addr();
+    slice fee_recipient  = s_static~load_msg_addr();
+    slice pool_address   = s_static~load_msg_addr();
+
+    cell c_jetton = s_static~load_ref();
+    slice s_jetton = c_jetton.begin_parse();
+    slice vault_jwallet_address  = s_jetton~load_msg_addr();
+    slice client_jwallet_address = s_jetton~load_msg_addr();
+
+    return (
+        client_address, fee_recipient, pool_address,
+        vault_jwallet_address, client_jwallet_address,
+        principal_nano, fee_nano, network_id, query_id,
+        status, ts_ton_minted, created_at, partner_code
+    );
+}
+
+() save_vault_data(
+    slice client_address,
+    slice fee_recipient,
+    slice pool_address,
+    slice vault_jwallet_address,
+    slice client_jwallet_address,
+    int   principal_nano,
+    int   fee_nano,
+    int   network_id,
+    int   query_id,
+    int   status,
+    int   ts_ton_minted,
+    int   created_at,
+    int   partner_code
+) impure inline {
+    cell c_jetton = begin_cell()
+        .store_slice(vault_jwallet_address)
+        .store_slice(client_jwallet_address)
+        .end_cell();
+
+    cell c_static = begin_cell()
+        .store_slice(client_address)
+        .store_slice(fee_recipient)
+        .store_slice(pool_address)
+        .store_ref(c_jetton)
+        .end_cell();
+
+    set_data(
+        begin_cell()
+            .store_uint(status, 8)
+            .store_int(network_id, 16)
+            .store_uint(query_id, 64)
+            .store_coins(principal_nano)
+            .store_coins(fee_nano)
+            .store_coins(ts_ton_minted)
+            .store_uint(created_at, 64)
+            .store_uint(partner_code, 64)
+            .store_ref(c_static)
+            .end_cell()
+    );
+}
+
+;; ── Helper: Build Outgoing 0x0f8a7ea5 (op::jetton_transfer) Message ────────
+cell build_vault_jetton_transfer(
+    slice vault_jwallet_address,
+    int   ton_value,
+    int   query_id,
+    int   jetton_amount,
+    slice client_address
+) inline {
+    cell transfer_body = begin_cell()
+        .store_uint(op::jetton_transfer(), 32)
+        .store_uint(query_id, 64)
+        .store_coins(jetton_amount)
+        .store_slice(client_address)          ;; destination: original client wallet ONLY
+        .store_slice(my_address())            ;; response_destination: Vault receives 0xd53276db
+        .store_uint(0, 1)                     ;; custom_payload: null
+        .store_coins(const::jetton_notify_gas())
+        .store_uint(0, 1)                     ;; forward_payload: empty inline
+        .end_cell();
+
+    return begin_cell()
+        .store_uint(0x18, 6)                  ;; bounce = true
+        .store_slice(vault_jwallet_address)
+        .store_coins(ton_value)
+        .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+        .store_ref(transfer_body)
+        .end_cell();
+}
+
+;; ── Handle Bounced Messages ────────────────────────────────────────────────
+() handle_bounce(slice sender_address, int msg_value, slice in_msg_body) impure {
+    in_msg_body~skip_bits(32); ;; skip 0xffffffff
+    int bounced_op = in_msg_body~load_uint(32);
+
+    var (
+        client_address, fee_recipient, pool_address,
+        vault_jwallet_address, client_jwallet_address,
+        principal_nano, fee_nano, network_id, query_id,
+        status, ts_ton_minted, created_at, partner_code
+    ) = load_vault_data();
+
+    ;; Case A: Tonstakers Pool bounced 0x47d54391
+    if (bounced_op == op::tonstakers_deposit()) {
+        if (~ equal_slices(sender_address, pool_address)) {
+            return (); ;; ignore forged bounces
+        }
+        if (status != status::pending_pool()) {
+            return (); ;; already resolved
+        }
+
+        ;; Mark refunded and return 100% of principal + escrowed fee + unused jetton gas + msg_value to client
+        status = status::refunded();
+        int refund_amount = msg_value + fee_nano + const::jetton_transfer_gas();
+
+        var refund_msg = begin_cell()
+            .store_uint(0x10, 6)
+            .store_slice(client_address)
+            .store_coins(refund_amount)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(op::vault_refunded(), 32)
+            .store_uint(query_id, 64)
+            .store_coins(principal_nano)
+            .store_coins(fee_nano)
+            .end_cell();
+        send_raw_message(refund_msg, 1);
+
+        save_vault_data(
+            client_address, fee_recipient, pool_address,
+            vault_jwallet_address, client_jwallet_address,
+            principal_nano, fee_nano, network_id, query_id,
+            status, ts_ton_minted, created_at, partner_code
+        );
+        return ();
+    }
+
+    ;; Case B: Vault tsTON Jetton Wallet bounced 0x0f8a7ea5 (e.g. low gas or uninit client wallet)
+    if (bounced_op == op::jetton_transfer()) {
+        if (~ equal_slices(sender_address, vault_jwallet_address)) {
+            return (); ;; ignore forged bounces
+        }
+        if (status == status::delivering_tston()) {
+            ;; Transition to status::tston_bounced: zero fee charged, deposit not completed!
+            status = status::tston_bounced();
+            save_vault_data(
+                client_address, fee_recipient, pool_address,
+                vault_jwallet_address, client_jwallet_address,
+                principal_nano, fee_nano, network_id, query_id,
+                status, ts_ton_minted, created_at, partner_code
+            );
+            return ();
+        }
+    }
+}
+
+;; ── Main Internal Message Handler ──────────────────────────────────────────
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    slice sender_address = cs~load_msg_addr();
+
+    if (flags & 1) {
+        handle_bounce(sender_address, msg_value, in_msg_body);
+        return ();
+    }
+    if (in_msg_body.slice_empty?()) {
+        return (); ;; Accept top-ups for storage rent
+    }
+
+    int op = in_msg_body~load_uint(32);
+    int in_query_id = in_msg_body~load_uint(64);
+
+    var (
+        client_address, fee_recipient, pool_address,
+        vault_jwallet_address, client_jwallet_address,
+        principal_nano, fee_nano, network_id, query_id,
+        status, ts_ton_minted, created_at, partner_code
+    ) = load_vault_data();
+
+    ;; ── 1. VAULT INITIALIZATION & POOL FORWARDING (Phase 1) ────────────────
+    if (op == op::vault_init()) {
+        throw_if(error::already_initialized(), status != status::uninitialized());
+        throw_unless(error::access_denied(), equal_slices(sender_address, client_address));
+        throw_unless(error::access_denied(), in_query_id == query_id);
+
+        int in_principal_nano   = in_msg_body~load_coins();
+        int expected_network_id = in_msg_body~load_int(16);
+        slice in_vault_jwallet  = in_msg_body~load_msg_addr();
+        slice in_client_jwallet = in_msg_body~load_msg_addr();
+
+        throw_unless(error::wrong_network(), expected_network_id == network_id);
+        throw_unless(error::below_min_stake(), in_principal_nano >= 1000000000); ;; >= 1 TON
+
+        ;; Exact integer fee: (principalNano * 35) / 10000
+        int computed_fee = muldiv(in_principal_nano, const::fee_bps_exact(), const::bps_denominator());
+        int min_required = in_principal_nano + computed_fee + const::pool_deposit_gas() + const::jetton_transfer_gas();
+        throw_unless(error::insufficient_msg_value(), msg_value >= min_required);
+
+        principal_nano         = in_principal_nano;
+        fee_nano               = computed_fee;
+        vault_jwallet_address  = in_vault_jwallet;
+        client_jwallet_address = in_client_jwallet;
+        status                 = status::pending_pool();
+        created_at             = now();
+
+        ;; Forward principal_nano + 1.0 TON gas to Tonstakers Pool with bounce=true
+        int pool_send_val = in_principal_nano + const::pool_deposit_gas();
+        var pool_msg = begin_cell()
+            .store_uint(0x18, 6) ;; bounce = true
+            .store_slice(pool_address)
+            .store_coins(pool_send_val)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(op::tonstakers_deposit(), 32)
+            .store_uint(query_id, 64)
+            .store_uint(partner_code, 64)
+            .end_cell();
+        send_raw_message(pool_msg, 1);
+
+        save_vault_data(
+            client_address, fee_recipient, pool_address,
+            vault_jwallet_address, client_jwallet_address,
+            principal_nano, fee_nano, network_id, query_id,
+            status, ts_ton_minted, created_at, partner_code
+        );
+        return ();
+    }
+
+    ;; ── 2. POOL MINT NOTIFICATION (Phase 2a: Deliver tsTON to Client) ──────
+    if (op == op::transfer_notification()) {
+        throw_unless(error::unauthorized_jwallet(), equal_slices(sender_address, vault_jwallet_address));
+        throw_if(error::already_completed(), status == status::completed());
+        throw_if(error::already_delivering(), status == status::delivering_tston());
+
+        int jetton_amount = in_msg_body~load_coins();
+        throw_unless(error::zero_minted_jettons(), jetton_amount > 0);
+
+        ts_ton_minted = jetton_amount;
+        status        = status::delivering_tston();
+
+        cell jetton_msg = build_vault_jetton_transfer(
+            vault_jwallet_address,
+            const::jetton_transfer_gas(),
+            query_id,
+            jetton_amount,
+            client_address
+        );
+        send_raw_message(jetton_msg, 1);
+
+        save_vault_data(
+            client_address, fee_recipient, pool_address,
+            vault_jwallet_address, client_jwallet_address,
+            principal_nano, fee_nano, network_id, query_id,
+            status, ts_ton_minted, created_at, partner_code
+        );
+        return ();
+    }
+
+    ;; ── 3. CLIENT RECEIPT CONFIRMATION & FEE RELEASE (0xd53276db) ──────────
+    if (op == op::excesses()) {
+        ;; 3A: Receipt confirmation from client's tsTON Jetton Wallet
+        ;;     Verified by client_jwallet_address AND exact query_id matching!
+        if (equal_slices(sender_address, client_jwallet_address) & (in_query_id == query_id)) {
+            if (status == status::delivering_tston()) {
+                status = status::completed();
+
+                ;; Release exact 0.35% fee to fee_recipient
+                if (fee_nano > 0) {
+                    var fee_msg = begin_cell()
+                        .store_uint(0x10, 6)
+                        .store_slice(fee_recipient)
+                        .store_coins(fee_nano)
+                        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                        .store_uint(0, 32)
+                        .store_slice("ANLGRAM Stake Fee 0.35%")
+                        .end_cell();
+                    send_raw_message(fee_msg, 1);
+                }
+
+                ;; Forward excess gas back to client_address
+                if (msg_value > const::min_forward_gas()) {
+                    var excess_msg = begin_cell()
+                        .store_uint(0x10, 6)
+                        .store_slice(client_address)
+                        .store_coins(0)
+                        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                        .store_uint(op::excesses(), 32)
+                        .store_uint(query_id, 64)
+                        .end_cell();
+                    send_raw_message(excess_msg, 64 + 2);
+                }
+
+                save_vault_data(
+                    client_address, fee_recipient, pool_address,
+                    vault_jwallet_address, client_jwallet_address,
+                    principal_nano, fee_nano, network_id, query_id,
+                    status, ts_ton_minted, created_at, partner_code
+                );
+                return ();
+            }
+        }
+
+        ;; 3B: Unused gas refund from pool or vault_jwallet -> forward to client_address
+        int is_pool_or_vault_jwallet = equal_slices(sender_address, pool_address) |
+                                       equal_slices(sender_address, vault_jwallet_address);
+        if (is_pool_or_vault_jwallet & (msg_value > const::min_forward_gas())) {
+            var excess_msg = begin_cell()
+                .store_uint(0x10, 6)
+                .store_slice(client_address)
+                .store_coins(0)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .store_uint(op::excesses(), 32)
+                .store_uint(query_id, 64)
+                .end_cell();
+            send_raw_message(excess_msg, 64 + 2);
+            return ();
+        }
+        return ();
+    }
+
+    ;; ── 4. RESCUE TOKENS (When 0x7362d09c missing or query_id corrupted) ───
+    ;; In an isolated vault, vault_jwallet_address holds ONLY this client's tokens.
+    ;; Client triggers transfer of verified on-chain balance to client_address.
+    if (op == op::vault_rescue()) {
+        throw_unless(error::access_denied(), equal_slices(sender_address, client_address));
+        throw_unless(error::access_denied(), in_query_id == query_id);
+        throw_if(error::already_completed(), status == status::completed());
+        throw_unless(error::not_bounced_or_missing(), (status == status::pending_pool()) | (status == status::tston_bounced()));
+        throw_unless(error::insufficient_msg_value(), msg_value >= const::jetton_transfer_gas());
+
+        int claim_amount = in_msg_body~load_coins();
+        throw_unless(error::zero_minted_jettons(), claim_amount > 0);
+
+        ts_ton_minted = claim_amount;
+        status        = status::delivering_tston();
+
+        cell jetton_msg = build_vault_jetton_transfer(
+            vault_jwallet_address,
+            msg_value,
+            query_id,
+            claim_amount,
+            client_address
+        );
+        send_raw_message(jetton_msg, 1);
+
+        save_vault_data(
+            client_address, fee_recipient, pool_address,
+            vault_jwallet_address, client_jwallet_address,
+            principal_nano, fee_nano, network_id, query_id,
+            status, ts_ton_minted, created_at, partner_code
+        );
+        return ();
+    }
+
+    ;; ── 5. RETRY BOUNCED tsTON DELIVERY ────────────────────────────────────
+    if (op == op::vault_retry()) {
+        throw_unless(error::access_denied(), equal_slices(sender_address, client_address));
+        throw_unless(error::access_denied(), in_query_id == query_id);
+        throw_unless(error::not_bounced_or_missing(), status == status::tston_bounced());
+        throw_unless(error::insufficient_msg_value(), msg_value >= const::jetton_transfer_gas());
+        throw_unless(error::zero_minted_jettons(), ts_ton_minted > 0);
+
+        status = status::delivering_tston();
+
+        cell jetton_msg = build_vault_jetton_transfer(
+            vault_jwallet_address,
+            msg_value,
+            query_id,
+            ts_ton_minted,
+            client_address
+        );
+        send_raw_message(jetton_msg, 1);
+
+        save_vault_data(
+            client_address, fee_recipient, pool_address,
+            vault_jwallet_address, client_jwallet_address,
+            principal_nano, fee_nano, network_id, query_id,
+            status, ts_ton_minted, created_at, partner_code
+        );
+        return ();
+    }
+
+    throw(error::unknown_op());
+}
+
+;; ═══════════════════════════════════════════════════════════════════════════
+;; GET METHODS (Verifiable On-Chain State)
+;; ═══════════════════════════════════════════════════════════════════════════
+
+(slice, slice, slice, slice, slice, int, int, int, int, int, int, int) get_vault_data() method_id {
+    var (
+        client_address, fee_recipient, pool_address,
+        vault_jwallet_address, client_jwallet_address,
+        principal_nano, fee_nano, network_id, query_id,
+        status, ts_ton_minted, created_at, _
+    ) = load_vault_data();
+    return (
+        client_address,
+        fee_recipient,
+        pool_address,
+        vault_jwallet_address,
+        client_jwallet_address,
+        principal_nano,
+        fee_nano,
+        network_id,
+        query_id,
+        status,
+        ts_ton_minted,
+        created_at
+    );
+}
+
+(int, int) get_vault_fee_quote(int principal_nano) method_id {
+    int fee_nano = muldiv(principal_nano, const::fee_bps_exact(), const::bps_denominator());
+    int total_nano = principal_nano + fee_nano + const::pool_deposit_gas() + const::jetton_transfer_gas();
+    return (fee_nano, total_nano);
+}
