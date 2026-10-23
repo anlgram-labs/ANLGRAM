@@ -51,6 +51,8 @@ int error::zero_minted_jettons()        asm "408 PUSHINT";
 int error::not_bounced_or_missing()     asm "409 PUSHINT";
 int error::already_completed()          asm "410 PUSHINT";
 int error::already_delivering()         asm "411 PUSHINT";
+int error::unauthorized_fee_recipient() asm "412 PUSHINT";
+int error::unauthorized_pool()          asm "413 PUSHINT";
 int error::unknown_op()                 asm "499 PUSHINT";
 
 ;; ── Constants (nanoTON) ────────────────────────────────────────────────────
@@ -61,6 +63,16 @@ int const::jetton_transfer_gas()    asm "105000000 PUSHINT";  ;; 0.105 TON attac
 int const::jetton_notify_gas()      asm "15000000 PUSHINT";   ;; 0.015 TON forward_ton_amount to client
 int const::min_storage_reserve()    asm "50000000 PUSHINT";   ;; 0.050 TON minimum storage rent reserve
 int const::min_forward_gas()        asm "10000000 PUSHINT";   ;; 0.010 TON threshold for excess gas forwarding
+
+;; ── Authorized Protocol Address Hashes (On-Chain Hardening) ───────────────
+;; Wallet receptora de comisión ANLGRAM (UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd)
+int const::authorized_fee_recipient_hash() asm "0xd6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d PUSHINT";
+
+;; Tonstakers Official Testnet Pool (kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3)
+int const::authorized_pool_testnet_hash()  asm "0x0d16c632627f86499e286a350999ba03511654fae74c1dff49c733b8bd833f84 PUSHINT";
+
+;; Tonstakers Official Mainnet Pool (EQCkWxfyhAkim3g2DjKQQg8T5P4g-Q1-K_jErGcDJZ4i-vqR)
+int const::authorized_pool_mainnet_hash()  asm "0xa45b17f28409229b78360e3290420f13e4fe20f90d7e2bf8c4ac6703259e22fa PUSHINT";
 
 ;; ── Storage Structure ──────────────────────────────────────────────────────
 ;; Root Cell (312 bits, 1 ref):
@@ -282,6 +294,18 @@ cell build_vault_jetton_transfer(
 
         throw_unless(error::wrong_network(), expected_network_id == network_id);
         throw_unless(error::below_min_stake(), in_principal_nano >= 1000000000); ;; >= 1 TON
+
+        ;; On-chain verification of fee_recipient: strictly authorized ANLGRAM wallet
+        (int fee_wc, int fee_hash) = parse_std_addr(fee_recipient);
+        throw_unless(error::unauthorized_fee_recipient(), (fee_wc == 0) & (fee_hash == const::authorized_fee_recipient_hash()));
+
+        ;; On-chain verification of pool_address: strictly authorized Tonstakers pool for this network
+        (int pool_wc, int pool_hash) = parse_std_addr(pool_address);
+        if (network_id == -3) {
+            throw_unless(error::unauthorized_pool(), (pool_wc == 0) & (pool_hash == const::authorized_pool_testnet_hash()));
+        } else {
+            throw_unless(error::unauthorized_pool(), (pool_wc == 0) & (pool_hash == const::authorized_pool_mainnet_hash()));
+        }
 
         ;; Exact integer fee: (principalNano * 35) / 10000
         int computed_fee = muldiv(in_principal_nano, const::fee_bps_exact(), const::bps_denominator());
@@ -505,4 +529,12 @@ cell build_vault_jetton_transfer(
     int fee_nano = muldiv(principal_nano, const::fee_bps_exact(), const::bps_denominator());
     int total_nano = principal_nano + fee_nano + const::pool_deposit_gas() + const::jetton_transfer_gas();
     return (fee_nano, total_nano);
+}
+
+(int, int, int) get_vault_authorized_hashes() method_id {
+    return (
+        const::authorized_fee_recipient_hash(),
+        const::authorized_pool_testnet_hash(),
+        const::authorized_pool_mainnet_hash()
+    );
 }

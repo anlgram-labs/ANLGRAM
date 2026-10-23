@@ -79,9 +79,9 @@ const STAKING_CONFIG = {
 
   // ── ANLGRAM ISOLATED STAKE VAULT (1-VAULT-PER-DEPOSIT ARCHITECTURE) ──
   // Compiled FunC contract: minter-contract/contracts/anlgram-stake-vault.fc
-  // Code Cell SHA-256: fdc7d19f9d9e554e10f4d0091532c6f9966a1eb85e36e9ce02836bf33a1a9505
-  VAULT_CODE_HASH:              'fdc7d19f9d9e554e10f4d0091532c6f9966a1eb85e36e9ce02836bf33a1a9505',
-  VAULT_CODE_BOC:               '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',
+  // Code Cell SHA-256: e69f7d22756c31ef01965ac197e3c561c77ab25d496795f0d4fdc9f2502daccf
+  VAULT_CODE_HASH:              'e69f7d22756c31ef01965ac197e3c561c77ab25d496795f0d4fdc9f2502daccf',
+  VAULT_CODE_BOC:               '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',
   VAULT_OP_INIT:                0x414e4c70,
   VAULT_OP_RESCUE:              0x414e4c72,
   VAULT_OP_RETRY:               0x414e4c73,
@@ -1407,40 +1407,80 @@ const ValidatorService = (() => {
    ══════════════════════════════════════════════════════════════ */
 
 const RewardService = (() => {
-  function calculate({ amount, apr, days = 365, compound = true }) {
-    if (!amount || !apr || apr <= 0) {
-      return { daily: null, weekly: null, monthly: null, yearly: null, roi: null, futureBalance: amount || 0, totalRewards: null };
+  /**
+   * Calculates mathematically rigorous staking yield projections.
+   *
+   * TON Liquid Staking Protocol Realities (Tonstakers liquidTF):
+   * TonAPI `/v2/staking/pool/{address}` returns `pool.apy` which is already the
+   * Annual Percentage Yield (APY, effective annual rate) incorporating protocol
+   * validation round compounding (~every 18-36 hours).
+   *
+   * Formula for effective APY over period t (t = days / 365):
+   *   Future Balance = Amount * (1 + APY / 100)^t
+   *   Total Rewards  = Future Balance - Amount
+   *
+   * Avoids the compound-compounding bug (previously applying Math.pow(1 + r/365, 365*t)
+   * on a value that was already APY, which erroneously inflated projections).
+   *
+   * For linear / non-compounded baseline:
+   *   nominalApr = 365 * ((1 + APY / 100)^(1/365) - 1) * 100
+   *   Future Balance = Amount * (1 + (nominalApr / 100) * t)
+   */
+  function calculate({ amount, apy = null, apr = null, days = 365, compound = true }) {
+    const rawRate = Number(apy ?? apr);
+    if (!amount || !Number.isFinite(rawRate) || rawRate <= 0) {
+      return {
+        daily: null, weekly: null, monthly: null, yearly: null,
+        periodRewards: null, totalRewards: null, roi: null,
+        futureBalance: amount || 0,
+        effectiveApy: null, nominalApr: null,
+      };
     }
-    const r = apr / 100;
+
+    const Y = rawRate / 100; // APY as fraction (e.g. 0.12764)
     const t = days / 365;
-    const n = 365;
+
+    // Nominal APR equivalent compounded daily: (1 + APR/365)^365 = 1 + APY
+    const dailyFactor = Math.pow(1 + Y, 1 / 365);
+    const nominalApr = (dailyFactor - 1) * 365 * 100;
 
     let futureBalance, totalRewards;
     if (compound) {
-      futureBalance = amount * Math.pow(1 + r / n, n * t);
+      // Compound projection using exact effective annual yield Y over time t
+      futureBalance = amount * Math.pow(1 + Y, t);
       totalRewards = futureBalance - amount;
     } else {
-      totalRewards = amount * r * t;
+      // Linear projection based on equivalent nominal APR without compounding over period
+      totalRewards = amount * (nominalApr / 100) * t;
       futureBalance = amount + totalRewards;
     }
 
+    // Auxiliary discrete periods
+    const dailyReward   = amount * (Math.pow(1 + Y, 1 / 365) - 1);
+    const weeklyReward  = amount * (Math.pow(1 + Y, 7 / 365) - 1);
+    const monthlyReward = amount * (Math.pow(1 + Y, 30 / 365) - 1);
+    const yearlyReward  = amount * Y; // Exactly amount * APY for 1 full year!
+
     return {
-      daily: (amount * r) / 365,
-      weekly: (amount * r) / 52,
-      monthly: (amount * r) / 12,
-      yearly: compound ? amount * (Math.pow(1 + r / n, n) - 1) : amount * r,
+      daily: dailyReward,
+      weekly: weeklyReward,
+      monthly: monthlyReward,
+      yearly: yearlyReward,
+      periodRewards: totalRewards,
+      totalRewards,
       roi: (totalRewards / amount) * 100,
       futureBalance,
-      totalRewards,
+      effectiveApy: rawRate,
+      nominalApr,
     };
   }
 
-  function buildGrowthData(amount, apr, months = 12, compound = true) {
-    if (!apr || apr <= 0) return { labels: [], values: [] };
+  function buildGrowthData(amount, apy, months = 12, compound = true) {
+    if (!apy || apy <= 0) return { labels: [], values: [] };
     const labels = [], values = [];
     for (let m = 1; m <= months; m++) {
       labels.push(`Mes ${m}`);
-      const res = calculate({ amount, apr, days: m * 30, compound });
+      const res = calculate({ amount, apy, days: m * 30, compound });
       values.push(parseFloat(safeToFixed(res.futureBalance, 4, '0')));
     }
     return { labels, values };
@@ -2749,7 +2789,7 @@ const CalculatorController = {
       return;
     }
 
-    const res = RewardService.calculate({ amount, apr: liveApr, days: periodDays, compound: isCompound });
+    const res = RewardService.calculate({ amount, apy: liveApr, days: periodDays, compound: isCompound });
     const grossRewards = res.totalRewards;
     const feeTon = parseFloat(breakdown.feeTonStr);
     const netGasEst = amount > 0 ? 0.025 : 0;
@@ -2776,7 +2816,7 @@ const CalculatorController = {
     this._renderChart(amount, liveApr, periodDays, isCompound);
   },
 
-  _renderChart(amount, apr, days, compound) {
+  _renderChart(amount, apy, days, compound) {
     const canvas = document.getElementById('calc-chart');
     if (!canvas || typeof Chart === 'undefined') return;
 
@@ -2790,7 +2830,7 @@ const CalculatorController = {
       const d = Math.round(i * stepDays);
       labels.push(`Día ${d}`);
       baseline.push(amount);
-      const r = RewardService.calculate({ amount, apr, days: d, compound });
+      const r = RewardService.calculate({ amount, apy, days: d, compound });
       projected.push(parseFloat(safeToFixed(r.futureBalance, 4)));
     }
 

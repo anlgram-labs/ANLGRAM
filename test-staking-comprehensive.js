@@ -1208,6 +1208,11 @@ async function runTests() {
     `Router=${cfg.ROUTER_ADDRESS_TESTNET}, JWallet=${cfg.ROUTER_JWALLET_TESTNET}`
   );
   assert(
+    cfg.VAULT_CODE_HASH === 'e69f7d22756c31ef01965ac197e3c561c77ab25d496795f0d4fdc9f2502daccf',
+    'VAULT_CODE_HASH verificado con bytecode hardened (on-chain hash checks)',
+    `hash=${cfg.VAULT_CODE_HASH}`
+  );
+  assert(
     Object.entries(cfg.ALLOWLIST).every(([poolAddr, pCfg]) =>
       StakingModule.isValidTonAddress(poolAddr) && StakingModule.isValidTonAddress(pCfg.jettonMaster)
     ),
@@ -1271,12 +1276,19 @@ async function runTests() {
   );
 
   const testApr = 3.225; // Testnet APY actual de Tonstakers
-  const r30 = RewardServiceModule.calculate({ amount: 10, apr: testApr, days: 30, compound: true });
-  const r90 = RewardServiceModule.calculate({ amount: 10, apr: testApr, days: 90, compound: true });
-  const r180 = RewardServiceModule.calculate({ amount: 10, apr: testApr, days: 180, compound: true });
-  const r365 = RewardServiceModule.calculate({ amount: 10, apr: testApr, days: 365, compound: true });
-  const r730 = RewardServiceModule.calculate({ amount: 10, apr: testApr, days: 730, compound: true });
+  const r30 = RewardServiceModule.calculate({ amount: 10, apy: testApr, days: 30, compound: true });
+  const r90 = RewardServiceModule.calculate({ amount: 10, apy: testApr, days: 90, compound: true });
+  const r180 = RewardServiceModule.calculate({ amount: 10, apy: testApr, days: 180, compound: true });
+  const r365 = RewardServiceModule.calculate({ amount: 10, apy: testApr, days: 365, compound: true });
+  const r730 = RewardServiceModule.calculate({ amount: 10, apy: testApr, days: 730, compound: true });
 
+  const expected30 = 10 * (Math.pow(1 + testApr / 100, 30 / 365) - 1);
+  const expected365 = 10 * (testApr / 100);
+  const expected730 = 10 * (Math.pow(1 + testApr / 100, 2) - 1);
+
+  assert(Math.abs(r30.totalRewards - expected30) < 1e-9, 'Proyección 30 días cumple exactamente fórmula de APY efectivo sin doble capitalización');
+  assert(Math.abs(r365.totalRewards - expected365) < 1e-9, 'Proyección 365 días (1 año) es exactamente amount * (APY/100) sin inflación');
+  assert(Math.abs(r730.totalRewards - expected730) < 1e-9, 'Proyección 730 días (2 años) cumple exactamente (1 + APY)^2 - 1');
   assert(r30.totalRewards > 0 && r30.totalRewards < r90.totalRewards, 'Proyección 30 días calculada y menor a 90 días');
   assert(r90.totalRewards < r180.totalRewards, 'Proyección 90 días menor a 180 días');
   assert(r180.totalRewards < r365.totalRewards, 'Proyección 180 días menor a 365 días (1 año)');

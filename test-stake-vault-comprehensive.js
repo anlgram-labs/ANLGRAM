@@ -247,6 +247,46 @@ function makeInboundMsg({ fromRaw, toRaw = '0:1234567890abcdef1234567890abcdef12
     }));
     assert(lowStakeRes.exit_code === 404, 'Rechaza principal menor a 1 TON (exit_code=404)');
 
+    // Reject unauthorized fee_recipient (Anti-Theft Hardening)
+    const badFeeDataCell = buildInitialVaultData({
+      clientRaw: CLIENT_A_RAW,
+      feeRecipientRaw: ATTACKER_RAW, // Attacker tries to set their own wallet as fee recipient
+      poolRaw: POOL_TESTNET_RAW,
+      networkId: -3,
+      queryId: 2001,
+    });
+    const badFeeVault = await SmartContract.fromCell(vaultCodeCell, badFeeDataCell);
+    const badFeeInitBody = beginCell()
+      .storeUint(OP_VAULT_INIT, 32)
+      .storeUint(2001, 64)
+      .storeCoins(10000000000n)
+      .storeInt(-3, 16)
+      .storeAddress(Address.parseRaw(VAULT_A_JWALLET_RAW))
+      .storeAddress(Address.parseRaw(CLIENT_A_JWALLET_RAW))
+      .endCell();
+    const badFeeRes = await badFeeVault.sendInternalMessage(makeInboundMsg({
+      fromRaw: CLIENT_A_RAW,
+      valueNano: 12000000000n,
+      bodyCell: badFeeInitBody,
+    }));
+    assert(badFeeRes.exit_code === 412, 'Rechaza inicialización con fee_recipient no autorizado (exit_code=412)');
+
+    // Reject unauthorized pool_address (Anti-Theft Hardening)
+    const badPoolDataCell = buildInitialVaultData({
+      clientRaw: CLIENT_A_RAW,
+      feeRecipientRaw: FEE_RECIPIENT_RAW,
+      poolRaw: ATTACKER_RAW, // Attacker tries to set a fake pool
+      networkId: -3,
+      queryId: 2001,
+    });
+    const badPoolVault = await SmartContract.fromCell(vaultCodeCell, badPoolDataCell);
+    const badPoolRes = await badPoolVault.sendInternalMessage(makeInboundMsg({
+      fromRaw: CLIENT_A_RAW,
+      valueNano: 12000000000n,
+      bodyCell: badFeeInitBody,
+    }));
+    assert(badPoolRes.exit_code === 413, 'Rechaza inicialización con pool_address no autorizado (exit_code=413)');
+
     // Reject insufficient message value
     const validBody = beginCell()
       .storeUint(OP_VAULT_INIT, 32)
