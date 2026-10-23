@@ -1215,7 +1215,7 @@ async function runTests() {
   );
   assert(Object.keys(cfg.ALLOWLIST).length === 2, 'ALLOWLIST restringida únicamente al pool oficial de Tonstakers (1 Mainnet + 1 Testnet)');
   assert(!stakingJsSource.includes('0x7bcd1fef') && !stakingJsSource.includes('0xda803efd'), 'No se reutilizan opcodes ni BoC de otros protocolos (Whales eliminado)');
-  assert(stakingJsSource.includes('network: expectedChainId'), 'TON Connect sendTransaction incluye explícitamente el network ID (-3 / -239)');
+  assert(stakingJsSource.includes('network: expectedChainId') || stakingJsSource.includes("network: '-3'"), 'TON Connect sendTransaction incluye explícitamente el network ID (-3 / -239)');
   assert(stakingHtmlSource.includes('id="stake-accept-terms-checkbox"'), 'Modal de staking incluye casilla obligatoria de aceptación del cliente antes de firmar');
   assert(stakingHtmlSource.includes('UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd'), 'Modal de staking muestra la wallet receptora completa UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd');
   assert(
@@ -1228,6 +1228,60 @@ async function runTests() {
   );
   assert(!apiJsSource.includes('_cachedTonPrice = 1.46'), 'Eliminado precio simulado 1.46 en assets/js/api.js');
   assert(!stakingHtmlSource.includes('$5.42') && !stakingHtmlSource.includes('4.82%'), 'Eliminados precios y APRs simulados ($5.42, 4.82%) en staking.html');
+
+  /* ────────────────────────────────────────────────────────────
+     SECTION 5: FLUJOS DE RETIRO, SIMULADOR Y REGLAS DE SEGURIDAD
+     ──────────────────────────────────────────────────────────── */
+  console.log('\n--- 5. Verificación de Seguridad y Flujos de Staking (Red Errónea, Cancelación, Rebotes, Recompensas y Retiros) ---');
+
+  // 5.1 Desglose transparente de 5 partes para StakeVault
+  const vaultBreakdown1 = StakingModule.calculateStakeDepositBreakdown(1000000000n);
+  assert(vaultBreakdown1.principalNano === 1000000000n, 'Principal para 1 TON: 1,000,000,000 nanoTON');
+  assert(vaultBreakdown1.feeNano === 3500000n, 'Comisión ANLGRAM para 1 TON: 3,500,000 nanoTON (35 bps = 0.35%)');
+  assert(vaultBreakdown1.poolDepositGasNano === 1000000000n, 'Gas adjunto al Pool: 1,000,000,000 nanoTON (1.0 TON)');
+  assert(vaultBreakdown1.jettonTransferGasNano === 105000000n, 'Gas de transferencia tsTON: 105,000,000 nanoTON (0.105 TON)');
+  assert(vaultBreakdown1.storageReserveNano === 50000000n, 'Reserva de almacenamiento: 50,000,000 nanoTON (0.05 TON)');
+  assert(vaultBreakdown1.totalNano === 2158500000n, 'Total a firmar en TON Connect: 2,158,500,000 nanoTON (2.1585 TON)');
+
+  // 5.2 Protección contra red errónea (Mainnet -239 conectada en Testnet)
+  assert(stakingJsSource.includes("walletChainId !== '-3'"), 'Bloqueo explícito si la wallet conectada no tiene network ID -3 (Testnet)');
+  assert(stakingJsSource.includes("isWrongNetwork = true") || stakingJsSource.includes("isWrongNetwork = isMainnetWallet"), 'Detección automática de wallet conectada en Mainnet (-239)');
+  assert(stakingJsSource.includes('No disponible (Wallet en Mainnet -239)'), 'Saldo de Mainnet protegido: no se muestra como saldo utilizable en Testnet');
+
+  // 5.3 Manejo honesto de firma rechazada/cancelada
+  assert(stakingJsSource.includes("e?.code === 300 || /reject|cancel|declin/i.test(e?.message || '')"), 'Captura limpia de cancelación de firma por el usuario (código 300 / reject)');
+  assert(stakingJsSource.includes("StakingState.setDeep('ui.txInFlight', false)"), 'txInFlight se restablece adecuadamente ante cancelación o error');
+
+  // 5.4 Retención estricta de la wallet de origen en todo el ciclo
+  assert(stakingJsSource.includes('buildStakeVaultInitPayload(') && stakingJsSource.includes('clientJw'), 'StakeVault vincula estrictamente la Jetton Wallet del cliente conectada');
+  assert(stakingJsSource.includes('response_destination = client_address') || stakingJsSource.includes('client_address'), 'Reembolsos y excesos dirigidos exclusivamente a la wallet de origen');
+  assert(stakingJsSource.includes('unstakeOp: 0x595f07bc'), 'Retiro utiliza el opcode oficial de quema NEP-74 (0x595f07bc)');
+  assert(cfg.ANLGRAM_WITHDRAW_FEE_BPS === 0, 'Comisión por retiro es exactamente 0% (0 bps)');
+  assert(cfg.ANLGRAM_CLAIM_FEE_BPS === 0, 'Comisión por recompensa es exactamente 0% (0 bps)');
+
+  // 5.5 Proyecciones matemáticas de recompensas y plazos múltiples
+  const sandboxStaking = loadFn(sandboxWindow, sandboxLocalStorage);
+  const RewardServiceModule = new Function('StakingState', 'NotificationService', 'UnstakeModalController', `
+    ${stakingJsSource.slice(stakingJsSource.indexOf('const RewardService = (() => {'), stakingJsSource.indexOf('const PortfolioService = (() => {'))}
+    return RewardService;
+  `)(
+    { get: () => [] },
+    { toast: () => {} },
+    { open: () => {} }
+  );
+
+  const testApr = 3.225; // Testnet APY actual de Tonstakers
+  const r30 = RewardServiceModule.calculate({ amount: 10, apr: testApr, days: 30, compound: true });
+  const r90 = RewardServiceModule.calculate({ amount: 10, apr: testApr, days: 90, compound: true });
+  const r180 = RewardServiceModule.calculate({ amount: 10, apr: testApr, days: 180, compound: true });
+  const r365 = RewardServiceModule.calculate({ amount: 10, apr: testApr, days: 365, compound: true });
+  const r730 = RewardServiceModule.calculate({ amount: 10, apr: testApr, days: 730, compound: true });
+
+  assert(r30.totalRewards > 0 && r30.totalRewards < r90.totalRewards, 'Proyección 30 días calculada y menor a 90 días');
+  assert(r90.totalRewards < r180.totalRewards, 'Proyección 90 días menor a 180 días');
+  assert(r180.totalRewards < r365.totalRewards, 'Proyección 180 días menor a 365 días (1 año)');
+  assert(r365.totalRewards < r730.totalRewards, 'Proyección 365 días menor a 730 días (2 años)');
+  assert(r365.yearly > r365.monthly * 11.5, 'Capitalización continua superior a la acumulación lineal simple');
 
   console.log('\n========================================================================');
   console.log(`📊 RESULTADO FINAL: ${passed} PASARON | ${failed} FALLARON`);

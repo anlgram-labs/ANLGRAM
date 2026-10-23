@@ -1236,6 +1236,8 @@ const WalletService = (() => {
       _processVerifiedPositions(jettonsData, poolTelemetry);
       PortfolioController.render();
       WalletUIController.updateConnected();
+      CalculatorController._updateWalletRecipientDisplay();
+      CalculatorController._calculate();
     } finally {
       StakingState.set('loading', { ...StakingState.get('loading'), positions: false });
     }
@@ -1324,6 +1326,8 @@ const WalletService = (() => {
         });
         StakingState.set('positions', []);
         WalletUIController.updateDisconnected();
+        CalculatorController._updateWalletRecipientDisplay();
+        CalculatorController._calculate();
       }
       PortfolioController.render();
       TransactionController.init();
@@ -1345,7 +1349,7 @@ const ValidatorService = (() => {
     const results = [];
     for (const [poolAddr, cfg] of allowEntries) {
       const telemetry = await PoolOnChainVerifier.fetchVerifiedPoolTelemetry(net);
-      await PoolOnChainVerifier.verifyRouterContract(net);
+      await PoolOnChainVerifier.verifyStakeVaultRequirements(net);
 
       const totalNano = telemetry?.totalBalanceNano || 0n;
       const totalTon = totalNano > 0n ? parseFloat(fromNanoSafe(totalNano, 2)) : null;
@@ -2601,22 +2605,141 @@ const ValidatorDetailController = {
    ══════════════════════════════════════════════════════════════ */
 
 const CalculatorController = {
+  _chartInstance: null,
+
   init() {
     const amountInput = document.getElementById('calc-amount');
-    const aprInput = document.getElementById('calc-apr');
-    if (amountInput) amountInput.oninput = () => this._calculate();
-    if (aprInput) aprInput.oninput = () => this._calculate();
+    const amountSlider = document.getElementById('calc-amount-slider');
+    const periodSelect = document.getElementById('calc-period');
+    const compoundToggle = document.getElementById('calc-compound-toggle');
+
+    if (amountInput) {
+      amountInput.oninput = () => {
+        if (amountSlider) amountSlider.value = amountInput.value;
+        this._calculate();
+      };
+    }
+    if (amountSlider) {
+      amountSlider.oninput = () => {
+        if (amountInput) amountInput.value = amountSlider.value;
+        this._calculate();
+      };
+    }
+    if (periodSelect) {
+      periodSelect.onchange = () => this._calculate();
+    }
+    if (compoundToggle) {
+      compoundToggle.onclick = () => {
+        const toggleSw = compoundToggle.querySelector('.toggle-sw');
+        const isOn = toggleSw?.classList.toggle('on');
+        compoundToggle.setAttribute('aria-checked', isOn ? 'true' : 'false');
+        this._calculate();
+      };
+    }
+
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('anlgramWalletChanged', () => {
+        this._updateWalletRecipientDisplay();
+        this._calculate();
+      });
+    }
+
+    this._updateWalletRecipientDisplay();
     this._calculate();
+  },
+
+  _updateWalletRecipientDisplay() {
+    const wallet = StakingState.get('wallet');
+    const recipientEl = document.getElementById('calc-connected-recipient-wallet');
+    if (!recipientEl) return;
+    if (wallet.connected && wallet.address) {
+      recipientEl.textContent = shortenAddress(wallet.address);
+      recipientEl.title = wallet.address;
+    } else {
+      recipientEl.textContent = 'Conecta tu wallet';
+      recipientEl.title = 'Conecta tu wallet para vincular la recepción directa de tsTON';
+    }
+  },
+
+  setAmount(val) {
+    const input = document.getElementById('calc-amount');
+    const slider = document.getElementById('calc-amount-slider');
+    if (input) input.value = val;
+    if (slider) slider.value = Math.min(10000, val);
+    this._calculate();
+  },
+
+  setMaxWallet() {
+    const wallet = StakingState.get('wallet');
+    if (!wallet.connected) {
+      window.openWalletModal?.();
+      return;
+    }
+    if (wallet.isWrongNetwork || wallet.chainId !== '-3') {
+      NotificationService.toast('Red Errónea', 'Cambia tu wallet a TON Testnet (-3) para operar.', 'warning');
+      return;
+    }
+    const gasReserveTotalNano = STAKING_CONFIG.VAULT_TOTAL_GAS_RESERVE_NANO || 1155000000n;
+    const availNano = wallet.balanceNano > gasReserveTotalNano ? (wallet.balanceNano - gasReserveTotalNano) : 0n;
+    const maxPrincipalNano = (availNano * 10000n) / 10035n;
+    const amountFloat = parseFloat(fromNanoSafe(maxPrincipalNano, 4));
+    this.setAmount(Math.max(1, amountFloat));
   },
 
   _calculate() {
     const amount = parseFloat(document.getElementById('calc-amount')?.value) || 0;
-    const aprVal = parseFloat(document.getElementById('calc-apr')?.value);
-    const liveApr = Number.isFinite(aprVal) && aprVal > 0
-      ? aprVal
-      : (StakingState.get('validators')[0]?.apr ?? null);
+    const periodDays = parseInt(document.getElementById('calc-period')?.value, 10) || 365;
+    const compoundToggle = document.getElementById('calc-compound-toggle');
+    const isCompound = compoundToggle?.querySelector('.toggle-sw')?.classList.contains('on') ?? true;
+
+    const activeNet = StakingState.get('activeNetwork');
+    const poolTelemetry = StakingState.get('poolOnChainData')?.[activeNet];
+    const liveApr = poolTelemetry?.apy ?? (StakingState.get('validators')[0]?.apr ?? null);
+
+    // Update Pool & Network Details Card
+    const allowEntry = Object.entries(STAKING_CONFIG.ALLOWLIST).find(([, cfg]) => cfg.network === activeNet);
+    const poolAddr = allowEntry ? allowEntry[0] : 'kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3';
+    const poolCfg = allowEntry ? allowEntry[1] : null;
+
+    _setText('calc-pool-net-badge', activeNet === 'mainnet' ? 'Mainnet (-239 · Bloqueado)' : 'Testnet (-3)');
+    _setText('calc-pool-name-display', poolCfg?.name || 'Tonstakers Liquid Pool');
+    const poolLinkEl = document.getElementById('calc-pool-link');
+    if (poolLinkEl) {
+      const viewerBase = activeNet === 'mainnet' ? STAKING_CONFIG.TONVIEWER_MAINNET : STAKING_CONFIG.TONVIEWER_TESTNET;
+      poolLinkEl.href = `${viewerBase}/${poolAddr}`;
+      poolLinkEl.textContent = shortenAddress(poolAddr);
+    }
+
+    this._updateWalletRecipientDisplay();
+
+    // APY Field & Badges
+    const aprInput = document.getElementById('calc-apr');
+    if (aprInput) {
+      aprInput.value = liveApr ? safeToFixed(liveApr, 2) : '';
+      aprInput.placeholder = liveApr ? '' : 'Sin datos';
+    }
+    _setText('calc-apr-display-badge', liveApr ? `${safeToFixed(liveApr, 2)}% APY` : 'Sin datos');
+    _setText('calc-apr-updated-time', poolTelemetry?.updatedAtStr || 'En espera de telemetría');
+
+    // Cost Breakdown Card
+    const principalNano = toNanoSafe(amount > 0 ? amount : 0);
+    const breakdown = calculateStakeDepositBreakdown(principalNano);
+
+    _setText('calc-breakdown-principal', `${amount > 0 ? safeToFixed(amount, 4) : '0.0000'} TON`);
+    _setText('calc-breakdown-fee', `${breakdown.feeTonStr} TON (${breakdown.feeNano.toString()} nanoTON · 35 bps)`);
+    _setText('calc-breakdown-gas', '~0.025 TON neto (reembolsos de excesos)');
+
+    // Projections for the Selected Period
+    _setText('calc-period-sub-1', `en ${periodDays} días`);
 
     if (!liveApr || amount <= 0) {
+      _setText('calc-period-gross', 'Sin datos');
+      _setText('calc-period-fee', amount > 0 ? `-${breakdown.feeTonStr} TON` : '—');
+      _setText('calc-period-net', 'Sin datos');
+      _setText('calc-period-roi', 'Sin datos');
+      _setText('calc-period-future', amount > 0 ? `${safeToFixed(amount, 4)} TON` : 'Sin datos');
+      _setText('calc-period-tston', 'Sin datos');
+
       _setText('calc-daily', 'Sin datos');
       _setText('calc-weekly', 'Sin datos');
       _setText('calc-monthly', 'Sin datos');
@@ -2626,15 +2749,114 @@ const CalculatorController = {
       return;
     }
 
-    const breakdown = calculateStakeDepositBreakdown(amount);
-    const res = RewardService.calculate({ amount, apr: liveApr, days: 365, compound: true });
+    const res = RewardService.calculate({ amount, apr: liveApr, days: periodDays, compound: isCompound });
+    const grossRewards = res.totalRewards;
+    const feeTon = parseFloat(breakdown.feeTonStr);
+    const netGasEst = amount > 0 ? 0.025 : 0;
+    const netRewards = Math.max(0, grossRewards - feeTon - netGasEst);
+    const netRoi = amount > 0 ? ((netRewards / amount) * 100) : 0;
+    const netFuture = amount + netRewards;
+    const rateFloat = poolTelemetry?.exchangeRateFloat || 1.193249;
+    const tstonEst = amount / rateFloat;
+
+    _setText('calc-period-gross', `~${safeToFixed(grossRewards, 4)} TON`);
+    _setText('calc-period-fee', `-${breakdown.feeTonStr} TON`);
+    _setText('calc-period-net', `~${safeToFixed(netRewards, 4)} TON`);
+    _setText('calc-period-roi', `~${safeToFixed(netRoi, 2)}%`);
+    _setText('calc-period-future', `~${safeToFixed(netFuture, 4)} TON`);
+    _setText('calc-period-tston', `~${safeToFixed(tstonEst, 4)} tsTON`);
 
     _setText('calc-daily', `~${safeToFixed(res.daily, 4)} TON`);
     _setText('calc-weekly', `~${safeToFixed(res.weekly, 4)} TON`);
     _setText('calc-monthly', `~${safeToFixed(res.monthly, 4)} TON`);
-    _setText('calc-yearly', `~${safeToFixed(res.yearly, 2)} TON (Fee dep.: ${breakdown.feeTonStr} TON)`);
-    _setText('calc-roi', `~${safeToFixed(res.roi, 2)}% (Est.)`);
+    _setText('calc-yearly', `~${safeToFixed(res.yearly, 2)} TON`);
+    _setText('calc-roi', `~${safeToFixed(res.roi, 2)}% (Bruto)`);
     _setText('calc-future', `~${safeToFixed(res.futureBalance, 2)} TON`);
+
+    this._renderChart(amount, liveApr, periodDays, isCompound);
+  },
+
+  _renderChart(amount, apr, days, compound) {
+    const canvas = document.getElementById('calc-chart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const steps = 12;
+    const stepDays = days / steps;
+    const labels = [];
+    const baseline = [];
+    const projected = [];
+
+    for (let i = 0; i <= steps; i++) {
+      const d = Math.round(i * stepDays);
+      labels.push(`Día ${d}`);
+      baseline.push(amount);
+      const r = RewardService.calculate({ amount, apr, days: d, compound });
+      projected.push(parseFloat(safeToFixed(r.futureBalance, 4)));
+    }
+
+    if (this._chartInstance) {
+      this._chartInstance.destroy();
+      this._chartInstance = null;
+    }
+
+    try {
+      const ctx = canvas.getContext('2d');
+      this._chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Valor Proyectado (TON)',
+              data: projected,
+              borderColor: '#00f5ff',
+              backgroundColor: 'rgba(0, 245, 255, 0.08)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.3,
+              pointRadius: 2,
+              pointHoverRadius: 5,
+            },
+            {
+              label: 'Principal Base',
+              data: baseline,
+              borderColor: 'rgba(148, 163, 184, 0.4)',
+              borderWidth: 1.5,
+              borderDash: [5, 5],
+              fill: false,
+              pointRadius: 0,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: { color: '#94a3b8', font: { size: 10 } },
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+            },
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.04)' },
+              ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 6 },
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.04)' },
+              ticks: { color: '#64748b', font: { size: 9 } },
+            },
+          },
+        },
+      });
+    } catch (e) {
+      console.warn('[CalculatorController._renderChart note]:', e.message);
+    }
   },
 
   populateValidatorSelect() {
@@ -2642,10 +2864,6 @@ const CalculatorController = {
     if (!sel) return;
     const list = StakingState.get('validators') || [];
     sel.innerHTML = list.map(v => `<option value="${v.id}">${v.name} (${v.apr !== null ? safeToFixed(v.apr, 2) + '% Est.' : 'Tasa variable'})</option>`).join('');
-    if (list[0]?.apr) {
-      const aprInput = document.getElementById('calc-apr');
-      if (aprInput) aprInput.value = safeToFixed(list[0].apr, 2);
-    }
     this._calculate();
   },
 };

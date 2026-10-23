@@ -1202,29 +1202,52 @@
       </section><!-- /my-stakes -->
 
       <!-- ─────────────────────────────────────────────────────
-           SECTION 4 · REWARD CALCULATOR
+           SECTION 4 · REWARD CALCULATOR & PERFORMANCE PROJECTIONS
       ──────────────────────────────────────────────────────── -->
       <section class="staking-section" id="calculator" aria-labelledby="calculator-heading">
         <div class="section-header">
           <div>
             <div class="section-title" id="calculator-heading">
               <div class="section-icon" aria-hidden="true">🧮</div>
-              Staking Reward Calculator
+              Simulador de Rendimiento y Desglose de Staking
             </div>
-            <div class="section-sub">Simulate compound returns with real validator APRs</div>
+            <div class="section-sub">Proyección matemática de rendimientos netos basada en telemetría on-chain de Tonstakers (liquidTF) y comisión ANLGRAM (35 bps)</div>
           </div>
           <div class="section-actions">
-            <button class="btn btn-ghost btn-sm" onclick="CalculatorController._calculate()">↻ Recalculate</button>
+            <button class="btn btn-ghost btn-sm" onclick="CalculatorController._calculate()">↻ Recalcular</button>
           </div>
         </div>
 
         <div class="calc-grid">
 
-          <!-- Left: Inputs -->
+          <!-- Left: Inputs & Protocol Setup -->
           <div class="card">
-            <div style="font-size:13px;font-weight:700;margin-bottom:18px;color:var(--text-primary);">Configure Simulation</div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text-primary);display:flex;justify-content:space-between;align-items:center;">
+              <span>Configuración de Simulación</span>
+              <span id="calc-pool-net-badge" class="badge badge-blue" style="font-size:10px;">Testnet (-3)</span>
+            </div>
 
-            <div class="form-group">
+            <!-- Verified Pool & Wallet Destination Card -->
+            <div style="background:var(--bg-secondary);border:1px solid var(--border-subtle);border-radius:10px;padding:12px 14px;margin-bottom:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:0.5px;">Pool Público Verificado:</span>
+                <span style="font-size:10px;color:#22c55e;">✓ Auditado (liquidTF)</span>
+              </div>
+              <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-top:2px;" id="calc-pool-name-display">Tonstakers (Official Liquid Pool)</div>
+              <div style="font-size:11px;color:var(--text-secondary);margin-top:3px;word-break:break-all;" id="calc-pool-addr-display">
+                Contrato: <a href="https://testnet.tonviewer.com/kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3" target="_blank" rel="noopener noreferrer" style="color:var(--cyan);font-family:var(--font-mono);font-size:11px;" id="calc-pool-link">kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3</a>
+              </div>
+              <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-subtle);display:flex;justify-content:space-between;font-size:11px;">
+                <span style="color:var(--text-muted);">Token Entregado a Wallet:</span>
+                <strong style="color:var(--text-primary);font-family:var(--font-mono);">tsTON (Liquid Jetton)</strong>
+              </div>
+              <div style="margin-top:4px;display:flex;justify-content:space-between;font-size:11px;align-items:center;">
+                <span style="color:var(--text-muted);">Billetera Receptora Exclusiva:</span>
+                <span id="calc-connected-recipient-wallet" style="color:var(--cyan);font-family:var(--font-mono);font-size:10px;">Conecta tu wallet</span>
+              </div>
+            </div>
+
+            <div class="form-group" style="display:none;">
               <label class="form-label" for="calc-validator-select">Validator / Pool</label>
               <select id="calc-validator-select" class="form-select" aria-label="Select validator">
                 <option value="">-- Loading validators... --</option>
@@ -1233,93 +1256,150 @@
 
             <div class="form-group">
               <label class="form-label" for="calc-amount">
-                Staking Amount (TON)
+                Monto de Staking (TON)
                 <span id="calc-amount-display" style="font-family:var(--font-mono);color:var(--cyan);font-weight:400;margin-left:8px;font-size:12px;"></span>
               </label>
-              <input type="number" id="calc-amount" class="form-input" value="1000" min="1" max="10000000" aria-label="Staking amount" />
+              <input type="number" id="calc-amount" class="form-input" value="10" min="1" max="10000000" step="any" aria-label="Staking amount" />
+              <div style="display:flex;gap:6px;margin-top:8px;">
+                <button type="button" class="btn btn-ghost btn-xs" style="padding:4px 8px;font-size:11px;" onclick="CalculatorController.setAmount(1)">1 TON</button>
+                <button type="button" class="btn btn-ghost btn-xs" style="padding:4px 8px;font-size:11px;" onclick="CalculatorController.setAmount(10)">10 TON</button>
+                <button type="button" class="btn btn-ghost btn-xs" style="padding:4px 8px;font-size:11px;" onclick="CalculatorController.setAmount(100)">100 TON</button>
+                <button type="button" class="btn btn-ghost btn-xs" style="padding:4px 8px;font-size:11px;" onclick="CalculatorController.setAmount(1000)">1,000 TON</button>
+                <button type="button" class="btn btn-ghost btn-xs" style="padding:4px 8px;font-size:11px;color:var(--cyan);" onclick="CalculatorController.setMaxWallet()">MAX Wallet</button>
+              </div>
               <div class="range-wrap" style="margin-top:10px;">
                 <input type="range" id="calc-amount-slider" class="range-slider"
-                       min="1" max="100000" value="1000" step="100"
-                       aria-label="Staking amount slider" aria-valuemin="1" aria-valuemax="100000" aria-valuenow="1000" />
-                <div class="range-labels"><span>1 TON</span><span>100,000 TON</span></div>
+                       min="1" max="10000" value="10" step="1"
+                       aria-label="Staking amount slider" aria-valuemin="1" aria-valuemax="10000" aria-valuenow="10" />
+                <div class="range-labels"><span>1 TON</span><span>10,000 TON</span></div>
               </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="calc-apr">Annual APY (%) <span id="calc-apr-source" style="font-size:10px;color:var(--text-muted);font-weight:400;">(Cargando de cadena...)</span></label>
-              <input type="number" id="calc-apr" class="form-input" value="" placeholder="Sin datos" min="0.1" max="100" step="0.01" aria-label="APR percentage" />
+              <label class="form-label" for="calc-apr">
+                Tasa Anual Flotante (APY)
+                <span id="calc-apr-source" style="font-size:10px;color:var(--cyan);font-weight:400;margin-left:6px;">(TonAPI On-Chain)</span>
+              </label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="number" id="calc-apr" class="form-input" value="" placeholder="Sin datos" min="0.1" max="100" step="0.01" aria-label="APR percentage" readonly style="flex:1;background:var(--bg-secondary);cursor:default;" />
+                <span id="calc-apr-display-badge" class="badge badge-green" style="font-family:var(--font-mono);font-size:12px;padding:6px 10px;">— % APY</span>
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:4px;" id="calc-apr-timestamp-display">
+                Fuente: TonAPI v2 (get_pool_full_data) · Actualizado: <span id="calc-apr-updated-time">consultando...</span>
+              </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="calc-period">Staking Period</label>
-              <select id="calc-period" class="form-select" aria-label="Select staking period">
-                <option value="30">30 Days</option>
-                <option value="90">90 Days</option>
-                <option value="180">6 Months</option>
-                <option value="365" selected>1 Year</option>
-                <option value="730">2 Years</option>
-                <option value="1825">5 Years</option>
+              <label class="form-label" for="calc-period">Plazo Previsto de Staking</label>
+              <select id="calc-period" class="form-select" aria-label="Select staking period" onchange="CalculatorController._calculate()">
+                <option value="30">30 Días (1 Mes)</option>
+                <option value="90">90 Días (3 Meses)</option>
+                <option value="180">180 Días (6 Meses)</option>
+                <option value="365" selected>365 Días (1 Año)</option>
+                <option value="730">730 Días (2 Años)</option>
+                <option value="1825">1,825 Días (5 Años)</option>
               </select>
             </div>
 
             <div class="toggle-row" id="calc-compound-toggle" role="checkbox" aria-checked="true" tabindex="0">
               <div>
-                <div class="toggle-lbl">Compound Rewards</div>
-                <div style="font-size:11px;color:var(--text-muted);">Re-stake rewards daily for exponential growth</div>
+                <div class="toggle-lbl">Capitalización Continua en tsTON (Por Protocolo)</div>
+                <div style="font-size:11px;color:var(--text-muted);">En Tonstakers las recompensas se reinvierten automáticamente incrementando el tipo de cambio tsTON/TON</div>
               </div>
               <div class="toggle-sw on" aria-hidden="true"></div>
             </div>
           </div>
 
-          <!-- Right: Results -->
+          <!-- Right: Cost Breakdown & Projections -->
           <div>
-            <div class="calc-output-grid">
-              <div class="calc-output-card">
-                <div class="calc-output-label">Daily Reward</div>
-                <div class="calc-output-value" id="calc-daily">—</div>
-                <div class="calc-output-sub">per day</div>
+            <!-- Transparent Fee & Cost Breakdown Card -->
+            <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:14px;margin-bottom:16px;">
+              <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+                <span>Desglose de Costos y Comisiones</span>
+                <span style="font-size:10px;color:var(--cyan);font-weight:400;">Entrada Transparente</span>
               </div>
-              <div class="calc-output-card">
-                <div class="calc-output-label">Weekly</div>
-                <div class="calc-output-value" id="calc-weekly">—</div>
-                <div class="calc-output-sub">per week</div>
+              <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;">
+                <span style="color:var(--text-secondary);">Principal Depositado:</span>
+                <span style="font-family:var(--font-mono);font-weight:600;" id="calc-breakdown-principal">10.0000 TON</span>
               </div>
-              <div class="calc-output-card">
-                <div class="calc-output-label">Monthly</div>
-                <div class="calc-output-value" id="calc-monthly">—</div>
-                <div class="calc-output-sub">per month</div>
+              <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;">
+                <span style="color:var(--text-secondary);">Comisión ANLGRAM (35 bps = 0.35%):</span>
+                <span style="font-family:var(--font-mono);font-weight:600;color:#22c55e;" id="calc-breakdown-fee">0.0350 TON</span>
               </div>
-              <div class="calc-output-card">
-                <div class="calc-output-label">Annual</div>
-                <div class="calc-output-value" id="calc-yearly">—</div>
-                <div class="calc-output-sub">per year</div>
+              <div style="font-size:10px;color:var(--text-muted);padding-bottom:4px;word-break:break-all;">
+                Wallet Receptora ANLGRAM: <span style="font-family:var(--font-mono);color:var(--text-secondary);">UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd</span>
               </div>
-              <div class="calc-output-card">
-                <div class="calc-output-label">ROI</div>
-                <div class="calc-output-value" id="calc-roi" style="color:var(--cyan);">—</div>
-                <div class="calc-output-sub">return on investment</div>
+              <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;">
+                <span style="color:var(--text-secondary);">Comisión Protocolo Tonstakers:</span>
+                <span style="font-family:var(--font-mono);font-weight:600;">0.00% al depositar (Tarifa gobernanza deducida del reward)</span>
               </div>
-              <div class="calc-output-card">
-                <div class="calc-output-label">Future Balance</div>
-                <div class="calc-output-value" id="calc-future" style="color:var(--text-primary);font-size:14px;">—</div>
-                <div class="calc-output-sub">at period end</div>
+              <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;">
+                <span style="color:var(--text-secondary);">Gas Neto Estimado de Red:</span>
+                <span style="font-family:var(--font-mono);color:var(--text-muted);" id="calc-breakdown-gas">~0.025 TON neto (excesos reembolsados)</span>
               </div>
             </div>
 
+            <!-- Projection Output Grid for Chosen Period -->
+            <div class="calc-output-grid" style="grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:16px;">
+              <div class="calc-output-card">
+                <div class="calc-output-label">Rendimiento Bruto</div>
+                <div class="calc-output-value" id="calc-period-gross" style="color:var(--text-primary);font-size:16px;">—</div>
+                <div class="calc-output-sub" id="calc-period-sub-1">en el plazo elegido</div>
+              </div>
+              <div class="calc-output-card">
+                <div class="calc-output-label">Comisión ANLGRAM</div>
+                <div class="calc-output-value" id="calc-period-fee" style="color:#f59e0b;font-size:16px;">—</div>
+                <div class="calc-output-sub">0.35% (cobro único)</div>
+              </div>
+              <div class="calc-output-card">
+                <div class="calc-output-label">Rendimiento Neto</div>
+                <div class="calc-output-value" id="calc-period-net" style="color:#22c55e;font-size:16px;">—</div>
+                <div class="calc-output-sub">tras comisión y gas</div>
+              </div>
+              <div class="calc-output-card">
+                <div class="calc-output-label">ROI Neto Estimado</div>
+                <div class="calc-output-value" id="calc-period-roi" style="color:var(--cyan);font-size:16px;">—</div>
+                <div class="calc-output-sub">retorno sobre inversión</div>
+              </div>
+              <div class="calc-output-card">
+                <div class="calc-output-label">Valor Total al Retirar</div>
+                <div class="calc-output-value" id="calc-period-future" style="color:#22c55e;font-size:16px;">—</div>
+                <div class="calc-output-sub">principal + neto</div>
+              </div>
+              <div class="calc-output-card">
+                <div class="calc-output-label">Tokens tsTON en Wallet</div>
+                <div class="calc-output-value" id="calc-period-tston" style="color:var(--text-primary);font-size:15px;">—</div>
+                <div class="calc-output-sub">recibidos al stakear</div>
+              </div>
+            </div>
+
+            <!-- Growth Chart -->
             <div class="chart-card">
               <div class="chart-header">
                 <div>
-                  <div class="chart-title">12-Month Growth Projection</div>
-                  <div class="chart-sub">Compound vs principal baseline</div>
+                  <div class="chart-title">Proyección de Crecimiento en el Plazo</div>
+                  <div class="chart-sub">Capitalización continua tsTON vs principal base</div>
                 </div>
               </div>
-              <div class="chart-body" style="height:200px;">
+              <div class="chart-body" style="height:190px;">
                 <canvas id="calc-chart" aria-label="Reward growth chart" role="img"></canvas>
               </div>
             </div>
 
+            <!-- Verified Protocol Guide Box on Rewards & Unstaking -->
+            <div style="margin-top:14px;background:var(--bg-secondary);border:1px solid var(--border-subtle);border-radius:10px;padding:12px 14px;font-size:11px;line-height:1.6;color:var(--text-secondary);">
+              <div style="font-weight:700;color:var(--text-primary);margin-bottom:6px;font-size:12px;">📖 Mecanismo Verificado de Recompensas y Retiro (Tonstakers liquidTF)</div>
+              <ul style="margin:0;padding-left:16px;">
+                <li><strong>¿Qué token recibe tu wallet?</strong> Recibes el token líquido de participación <strong>tsTON</strong> directamente en tu Jetton Wallet propia al completarse el depósito.</li>
+                <li><strong>¿Cómo se reciben y reclaman las recompensas?</strong> En Tonstakers no existe un reclamo manual separado de intereses. Cada ciclo de validación de la red TON (~18–36h), los rendimientos de validación incrementan el balance de TON del pool, por lo que <strong>1 tsTON vale progresivamente más TON</strong> (tasa de cambio apreciativa).</li>
+                <li><strong>¿Cómo se retira y se recupera TON?</strong> Ejecutas la operación oficial de quema (<code>0x595f07bc</code>) desde tu Jetton Wallet. El pool convierte tus tsTON al equivalente en TON (principal + todas las recompensas acumuladas) y transfiere los fondos <strong>estrictamente a tu wallet conectada de origen</strong>.</li>
+                <li><strong>Comisión de ANLGRAM en retiros o recompensas:</strong> <strong>0.00% (0 TON · Sin cobro)</strong>. ANLGRAM solo cobra el 0.35% una sola vez al depositar.</li>
+              </ul>
+            </div>
+
+            <!-- Risk & Variable Yield Notice -->
             <div style="margin-top:12px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:8px;padding:12px 14px;font-size:11px;color:var(--text-muted);line-height:1.5;">
-              <span>⚠️ <strong>Risk &amp; Variable Yield Notice:</strong> Staking yields are variable and subject to network validation cycles, validator performance, and election parameters (historical observation date: April 2026). While nominal TON rewards accumulate over time, fluctuations in the market price of TON can result in net fiat (USD/EUR) losses. Liquid staking tokens (tsTON/stTON) may also fluctuate relative to secondary market liquidity. Slashing penalties may apply in the event of validator misbehavior or prolonged downtime.</span>
+              <span>⚠️ <strong>Aviso de Tasa Variable y Riesgos:</strong> Las tasas APY mostradas son flotantes y dependen de los ciclos electorales de los validadores y las condiciones del protocolo TON. Las proyecciones matemáticas son estimaciones ilustrativas y no constituyen una garantía de ganancias futuras. Si bien el saldo nominal de TON se incrementa con el tiempo, la cotización de mercado de TON frente a monedas fiduciarias (USD/EUR) puede fluctuar a la baja. Los tokens líquidos de staking (tsTON) pueden presentar variaciones de liquidez en mercados secundarios.</span>
             </div>
           </div>
 
