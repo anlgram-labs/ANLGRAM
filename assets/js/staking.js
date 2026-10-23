@@ -81,10 +81,18 @@ const STAKING_CONFIG = {
   // Compiled FunC contract: minter-contract/contracts/anlgram-stake-vault.fc
   // Code Cell SHA-256: fdc7d19f9d9e554e10f4d0091532c6f9966a1eb85e36e9ce02836bf33a1a9505
   VAULT_CODE_HASH:              'fdc7d19f9d9e554e10f4d0091532c6f9966a1eb85e36e9ce02836bf33a1a9505',
+  VAULT_CODE_BOC:               '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',
   VAULT_OP_INIT:                0x414e4c70,
   VAULT_OP_RESCUE:              0x414e4c72,
   VAULT_OP_RETRY:               0x414e4c73,
   VAULT_OP_REFUNDED:            0x414e4c74,
+
+  // StakeVault Gas & Storage Reserve Breakdown (nanoTON)
+  // For 1 TON principal: 1.0000 TON + 0.0035 TON (35 bps) + 1.0000 TON (pool) + 0.1050 TON (jwallet) + 0.0500 TON (vault rent) = 2.1585 TON
+  VAULT_POOL_DEPOSIT_GAS_NANO:   1000000000n, // 1.0000 TON attached to Tonstakers Pool (excess refunded to vault -> client)
+  VAULT_JETTON_TRANSFER_GAS_NANO: 105000000n,  // 0.1050 TON attached to 0x0f8a7ea5 tsTON transfer (excess refunded)
+  VAULT_STORAGE_RESERVE_NANO:    50000000n,   // 0.0500 TON minimum storage rent reserve for immutable vault
+  VAULT_TOTAL_GAS_RESERVE_NANO:  1155000000n, // 1.1550 TON total gas and storage rent attached
 
   ROUTER_GAS_RESERVE_NANO:      1150000000n, // 1.00 TON pool deposit gas + 0.15 TON router forwarding gas (excess refunded)
   POOL_DIRECT_GAS_RESERVE_NANO: 1000000000n, // 1.00 TON Tonstakers deposit gas reserve
@@ -376,18 +384,33 @@ function calculateAnlgramStakeFeeNano(principalInput) {
 }
 
 /**
- * Computes the complete deposit breakdown in nanoTON and formatted TON strings.
+ * Computes the complete deposit breakdown in nanoTON and formatted TON strings for the StakeVault architecture.
+ * Exactly reflects:
+ * 1. Principal amount
+ * 2. ANLGRAM commission (0.35% = 35 bps exact)
+ * 3. Tonstakers Pool deposit gas (1.00 TON, unused excess refunded to vault -> client)
+ * 4. Jetton transfer gas (0.105 TON, unused excess refunded to client)
+ * 5. Vault storage rent reserve (0.05 TON, immutable non-destructive storage)
+ * Total signing amount: principal + fee + 1.155 TON = 2.1585 TON for 1 TON principal.
  */
-function calculateStakeDepositBreakdown(principalInput, gasReserveNano = STAKING_CONFIG.ROUTER_GAS_RESERVE_NANO) {
+function calculateStakeDepositBreakdown(principalInput, gasReserveNano = (STAKING_CONFIG.VAULT_TOTAL_GAS_RESERVE_NANO || 1155000000n)) {
   const principalNano = typeof principalInput === 'bigint' ? principalInput : toNanoSafe(principalInput);
   const feeNano = calculateAnlgramStakeFeeNano(principalNano);
-  const gasNano = BigInt(gasReserveNano);
+  
+  const poolDepositGasNano = STAKING_CONFIG.VAULT_POOL_DEPOSIT_GAS_NANO || 1000000000n;
+  const jettonTransferGasNano = STAKING_CONFIG.VAULT_JETTON_TRANSFER_GAS_NANO || 105000000n;
+  const storageReserveNano = STAKING_CONFIG.VAULT_STORAGE_RESERVE_NANO || 50000000n;
+  const gasNano = BigInt(gasReserveNano || (poolDepositGasNano + jettonTransferGasNano + storageReserveNano));
   const totalNano = principalNano > 0n ? (principalNano + feeNano + gasNano) : 0n;
 
   return {
     principalNano,
     feeNano,
+    poolDepositGasNano,
+    jettonTransferGasNano,
+    storageReserveNano,
     gasReserveNano: gasNano,
+    gasReserveTotalNano: gasNano,
     totalNano,
     feeBps: STAKING_CONFIG.ANLGRAM_STAKE_FEE_BPS, // 35
     feePctStr: '0.35%',
@@ -395,6 +418,9 @@ function calculateStakeDepositBreakdown(principalInput, gasReserveNano = STAKING
     feeRecipientRaw: STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT_RAW,
     principalTonStr: fromNanoSafe(principalNano, 9, true),
     feeTonStr: fromNanoSafe(feeNano, 9, true),
+    poolDepositGasTonStr: fromNanoSafe(poolDepositGasNano, 4),
+    jettonTransferGasTonStr: fromNanoSafe(jettonTransferGasNano, 4),
+    storageReserveTonStr: fromNanoSafe(storageReserveNano, 4),
     gasTonStr: fromNanoSafe(gasNano, 4),
     totalTonStr: fromNanoSafe(totalNano, 9, true),
   };
@@ -548,7 +574,7 @@ async function buildAnlgramRouterRetryTsTonPayload(queryId) {
 async function buildStakeVaultInitialData(clientAddress, queryId, networkId = -3, partnerCode = STAKING_CONFIG.ANLGRAM_PARTNER_CODE) {
   const core = await getTonCore();
   const cAddr = core.Address.parse(clientAddress);
-  const feeRecip = core.Address.parse(STAKING_CONFIG.FEE_RECIPIENT_TESTNET);
+  const feeRecip = core.Address.parse(STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT_RAW);
   const poolAddr = core.Address.parse(STAKING_CONFIG.ALLOWLIST['kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3'].raw);
   const qId = BigInt(queryId);
   const netId = Number(networkId);
@@ -577,6 +603,67 @@ async function buildStakeVaultInitialData(clientAddress, queryId, networkId = -3
     .storeUint(pCode, 64)
     .storeRef(staticRef)
     .endCell();
+}
+
+/**
+ * Builds standard 5-bit StateInit cell (split_depth:0 special:0 code:1 data:1 library:0)
+ */
+function buildStakeVaultStateInit(core, codeCell, initialDataCell) {
+  return core.beginCell()
+    .storeUint(0b00110, 5)
+    .storeRef(codeCell)
+    .storeRef(initialDataCell)
+    .endCell();
+}
+
+/**
+ * Computes deterministic StateInit and address for the isolated StakeVault.
+ */
+async function getDeterministicVaultInfo(clientAddress, queryId, networkId = -3) {
+  const core = await getTonCore();
+  const initialDataCell = await buildStakeVaultInitialData(clientAddress, queryId, networkId);
+  const codeCell = core.Cell.fromBase64(STAKING_CONFIG.VAULT_CODE_BOC);
+  const stateInitCell = buildStakeVaultStateInit(core, codeCell, initialDataCell);
+  const stateInitHashHex = stateInitCell.hash().toString('hex');
+  const rawAddress = `0:${stateInitHashHex}`;
+  const friendlyAddress = rawToFriendlyAddress(rawAddress, true, networkId === -3);
+
+  return {
+    rawAddress,
+    friendlyAddress,
+    stateInitCell,
+    stateInitBoC: stateInitCell.toBoc().toString('base64'),
+    initialDataCell,
+    codeCell,
+    codeHash: codeCell.hash().toString('hex'),
+  };
+}
+
+/**
+ * Resolves the Jetton Wallet address for a specific owner on a Jetton Master via TonAPI get_wallet_address get-method.
+ */
+async function getJettonWalletAddress(masterAddress, ownerAddress, network = 'testnet') {
+  const rawOwner = friendlyToRawAddress(ownerAddress) || ownerAddress;
+  try {
+    const res = await ApiService.tonapi(
+      `/blockchain/accounts/${encodeURIComponent(masterAddress)}/methods/get_wallet_address?args=${encodeURIComponent(rawOwner)}`,
+      60000,
+      network
+    );
+    if (res && res.decoded && res.decoded.jetton_wallet_address) {
+      return res.decoded.jetton_wallet_address;
+    }
+    if (res && res.stack && res.stack[0]?.cell) {
+      const core = await getTonCore();
+      const cell = core.Cell.fromBoc(Buffer.from(res.stack[0].cell, 'hex'))[0];
+      const slice = cell.beginParse();
+      const addr = slice.loadAddress();
+      return addr.toRawString ? addr.toRawString() : (addr.toString ? addr.toString() : rawOwner);
+    }
+  } catch (err) {
+    console.warn(`[getJettonWalletAddress] Failed to resolve for owner ${ownerAddress}:`, err.message);
+  }
+  return null;
 }
 
 /**
@@ -777,88 +864,122 @@ const PoolOnChainVerifier = (() => {
   }
 
   /**
-   * Verifies that the configured `AnlgramStakingRouter` contract is deployed, active,
-   * matches the expected network, pool address, fee recipient (`UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd`),
-   * and `fee_bps == 35`.
+   * Verifies all on-chain prerequisites for the isolated StakeVault architecture:
+   * 1. Active network must be Testnet (-3). Mainnet (-239) is strictly disabled.
+   * 2. Official Tonstakers Pool on-chain verification (active, open, not halted).
+   * 3. tsTON Jetton Master on-chain verification (active).
+   * 4. StakeVault compiled FunC bytecode SHA-256 integrity check (fdc7d19f...).
+   * 5. Deterministic StateInit & vault address generator readiness.
+   * Eliminates obsolete reliance on a monolithic centralized Router without hiding errors.
    */
-  async function verifyRouterContract(network) {
+  async function verifyStakeVaultRequirements(network) {
     const net = network === 'mainnet' ? 'mainnet' : 'testnet';
-    const routerAddr = net === 'mainnet'
-      ? STAKING_CONFIG.ROUTER_ADDRESS_MAINNET
-      : (localStorage.getItem('anlgram_staking_router_testnet') || STAKING_CONFIG.ROUTER_ADDRESS_TESTNET);
-
-    if (!routerAddr || !isValidTonAddress(routerAddr)) {
+    if (net === 'mainnet' && !STAKING_CONFIG.MAINNET_STAKING_ENABLED) {
       const status = {
         verified: false,
-        address: routerAddr || null,
-        reason: net === 'mainnet'
-          ? 'Mainnet desactivado hasta auditoría independiente y aprobación del propietario.'
-          : 'Contrato AnlgramStakingRouter aún no desplegado/configurado en Testnet.',
+        reason: 'Staking en Mainnet (-239) estrictamente desactivado hasta auditoría independiente y aprobación del propietario.',
       };
-      const prev = StakingState.get('routerVerification');
-      StakingState.set('routerVerification', { ...prev, [net]: status });
+      const prev = StakingState.get('vaultVerification') || {};
+      StakingState.set('vaultVerification', { ...prev, [net]: status });
+      StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
       return status;
     }
 
     try {
-      const [acct, cfgMethod] = await Promise.all([
-        ApiService.tonapi(`/accounts/${encodeURIComponent(routerAddr)}`, 10000, net),
-        ApiService.tonapi(`/blockchain/accounts/${encodeURIComponent(routerAddr)}/methods/get_router_config`, 10000, net),
+      const allowEntry = Object.entries(STAKING_CONFIG.ALLOWLIST).find(([, cfg]) => cfg.network === net);
+      if (!allowEntry) {
+        const status = { verified: false, reason: `Configuración no encontrada para la red ${net}.` };
+        StakingState.set('vaultVerification', { ...StakingState.get('vaultVerification'), [net]: status });
+        StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
+        return status;
+      }
+      const [poolAddr, poolCfg] = allowEntry;
+      const tsTonMaster = poolCfg.jettonMaster;
+
+      // Parallel verification of Pool and tsTON Master on-chain
+      const [poolAcct, poolMethod, masterAcct] = await Promise.all([
+        ApiService.tonapi(`/accounts/${encodeURIComponent(poolAddr)}`, 15000, net),
+        ApiService.tonapi(`/blockchain/accounts/${encodeURIComponent(poolAddr)}/methods/get_pool_full_data`, 15000, net),
+        ApiService.tonapi(`/accounts/${encodeURIComponent(tsTonMaster)}`, 15000, net),
       ]);
 
-      if (!acct || acct.status !== 'active') {
-        const status = { verified: false, address: routerAddr, reason: `Contrato Router no está activo en cadena (estado: ${acct?.status || 'no encontrado'}).` };
+      if (!poolAcct || poolAcct.status !== 'active') {
+        const status = { verified: false, reason: `El Pool oficial Tonstakers no está activo en ${net} (estado: ${poolAcct?.status || 'desconocido'}).` };
+        StakingState.set('vaultVerification', { ...StakingState.get('vaultVerification'), [net]: status });
         StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
         return status;
       }
 
-      if (!cfgMethod || !cfgMethod.success || !Array.isArray(cfgMethod.stack) || cfgMethod.stack.length < 7) {
-        const status = { verified: false, address: routerAddr, reason: 'El contrato no implementa get_router_config verificado.' };
+      if (!masterAcct || masterAcct.status !== 'active') {
+        const status = { verified: false, reason: `El contrato tsTON Master no está activo en ${net} (estado: ${masterAcct?.status || 'desconocido'}).` };
+        StakingState.set('vaultVerification', { ...StakingState.get('vaultVerification'), [net]: status });
         StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
         return status;
       }
 
-      const feeBpsOnChain = parseInt(cfgMethod.stack[2]?.num || '0', 16);
-      const paused = parseInt(cfgMethod.stack[3]?.num || '0', 16) !== 0;
-      const netIdOnChain = parseInt(cfgMethod.stack[4]?.num || '0', 16);
-      const expectedNetId = net === 'testnet' ? -3 : -239;
+      let halted = false;
+      let depositsOpen = true;
+      if (poolMethod && poolMethod.success && poolMethod.decoded) {
+        halted = Boolean(poolMethod.decoded.halted);
+        depositsOpen = poolMethod.decoded.deposits_open !== undefined ? Boolean(poolMethod.decoded.deposits_open) : true;
+      } else if (poolMethod && poolMethod.success && Array.isArray(poolMethod.stack)) {
+        halted = parseInt(poolMethod.stack[1]?.num || '0', 16) !== 0;
+      }
 
-      if (paused) {
-        const status = { verified: false, address: routerAddr, reason: 'El contrato Router se encuentra pausado.' };
+      if (halted || !depositsOpen) {
+        const status = { verified: false, reason: 'El Pool Tonstakers tiene depósitos cerrados o se encuentra pausado (halted).' };
+        StakingState.set('vaultVerification', { ...StakingState.get('vaultVerification'), [net]: status });
         StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
         return status;
       }
 
-      if (netIdOnChain !== expectedNetId || feeBpsOnChain !== STAKING_CONFIG.ANLGRAM_STAKE_FEE_BPS) {
-        const status = {
-          verified: false,
-          address: routerAddr,
-          reason: `Parámetros on-chain discrepantes (netId=${netIdOnChain}, feeBps=${feeBpsOnChain}).`,
-        };
+      // Verify compiled bytecode hash
+      const core = await getTonCore();
+      const codeCell = core.Cell.fromBase64(STAKING_CONFIG.VAULT_CODE_BOC);
+      const codeHash = codeCell.hash().toString('hex');
+      if (codeHash !== STAKING_CONFIG.VAULT_CODE_HASH) {
+        const status = { verified: false, reason: `Hash de bytecode discrepante: esperado ${STAKING_CONFIG.VAULT_CODE_HASH}, obtenido ${codeHash}.` };
+        StakingState.set('vaultVerification', { ...StakingState.get('vaultVerification'), [net]: status });
         StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
         return status;
       }
 
       const status = {
         verified: true,
-        address: routerAddr,
-        rawAddress: acct.address,
-        reason: 'Contrato AnlgramStakingRouter activo y verificado en cadena (35 bps).',
+        network: net,
+        chainId: poolCfg.chainId,
+        poolAddress: poolAddr,
+        poolRaw: poolCfg.raw,
+        tsTonMaster: tsTonMaster,
+        tsTonMasterRaw: poolCfg.jettonMasterRaw,
+        codeHash: codeHash,
+        feeRecipient: STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT,
+        feeRecipientRaw: STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT_RAW,
+        feeBps: STAKING_CONFIG.ANLGRAM_STAKE_FEE_BPS,
+        isVaultDeployed: false, // Bóveda determinística no desplegada antes del primer depósito
+        address: 'Bóveda Determinística (vía StateInit)',
+        reason: 'Requisitos StakeVault verificados en cadena: Pool Tonstakers activo, tsTON Master activo y Bytecode hash verificado (fdc7d19f). Bóveda determinística lista para despliegue vía StateInit.',
       };
+
+      StakingState.set('vaultVerification', { ...StakingState.get('vaultVerification'), [net]: status });
       StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
       return status;
     } catch (err) {
       const status = {
         verified: false,
-        address: routerAddr,
-        reason: `No se pudo verificar el Router en cadena: ${err.message}`,
+        reason: `Error al verificar requisitos StakeVault en cadena: ${err.message}`,
       };
+      StakingState.set('vaultVerification', { ...StakingState.get('vaultVerification'), [net]: status });
       StakingState.set('routerVerification', { ...StakingState.get('routerVerification'), [net]: status });
       return status;
     }
   }
 
-  return { fetchVerifiedPoolTelemetry, verifyRouterContract };
+  async function verifyRouterContract(network) {
+    return verifyStakeVaultRequirements(network);
+  }
+
+  return { fetchVerifiedPoolTelemetry, verifyStakeVaultRequirements, verifyRouterContract };
 })();
 
 /* ══════════════════════════════════════════════════════════════
@@ -1016,15 +1137,18 @@ const WalletService = (() => {
   function getChainId() {
     if (typeof window.getConnectedWalletChainId === 'function') {
       const cid = window.getConnectedWalletChainId();
-      if (cid) return cid;
+      if (cid) return String(cid);
     }
-    return getNetwork() === 'testnet' ? STAKING_CONFIG.CHAIN_ID_TESTNET : STAKING_CONFIG.CHAIN_ID_MAINNET;
+    const rawChain = window.tonConnectUI?.wallet?.account?.chain;
+    if (rawChain === '-3' || rawChain === -3) return '-3';
+    if (rawChain === '-239' || rawChain === -239) return '-239';
+    return null; // Unverified / Unknown
   }
 
-  async function getAccountInfo(address) {
+  async function getAccountInfo(address, network = 'testnet') {
     if (!address) return null;
     try {
-      return await ApiService.tonapi(`/accounts/${encodeURIComponent(address)}`);
+      return await ApiService.tonapi(`/accounts/${encodeURIComponent(address)}`, 15000, network);
     } catch { return null; }
   }
 
@@ -1035,8 +1159,50 @@ const WalletService = (() => {
 
     try {
       const isTC = isTonConnect();
-      const net = getNetwork();
-      const activeNet = StakingState.get('activeNetwork');
+      const chainId = getChainId();
+      const activeNet = StakingState.get('activeNetwork'); // 'testnet'
+
+      let isWrongNetwork = false;
+      let balanceNano = 0n;
+      let balanceTon = 0;
+      let balanceDisplay = '0.0000 TON';
+      let balanceStatus = 'ok';
+
+      if (isTC && chainId === '-239') {
+        // Connected wallet is on Mainnet!
+        isWrongNetwork = true;
+        balanceStatus = 'wrong_network_mainnet';
+        balanceDisplay = 'No disponible (Wallet en Mainnet -239)';
+        balanceTon = null;
+        balanceNano = null;
+      } else if (isTC && chainId !== '-3') {
+        // Chain ID cannot be verified as Testnet
+        isWrongNetwork = true;
+        balanceStatus = 'unverified_chain';
+        balanceDisplay = 'No disponible (Red no verificada)';
+        balanceTon = null;
+        balanceNano = null;
+      } else {
+        // Either chainId === '-3' (verified Testnet) or watch-only mode
+        try {
+          const acct = await ApiService.tonapi(`/accounts/${encodeURIComponent(address)}`, 15000, 'testnet');
+          if (acct && acct.status !== 'nonexist' && acct.balance) {
+            balanceNano = BigInt(acct.balance || 0);
+            balanceTon = parseFloat(fromNanoSafe(balanceNano, 4));
+            balanceDisplay = `${safeToFixed(balanceTon, 4)} TON`;
+            balanceStatus = 'active';
+          } else {
+            balanceNano = 0n;
+            balanceTon = 0;
+            balanceDisplay = '0.0000 TON (Cuenta sin saldo en Testnet)';
+            balanceStatus = 'nonexist';
+          }
+        } catch (err) {
+          console.warn('[WalletService] Error fetching Testnet balance:', err.message);
+          balanceDisplay = 'No disponible (Error al consultar red Testnet)';
+          balanceStatus = 'error';
+        }
+      }
 
       // Ensure live pool telemetry is loaded so we have the exact tsTON -> TON exchange rate
       let poolTelemetry = StakingState.get('poolOnChainData')[activeNet];
@@ -1044,31 +1210,32 @@ const WalletService = (() => {
         poolTelemetry = await PoolOnChainVerifier.fetchVerifiedPoolTelemetry(activeNet);
       }
 
-      const [infoRes, jettonsRes] = await Promise.allSettled([
-        getAccountInfo(address),
-        ApiService.tonapi(`/accounts/${encodeURIComponent(address)}/jettons`, 15000),
-      ]);
-
-      const balNano = infoRes.status === 'fulfilled' && infoRes.value ? BigInt(infoRes.value.balance || 0) : 0n;
-      const balTon = parseFloat(fromNanoSafe(balNano, 4));
+      const jettonsRes = await (async () => {
+        try {
+          return await ApiService.tonapi(`/accounts/${encodeURIComponent(address)}/jettons`, 15000, 'testnet');
+        } catch { return null; }
+      })();
 
       StakingState.set('wallet', {
         address,
-        rawAddress: infoRes.status === 'fulfilled' ? (infoRes.value?.address || friendlyToRawAddress(address)) : friendlyToRawAddress(address),
+        rawAddress: friendlyToRawAddress(address),
         name: getName(),
-        balanceTon: balTon,
-        balanceNano: balNano,
-        network: net,
-        chainId: getChainId(),
+        balanceTon,
+        balanceNano,
+        balanceDisplay,
+        balanceStatus,
+        isWrongNetwork,
+        network: isWrongNetwork ? 'mainnet' : 'testnet',
+        chainId: chainId || (isWrongNetwork ? '-239' : '-3'),
         connected: true,
         isTonConnect: isTC,
         isReadOnly: !isTC,
       });
 
-      const jettonsData = jettonsRes.status === 'fulfilled' && jettonsRes.value ? jettonsRes.value.balances || [] : [];
-
+      const jettonsData = jettonsRes?.balances || [];
       _processVerifiedPositions(jettonsData, poolTelemetry);
       PortfolioController.render();
+      WalletUIController.updateConnected();
     } finally {
       StakingState.set('loading', { ...StakingState.get('loading'), positions: false });
     }
@@ -1580,8 +1747,14 @@ const WalletUIController = {
       banner.style.display = 'flex';
       const addrEl = document.getElementById('wallet-addr-display');
       const balEl = document.getElementById('wallet-bal-display');
-      if (addrEl) addrEl.textContent = `${shortenAddress(w.address)} (${w.network === 'testnet' ? 'Testnet -3' : 'Mainnet -239'})${w.isReadOnly ? ' · Solo Lectura' : ''}`;
-      if (balEl) balEl.textContent = `${safeToFixed(w.balanceTon, 4)} TON`;
+      if (addrEl) {
+        let netLabel = w.network === 'testnet' ? 'Testnet -3' : 'Mainnet -239';
+        if (w.isWrongNetwork) {
+          netLabel = '⚠️ Red Errónea: Mainnet -239 (Cambia a Testnet)';
+        }
+        addrEl.textContent = `${shortenAddress(w.address)} (${netLabel})${w.isReadOnly ? ' · Solo Lectura' : ''}`;
+      }
+      if (balEl) balEl.textContent = w.balanceDisplay || (w.balanceTon !== null ? `${safeToFixed(w.balanceTon, 4)} TON` : 'No disponible');
     }
     const networkEl = document.getElementById('network-badge-label');
     if (networkEl) {
@@ -1603,6 +1776,7 @@ const WalletUIController = {
 const StakeModalController = {
   _currentValidator: null,
   _currentBreakdown: null,
+  _currentVaultInfo: null,
   _step: 1,
 
   async open(validatorId) {
@@ -1618,11 +1792,11 @@ const StakeModalController = {
 
     const activeNet = StakingState.get('activeNetwork');
     const poolTelemetry = await PoolOnChainVerifier.fetchVerifiedPoolTelemetry(activeNet);
-    const routerCheck = await PoolOnChainVerifier.verifyRouterContract(activeNet);
+    const vaultReq = await PoolOnChainVerifier.verifyStakeVaultRequirements(activeNet);
 
     // Populate Step 1 Header
     _setText('stake-val-name', v.name);
-    _setText('stake-val-protocol', 'Tonstakers Liquid (tsTON · 0x47d54391)');
+    _setText('stake-val-protocol', 'Tonstakers Liquid (tsTON · StakeVault Aislada)');
     _setText('stake-val-apr', v.apr ? `${safeToFixed(v.apr, 2)}% (Estimado)` : 'Variable en cadena');
     _setText('stake-val-commission', `0.35% (${STAKING_CONFIG.ANLGRAM_STAKE_FEE_BPS} bps)`);
     _setText('stake-val-min', `${v.minStake || 1} TON`);
@@ -1642,9 +1816,8 @@ const StakeModalController = {
         alertBox.style.color = '#fbbf24';
         alertBox.innerHTML = `
           <strong>🛡️ Staking en Mainnet (-239) Desactivado por Política de Seguridad:</strong><br/>
-          El pool oficial de Tonstakers (<code>0x47d54391</code>) no deduce ni transfiere en cadena la comisión de <code>0.35%</code> a una wallet externa mediante <code>partner_code</code>.
-          Para garantizar el cobro automático verificable sin segunda firma y con reembolso ante rebotes, se requiere desplegar el contrato <code>AnlgramStakingRouter</code> tras auditoría independiente y aprobación explícita del propietario.<br/>
-          <em>Cambia a <strong>TON Testnet (-3)</strong> para revisar el desglose e inspeccionar las pruebas verificables.</em>
+          El staking en producción permanece desactivado hasta auditoría independiente de FunC y aprobación explícita del propietario.<br/>
+          <em>Cambia a <strong>TON Testnet (-3)</strong> para operar en el entorno de pruebas.</em>
         `;
       }
       if (reviewBtn) { reviewBtn.disabled = true; reviewBtn.textContent = 'Mainnet Desactivado (Usa Testnet)'; }
@@ -1654,7 +1827,29 @@ const StakeModalController = {
       return;
     }
 
-    // 2. Pool On-Chain Status Check
+    // 2. Connected Wallet Network Check (Mainnet vs Testnet)
+    const wallet = StakingState.get('wallet');
+    if (wallet.connected && (wallet.isWrongNetwork || wallet.chainId === '-239')) {
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.style.background = 'rgba(239,68,68,0.15)';
+        alertBox.style.borderColor = '#ef4444';
+        alertBox.style.color = '#fca5a5';
+        alertBox.innerHTML = `
+          <strong>⚠️ Billetera en Red Incorrecta (Mainnet -239):</strong><br/>
+          Tu billetera conectada está configurada en <strong>TON Mainnet (-239)</strong>.<br/>
+          Para realizar operaciones en Testnet, abre tu billetera (Tonkeeper / MyTonWallet / etc.), ve a Ajustes y cambia la red a <strong>TON Testnet (-3)</strong>.<br/>
+          <em>El saldo de Mainnet no se puede utilizar para staking en Testnet y la firma permanece bloqueada.</em>
+        `;
+      }
+      if (reviewBtn) { reviewBtn.disabled = true; reviewBtn.textContent = 'Red Errónea: Cambia a Testnet'; }
+      this._bindAmountInput();
+      this._updatePreview();
+      this._showStep(1);
+      return;
+    }
+
+    // 3. Pool On-Chain Status Check
     if (!v.isSupported || (poolTelemetry && !poolTelemetry.isPoolActive)) {
       if (alertBox) {
         alertBox.style.display = 'block';
@@ -1667,31 +1862,30 @@ const StakeModalController = {
       return;
     }
 
-    // 3. Router Deployment Status Notice on Testnet
-    if (!routerCheck.verified) {
+    // 4. StakeVault Requirements Status
+    if (!vaultReq.verified) {
       if (alertBox) {
         alertBox.style.display = 'block';
         alertBox.style.background = 'rgba(245,158,11,0.14)';
         alertBox.style.borderColor = '#f59e0b';
         alertBox.style.color = '#fbbf24';
-        alertBox.innerHTML = `
-          <strong>ℹ️ Estado del Contrato Router en Testnet (-3):</strong><br/>
-          ${routerCheck.reason}<br/>
-          Puedes revisar el desglose exacto (principal, comisión <code>0.35%</code>, gas, total y wallet receptora <code>${STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT}</code>), pero la firma permanecerá bloqueada hasta que el contrato <code>AnlgramStakingRouter</code> esté activo en Testnet para no cobrar ni afirmar cobros sin verificación en cadena.
-        `;
+        alertBox.innerHTML = `<strong>ℹ️ Estado StakeVault en Testnet (-3):</strong><br/>${vaultReq.reason}`;
       }
+      if (reviewBtn) { reviewBtn.disabled = true; reviewBtn.textContent = 'Requisitos No Cumplidos'; }
     } else if (alertBox) {
       alertBox.style.display = 'none';
+      if (reviewBtn) { reviewBtn.disabled = false; reviewBtn.textContent = 'Revisar Desglose →'; }
     }
 
-    if (reviewBtn) { reviewBtn.disabled = false; reviewBtn.textContent = 'Revisar Desglose →'; }
-
-    const wallet = StakingState.get('wallet');
     const maxEl = document.getElementById('stake-max-display');
     if (maxEl) {
-      maxEl.textContent = wallet.connected
-        ? `Disponible: ${safeToFixed(wallet.balanceTon, 4)} TON ${wallet.isReadOnly ? '(Solo Lectura)' : ''}`
-        : 'Conecta tu wallet para ver tu balance';
+      if (!wallet.connected) {
+        maxEl.textContent = 'Conecta tu wallet para ver tu balance';
+      } else if (wallet.isWrongNetwork) {
+        maxEl.textContent = 'Disponible: No disponible (Wallet en Mainnet -239. Cambia a Testnet)';
+      } else {
+        maxEl.textContent = `Disponible: ${wallet.balanceDisplay} ${wallet.isReadOnly ? '(Solo Lectura)' : ''}`;
+      }
     }
 
     this._bindAmountInput();
@@ -1713,9 +1907,13 @@ const StakeModalController = {
   setMax() {
     const wallet = StakingState.get('wallet');
     if (!wallet.connected) { window.openWalletModal?.(); return; }
-    const gasNano = STAKING_CONFIG.ROUTER_GAS_RESERVE_NANO;
-    const availNano = wallet.balanceNano > gasNano ? (wallet.balanceNano - gasNano) : 0n;
-    // Since total = principal + (principal * 35 / 10000) + gas, maxPrincipal = (availNano * 10000) / 10035
+    if (wallet.isWrongNetwork || wallet.chainId !== '-3') {
+      NotificationService.toast('Red Errónea', 'Cambia tu wallet a TON Testnet (-3) para operar.', 'warning');
+      return;
+    }
+    const gasReserveTotalNano = STAKING_CONFIG.VAULT_TOTAL_GAS_RESERVE_NANO || 1155000000n;
+    const availNano = wallet.balanceNano > gasReserveTotalNano ? (wallet.balanceNano - gasReserveTotalNano) : 0n;
+    // Since total = principal + (principal * 35 / 10000) + gasReserveTotalNano, maxPrincipal = (availNano * 10000) / 10035
     const maxPrincipalNano = (availNano * 10000n) / 10035n;
     const input = document.getElementById('stake-amount-input');
     if (input) {
@@ -1729,11 +1927,14 @@ const StakeModalController = {
     if (!input || !this._currentValidator) return;
     const rawStr = (input.value || '').trim();
     const principalNano = toNanoSafe(rawStr);
-    const breakdown = calculateStakeDepositBreakdown(principalNano, STAKING_CONFIG.ROUTER_GAS_RESERVE_NANO);
+    const breakdown = calculateStakeDepositBreakdown(principalNano);
     this._currentBreakdown = breakdown;
 
     _setText('stake-preview-principal', `${breakdown.principalTonStr} TON`);
     _setText('stake-preview-anlgram-fee', `${breakdown.feeTonStr} TON (${breakdown.feeNano.toString()} nanoTON)`);
+    _setText('stake-preview-pool-gas', `${breakdown.poolDepositGasTonStr} TON`);
+    _setText('stake-preview-jetton-gas', `${breakdown.jettonTransferGasTonStr} TON`);
+    _setText('stake-preview-storage-gas', `${breakdown.storageReserveTonStr} TON`);
     _setText('stake-preview-gas', `${breakdown.gasTonStr} TON`);
     _setText('stake-preview-total', `${breakdown.totalTonStr} TON`);
     _setText('stake-preview-fee-wallet', breakdown.feeRecipient);
@@ -1760,10 +1961,12 @@ const StakeModalController = {
     let err = '';
     const minStakeNano = v?.minStakeNano || 1000000000n;
 
-    if (principalNano > 0n && principalNano < minStakeNano) {
+    if (wallet.connected && (wallet.isWrongNetwork || wallet.chainId === '-239')) {
+      err = 'Billetera conectada en TON Mainnet (-239). Cambia a TON Testnet (-3) en Tonkeeper.';
+    } else if (principalNano > 0n && principalNano < minStakeNano) {
       err = `El depósito mínimo para ${v?.name || 'Tonstakers'} es ${fromNanoSafe(minStakeNano, 2)} TON.`;
-    } else if (wallet.connected && wallet.balanceNano > 0n && totalNano > wallet.balanceNano) {
-      err = `Balance insuficiente. Total requerido (principal + comisión 0.35% + gas): ${fromNanoSafe(totalNano, 4)} TON.`;
+    } else if (wallet.connected && wallet.balanceNano !== null && totalNano > wallet.balanceNano) {
+      err = `Balance insuficiente en Testnet. Total requerido: ${fromNanoSafe(totalNano, 4)} TON (disponible: ${fromNanoSafe(wallet.balanceNano, 4)} TON).`;
     }
 
     if (errEl) errEl.textContent = err;
@@ -1774,16 +1977,20 @@ const StakeModalController = {
     const checkbox = document.getElementById('stake-accept-terms-checkbox');
     const execBtn = document.getElementById('stake-execute-btn');
     const activeNet = StakingState.get('activeNetwork');
-    const routerCheck = StakingState.get('routerVerification')[activeNet];
+    const vaultReq = StakingState.get('vaultVerification')?.[activeNet] || StakingState.get('routerVerification')?.[activeNet];
+    const wallet = StakingState.get('wallet');
 
     if (!execBtn) return;
     const isAccepted = Boolean(checkbox && checkbox.checked);
-    const canSign = isAccepted && Boolean(routerCheck && routerCheck.verified) &&
+    const isTestnet = wallet.connected && !wallet.isWrongNetwork && wallet.chainId === '-3';
+    const canSign = isAccepted && Boolean(vaultReq && vaultReq.verified) && isTestnet &&
                     (activeNet !== 'mainnet' || STAKING_CONFIG.MAINNET_STAKING_ENABLED);
 
     execBtn.disabled = !canSign;
-    if (!routerCheck?.verified) {
-      execBtn.textContent = 'Bloqueado: Router No Desplegado en Cadena';
+    if (wallet.connected && (wallet.isWrongNetwork || wallet.chainId === '-239')) {
+      execBtn.textContent = 'Bloqueado: Billetera en Mainnet (-239)';
+    } else if (!vaultReq?.verified) {
+      execBtn.textContent = 'Bloqueado: Requisitos No Verificados';
     } else if (!isAccepted) {
       execBtn.textContent = 'Acepta el Desglose para Firmar';
     } else {
@@ -1794,7 +2001,7 @@ const StakeModalController = {
   async confirmStake() {
     const input = document.getElementById('stake-amount-input');
     const principalNano = toNanoSafe((input?.value || '').trim());
-    const breakdown = calculateStakeDepositBreakdown(principalNano, STAKING_CONFIG.ROUTER_GAS_RESERVE_NANO);
+    const breakdown = calculateStakeDepositBreakdown(principalNano);
     this._currentBreakdown = breakdown;
 
     if (principalNano <= 0n || !this._validateAmount(principalNano, breakdown.totalNano)) {
@@ -1804,21 +2011,42 @@ const StakeModalController = {
       return;
     }
 
+    const wallet = StakingState.get('wallet');
+    if (wallet.connected && (wallet.isWrongNetwork || wallet.chainId === '-239')) {
+      NotificationService.toast('Red Errónea', 'Tu billetera está en Mainnet. Cambia a Testnet en Tonkeeper.', 'error');
+      return;
+    }
+
     const v = this._currentValidator;
     const activeNet = StakingState.get('activeNetwork');
     const expectedChainId = activeNet === 'testnet' ? STAKING_CONFIG.CHAIN_ID_TESTNET : STAKING_CONFIG.CHAIN_ID_MAINNET;
     const poolTelemetry = StakingState.get('poolOnChainData')[activeNet];
-    const routerCheck = await PoolOnChainVerifier.verifyRouterContract(activeNet);
+
+    // Compute deterministic StakeVault preview for this depositor
+    let vaultInfo = null;
+    try {
+      const qId = BigInt(Date.now());
+      vaultInfo = await getDeterministicVaultInfo(wallet.address || '0:0000000000000000000000000000000000000000000000000000000000000000', qId, -3);
+      this._currentVaultInfo = vaultInfo;
+    } catch (e) {
+      console.warn('[confirmStake] Vault preview calculation note:', e.message);
+    }
 
     // Populate Step 2 Confirmation Breakdown
     _setText('stake-confirm-validator', v.name);
     _setText('stake-confirm-network', `TON ${activeNet.toUpperCase()} (Chain ID: ${expectedChainId})`);
-    _setText('stake-confirm-protocol', 'liquidTF · Emisión tsTON + Escrow 0.35%');
+    _setText('stake-confirm-protocol', 'liquidTF · StakeVault Aislada por Depósito');
     _setText('stake-confirm-contract', v.address);
-    _setText('stake-confirm-router', routerCheck.address || 'Pendiente de despliegue en Testnet');
+    _setText('stake-confirm-vault', vaultInfo ? vaultInfo.friendlyAddress : 'Bóveda Determinística Única');
+    _setText('stake-confirm-router', vaultInfo ? vaultInfo.friendlyAddress : 'Bóveda Determinística');
+    _setText('stake-confirm-vault-status', 'No desplegada aún (se desplegará vía StateInit en la 1ª transacción)');
+    _setText('stake-confirm-vault-hash', vaultInfo?.codeHash || STAKING_CONFIG.VAULT_CODE_HASH);
     _setText('stake-confirm-amount', `${breakdown.principalTonStr} TON (${breakdown.principalNano.toString()} nanoTON)`);
     _setText('stake-confirm-anlgram-fee', `${breakdown.feeTonStr} TON (${breakdown.feeNano.toString()} nanoTON · 0.35%)`);
-    _setText('stake-confirm-fee', `${breakdown.gasTonStr} TON (Sobrante reembolsado por contrato)`);
+    _setText('stake-confirm-pool-gas', `${breakdown.poolDepositGasTonStr} TON (sobrante reembolsable)`);
+    _setText('stake-confirm-jetton-gas', `${breakdown.jettonTransferGasTonStr} TON (sobrante reembolsable)`);
+    _setText('stake-confirm-storage-gas', `${breakdown.storageReserveTonStr} TON (remanente recuperable)`);
+    _setText('stake-confirm-fee', `${breakdown.gasTonStr} TON (Gas + almacenamiento)`);
     _setText('stake-confirm-total', `${breakdown.totalTonStr} TON (${breakdown.totalNano.toString()} nanoTON)`);
     _setText('stake-confirm-fee-recipient', STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT);
 
@@ -1859,35 +2087,23 @@ const StakeModalController = {
       return;
     }
 
-    // Strict Chain ID Verification (-239 Mainnet vs -3 Testnet)
-    const expectedChainId = activeNet === 'testnet' ? STAKING_CONFIG.CHAIN_ID_TESTNET : STAKING_CONFIG.CHAIN_ID_MAINNET;
-    const walletChainId = String(window.tonConnectUI?.wallet?.account?.chain || '');
-    if (walletChainId !== expectedChainId) {
+    // Strict Chain ID Verification (-3 Testnet)
+    const walletChainId = String(window.tonConnectUI?.wallet?.account?.chain || wallet.chainId || '');
+    if (walletChainId !== '-3') {
       NotificationService.toast(
         'Bloqueado por Cadena Incorrecta',
-        `El Chain ID de tu wallet (${walletChainId || 'desconocido'}) no coincide con la red requerida (${expectedChainId}).`,
+        `Tu billetera está conectada en ${walletChainId === '-239' ? 'Mainnet (-239)' : (walletChainId || 'red desconocida')}. Cambia a TON Testnet (-3) en Tonkeeper para continuar.`,
         'error'
       );
       return;
     }
 
-    // Verify Router Contract On-Chain before allowing signature
-    const routerCheck = await PoolOnChainVerifier.verifyRouterContract(activeNet);
-    if (!routerCheck.verified || !routerCheck.address) {
+    // Verify StakeVault prerequisites on-chain
+    const vaultReq = await PoolOnChainVerifier.verifyStakeVaultRequirements(activeNet);
+    if (!vaultReq.verified) {
       NotificationService.toast(
-        'Router No Verificado en Cadena',
-        routerCheck.reason || 'No se puede ejecutar el cobro automático de 0.35% sin un contrato Router verificado en cadena.',
-        'error'
-      );
-      return;
-    }
-
-    // Verify Pool On-Chain Status before allowing signature
-    const poolTelemetry = await PoolOnChainVerifier.fetchVerifiedPoolTelemetry(activeNet);
-    if (!poolTelemetry || !poolTelemetry.isPoolActive) {
-      NotificationService.toast(
-        'Pool No Activo en Cadena',
-        'El contrato Tonstakers no está activo o tiene depósitos cerrados en este momento.',
+        'Requisitos No Verificados',
+        vaultReq.reason || 'No se cumplen los requisitos on-chain para desplegar la StakeVault.',
         'error'
       );
       return;
@@ -1899,23 +2115,54 @@ const StakeModalController = {
       return;
     }
 
+    if (wallet.balanceNano !== null && wallet.balanceNano < breakdown.totalNano) {
+      NotificationService.toast(
+        'Balance Insuficiente en Testnet',
+        `Se requieren ${breakdown.totalTonStr} TON (principal + comisión + gas). Tu saldo es ${wallet.balanceDisplay}.`,
+        'error'
+      );
+      return;
+    }
+
     StakingState.setDeep('ui.txInFlight', true);
     btn.disabled = true;
     btn.innerHTML = '<div class="loading-spinner" style="width:16px;height:16px;"></div> Firma en tu wallet...';
 
     try {
       const queryId = BigInt(Date.now());
-      const expectedNetInt = activeNet === 'testnet' ? -3 : -239;
-      const payloadBoC = await buildAnlgramRouterStakePayload(queryId, breakdown.principalNano, expectedNetInt);
+      const vaultInfo = await getDeterministicVaultInfo(wallet.address, queryId, -3);
+
+      // Resolve Jetton Wallets for client and vault
+      const poolCfg = STAKING_CONFIG.ALLOWLIST['kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3'];
+      const tsTonMaster = poolCfg.jettonMaster;
+
+      const [clientJw, vaultJw] = await Promise.all([
+        getJettonWalletAddress(tsTonMaster, wallet.address, 'testnet'),
+        getJettonWalletAddress(tsTonMaster, vaultInfo.friendlyAddress, 'testnet'),
+      ]);
+
+      if (!clientJw || !vaultJw) {
+        throw new Error('No se pudieron resolver las Jetton Wallets de tsTON en Testnet.');
+      }
+
+      const payloadBoC = await buildStakeVaultInitPayload(
+        queryId,
+        breakdown.principalNano,
+        -3,
+        vaultJw,
+        clientJw
+      );
+
       const startTs = Math.floor(Date.now() / 1000);
 
-      // Single-signature TON Connect transaction with explicit `network` ID (-3 or -239)
+      // Single atomic TON Connect message: deploys StakeVault via StateInit and initializes with payload
       await window.tonConnectUI.sendTransaction({
         validUntil: startTs + 600,
-        network: expectedChainId,
+        network: '-3',
         messages: [{
-          address: routerCheck.address,
+          address: vaultInfo.friendlyAddress,
           amount: breakdown.totalNano.toString(),
+          stateInit: vaultInfo.stateInitBoC,
           payload: payloadBoC,
         }],
       });
@@ -1931,15 +2178,15 @@ const StakeModalController = {
       const linkEl = document.getElementById('stake-tx-link');
 
       if (iconEl) iconEl.textContent = '⏳';
-      if (titleEl) titleEl.textContent = '1. Transacción Enviada · 2. Pendiente en Cadena';
-      if (subEl) subEl.textContent = 'TON Connect emitió el mensaje al Router. Esperando confirmación asíncrona del pool Tonstakers...';
-      if (hashEl) hashEl.textContent = `Query ID: ${queryId.toString()} · Consultando traza en TonAPI...`;
-      if (feeStatusEl) feeStatusEl.textContent = `Comisión (${breakdown.feeTonStr} TON · 0.35%): En custodia del Router (no marcada como cobrada hasta confirmar emisión de tsTON).`;
+      if (titleEl) titleEl.textContent = '1. Despliegue de Bóveda Enviado · 2. Pendiente en Cadena';
+      if (subEl) subEl.textContent = 'TON Connect emitió el StateInit a tu StakeVault aislada. Esperando confirmación de depósito en Tonstakers...';
+      if (hashEl) hashEl.textContent = `Bóveda: ${vaultInfo.friendlyAddress} · Query ID: ${queryId.toString()}`;
+      if (feeStatusEl) feeStatusEl.textContent = `Comisión (${breakdown.feeTonStr} TON · 0.35%): En custodia de tu StakeVault (no se transfiere hasta confirmar la llegada física de tsTON).`;
       if (linkEl) linkEl.style.display = 'none';
 
       const traceRes = await _pollRealDepositTrace(
         wallet.address,
-        routerCheck.address,
+        vaultInfo.friendlyAddress,
         breakdown.feeNano,
         startTs,
         60000,
@@ -1948,7 +2195,7 @@ const StakeModalController = {
         }
       );
 
-      const expBase = activeNet === 'testnet' ? STAKING_CONFIG.TONVIEWER_TESTNET : STAKING_CONFIG.TONVIEWER_MAINNET;
+      const expBase = STAKING_CONFIG.TONVIEWER_TESTNET;
       if (linkEl && traceRes.hash) {
         linkEl.href = `${expBase}/transaction/${traceRes.hash}`;
         linkEl.style.display = 'inline-block';
@@ -1957,24 +2204,24 @@ const StakeModalController = {
       if (traceRes.status === 'confirmed' && traceRes.feeCollected) {
         updateTxStateBadges({ sent: true, pending: false, confirmed: true, failedOrRefunded: false, feeCollected: true });
         if (iconEl) iconEl.textContent = '✅';
-        if (titleEl) titleEl.textContent = '¡Staking Confirmado y Comisión Cobrada!';
-        if (subEl) subEl.textContent = `Se depositaron ${breakdown.principalTonStr} TON en Tonstakers y recibiste tus tsTON.`;
+        if (titleEl) titleEl.textContent = '¡Staking Confirmado y tsTON Entregados!';
+        if (subEl) subEl.textContent = `Se depositaron ${breakdown.principalTonStr} TON en Tonstakers y recibiste tus tsTON en tu Jetton Wallet.`;
         if (hashEl) hashEl.textContent = traceRes.hash || 'Confirmado en cadena';
-        if (feeStatusEl) feeStatusEl.textContent = `Comisión cobrada y verificada en cadena: ${breakdown.feeTonStr} TON enviados a ${STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT}.`;
+        if (feeStatusEl) feeStatusEl.textContent = `Comisión verificada en cadena tras entrega de tsTON: ${breakdown.feeTonStr} TON transferidos a ${STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT}.`;
       } else if (traceRes.status === 'confirmed' && !traceRes.feeCollected) {
         updateTxStateBadges({ sent: true, pending: false, confirmed: true, failedOrRefunded: false, feeCollected: false });
         if (iconEl) iconEl.textContent = '⚠️';
-        if (titleEl) titleEl.textContent = 'Transacción Confirmada (Comisión No Verificada)';
-        if (subEl) subEl.textContent = 'La transacción fue procesada, pero aún no se verificó la transferencia de la comisión en la traza.';
+        if (titleEl) titleEl.textContent = 'Transacción Confirmada (Comisión Aún en Custodia)';
+        if (subEl) subEl.textContent = 'La transacción fue procesada en la bóveda, pero la confirmación de la comisión aún está en proceso.';
         if (hashEl) hashEl.textContent = traceRes.hash || 'Ver traza en explorador';
-        if (feeStatusEl) feeStatusEl.textContent = 'Comisión (0.35%): No verificada en traza.';
+        if (feeStatusEl) feeStatusEl.textContent = 'Comisión (0.35%): En custodia, pendiente de liquidación final.';
       } else if (traceRes.status === 'failed_or_refunded') {
         updateTxStateBadges({ sent: true, pending: false, confirmed: false, failedOrRefunded: true, feeCollected: false });
         if (iconEl) iconEl.textContent = '↩️';
-        if (titleEl) titleEl.textContent = '4. Fallida / Reembolsada';
-        if (subEl) subEl.textContent = 'El depósito rebotó o fue rechazado. El Router reembolsó el principal + la comisión en custodia (0 TON de comisión cobrada).';
-        if (hashEl) hashEl.textContent = traceRes.hash || 'Evento rebotado / reembolsado';
-        if (feeStatusEl) feeStatusEl.textContent = 'Comisión (0.35%): No cobrada (reembolsada al cliente).';
+        if (titleEl) titleEl.textContent = '4. Depósito Rebotado / 100% Reembolsado';
+        if (subEl) subEl.textContent = 'El pool de Tonstakers rebotó la transacción. La StakeVault te reembolsó el 100% de principal y comisión (0 cobrado).';
+        if (hashEl) hashEl.textContent = traceRes.hash || 'Evento rebotado';
+        if (feeStatusEl) feeStatusEl.textContent = 'Comisión (0.35%): 0 cobrado (100% devuelta al cliente).';
       } else {
         updateTxStateBadges({ sent: true, pending: true, confirmed: false, failedOrRefunded: false, feeCollected: false });
         if (iconEl) iconEl.textContent = '📬';

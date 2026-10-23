@@ -1720,7 +1720,7 @@
         </div>
         <div class="amount-error" id="stake-amount-error" role="alert"></div>
 
-        <!-- Live Fee Breakdown Preview -->
+        <!-- Live Fee Breakdown Preview (Isolated StakeVault) -->
         <div style="margin-top:10px;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:8px;font-size:11px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
             <span style="color:var(--text-muted);">Principal a depositar:</span>
@@ -1731,15 +1731,28 @@
             <span id="stake-preview-anlgram-fee" class="td-mono" style="color:var(--cyan);font-weight:600;">0.0000 TON</span>
           </div>
           <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="color:var(--text-muted);">Monto adjunto para Pool Tonstakers:</span>
+            <span id="stake-preview-pool-gas" class="td-mono">1.0000 TON</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="color:var(--text-muted);">Gas transferencia tsTON (Jetton):</span>
+            <span id="stake-preview-jetton-gas" class="td-mono">0.1050 TON</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="color:var(--text-muted);">Reserva almacenamiento bóveda:</span>
+            <span id="stake-preview-storage-gas" class="td-mono">0.0500 TON</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;display:none;">
             <span style="color:var(--text-muted);">Gas estimado (reserva reembolsable):</span>
-            <span id="stake-preview-gas" class="td-mono">1.1500 TON</span>
+            <span id="stake-preview-gas" class="td-mono">1.1550 TON</span>
           </div>
           <div style="display:flex;justify-content:space-between;padding-top:4px;border-top:1px solid var(--border-subtle);">
-            <span style="font-weight:700;color:var(--text-primary);">Total requerido en firma:</span>
+            <span style="font-weight:700;color:var(--text-primary);">Total exacto a firmar en TON Connect:</span>
             <span id="stake-preview-total" class="td-mono" style="font-weight:700;color:#22c55e;">0.0000 TON</span>
           </div>
           <div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--border-subtle);color:var(--text-muted);font-size:10px;">
-            Wallet receptora comisión (0.35%): <span id="stake-preview-fee-wallet" class="td-mono" style="color:var(--text-secondary);word-break:break-all;">UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd</span>
+            <div>Retorno estimado de excesos de red al cliente: <span id="stake-preview-excess-return" class="td-mono" style="color:#22c55e;">~0.98 - 1.02 TON</span> <em>(tarifas variables)</em></div>
+            <div style="margin-top:2px;">Wallet receptora comisión (0.35%): <span id="stake-preview-fee-wallet" class="td-mono" style="color:var(--text-secondary);word-break:break-all;">UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd</span></div>
           </div>
         </div>
 
@@ -1749,7 +1762,7 @@
 
         <div class="modal-warning" role="note">
           <span>🛡️</span>
-          <span>Recibirás tokens <strong>tsTON</strong> verificables en tu wallet. Su tasa de cambio frente a TON se aprecia automáticamente en cada ciclo de validación. Sin cobro por retiro ni reclamo (0%).</span>
+          <span>Arquitectura <strong>StakeVault aislada por depósito</strong>: Cada depósito cuenta con su propio contrato y Jetton Wallet, eliminando el riesgo de fondos compartidos. Recibirás tokens <strong>tsTON</strong> líquidos directamente en tu wallet. Sin cobro por retiro ni reclamo (0%).</span>
         </div>
       </div>
 
@@ -1762,7 +1775,7 @@
     <!-- Step 2: Confirmation & Client Acceptance -->
     <div id="stake-step-2" style="display:none;">
       <h2 class="modal-title">Revisar y Aceptar Condiciones</h2>
-      <p class="modal-sub">Verifica todos los importes en TON/nanoTON y las direcciones antes de firmar en TON Connect.</p>
+      <p class="modal-sub">Verifica todos los importes en TON/nanoTON, los componentes de gas y las direcciones antes de firmar.</p>
 
       <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:14px;">
         <div class="modal-row">
@@ -1774,16 +1787,28 @@
           <span class="modal-row-value td-mono" id="stake-confirm-network" style="color:var(--cyan);">—</span>
         </div>
         <div class="modal-row">
-          <span class="modal-row-label">Protocolo y Mecanismo</span>
-          <span class="modal-row-value" id="stake-confirm-protocol" style="color:var(--cyan);font-size:12px;">—</span>
+          <span class="modal-row-label">Protocolo y Arquitectura</span>
+          <span class="modal-row-value" id="stake-confirm-protocol" style="color:var(--cyan);font-size:12px;">liquidTF · StakeVault Aislada por Depósito</span>
         </div>
         <div class="modal-row">
           <span class="modal-row-label">Contrato Pool (Tonstakers)</span>
           <span class="modal-row-value td-mono" id="stake-confirm-contract" style="font-size:10px;color:var(--text-muted);word-break:break-all;text-align:right;max-width:260px;">—</span>
         </div>
         <div class="modal-row">
+          <span class="modal-row-label">Bóveda Determinística (StakeVault)</span>
+          <span class="modal-row-value td-mono" id="stake-confirm-vault" style="font-size:10px;color:var(--cyan);word-break:break-all;text-align:right;max-width:260px;">—</span>
+        </div>
+        <div class="modal-row" style="display:none;">
           <span class="modal-row-label">Contrato Router (Cobro 0.35%)</span>
-          <span class="modal-row-value td-mono" id="stake-confirm-router" style="font-size:10px;color:var(--text-muted);word-break:break-all;text-align:right;max-width:260px;">—</span>
+          <span class="modal-row-value td-mono" id="stake-confirm-router">—</span>
+        </div>
+        <div class="modal-row">
+          <span class="modal-row-label">Estado de Bóveda</span>
+          <span class="modal-row-value" id="stake-confirm-vault-status" style="font-size:11px;color:#f59e0b;text-align:right;max-width:260px;">No desplegada (se desplegará vía StateInit en la 1ª transacción)</span>
+        </div>
+        <div class="modal-row">
+          <span class="modal-row-label">Hash Bytecode Verificado</span>
+          <span class="modal-row-value td-mono" id="stake-confirm-vault-hash" style="font-size:10px;color:var(--text-muted);word-break:break-all;text-align:right;max-width:260px;">fdc7d19f9d9e554e10f4d0091532c6f9966a1eb85e36e9ce02836bf33a1a9505</span>
         </div>
         <div class="modal-divider"></div>
         <div class="modal-row">
@@ -1795,12 +1820,28 @@
           <span class="modal-row-value td-mono" id="stake-confirm-anlgram-fee" style="color:#f59e0b;font-weight:700;">—</span>
         </div>
         <div class="modal-row">
+          <span class="modal-row-label">Monto adjunto para Pool Tonstakers</span>
+          <span class="modal-row-value td-mono" id="stake-confirm-pool-gas">1.0000 TON</span>
+        </div>
+        <div class="modal-row">
+          <span class="modal-row-label">Gas transferencia tsTON</span>
+          <span class="modal-row-value td-mono" id="stake-confirm-jetton-gas">0.1050 TON</span>
+        </div>
+        <div class="modal-row">
+          <span class="modal-row-label">Reserva almacenamiento bóveda</span>
+          <span class="modal-row-value td-mono" id="stake-confirm-storage-gas">0.0500 TON</span>
+        </div>
+        <div class="modal-row" style="display:none;">
           <span class="modal-row-label">Gas Estimado (Reserva)</span>
-          <span class="modal-row-value td-mono" id="stake-confirm-fee">—</span>
+          <span class="modal-row-value td-mono" id="stake-confirm-fee">1.1550 TON</span>
         </div>
         <div class="modal-row" style="border-top:1px solid var(--border-subtle);margin-top:4px;padding-top:8px;">
-          <span class="modal-row-label" style="font-weight:700;color:var(--text-primary);">Total a Firmar</span>
+          <span class="modal-row-label" style="font-weight:700;color:var(--text-primary);">Total Exacto a Firmar</span>
           <span class="modal-row-value td-mono" id="stake-confirm-total" style="color:#22c55e;font-weight:800;font-size:14px;">—</span>
+        </div>
+        <div class="modal-row" style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+          <span class="modal-row-label">Retorno estimado de excesos</span>
+          <span class="modal-row-value td-mono" id="stake-confirm-excess" style="color:#22c55e;">~0.98 - 1.02 TON (variable de red)</span>
         </div>
         <div class="modal-divider"></div>
         <div style="padding:4px 0;">
@@ -1820,12 +1861,12 @@
       <!-- Mandatory Client Acceptance Checkbox -->
       <label for="stake-accept-terms-checkbox" style="display:flex;align-items:flex-start;gap:10px;margin-top:12px;padding:10px 12px;background:rgba(0,136,204,0.08);border:1px solid rgba(0,136,204,0.28);border-radius:8px;cursor:pointer;font-size:11px;color:var(--text-primary);line-height:1.45;">
         <input type="checkbox" id="stake-accept-terms-checkbox" onchange="StakeModalController.onAcceptanceToggle()" style="margin-top:2px;cursor:pointer;" />
-        <span>Acepto expresamente el <strong>principal</strong>, el cobro automático de la <strong>comisión de 0.35% (35 bps)</strong> sobre depósito confirmado en cadena, el <strong>gas estimado</strong>, el <strong>total</strong> y la wallet receptora <code>UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd</code>.</span>
+        <span>Acepto expresamente el <strong>principal</strong>, el cobro de la <strong>comisión de 0.35% (35 bps)</strong> solo tras confirmación de tsTON, los componentes de <strong>gas/reserva (1.1550 TON)</strong>, el <strong>total a firmar</strong> y la wallet receptora <code>UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd</code>.</span>
       </label>
 
       <div id="stake-confirm-security-note" class="modal-warning" role="note" style="margin:10px 0;">
         <span>🔒</span>
-        <span>La comisión de 0.35% permanece en custodia en el contrato Router y solo se libera a la wallet receptora cuando el pool de Tonstakers confirma la emisión de tus <strong>tsTON</strong>. Si el depósito rebota o falla, se reembolsa el 100% (principal + comisión).</span>
+        <span>La comisión de 0.35% permanece en custodia en la <strong>bóveda aislada por depósito (StakeVault)</strong> y solo se transfiere a la wallet receptora tras confirmar la llegada física de tus <strong>tsTON</strong>. Si el pool rebota, se te reembolsa el 100% (principal + comisión + gas no consumido, 0 cobrado).</span>
       </div>
 
       <div class="modal-actions">

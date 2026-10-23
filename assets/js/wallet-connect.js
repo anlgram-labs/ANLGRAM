@@ -271,15 +271,33 @@
 
     if (currentAddress) {
       const short = formatAddress(currentAddress);
+      const chainId = typeof window.getConnectedWalletChainId === 'function' ? window.getConnectedWalletChainId() : null;
       let balanceStr = '';
-      try {
-        const bal = await fetchTonBalance(currentAddress);
-        balanceStr = ` | ${bal.toFixed(2)} TON`;
-      } catch (e) {}
+      let isWrongNet = false;
+      let statusColor = '#00e676'; // green
+
+      if (chainId === '-239') {
+        // Connected wallet is on Mainnet
+        isWrongNet = true;
+        statusColor = '#ef4444'; // red
+        balanceStr = ' | Red Errónea (Mainnet)';
+      } else if (chainId === '-3') {
+        try {
+          const bal = await fetchTonBalance(currentAddress, 'testnet');
+          balanceStr = ` | ${bal.toFixed(2)} TON (Testnet)`;
+        } catch (e) {
+          balanceStr = ' | Testnet';
+        }
+      } else {
+        statusColor = '#f59e0b'; // yellow
+        balanceStr = ' | Red no verificada';
+      }
 
       buttons.forEach(btn => {
-        btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#00e676;box-shadow:0 0 8px #00e676;"></span>${short}${balanceStr}</span>`;
-        btn.title = `Conectado: ${currentAddress}`;
+        btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:${statusColor};box-shadow:0 0 8px ${statusColor};"></span>${short}${balanceStr}</span>`;
+        btn.title = isWrongNet
+          ? `Billetera conectada en TON Mainnet (-239). Cambia a TON Testnet (-3) para operar en staking.`
+          : `Conectado: ${currentAddress} (${chainId === '-3' ? 'Testnet -3' : (chainId || 'Red no verificada')})`;
       });
     } else {
       buttons.forEach(btn => {
