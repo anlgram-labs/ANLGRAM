@@ -172,7 +172,7 @@
       name: 'TON FISH',
       decimals: 9,
       category: 'Meme / Community',
-      imageUri: 'https://www.tonfish.io/BLUECOIN2.png',
+      imageUri: 'https://coin-images.coingecko.com/coins/images/34651/small/photo_2024-10-18_16.55.49.jpeg?1729307732',
       imageSource: 'TON Fish Official Website Project Asset',
       imagePermissions: 'Community project asset authorized for Web3 tracker listings',
       providers: ['TonAPI', 'STON.fi', 'DeDust'],
@@ -305,6 +305,87 @@
       tvSymbol: 'BINANCE:SOLUSDT'
     },
 
+    // --- Additional Global Benchmarks ---
+    {
+      id: 'bnb:native',
+      network: 'BNB Chain',
+      isNative: true,
+      contractAddress: null,
+      rawAddress: null,
+      symbol: 'BNB',
+      name: 'BNB',
+      decimals: 18,
+      category: 'Native L1 Smart Contracts',
+      imageUri: 'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png',
+      imageSource: 'BNB Chain Official Assets',
+      imagePermissions: 'Public ecosystem brand mark',
+      providers: ['CoinGecko', 'Binance'],
+      explorerUrl: 'https://bscscan.com',
+      verificationStatus: 'verified',
+      isLaunched: true,
+      description: 'Native utility and gas token powering the BNB Chain ecosystem.',
+      tvSymbol: 'BINANCE:BNBUSDT'
+    },
+    {
+      id: 'xrp:native',
+      network: 'XRP Ledger',
+      isNative: true,
+      contractAddress: null,
+      rawAddress: null,
+      symbol: 'XRP',
+      name: 'XRP',
+      decimals: 6,
+      category: 'Enterprise Settlement',
+      imageUri: 'https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png',
+      imageSource: 'XRP Ledger Foundation',
+      imagePermissions: 'Public open source brand asset',
+      providers: ['CoinGecko', 'Binance', 'Bybit'],
+      explorerUrl: 'https://xrpscan.com',
+      verificationStatus: 'verified',
+      isLaunched: true,
+      description: 'Digital asset built for global real-time payments and liquidity.',
+      tvSymbol: 'BINANCE:XRPUSDT'
+    },
+    {
+      id: 'doge:native',
+      network: 'Dogecoin',
+      isNative: true,
+      contractAddress: null,
+      rawAddress: null,
+      symbol: 'DOGE',
+      name: 'Dogecoin',
+      decimals: 8,
+      category: 'Decentralized P2P Currency',
+      imageUri: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png',
+      imageSource: 'Dogecoin Foundation Public Assets',
+      imagePermissions: 'Open source community brand asset',
+      providers: ['CoinGecko', 'Binance', 'Coinbase'],
+      explorerUrl: 'https://dogechain.info',
+      verificationStatus: 'verified',
+      isLaunched: true,
+      description: 'Decentralized peer-to-peer open source digital currency.',
+      tvSymbol: 'BINANCE:DOGEUSDT'
+    },
+    {
+      id: 'sui:native',
+      network: 'Sui',
+      isNative: true,
+      contractAddress: null,
+      rawAddress: null,
+      symbol: 'SUI',
+      name: 'Sui',
+      decimals: 9,
+      category: 'Native L1 Object-Centric',
+      imageUri: 'https://assets.coingecko.com/coins/images/26375/small/sui-ocean-square.png',
+      imageSource: 'Mysten Labs / Sui Foundation',
+      imagePermissions: 'Public brand mark for verified platforms',
+      providers: ['CoinGecko', 'Binance', 'OKX'],
+      explorerUrl: 'https://suiscan.xyz',
+      verificationStatus: 'verified',
+      isLaunched: true,
+      description: 'High-throughput Layer 1 blockchain powered by Move programming language.',
+      tvSymbol: 'BINANCE:SUIUSDT'
+    },
     // --- 3. ANLGRAM Protocol Asset (Strictly Unlaunched / Pending) ---
     {
       id: 'ton:unlaunched:anlgram',
@@ -347,7 +428,8 @@
       appUrl: 'https://app.ston.fi',
       iconText: '💎',
       verified: true,
-      ecosystem: 'TON'
+      ecosystem: 'TON',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://ston.fi&size=64'
     },
     {
       id: 'dedust',
@@ -359,7 +441,8 @@
       appUrl: 'https://dedust.io',
       iconText: '🌪️',
       verified: true,
-      ecosystem: 'TON'
+      ecosystem: 'TON',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://dedust.io&size=64'
     },
     {
       id: 'uniswap',
@@ -371,7 +454,8 @@
       appUrl: 'https://app.uniswap.org',
       iconText: '🦄',
       verified: true,
-      ecosystem: 'Ethereum / Multi-Chain'
+      ecosystem: 'Ethereum / Multi-Chain',
+      logoUrl: 'https://assets.coingecko.com/coins/images/12504/small/uniswap-uni.png'
     },
     {
       id: 'pancakeswap',
@@ -383,7 +467,8 @@
       appUrl: 'https://pancakeswap.finance/swap',
       iconText: '🥞',
       verified: true,
-      ecosystem: 'BNB / Multi-Chain'
+      ecosystem: 'BNB / Multi-Chain',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://pancakeswap.finance&size=64'
     },
     {
       id: 'raydium',
@@ -395,7 +480,8 @@
       appUrl: 'https://raydium.io/swap',
       iconText: '⚡',
       verified: true,
-      ecosystem: 'Solana'
+      ecosystem: 'Solana',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://raydium.io&size=64'
     },
     {
       id: 'jupiter',
@@ -407,7 +493,8 @@
       appUrl: 'https://jup.ag',
       iconText: '🪐',
       verified: true,
-      ecosystem: 'Solana'
+      ecosystem: 'Solana',
+      logoUrl: 'https://assets.coingecko.com/coins/images/34188/small/jup.png'
     },
     {
       id: 'curve',
@@ -419,7 +506,8 @@
       appUrl: 'https://curve.fi',
       iconText: '📉',
       verified: true,
-      ecosystem: 'Multi-Chain'
+      ecosystem: 'Multi-Chain',
+      logoUrl: 'https://assets.coingecko.com/coins/images/12124/small/Curve.png'
     },
     {
       id: '1inch',
@@ -431,7 +519,8 @@
       appUrl: 'https://app.1inch.io',
       iconText: '🐎',
       verified: true,
-      ecosystem: 'Multi-Chain'
+      ecosystem: 'Multi-Chain',
+      logoUrl: 'https://assets.coingecko.com/coins/images/13469/small/1inch-token.png'
     },
 
     // CEX Platforms (Centralized Spot & Derivatives Exchanges)
@@ -444,7 +533,8 @@
       url: 'https://www.binance.com',
       iconText: '🟡',
       verified: true,
-      ecosystem: 'Global'
+      ecosystem: 'Global',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://binance.com&size=64'
     },
     {
       id: 'bybit',
@@ -455,7 +545,8 @@
       url: 'https://www.bybit.com',
       iconText: '🖤',
       verified: true,
-      ecosystem: 'Global / TON'
+      ecosystem: 'Global / TON',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://bybit.com&size=64'
     },
     {
       id: 'okx',
@@ -466,7 +557,8 @@
       url: 'https://www.okx.com',
       iconText: '⬛',
       verified: true,
-      ecosystem: 'Global / TON'
+      ecosystem: 'Global / TON',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://okx.com&size=64'
     },
     {
       id: 'coinbase',
@@ -499,7 +591,8 @@
       url: 'https://www.gate.io',
       iconText: '🔴',
       verified: true,
-      ecosystem: 'Global'
+      ecosystem: 'Global',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://gate.io&size=64'
     },
     {
       id: 'mexc',
@@ -510,7 +603,8 @@
       url: 'https://www.mexc.com',
       iconText: '💚',
       verified: true,
-      ecosystem: 'Global'
+      ecosystem: 'Global',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://mexc.com&size=64'
     },
     {
       id: 'bitget',
@@ -521,7 +615,8 @@
       url: 'https://www.bitget.com',
       iconText: '🔷',
       verified: true,
-      ecosystem: 'Global'
+      ecosystem: 'Global',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://bitget.com&size=64'
     },
 
     // Non-Custodial Wallets
@@ -534,7 +629,8 @@
       url: 'https://tonkeeper.com',
       iconText: '💎',
       verified: true,
-      ecosystem: 'TON'
+      ecosystem: 'TON',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://tonkeeper.com&size=64'
     },
     {
       id: 'mytonwallet',
@@ -545,7 +641,8 @@
       url: 'https://mytonwallet.io',
       iconText: '🔷',
       verified: true,
-      ecosystem: 'TON'
+      ecosystem: 'TON',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://mytonwallet.io&size=64'
     },
     {
       id: 'metamask',
@@ -556,7 +653,8 @@
       url: 'https://metamask.io',
       iconText: '🦊',
       verified: true,
-      ecosystem: 'Ethereum / EVM'
+      ecosystem: 'Ethereum / EVM',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://metamask.io&size=64'
     },
     {
       id: 'trustwallet',
@@ -567,7 +665,8 @@
       url: 'https://trustwallet.com',
       iconText: '🛡️',
       verified: true,
-      ecosystem: 'Multi-Chain'
+      ecosystem: 'Multi-Chain',
+      logoUrl: 'https://assets.coingecko.com/coins/images/11085/small/Trust.png'
     },
     {
       id: 'phantom',
@@ -578,7 +677,8 @@
       url: 'https://phantom.app',
       iconText: '👻',
       verified: true,
-      ecosystem: 'Solana / Multi-Chain'
+      ecosystem: 'Solana / Multi-Chain',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://phantom.app&size=64'
     },
     {
       id: 'okxwallet',
@@ -602,7 +702,8 @@
       url: 'https://tonviewer.com',
       iconText: '🔍',
       verified: true,
-      ecosystem: 'TON'
+      ecosystem: 'TON',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://tonviewer.com&size=64'
     },
     {
       id: 'tonscan',
@@ -613,7 +714,8 @@
       url: 'https://tonscan.org',
       iconText: '📊',
       verified: true,
-      ecosystem: 'TON'
+      ecosystem: 'TON',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://tonscan.org&size=64'
     },
     {
       id: 'dexscreener',
@@ -624,7 +726,8 @@
       url: 'https://dexscreener.com',
       iconText: '🦅',
       verified: true,
-      ecosystem: 'Multi-Chain'
+      ecosystem: 'Multi-Chain',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://dexscreener.com&size=64'
     },
     {
       id: 'geckoterminal',
@@ -657,7 +760,8 @@
       url: 'https://www.coingecko.com',
       iconText: '🦎',
       verified: true,
-      ecosystem: 'Global'
+      ecosystem: 'Global',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://coingecko.com&size=64'
     },
     {
       id: 'coinmarketcap',
@@ -668,7 +772,8 @@
       url: 'https://coinmarketcap.com',
       iconText: 'Ⓜ️',
       verified: true,
-      ecosystem: 'Global'
+      ecosystem: 'Global',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://coinmarketcap.com&size=64'
     },
     {
       id: 'arkham',
@@ -679,7 +784,8 @@
       url: 'https://arkhamintelligence.com',
       iconText: '🏛️',
       verified: true,
-      ecosystem: 'Multi-Chain'
+      ecosystem: 'Multi-Chain',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://arkhamintelligence.com&size=64'
     },
 
     // Cross-Chain Bridges
@@ -692,7 +798,8 @@
       url: 'https://bridge.ton.org',
       iconText: '🌉',
       verified: true,
-      ecosystem: 'TON / Ethereum'
+      ecosystem: 'TON / Ethereum',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://bridge.ton.org&size=64'
     },
     {
       id: 'stargate',
@@ -703,7 +810,8 @@
       url: 'https://stargate.finance',
       iconText: '✨',
       verified: true,
-      ecosystem: 'Multi-Chain'
+      ecosystem: 'Multi-Chain',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://stargate.finance&size=64'
     },
     {
       id: 'orbiter',
@@ -714,7 +822,8 @@
       url: 'https://www.orbiter.finance',
       iconText: '🛸',
       verified: true,
-      ecosystem: 'Ethereum L2'
+      ecosystem: 'Ethereum L2',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://orbiter.finance&size=64'
     },
     {
       id: 'rhinofi',
@@ -725,7 +834,8 @@
       url: 'https://app.rhino.fi',
       iconText: '🦏',
       verified: true,
-      ecosystem: 'Multi-Chain'
+      ecosystem: 'Multi-Chain',
+      logoUrl: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://rhino.fi&size=64'
     }
   ];
 
@@ -801,7 +911,7 @@
 
       return `
         <div class="asset-logo-container ${extraClass}" style="width:${size}px; height:${size}px; border-radius:50%; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); flex-shrink:0;">
-          <img src="${logoUrl}" alt="${safeSym}" style="width:100%; height:100%; object-fit:cover;" onerror="window.handleAssetLogoError(this, '${safeSym}', '${safeNet}')" />
+          <img src="${logoUrl}" alt="${safeSym}" style="width:100%; height:100%; object-fit:contain; border-radius:50%;" onerror="window.handleAssetLogoError(this, '${safeSym}', '${safeNet}')" />
         </div>
       `;
     },

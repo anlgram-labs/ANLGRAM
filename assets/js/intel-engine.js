@@ -10,7 +10,7 @@
 
   const TONAPI_BASE = 'https://tonapi.io/v2';
   const STONFI_API_BASE = 'https://api.ston.fi/v1';
-  const COINGECKO_API = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,the-open-network,tether&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true';
+  const COINGECKO_API = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,the-open-network,tether,binancecoin,ripple,dogecoin,sui&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true';
   const REFRESH_INTERVAL_MS = 45000; // 45s interval to strictly respect public API rate limits
 
   // --- Caching Helper (Memory + SessionStorage) ---
@@ -279,6 +279,38 @@
           item.vol24h = cgData.solana.usd_24h_vol;
           item.marketCap = cgData.solana.usd_market_cap;
           item.exchange = 'CoinGecko / Raydium';
+          item.statusBadge = 'VERIFIED';
+        } else if (item.network === 'BNB Chain' && cgData && cgData.binancecoin) {
+          hasSuccess = true;
+          item.price = cgData.binancecoin.usd;
+          item.change24 = cgData.binancecoin.usd_24h_change;
+          item.vol24h = cgData.binancecoin.usd_24h_vol;
+          item.marketCap = cgData.binancecoin.usd_market_cap;
+          item.exchange = 'CoinGecko / Binance';
+          item.statusBadge = 'VERIFIED';
+        } else if (item.network === 'XRP Ledger' && cgData && cgData.ripple) {
+          hasSuccess = true;
+          item.price = cgData.ripple.usd;
+          item.change24 = cgData.ripple.usd_24h_change;
+          item.vol24h = cgData.ripple.usd_24h_vol;
+          item.marketCap = cgData.ripple.usd_market_cap;
+          item.exchange = 'CoinGecko / Bybit';
+          item.statusBadge = 'VERIFIED';
+        } else if (item.network === 'Dogecoin' && cgData && cgData.dogecoin) {
+          hasSuccess = true;
+          item.price = cgData.dogecoin.usd;
+          item.change24 = cgData.dogecoin.usd_24h_change;
+          item.vol24h = cgData.dogecoin.usd_24h_vol;
+          item.marketCap = cgData.dogecoin.usd_market_cap;
+          item.exchange = 'CoinGecko / Binance';
+          item.statusBadge = 'VERIFIED';
+        } else if (item.network === 'Sui' && cgData && cgData.sui) {
+          hasSuccess = true;
+          item.price = cgData.sui.usd;
+          item.change24 = cgData.sui.usd_24h_change;
+          item.vol24h = cgData.sui.usd_24h_vol;
+          item.marketCap = cgData.sui.usd_market_cap;
+          item.exchange = 'CoinGecko / OKX';
           item.statusBadge = 'VERIFIED';
         }
 
@@ -594,7 +626,7 @@
 
       const contractSnippet = a.contractAddress ? `
         <span class="tbl-contract-addr" title="Click to copy ${a.contractAddress}" onclick="window.copyContractAddress('${a.contractAddress}', event)" style="cursor:pointer; color:var(--text-muted); font-size:10px; font-family:var(--font-mono); margin-left:4px;">
-          ${shortenAddress(a.contractAddress, 3)} 📋
+          ${shortenAddress(a.contractAddress, 3)} <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;opacity:0.7;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
         </span>
       ` : '';
 
@@ -632,7 +664,7 @@
           <td>
             <div style="display:flex; gap:6px;">
               <button class="btn-view-chart" onclick="window.handleOpenAssetChart('${a.id}')" title="Open Interactive Chart">
-                📈 Chart
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg> Chart
               </button>
               ${a.explorerUrl ? `
                 <a href="${a.explorerUrl}" target="_blank" rel="noopener noreferrer" class="btn-view-chart" style="text-decoration:none;" title="View Block Explorer">
@@ -695,7 +727,17 @@
         <div>
           <div class="dir-card-header">
             <div class="dir-platform-title">
-              <div class="dir-platform-icon">${item.iconText}</div>
+              ${(() => {
+              const domain = item.url ? item.url.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : '';
+              const fallbackInitial = item.name ? item.name.substring(0, 2).toUpperCase() : 'W3';
+              const logoSrc = item.logoUrl || ('https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://' + domain + '&size=64');
+              return `
+                <div class="dir-platform-icon">
+                  <img src="${logoSrc}" alt="${item.name}" style="width:24px;height:24px;object-fit:contain;border-radius:6px;" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display='flex';" />
+                  <span class="dir-platform-monogram" style="display:none;font-size:11px;font-weight:700;color:var(--accent-cyan);letter-spacing:0.5px;align-items:center;justify-content:center;width:100%;height:100%;">${fallbackInitial}</span>
+                </div>
+              `;
+            })()}
               <div>
                 <div class="dir-name">${item.name}</div>
                 <div style="font-size:10px; color:var(--accent-cyan);">${item.ecosystem}</div>

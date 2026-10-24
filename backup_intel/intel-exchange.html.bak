@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ANLGRAM | Intel Exchange & Institutional Web3 Terminal</title>
+  <meta name="description" content="Institutional-grade crypto intelligence, market data terminal, and verified Web3 directory for TON and global markets." />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Shared Design System & Layout -->
+  <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
+  <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
+
+  <!-- Shared Security, Asset Registry & Data Engine -->
+  <script src="assets/js/security.js"></script>
+  <script src="assets/js/asset-registry.js?v=2026.40"></script>
+  <script src="assets/js/intel-engine.js?v=2026.40"></script>
+
+  <style>
+    :root {
+      --bg-void: #0B0F14;
+      --bg-card: #121821;
+      --bg-card-hover: #1A2230;
+      --bg-secondary: #161F2C;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(59, 130, 246, 0.4);
+      --accent-blue: #3B82F6;
+      --accent-cyan: #06B6D4;
+      --text-main: #FFFFFF;
+      --text-muted: #94A3B8;
+      --text-dark: #64748B;
+      --green-up: #22C55E;
+      --red-down: #EF4444;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-void);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      line-height: 1.5;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Scrollbar ─────────────────────────────────────────── */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-void);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-blue);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .dot-live {
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 8px #22c55e;
+      animation: pulse-dot 2s infinite ease-in-out;
+    }
+
+    /* ── Header Navbar ─────────────────────────────────────── */
+    .header-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(11, 15, 20, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-logo img {
+      width: 32px;
+      height: 32px;
+    }
+
+    .brand-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid var(--border-accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Search Bar */
+    .search-container {
+      position: relative;
+      width: 420px;
+      max-width: 100%;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 10px 16px 10px 40px;
+      color: var(--text-main);
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 16px rgba(59, 130, 246, 0.2);
+      background: #141c27;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .nav-btn:hover {
+      border-color: var(--accent-blue);
+      background: var(--bg-card-hover);
+      color: var(--accent-blue);
+    }
+
+    .header-status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      padding: 7px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .header-status-badge:hover {
+      background: rgba(59, 130, 246, 0.1);
+      border-color: var(--border-accent);
+      color: #fff;
+    }
+
+    /* ── Main Container ────────────────────────────────────── */
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px 80px 24px;
+    }
+
+    /* ── Section Titles ────────────────────────────────────── */
+    .section-header-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: block;
+    }
+
+    /* ── Dashboard Metric Cards ────────────────────────────── */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(59, 130, 246, 0.1);
+    }
+
+    .metric-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .asset-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .asset-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+      overflow: hidden;
+    }
+
+    .asset-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .asset-symbol {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .price-change-badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+    }
+
+    .badge-up {
+      background: rgba(34, 197, 94, 0.12);
+      color: var(--green-up);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .badge-down {
+      background: rgba(239, 68, 68, 0.12);
+      color: var(--red-down);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .metric-price {
+      font-size: 24px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--text-main);
+      margin-bottom: 14px;
+    }
+
+    .metric-details {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 12px;
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .detail-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .detail-val {
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: #cbd5e1;
+      margin-top: 2px;
+    }
+
+    /* ── Table Toolbar & Tabs ──────────────────────────────── */
+    .table-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .table-filter-tabs {
+      display: flex;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .table-filter-tab {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .table-filter-tab:hover { color: #fff; }
+    .table-filter-tab.active {
+      background: var(--accent-blue);
+      color: #fff;
+    }
+
+    /* ── Market Explorer Table ─────────────────────────────── */
+    .table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow-x: auto;
+      margin-bottom: 48px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    }
+
+    .market-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    .market-table th {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+      user-select: none;
+    }
+    .market-table th.sortable:hover {
+      color: var(--accent-blue);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .market-table td {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    .market-table tr:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .tbl-asset {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+    }
+
+    .tbl-mono {
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .table-pagination-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      background: rgba(11, 15, 20, 0.6);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .btn-view-chart {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid var(--border-accent);
+      color: var(--accent-blue);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-view-chart:hover {
+      background: var(--accent-blue);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+    }
+
+    /* ── Directory Tabs & Cards ───────────────────────────── */
+    .directory-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .tab-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--border-accent);
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #fff;
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.35);
+    }
+
+    .directory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 16px;
+    }
+
+    .dir-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.25s ease;
+    }
+
+    .dir-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), 0 0 15px rgba(59, 130, 246, 0.1);
+    }
+
+    .dir-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .dir-platform-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dir-platform-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      border: 1px solid var(--border-color);
+      flex-shrink: 0;
+    }
+
+    .dir-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .dir-cat-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .dir-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .btn-open-link {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-open-link:hover {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+    }
+
+    /* ── Modal for TradingView / DexScreener Chart ─────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 99999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border-accent);
+      border-radius: 24px;
+      max-width: 1100px;
+      width: 100%;
+      height: 80vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(59, 130, 246, 0.25);
+    }
+
+    .modal-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0e141c;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+    }
+
+    .modal-body {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .chart-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* Responsive Queries */
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .search-container {
+        width: 240px;
+      }
+      .directory-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      .header-nav {
+        padding: 10px 14px;
+        height: auto;
+        min-height: 60px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .nav-left {
+        gap: 8px;
+      }
+      .search-container {
+        display: none;
+      }
+      .header-status-badge {
+        font-size: 11px;
+        padding: 4px 8px;
+        white-space: nowrap;
+      }
+      .directory-grid {
+        grid-template-columns: 1fr;
+      }
+      .directory-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .table-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      .table-filter-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 6px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .main-container {
+        padding: 16px 12px;
+      }
+      .modal-content {
+        width: 95vw;
+        height: 75vh;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" style="z-index: 1000;">
+    <a href="index.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon"><img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Crystal"/></div>
+      <span class="sidebar-logo-text">ANLGRAM</span>
+    </a>
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Analytics</div>
+      <a href="dashboard.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="explorer.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Entity Explorer
+      </a>
+      <a href="visualizer.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="5" cy="18" r="2"/><path d="M10 10.5 6.5 7.5M14 10.5l3.5-3M10 13.5l-3.5 3M14 13.5l3.5 3"/></svg>
+        Wallet Cluster Explorer
+      </a>
+
+      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Enterprise</div>
+      <a href="memecoin-platform.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>
+        Memecoin Platform
+      </a>
+      <a href="staking.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Staking Center
+        <span class="nav-badge" style="background:rgba(0,136,204,0.15);color:var(--cyan);border:1px solid rgba(0,136,204,0.25);">NEW</span>
+      </a>
+
+      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Intelligence</div>
+      <a href="intel-exchange.html" class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Exchange Intel Hub
+      </a>
+      <a href="alerts.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Alerts
+        <span class="nav-badge">3</span>
+      </a>
+
+      <div class="sidebar-section-label" style="margin-top:var(--space-3);">Tools</div>
+      <a href="profit-calculator.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/></svg>
+        ProfitLab
+        <span class="nav-badge" style="background:rgba(0,207,255,0.15);color:var(--cyan);border:1px solid rgba(0,207,255,0.25);">CALC</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-network-badge">
+        <span class="dot-live"></span>
+        TON Mainnet · Connected
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content" style="position: relative; padding: 0; overflow-y: auto;">
+
+    <!-- ── 1. Header Navbar ─────────────────────────────────── -->
+    <header class="header-nav">
+      <div class="nav-left">
+        <span class="brand-badge" style="margin-left:0;">Intel Exchange</span>
+
+        <!-- Universal Real-Time Search -->
+        <div class="search-container">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="universalSearchInput" class="search-input" placeholder="Search symbol, contract address, DEX, CEX, pools..." oninput="handleUniversalSearch()" />
+        </div>
+      </div>
+
+      <div class="nav-right nav-cta topbar-actions">
+        <!-- Live Feed Health & Sync Status -->
+        <div id="header-sync-status" class="header-status-badge" onclick="triggerManualMarketSync()" title="Click to trigger manual refresh">
+          <span class="dot-live"></span>
+          <span>Market Feeds: Live</span>
+        </div>
+
+        <!-- Connect Wallet Button -->
+        <button id="topbarWalletBtn" class="nav-btn connect-wallet-btn" style="background:var(--accent-blue); border-color:var(--accent-blue);">
+          Connect Wallet
+        </button>
+      </div>
+    </header>
+
+    <!-- ── Main Terminal Body ──────────────────────────────── -->
+    <main class="main-container">
+
+      <!-- ── 2. Dashboard Top Metric Cards ──────────────────── -->
+      <div class="section-header-wrap">
+        <div>
+          <h2 class="section-title">📊 Live Market Terminal</h2>
+          <span class="section-subtitle">Real-time quotes auto-refreshed via public TonAPI rates, STON.fi DEX pools, and CoinGecko benchmarks.</span>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <!-- Bitcoin -->
+        <div class="metric-card" id="card-btc">
+          <div class="metric-header">
+            <div class="asset-info">
+              <div class="asset-icon" style="background:#f7931a; color:#fff;">₿</div>
+              <div>
+                <div class="asset-name">Bitcoin</div>
+                <div class="asset-symbol">BTC / USD</div>
+              </div>
+            </div>
+            <span class="price-change-badge badge-up" id="btc-change">+0.00%</span>
+          </div>
+          <div class="metric-price" id="btc-price">$0.00</div>
+          <div class="metric-details">
+            <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="btc-mcap">--</span></div>
+            <div class="detail-item"><span class="detail-label">24h Vol</span><span class="detail-val" id="btc-vol">--</span></div>
+            <div class="detail-item"><span class="detail-label">Source</span><span class="detail-val">CoinGecko</span></div>
+          </div>
+        </div>
+
+        <!-- Ethereum -->
+        <div class="metric-card" id="card-eth">
+          <div class="metric-header">
+            <div class="asset-info">
+              <div class="asset-icon" style="background:#627eea; color:#fff;">Ξ</div>
+              <div>
+                <div class="asset-name">Ethereum</div>
+                <div class="asset-symbol">ETH / USD</div>
+              </div>
+            </div>
+            <span class="price-change-badge badge-up" id="eth-change">+0.00%</span>
+          </div>
+          <div class="metric-price" id="eth-price">$0.00</div>
+          <div class="metric-details">
+            <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="eth-mcap">--</span></div>
+            <div class="detail-item"><span class="detail-label">24h Vol</span><span class="detail-val" id="eth-vol">--</span></div>
+            <div class="detail-item"><span class="detail-label">Source</span><span class="detail-val">CoinGecko</span></div>
+          </div>
+        </div>
+
+        <!-- Toncoin -->
+        <div class="metric-card" id="card-ton">
+          <div class="metric-header">
+            <div class="asset-info">
+              <div class="asset-icon" style="background:#0088cc; color:#fff;">💎</div>
+              <div>
+                <div class="asset-name">Toncoin</div>
+                <div class="asset-symbol">TON / USD</div>
+              </div>
+            </div>
+            <span class="price-change-badge badge-up" id="ton-change">+0.00%</span>
+          </div>
+          <div class="metric-price" id="ton-price">$0.00</div>
+          <div class="metric-details">
+            <div class="detail-item"><span class="detail-label">Market Cap</span><span class="detail-val" id="ton-mcap">--</span></div>
+            <div class="detail-item"><span class="detail-label">24h Vol</span><span class="detail-val" id="ton-vol">--</span></div>
+            <div class="detail-item"><span class="detail-label">Source</span><span class="detail-val">TonAPI / Bybit</span></div>
+          </div>
+        </div>
+
+        <!-- ANLGRAM Protocol Asset (Strictly Unlaunched / Pending) -->
+        <div class="metric-card" id="card-anl" style="border-color:var(--border-accent); background:linear-gradient(180deg, #121821 0%, #151e2b 100%);">
+          <!-- Injected dynamically by intel-engine.js -->
+        </div>
+      </div>
+
+
+      <!-- ── 3. Market Explorer Table ────────────────────────── -->
+      <div class="section-header-wrap">
+        <div>
+          <h2 class="section-title">🔍 Market Explorer</h2>
+          <span class="section-subtitle">Real-time multi-asset market quotes, AMM pool liquidity monitoring, and verified Web3 asset registry.</span>
+        </div>
+      </div>
+
+      <!-- Table Toolbar -->
+      <div class="table-toolbar">
+        <div class="table-filter-tabs">
+          <button class="table-filter-tab active" onclick="filterMarketTableTab('all', this)">All Assets</button>
+          <button class="table-filter-tab" onclick="filterMarketTableTab('ton', this)">TON Ecosystem</button>
+          <button class="table-filter-tab" onclick="filterMarketTableTab('global', this)">Global Benchmarks</button>
+          <button class="table-filter-tab" onclick="filterMarketTableTab('verified', this)">Verified Only</button>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div style="position:relative; width:220px; max-width:100%;">
+            <svg style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); pointer-events:none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" id="tableSearchInput" class="search-input" style="padding:6px 12px 6px 30px; font-size:12px; height:32px; width:100%;" placeholder="Filter by symbol, name, contract..." oninput="handleTableSearch(this.value)" />
+          </div>
+          <button class="nav-btn" onclick="triggerManualMarketSync()" style="font-size:12px; padding:6px 12px; height:32px;">
+            🔄 Refresh Feeds
+          </button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="market-table" id="marketTable">
+          <thead>
+            <tr>
+              <th class="sortable" onclick="sortMarketTable('name')" style="cursor:pointer;" title="Sort by Name">Asset ↕</th>
+              <th class="sortable" onclick="sortMarketTable('price')" style="cursor:pointer;" title="Sort by Price">Price ↕</th>
+              <th class="sortable" onclick="sortMarketTable('change24')" style="cursor:pointer;" title="Sort by 24h Change">24h Change ↕</th>
+              <th class="sortable" onclick="sortMarketTable('change7d')" style="cursor:pointer;" title="Sort by 7d Change">7d Change ↕</th>
+              <th class="sortable" onclick="sortMarketTable('vol')" style="cursor:pointer;" title="Sort by 24h Volume">24h Volume ↕</th>
+              <th class="sortable" onclick="sortMarketTable('liq')" style="cursor:pointer;" title="Sort by AMM Pool Liquidity">DEX Liquidity ↕</th>
+              <th class="sortable" onclick="sortMarketTable('mcap')" style="cursor:pointer;" title="Sort by Market Cap">Market Cap ↕</th>
+              <th class="sortable" onclick="sortMarketTable('fdv')" style="cursor:pointer;" title="Sort by FDV">FDV ↕</th>
+              <th class="sortable" onclick="sortMarketTable('holders')" style="cursor:pointer;" title="Sort by Holders">Holders ↕</th>
+              <th>Network</th>
+              <th>Exchange / Source</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="marketTableBody">
+            <!-- Rows injected dynamically via JS -->
+          </tbody>
+        </table>
+
+        <div id="marketTablePagination" class="table-pagination-bar">
+          <!-- Injected dynamically by JS -->
+        </div>
+      </div>
+
+
+      <!-- ── 4. Web3 Institutional Directory ─────────────────── -->
+      <div class="section-header-wrap">
+        <div>
+          <h2 class="section-title">🌐 Web3 Institutional Directory</h2>
+          <span class="section-subtitle">Independently audited official links to leading DEX protocols, CEX exchanges, non-custodial wallets, analytics, and canonical bridges.</span>
+        </div>
+      </div>
+
+      <!-- Category Tabs -->
+      <div class="directory-tabs">
+        <button class="tab-btn active" onclick="filterDirectoryCategory('all', this)">All Platforms</button>
+        <button class="tab-btn" onclick="filterDirectoryCategory('dex', this)">⚡ DEX Protocols</button>
+        <button class="tab-btn" onclick="filterDirectoryCategory('cex', this)">🏦 Centralized Exchanges</button>
+        <button class="tab-btn" onclick="filterDirectoryCategory('wallet', this)">🔑 Wallets</button>
+        <button class="tab-btn" onclick="filterDirectoryCategory('analytics', this)">📊 Analytics & Explorers</button>
+        <button class="tab-btn" onclick="filterDirectoryCategory('bridge', this)">🌉 Canonical Bridges</button>
+      </div>
+
+      <!-- Grid Container for Directory -->
+      <div class="directory-grid" id="directoryGrid">
+        <!-- Dynamic directory cards injected via JS -->
+      </div>
+
+    </main>
+
+    <!-- ── Chart Modal Embed (TradingView / DexScreener) ───── -->
+    <div class="modal-overlay" id="chartModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title" id="chartModalTitle">
+            <img id="chartModalIcon" src="assets/img/anlgram-icon.svg" width="22" height="22" />
+            <span id="chartModalName">Market Chart — Live Terminal</span>
+          </div>
+          <button class="modal-close" onclick="closeChartModal()">✕</button>
+        </div>
+        <div class="modal-body" id="chartModalBody">
+          <!-- iFrame loaded dynamically -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal Script Logic -->
+<script>
+  function openChartModal(name, symbol, tvSymbol, dexUrl) {
+    const modal = document.getElementById('chartModal');
+    const modalName = document.getElementById('chartModalName');
+    const body = document.getElementById('chartModalBody');
+
+    if (modalName) modalName.textContent = `${name} (${symbol}) — Live Market Chart`;
+
+    if (dexUrl) {
+      body.innerHTML = `<iframe src="${dexUrl}?embed=1&theme=dark" class="chart-iframe"></iframe>`;
+    } else {
+      const sym = tvSymbol || `BINANCE:${symbol}USDT`;
+      body.innerHTML = `
+        <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_widget&symbol=${encodeURIComponent(sym)}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=0B0F14&theme=dark&style=1&timezone=Etc%2FUTC" class="chart-iframe"></iframe>
+      `;
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeChartModal() {
+    const modal = document.getElementById('chartModal');
+    const body = document.getElementById('chartModalBody');
+    if (body) body.innerHTML = '';
+    if (modal) modal.style.display = 'none';
+  }
+</script>
+
+  <!-- Platform & TON Connect Scripts -->
+  <script src="assets/js/platform.js?v=2026.35"></script>
+  <script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
+  <script src="assets/js/wallet-connect.js?v=2026.35"></script>
+</body>
+</html>
