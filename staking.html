@@ -1383,10 +1383,6 @@
           <span id="topbar-ton-source" style="font-size:9.5px;color:var(--text-muted);">TonAPI</span>
         </div>
 
-        <button class="btn btn-ghost btn-sm" onclick="StakeModalController.open(StakingState.get('validators')[0]?.id)" title="Stake TON">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          <span>Quick Stake</span>
-        </button>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('validators')?.scrollIntoView({behavior:'smooth'})" title="Validators">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span>Validators</span>
@@ -1455,10 +1451,6 @@
               <button id="heroWalletBtn" class="btn btn-primary connect-wallet-btn" data-wallet-btn="true" onclick="window.openWalletModal?.()" aria-label="Connect TON wallet">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
                 <span>Connect Wallet</span>
-              </button>
-              <button class="btn btn-ghost" onclick="StakeModalController.open(StakingState.get('validators')[0]?.id)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                <span>Quick Stake</span>
               </button>
               <button class="btn btn-ghost" onclick="document.getElementById('validators')?.scrollIntoView({behavior:'smooth'})">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
