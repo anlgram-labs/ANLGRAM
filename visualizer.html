@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ANLGRAM | Wallet Cluster Explorer</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.ston.fi https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
   
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
@@ -22,6 +22,7 @@
   <!-- ANLGRAM Universal On-Chain Security & API Engine -->
   <script src="assets/js/security.js"></script>
   <script src="assets/js/api.js?v=2026.40"></script>
+  <script src="assets/js/asset-registry.js?v=2026.43"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -90,10 +91,23 @@
     <!-- Fixed Header -->
     <header class="app-header">    
       <div class="header-center">
-        <div class="search-bar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="token-search-input" placeholder="Search token symbol, name, or master contract address (EQ... / 0:...)...">
-          <button id="search-clear-btn" class="search-clear-btn" title="Clear search">&times;</button>
+        <div class="search-bar-wrapper">
+          <div class="search-bar">
+            <!-- Persistent Network Selector Pill (TON) -->
+            <div class="search-network-pill" title="Red activa: TON (The Open Network)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="vertical-align:middle; margin-right:3px;">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#00F0FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>TON</span>
+            </div>
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="token-search-input" placeholder="Buscar por nombre, símbolo o contrato (EQ... / 0:...)..." autocomplete="off" spellcheck="false">
+            <button id="search-clear-btn" class="search-clear-btn" title="Limpiar búsqueda" style="display: none;">&times;</button>
+          </div>
+          <!-- Live Floating Search Results Dropdown -->
+          <div id="search-results-dropdown" class="search-results-dropdown" style="display: none;">
+            <!-- Populated dynamically via JS -->
+          </div>
         </div>
       </div>
       
@@ -154,12 +168,12 @@
             <div class="table-header">
               <div class="col-rank">#</div>
               <div class="col-token">Token</div>
-              <div class="col-price">Price</div>
+              <div class="col-price" title="Quote currency: USD (live DEX AMM rates)">Price (USD)</div>
               <div class="col-24h">24h Change</div>
               <div class="col-mcap">Market Cap</div>
               <div class="col-vol">Volume (24h)</div>
               <div class="col-holders">Holders</div>
-              <div class="col-last-indexed">Last Indexed</div>
+              <div class="col-last-indexed" title="Timestamp of the most recent on-chain rate sync">Last Sync</div>
               <div class="col-action"></div>
             </div>
             <div id="token-list-body" class="table-body">
@@ -323,15 +337,19 @@
   <div class="modal-content">
     <div class="modal-header">
       <div style="display: flex; align-items: center; gap: 14px;">
-        <img id="dt-token-logo" src="" alt="Token Logo" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+        <img id="dt-token-logo" src="" alt="Token Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(0, 240, 255, 0.3);">
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <span id="dt-token-name" class="modal-title">Token Name</span>
             <span id="dt-token-badge" class="badge-ver badge-verified">VERIFIED</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-secondary);">
-            <span id="dt-token-symbol" class="data-font" style="color:var(--color-cyan); font-weight:600;">SYMBOL</span> · 
-            <span id="dt-token-contract" class="data-font" style="cursor: pointer; color: #fff;" title="Click to copy contract">EQ...</span>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-secondary); margin-top: 3px; flex-wrap: wrap;">
+            <span id="dt-token-symbol" class="data-font" style="color:var(--color-cyan); font-weight:700;">SYMBOL</span> · 
+            <span id="dt-token-contract" class="data-font" style="cursor: pointer; color: #fff; font-size: 11px;" title="Haz clic para copiar">EQ...</span>
+            <button id="dt-btn-copy-contract" class="btn-copy-pill" title="Copiar dirección de contrato">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Copiar</span>
+            </button>
           </div>
         </div>
       </div>
@@ -339,39 +357,64 @@
     </div>
 
     <div class="modal-body">
+      <!-- Direct Exploration Action -->
+      <button id="dt-btn-explore-cluster" class="btn-primary w-full" style="padding: 12px 18px; margin-bottom: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 0.95rem; border-radius: 8px; box-shadow: 0 0 20px rgba(0, 240, 255, 0.25); cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="5" cy="18" r="2"/><path d="M10 10.5 6.5 7.5M14 10.5l3.5-3M10 13.5l-3.5 3M14 13.5l3.5 3"/></svg>
+        <span>Explorar Clusters de Wallets (Grafo On-Chain)</span>
+      </button>
+
       <!-- Key Statistics -->
       <div class="dt-stats-grid">
         <div class="dt-stat-card">
-          <div class="dt-stat-label">Market Price</div>
+          <div class="dt-stat-label">Precio Actual (USD)</div>
           <div id="dt-token-price" class="dt-stat-val data-font">$0.00</div>
         </div>
         <div class="dt-stat-card">
-          <div class="dt-stat-label">On-Chain Holders (TonAPI)</div>
+          <div class="dt-stat-label">Cambio 24h</div>
+          <div id="dt-token-change24h" class="dt-stat-val data-font">0.00%</div>
+        </div>
+        <div class="dt-stat-card">
+          <div class="dt-stat-label">Market Cap (USD)</div>
+          <div id="dt-token-mcap" class="dt-stat-val data-font">N/A</div>
+        </div>
+        <div class="dt-stat-card">
+          <div class="dt-stat-label">Volumen 24h (USD)</div>
+          <div id="dt-token-vol" class="dt-stat-val data-font">N/A</div>
+        </div>
+        <div class="dt-stat-card">
+          <div class="dt-stat-label">Liquidez (Pool DEX)</div>
+          <div id="dt-token-liquidity" class="dt-stat-val data-font">N/A</div>
+        </div>
+        <div class="dt-stat-card">
+          <div class="dt-stat-label">Holders en Cadena</div>
           <div id="dt-token-holders" class="dt-stat-val data-font">0</div>
         </div>
         <div class="dt-stat-card">
           <div class="dt-stat-label">Total Supply</div>
-          <div id="dt-token-supply" class="dt-stat-val data-font" style="font-size:0.95rem;">--</div>
+          <div id="dt-token-supply" class="dt-stat-val data-font" style="font-size:0.9rem;">--</div>
         </div>
         <div class="dt-stat-card">
-          <div class="dt-stat-label">Market Cap / 24h Vol</div>
-          <div class="dt-stat-val data-font" style="font-size:0.95rem;">
-            <span id="dt-token-mcap">N/A</span> / <span id="dt-token-vol">N/A</span>
-          </div>
+          <div class="dt-stat-label">Última Actualización</div>
+          <div id="dt-token-last-sync" class="dt-stat-val data-font" style="font-size:0.85rem; color:var(--text-secondary);">--</div>
         </div>
       </div>
 
-      <!-- Verification & Logo Provenance -->
-      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: 10px; padding: 12px 16px; margin-bottom: 24px; font-size: 0.85rem;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-          <span style="color: var(--text-secondary);">Logo Asset Provenance:</span>
-          <span id="dt-logo-source" style="color: var(--color-cyan); font-weight: 500;">Verified On-Chain Metadata URI</span>
+      <!-- Verification & Data Provenance -->
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: 10px; padding: 14px 16px; margin-bottom: 24px; font-size: 0.85rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
+          <span style="color: var(--text-secondary);">Procedencia del Icono:</span>
+          <span id="dt-logo-source" style="color: var(--color-cyan); font-weight: 500;">Metadatos On-Chain Verificados</span>
         </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: var(--text-secondary);">External Explorers:</span>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
+          <span style="color: var(--text-secondary);">Fuentes de Datos:</span>
+          <span id="dt-data-sources" style="color: #fff; font-weight: 500;">TonAPI v2 (Metadata & Holders) · STON.fi DEX Pools</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
+          <span style="color: var(--text-secondary);">Exploradores y Mercado:</span>
           <div>
             <a id="dt-link-tonviewer" href="#" target="_blank" style="color:var(--color-electric-blue); margin-right: 12px; font-weight:600; text-decoration:none;">Tonviewer ↗</a>
-            <a id="dt-link-tonscan" href="#" target="_blank" style="color:var(--color-electric-blue); font-weight:600; text-decoration:none;">Tonscan ↗</a>
+            <a id="dt-link-tonscan" href="#" target="_blank" style="color:var(--color-electric-blue); margin-right: 12px; font-weight:600; text-decoration:none;">Tonscan ↗</a>
+            <a id="dt-link-stonfi" href="#" target="_blank" style="color:var(--color-cyan); font-weight:600; text-decoration:none;">STON.fi DEX ↗</a>
           </div>
         </div>
       </div>

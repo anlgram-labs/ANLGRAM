@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Entity Explorer — ANLGRAM Intelligence</title>
-  <meta name="description" content="Search and analyze verified TON entities, wallet balances, token flows, and counterparty relationships."/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
+  <title>Entity Explorer — ANLGRAM On-Chain Intelligence</title>
+  <meta name="description" content="Investigación on-chain institucional de la red TON: balances, holdings de Jettons, transacciones verificadas, swaps DEX, puentes cross-chain, contrapartes y detección de anomalías."/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://testnet.tonapi.io https://*.tonapi.io https://toncenter.com https://testnet.toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
@@ -15,17 +15,18 @@
   <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
   <script src="assets/js/security.js"></script>
-  <script src="assets/js/api.js"></script>
+  <script src="assets/js/api.js?v=2026.45"></script>
+  <script src="assets/js/asset-registry.js?v=2026.45"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    /* Search Bar Large & Controls */
+    /* ── Search Bar & Controls ────────────────────────────────── */
     .explorer-search-wrap {
-      margin-bottom: var(--space-4);
+      margin-bottom: var(--space-3);
       position: relative;
       display: flex;
       gap: 10px;
       align-items: center;
-      background: rgba(13, 17, 28, 0.92);
+      background: rgba(13, 17, 28, 0.95);
       border: 1px solid rgba(0, 207, 255, 0.35);
       border-radius: 16px;
       padding: 6px 14px;
@@ -34,7 +35,7 @@
     }
     .explorer-search-wrap:focus-within {
       border-color: var(--cyan);
-      box-shadow: 0 0 30px rgba(0, 207, 255, 0.25);
+      box-shadow: 0 0 30px rgba(0, 207, 255, 0.28);
     }
     .explorer-search {
       width: 100%;
@@ -50,21 +51,67 @@
     .search-type-indicator {
       font-size: 11px;
       font-family: var(--font-mono);
-      padding: 3px 8px;
+      padding: 3px 9px;
       border-radius: 6px;
       background: rgba(255,255,255,0.06);
-      color: var(--text-secondary);
-      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--cyan);
+      border: 1px solid rgba(0, 207, 255, 0.2);
       white-space: nowrap;
     }
 
-    /* Entity Profile Card */
+    /* ── Provenance & Scope Strip ────────────────────────────────── */
+    .provenance-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      background: rgba(6, 12, 26, 0.8);
+      border: 1px solid rgba(0, 207, 255, 0.15);
+      border-radius: 10px;
+      padding: 8px 14px;
+      margin-bottom: var(--space-4);
+      font-size: 11px;
+      color: var(--text-secondary);
+      flex-wrap: wrap;
+    }
+    .provenance-items { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .provenance-item { display: flex; align-items: center; gap: 5px; }
+    .provenance-label { color: var(--text-muted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; font-weight: 600; }
+    .provenance-val { color: #fff; font-family: var(--font-mono); font-weight: 500; }
+
+    /* ── Disambiguation Panel ────────────────────────────────── */
+    .disambiguation-box {
+      background: rgba(13, 17, 28, 0.98);
+      border: 1px solid rgba(0, 207, 255, 0.45);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    .disambiguation-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      margin-top: 8px;
+      background: rgba(0, 0, 0, 0.35);
+      transition: all 0.2s;
+    }
+    .disambiguation-card:hover {
+      border-color: rgba(0, 207, 255, 0.4);
+      background: rgba(0, 136, 204, 0.12);
+      transform: translateY(-1px);
+    }
+
+    /* ── Entity Profile Card ────────────────────────────────── */
     .entity-profile {
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-xl);
       padding: var(--space-6);
-      margin-bottom: var(--space-6);
+      margin-bottom: var(--space-5);
       display: flex;
       gap: var(--space-6);
       position: relative;
@@ -82,18 +129,18 @@
     }
     
     .entity-avatar-large {
-      width: 80px; height: 80px;
+      width: 76px; height: 76px;
       border-radius: var(--radius-lg);
       background: var(--ton-blue-dim);
       border: 1px solid var(--border-accent);
       display: flex; align-items: center; justify-content: center;
-      font-size: 32px; font-weight: 700; color: var(--cyan);
+      font-size: 30px; font-weight: 700; color: var(--cyan);
       box-shadow: var(--shadow-glow-blue);
       flex-shrink: 0;
       overflow: hidden;
     }
     .entity-avatar-large img {
-      width: 100%; height: 100%; object-fit: cover;
+      width: 100%; height: 100%; object-fit: contain;
     }
 
     .entity-info { flex: 1; min-width: 0; }
@@ -105,7 +152,7 @@
       flex-wrap: wrap;
     }
     .entity-name {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 700;
       color: var(--text-primary);
       letter-spacing: -0.02em;
@@ -118,7 +165,7 @@
       font-size: var(--text-xs);
       color: var(--text-secondary);
       background: var(--bg-input);
-      padding: 4px 10px;
+      padding: 5px 12px;
       border-radius: var(--radius-md);
       border: 1px solid var(--border-subtle);
       margin-bottom: var(--space-3);
@@ -138,8 +185,8 @@
       display: flex;
       gap: 16px;
       align-items: center;
-      padding: 8px 12px;
-      background: rgba(0, 0, 0, 0.25);
+      padding: 7px 12px;
+      background: rgba(0, 0, 0, 0.3);
       border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 8px;
       margin-bottom: var(--space-4);
@@ -153,7 +200,7 @@
 
     .entity-stats { display: flex; gap: var(--space-6); flex-wrap: wrap; }
     .entity-stat-val {
-      font-size: 20px;
+      font-size: 19px;
       font-weight: 700;
       font-family: var(--font-mono);
       color: var(--text-primary);
@@ -173,10 +220,67 @@
       flex-direction: column;
       gap: var(--space-2);
       justify-content: flex-start;
-      min-width: 170px;
+      min-width: 175px;
     }
 
-    /* Badges */
+    /* ── Navigation Tabs ────────────────────────────────── */
+    .explorer-tabs-bar {
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: var(--space-5);
+      overflow-x: auto;
+      scrollbar-width: thin;
+      padding-bottom: 2px;
+    }
+    .explorer-tab-btn {
+      padding: 10px 16px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .explorer-tab-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px 8px 0 0;
+    }
+    .explorer-tab-btn.active {
+      color: var(--cyan);
+      border-bottom-color: var(--cyan);
+      background: rgba(0, 207, 255, 0.06);
+      border-radius: 8px 8px 0 0;
+    }
+    .tab-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+    .explorer-tab-btn.active .tab-badge {
+      background: rgba(0, 207, 255, 0.2);
+      color: var(--cyan);
+    }
+
+    .tab-pane {
+      display: none;
+    }
+    .tab-pane.active {
+      display: block;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    /* ── Badges ────────────────────────────────── */
     .badge-gold {
       background: rgba(245, 158, 11, 0.15);
       color: #f59e0b;
@@ -205,15 +309,29 @@
       font-weight: 700;
       letter-spacing: 0.03em;
     }
+    .badge-confidence-high { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .badge-confidence-mid { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-confidence-low { background: rgba(100, 116, 139, 0.15); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.3); }
 
-    /* Explorer Layout */
-    .explorer-layout {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: var(--space-6);
+    /* ── Anomaly & Signal Cards ────────────────────────────────── */
+    .anomaly-card {
+      background: rgba(13, 20, 36, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      position: relative;
+      transition: all 0.2s ease;
     }
+    .anomaly-card:hover {
+      border-color: rgba(0, 207, 255, 0.35);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    }
+    .anomaly-card.severity-warning { border-left: 4px solid #f59e0b; }
+    .anomaly-card.severity-critical { border-left: 4px solid #ef4444; }
+    .anomaly-card.severity-info { border-left: 4px solid #00cfff; }
 
-    /* Date Range & Flow Filters */
+    /* ── Controls Bar ────────────────────────────────── */
     .tx-controls-bar {
       display: flex;
       flex-direction: column;
@@ -263,7 +381,6 @@
     .date-pill:hover { color: #fff; border-color: rgba(0,207,255,0.3); }
     .date-pill.active { background: rgba(0, 136, 204, 0.25); color: #00CFFF; border-color: rgba(0,207,255,0.5); }
 
-    /* Quick Explore Pills */
     .quick-pill {
       cursor: pointer;
       background: rgba(255, 255, 255, 0.04);
@@ -284,61 +401,14 @@
       transform: translateY(-1px);
     }
 
-    /* Disambiguation Box */
-    .disambiguation-box {
-      background: rgba(13, 17, 28, 0.95);
-      border: 1px solid rgba(0, 207, 255, 0.4);
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-    }
-    .disambiguation-card {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 14px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 8px;
-      margin-top: 8px;
-      background: rgba(0, 0, 0, 0.25);
-      transition: all 0.2s;
-    }
-    .disambiguation-card:hover {
-      border-color: rgba(0, 207, 255, 0.3);
-      background: rgba(0, 136, 204, 0.08);
-    }
-
-    /* Jetton Portfolio Shelf */
-    .jetton-shelf {
-      display: flex;
-      gap: 10px;
-      overflow-x: auto;
-      padding: 10px 0;
-      scrollbar-width: thin;
-    }
-    .jetton-card {
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 10px;
-      padding: 8px 12px;
-      min-width: 140px;
-      flex-shrink: 0;
-      transition: all 0.2s;
-      cursor: pointer;
-    }
-    .jetton-card:hover {
-      border-color: rgba(0, 207, 255, 0.3);
-      background: rgba(0, 136, 204, 0.1);
-    }
-
-    /* Relationship Topology Graph */
+    /* ── Topology Canvas ────────────────────────────────── */
     .topology-container {
       width: 100%;
-      height: 250px;
+      height: 280px;
       position: relative;
-      background: rgba(0, 0, 0, 0.25);
-      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
       overflow: hidden;
     }
     #topologyCanvas {
@@ -347,7 +417,7 @@
       display: block;
     }
 
-    /* Toast Notification */
+    /* ── Copy Toast & Modal ────────────────────────────────── */
     .copy-toast {
       position: fixed;
       bottom: 24px;
@@ -365,12 +435,30 @@
       transition: all 0.3s ease;
       pointer-events: none;
     }
-    .copy-toast.show {
-      opacity: 1;
-      transform: translateY(0);
+    .copy-toast.show { opacity: 1; transform: translateY(0); }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border-accent);
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
     }
 
-    /* Empty and Error States */
+    /* ── Empty & Loading States ────────────────────────────────── */
     .empty-state {
       display: flex;
       flex-direction: column;
@@ -380,15 +468,16 @@
       text-align: center;
       color: var(--text-muted);
     }
-    .empty-icon { font-size: 48px; margin-bottom: var(--space-4); opacity: 0.6; }
+    .empty-icon { font-size: 44px; margin-bottom: var(--space-4); opacity: 0.6; }
 
     @media (max-width: 1024px) {
-      .explorer-layout { grid-template-columns: 1fr; }
+      .explorer-layout { grid-template-columns: 1fr !important; }
     }
     @media (max-width: 768px) {
       .entity-profile { flex-direction: column; }
       .entity-actions { flex-direction: row; flex-wrap: wrap; width: 100%; }
-      .entity-actions .btn { flex: 1; }
+      .entity-actions .btn { flex: 1; min-width: 130px; }
+      .provenance-strip { flex-direction: column; align-items: flex-start; gap: 8px; }
     }
   </style>
 </head>
@@ -450,7 +539,7 @@
       <div style="display:flex; align-items:center; gap:8px;">
         <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">ANLGRAM OS</span>
         <span style="color:var(--border-default);">/</span>
-        <span style="font-size:13px; font-weight:600; color:var(--cyan);">Entity Explorer & On-Chain Graph</span>
+        <span style="font-size:13px; font-weight:600; color:var(--cyan);">Entity Explorer & On-Chain Intelligence</span>
       </div>
       <div class="topbar-actions">
         <div class="topbar-price">
@@ -465,31 +554,57 @@
       <!-- Search Input Wrapper -->
       <div class="explorer-search-wrap animate-fade-down">
         <svg style="flex-shrink:0; color:#00CFFF;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" class="explorer-search" id="searchInput" placeholder="Paste TON address (EQ... / 0:...), Jetton master, 64-char TX hash, or organization name..." value="EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N"/>
+        <input type="text" class="explorer-search" id="searchInput" placeholder="Buscar dirección TON (EQ... / 0:...), contrato o símbolo Jetton ($NOT, $USDT), servicio o hash TX..." value="EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N"/>
         <div id="searchTypeBadge" class="search-type-indicator">TON Address</div>
-        <button id="clearSearchBtn" onclick="clearSearchInput()" style="background:transparent; border:none; color:#888; cursor:pointer; font-size:16px; padding:4px 8px;" title="Clear">✕</button>
-        <button id="analyzeBtn" onclick="handleSearchSubmit()" class="btn btn-primary btn-sm" style="flex-shrink:0; padding:8px 18px; font-weight:700; border-radius:12px; box-shadow:0 0 14px rgba(0,207,255,0.3);">🔍 Live Analyze</button>
+        <button id="clearSearchBtn" onclick="clearSearchInput()" style="background:transparent; border:none; color:#888; cursor:pointer; font-size:16px; padding:4px 8px;" title="Borrar">✕</button>
+        <button id="analyzeBtn" onclick="handleSearchSubmit()" class="btn btn-primary btn-sm" style="flex-shrink:0; padding:8px 18px; font-weight:700; border-radius:12px; box-shadow:0 0 14px rgba(0,207,255,0.3);">🔍 Analizar en ANLGRAM</button>
       </div>
 
-      <!-- Quick Entity Pills for verified public navigation -->
-      <div class="animate-fade-down" style="display:flex; gap:8px; align-items:center; margin-top:8px; margin-bottom:18px; flex-wrap:wrap; font-size:12px; color:#888;">
-        <span style="color:#00CFFF; font-weight:600;">⚡ Quick Explore:</span>
-        <span onclick="loadTargetAddress('EQDKHZ7e70CzqdvZCC83Z4WVR8POC_ZB0J1Y4zo88G-zCXmC')" class="quick-pill" title="Verified Binance Hot Wallet on TON">🔥 Binance Hot</span>
-        <span onclick="loadTargetAddress('EQDn6G2gh0LtkzQ0_-uPCKY8fhAO6ELiX1manL8IkVdKbGzr')" class="quick-pill" title="Verified OKX Hot Wallet 3">🔵 OKX Router</span>
-        <span onclick="loadTargetAddress('EQCSIMGBps_qzRG3uPYhON8bucyCtu0mYdL1-u4gSz77IBa3')" class="quick-pill" title="Verified STON.fi DEX AMM Router Contract">💠 STON.fi DEX</span>
-        <span onclick="loadTargetAddress('EQDZ4yPwODeNi22_Qjqx9HKkM5SvBX4qHBT0l19VPqBuzm0u')" class="quick-pill" title="Verified DeDust PX Vault Contract">🔷 DeDust Vault</span>
-        <span onclick="loadTargetAddress('EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N')" class="quick-pill" title="Verified TON Foundation Treasury Contract">🏛️ TON Foundation</span>
-        <span onclick="loadTargetAddress('EQAvlWFDxGF2lXm67y4yzC17wYKD9A0guwPkMs1gOsM__NOT')" class="quick-pill" title="Verified Notcoin Jetton Master Contract">🪙 NOT Master</span>
-        <span onclick="loadTargetAddress('ef13e08119f917af8cc9e1e2657d22711db497a6f7cd37d236235d51424c9c84')" class="quick-pill" title="Live On-Chain Transaction Hash">🔗 Live TX Hash</span>
-        <span onclick="toggleDemoMode()" id="demoPillBtn" class="quick-pill" style="border-color:rgba(234,179,8,0.4); color:#eab308;" title="Toggle clearly marked simulated demo sandbox">🧪 Demo Mode</span>
+      <!-- Quick Entity Pills for Verified Public Navigation -->
+      <div class="animate-fade-down" style="display:flex; gap:8px; align-items:center; margin-top:6px; margin-bottom:14px; flex-wrap:wrap; font-size:12px; color:#888;">
+        <span style="color:#00CFFF; font-weight:600;">⚡ Acceso Rápido:</span>
+        <span onclick="loadTargetAddress('EQDKHZ7e70CzqdvZCC83Z4WVR8POC_ZB0J1Y4zo88G-zCXmC')" class="quick-pill" title="Binance Hot Wallet verificada en TON">🔥 Binance Hot</span>
+        <span onclick="loadTargetAddress('EQDn6G2gh0LtkzQ0_-uPCKY8fhAO6ELiX1manL8IkVdKbGzr')" class="quick-pill" title="OKX Hot Wallet 3 verificada">🔵 OKX Router</span>
+        <span onclick="loadTargetAddress('EQCSIMGBps_qzRG3uPYhON8bucyCtu0mYdL1-u4gSz77IBa3')" class="quick-pill" title="Contrato Router AMM STON.fi DEX">💠 STON.fi DEX</span>
+        <span onclick="loadTargetAddress('EQDZ4yPwODeNi22_Qjqx9HKkM5SvBX4qHBT0l19VPqBuzm0u')" class="quick-pill" title="Contrato DeDust PX Vault">🔷 DeDust Vault</span>
+        <span onclick="loadTargetAddress('EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N')" class="quick-pill" title="Tesorería TON Foundation (Legacy)">🏛️ TON Foundation</span>
+        <span onclick="loadTargetAddress('EQAvlWFDxGF2lXm67y4yzC17wYKD9A0guwPkMs1gOsM__NOT')" class="quick-pill" title="Contrato Master Jetton Notcoin">🪙 Notcoin ($NOT)</span>
+        <span onclick="loadTargetAddress('EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id8gFg')" class="quick-pill" title="Contrato Master Jetton Tether USD">💵 Tether ($USDT)</span>
+        <span onclick="loadTargetAddress('EQC210080zfqzqq4yR90fW650w7y9_712-A00n4486G-mC')" class="quick-pill" title="Puente Oficial TON <> Ethereum">🌉 Puente ETH</span>
+        <span onclick="toggleDemoMode()" id="demoPillBtn" class="quick-pill" style="border-color:rgba(234,179,8,0.4); color:#eab308;" title="Activar/desactivar entorno simulado de demostración">🧪 Modo Demo</span>
       </div>
 
-      <!-- Disambiguation / Multiple Matches Panel (Used when searching company names) -->
+      <!-- Provenance & Data Scope Strip -->
+      <div class="provenance-strip animate-fade-down" id="provenanceStrip">
+        <div class="provenance-items">
+          <div class="provenance-item">
+            <span class="provenance-label">Fuente:</span>
+            <span class="provenance-val" id="provSource">TonAPI v2 Live Indexer & CoinGecko</span>
+          </div>
+          <div class="provenance-item">
+            <span class="provenance-label">Alcance:</span>
+            <span class="provenance-val" id="provScope">Últimos eventos on-chain verificables</span>
+          </div>
+          <div class="provenance-item">
+            <span class="provenance-label">Red:</span>
+            <span class="provenance-val" style="color:var(--cyan);">TON Mainnet</span>
+          </div>
+          <div class="provenance-item">
+            <span class="provenance-label">Sincronización:</span>
+            <span class="provenance-val" id="provTimestamp">En vivo</span>
+          </div>
+        </div>
+        <div style="font-size:10px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+          <span>ℹ️ Cobertura sujeta a indexador público; snapshots multianuales completos requieren nodo de archivo.</span>
+        </div>
+      </div>
+
+      <!-- Disambiguation / Multiple Matches Panel -->
       <div id="disambiguationPanel" class="disambiguation-box animate-fade-down" style="display:none;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <h4 style="color:#00CFFF; margin:0 0 4px 0; font-size:15px; font-weight:700;">Verified Entity Disambiguation</h4>
-            <p style="margin:0; font-size:12px; color:var(--text-muted);" id="disambiguationSubtext">Multiple verified addresses matched your query. Select an address to inspect its real on-chain activity.</p>
+            <h4 style="color:#00CFFF; margin:0 0 4px 0; font-size:15px; font-weight:700;">Desambiguación de Entidades y Jettons</h4>
+            <p style="margin:0; font-size:12px; color:var(--text-muted);" id="disambiguationSubtext">Múltiples resultados coinciden con tu consulta. Selecciona el contrato o entidad exacto para iniciar el análisis:</p>
           </div>
           <button onclick="closeDisambiguation()" class="btn btn-ghost btn-sm" style="padding:4px 8px;">✕</button>
         </div>
@@ -499,34 +614,39 @@
       <!-- Error / Validation Banner -->
       <div id="errorBanner" class="animate-fade-down" style="display:none; margin-bottom:20px; background:rgba(255,71,87,0.12); border:1px solid rgba(255,71,87,0.4); border-radius:12px; padding:12px 18px; color:#ff6b81; font-size:13px; align-items:center; gap:12px;">
         <span style="font-size:20px;">⚠️</span>
-        <div style="flex:1;" id="errorMessageText">Invalid input query.</div>
-        <button onclick="dismissError()" class="btn btn-ghost btn-sm" style="color:#ff6b81;">Dismiss</button>
+        <div style="flex:1;" id="errorMessageText">Consulta no válida o dirección no encontrada.</div>
+        <button onclick="dismissError()" class="btn btn-ghost btn-sm" style="color:#ff6b81;">Cerrar</button>
       </div>
 
       <!-- Result Container -->
       <div id="explorerResult">
-        <!-- Entity Profile -->
+        <!-- Entity Profile Card -->
         <div class="entity-profile animate-fade-up" id="profileCard">
           <div class="entity-avatar-large" id="entityAvatar">T</div>
           <div class="entity-info">
             <div class="entity-header">
               <h2 class="entity-name" id="entityName">TON Foundation: Treasury</h2>
-              <span class="badge badge-green" id="entityCategoryBadge">Core Treasury / DAO</span>
-              <span id="demoModeBadge" class="badge-demo" style="display:none;">DEMO SIMULATION</span>
+              <span class="badge badge-green" id="entityCategoryBadge">Whitelist Verificada</span>
+              <span id="entityTrustBadge" class="badge badge-gold">Oficial</span>
+              <span id="demoModeBadge" class="badge-demo" style="display:none;">SIMULACIÓN DEMO</span>
             </div>
 
             <!-- Address Bar with Actions -->
             <div class="entity-address-bar">
               <span id="entityAddressDisplay">EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N</span>
-              <span class="copy-btn" onclick="copyCurrentAddress()" title="Copy Full Address">
+              <span class="copy-btn" onclick="copyCurrentAddress()" title="Copiar Dirección Completa">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               </span>
               <span style="color:rgba(255,255,255,0.2);">|</span>
-              <a id="tonviewerLink" href="https://tonviewer.com/EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" target="_blank" rel="noopener noreferrer" style="color:var(--cyan); text-decoration:none; display:inline-flex; align-items:center; gap:3px;">
+              <span class="copy-btn" onclick="openQrModal()" title="Ver Código QR">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              </span>
+              <span style="color:rgba(255,255,255,0.2);">|</span>
+              <a id="tonviewerLink" href="https://tonviewer.com/EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" target="_blank" rel="noopener noreferrer" style="color:var(--cyan); text-decoration:none; display:inline-flex; align-items:center; gap:3px;" title="Referencia secundaria en Tonviewer">
                 Tonviewer ↗
               </a>
               <span style="color:rgba(255,255,255,0.2);">|</span>
-              <a id="tonscanLink" href="https://tonscan.org/address/EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" target="_blank" rel="noopener noreferrer" style="color:#70a1ff; text-decoration:none; display:inline-flex; align-items:center; gap:3px;">
+              <a id="tonscanLink" href="https://tonscan.org/address/EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" target="_blank" rel="noopener noreferrer" style="color:#70a1ff; text-decoration:none; display:inline-flex; align-items:center; gap:3px;" title="Referencia secundaria en Tonscan">
                 Tonscan ↗
               </a>
             </div>
@@ -534,180 +654,389 @@
             <!-- Audit Evidence Strip -->
             <div class="entity-audit-strip">
               <div class="audit-item">
-                <span class="audit-label">Status:</span>
-                <span class="audit-val" id="auditStatus">Verified</span>
+                <span class="audit-label">Estado:</span>
+                <span class="audit-val" id="auditStatus">Verificado</span>
               </div>
               <div class="audit-item">
-                <span class="audit-label">Source:</span>
+                <span class="audit-label">Fuente:</span>
                 <span class="audit-val" id="auditSource">TonAPI Whitelist Directory</span>
               </div>
               <div class="audit-item">
-                <span class="audit-label">Last Review:</span>
+                <span class="audit-label">Revisión:</span>
                 <span class="audit-val" id="auditReview">2026-03</span>
               </div>
               <div class="audit-item" style="flex:1; min-width:200px;">
-                <span class="audit-label">Evidence:</span>
-                <span class="audit-val" id="auditEvidence" style="color:#a4b0be; font-size:11px;">Whitelisted On-Chain Entity</span>
+                <span class="audit-label">Evidencia:</span>
+                <span class="audit-val" id="auditEvidence" style="color:#a4b0be; font-size:11px;">Entidad Whitelist Oficial en Cadena</span>
               </div>
             </div>
             
-            <!-- Real Entity Stats -->
+            <!-- Key Entity Stats -->
             <div class="entity-stats">
               <div>
                 <div class="entity-stat-val" id="statBalanceVal">0 TON</div>
-                <div class="entity-stat-label">On-Chain Balance <span class="stat-usd" id="statBalanceUsd">≈ $0.00</span></div>
+                <div class="entity-stat-label">Balance On-Chain <span class="stat-usd" id="statBalanceUsd">≈ $0.00</span></div>
               </div>
               <div>
                 <div class="entity-stat-val" id="statJettonCountVal">0 Tokens</div>
-                <div class="entity-stat-label">Jetton Portfolio</div>
+                <div class="entity-stat-label">Holdings Jettons</div>
               </div>
               <div>
-                <div class="entity-stat-val" id="statActivityVal">—</div>
-                <div class="entity-stat-label">Account Activity</div>
+                <div class="entity-stat-val" id="statNetFlowVal">0 TON</div>
+                <div class="entity-stat-label">Flujo Neto Observado</div>
               </div>
               <div>
                 <div class="entity-stat-val" id="statObservedTxVal">0 TX</div>
-                <div class="entity-stat-label">Observed History</div>
+                <div class="entity-stat-label">Transacciones Observadas</div>
               </div>
             </div>
           </div>
           
           <!-- Functional Controls Actions -->
           <div class="entity-actions">
-            <button class="btn btn-primary btn-sm" id="btnViewVisualizer" onclick="goToVisualizer()" title="Explore holder connections and bubble topology in GRAM Terminal">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49"/></svg> View in Visualizer
+            <button class="btn btn-primary btn-sm" id="btnToggleWatchlist" onclick="toggleWatchlistCurrent()" title="Guardar dirección en tu Watchlist local">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span id="watchlistBtnLabel">⭐ Seguir Dirección</span>
             </button>
-            <button class="btn btn-ghost btn-sm" id="btnSetAlert" onclick="goToSetAlert()" title="Configure on-chain threshold alert for this address">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Set Alert
+            <button class="btn btn-ghost btn-sm" id="btnSetAlert" onclick="goToSetAlert()" title="Configurar alerta on-chain para esta dirección">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              Configurar Alerta
             </button>
-            <button class="btn btn-ghost btn-sm" id="btnExportCsv" onclick="exportDataToCsv()" title="Export real observed transactions to CSV with timestamp metadata">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> Export CSV
+            <button class="btn btn-ghost btn-sm" id="btnViewVisualizer" onclick="goToVisualizer()" title="Ver topología de clústeres en GRAM Terminal">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49"/></svg>
+              Ver en Terminal
             </button>
-            <button class="btn btn-ghost btn-sm" id="btnRefresh" onclick="refreshCurrentTarget()" title="Re-fetch live blockchain state">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="exportDataToCsv()" title="Exportar transacciones observadas a CSV">
+                📥 CSV
+              </button>
+              <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="exportDataToJson()" title="Exportar dataset completo a JSON">
+                📥 JSON
+              </button>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="btnRefresh" onclick="refreshCurrentTarget()" title="Actualizar datos en vivo">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Actualizar
             </button>
           </div>
         </div>
 
-        <!-- Jetton Balances Shelf (Displayed when address holds Jettons) -->
-        <div id="jettonShelfContainer" class="card animate-fade-up" style="display:none; margin-bottom:var(--space-6); padding:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div style="font-size:14px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
-              <span>🪙 Jetton Token Holdings</span>
-              <span id="jettonBadgeCount" class="badge badge-cyan" style="font-size:11px;">0 Detected</span>
-            </div>
-            <span style="font-size:11px; color:var(--text-muted);">Real on-chain Jetton balances</span>
-          </div>
-          <div class="jetton-shelf" id="jettonListBody"></div>
-        </div>
-
-        <!-- Jetton Master Details Card (Displayed if the query is a Jetton Master contract) -->
-        <div id="jettonMasterCard" class="card animate-fade-up" style="display:none; margin-bottom:var(--space-6); padding:18px;">
-          <div class="card-title" style="margin-bottom:12px; color:#00CFFF;">🪙 Jetton Master Contract Metadata</div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; font-family:var(--font-mono); font-size:13px;">
-            <div>
-              <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Total Supply</div>
-              <div id="jmSupply" style="font-weight:700; color:#fff; font-size:16px;">—</div>
-            </div>
-            <div>
-              <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Mintable Status</div>
-              <div id="jmMintable" style="font-weight:700;">—</div>
-            </div>
-            <div>
-              <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Holders Count</div>
-              <div id="jmHolders" style="font-weight:700; color:#00CFFF;">—</div>
-            </div>
-            <div>
-              <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Verification</div>
-              <div id="jmVerification" style="font-weight:700;">—</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Transaction Detail Card (Displayed when searching a TX hash) -->
+        <!-- Transaction Detail Card (Shown when searching a TX hash) -->
         <div id="txDetailCard" class="card animate-fade-up" style="display:none; margin-bottom:var(--space-6); padding:18px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
             <div class="card-title" style="color:#00CFFF; font-size:15px; display:flex; align-items:center; gap:8px;">
-              <span>🔗 On-Chain Transaction Overview</span>
-              <span id="txStatusBadge" class="badge badge-green">Confirmed</span>
+              <span>🔗 Detalle de Transacción On-Chain</span>
+              <span id="txStatusBadge" class="badge badge-green">Confirmada</span>
             </div>
             <div id="txTimeUtc" style="font-size:12px; font-family:var(--font-mono); color:var(--text-muted);">—</div>
           </div>
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; font-size:13px; font-family:var(--font-mono);">
             <div>
-              <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">From (Sender)</div>
+              <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Remitente (Origen)</div>
               <div id="txSender" style="color:#fff; word-break:break-all; font-weight:600; margin-top:2px;">—</div>
             </div>
             <div>
-              <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">To (Recipient)</div>
+              <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Destinatario (Destino)</div>
               <div id="txRecipient" style="color:#fff; word-break:break-all; font-weight:600; margin-top:2px;">—</div>
             </div>
             <div>
-              <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Transferred Value</div>
+              <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Valor Transferido</div>
               <div id="txValue" style="color:#2ed573; font-weight:700; font-size:15px; margin-top:2px;">—</div>
             </div>
             <div>
-              <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Network Fees</div>
+              <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Comisiones de Red (Fees)</div>
               <div id="txFees" style="color:var(--text-secondary); margin-top:2px;">—</div>
             </div>
           </div>
           <div id="txCommentRow" style="margin-top:12px; padding:8px 12px; background:rgba(0,0,0,0.3); border-radius:6px; font-size:12px; color:var(--cyan); display:none;">
-            <strong>Comment / Memo:</strong> <span id="txCommentText"></span>
+            <strong>Comentario / Memo Decodificado:</strong> <span id="txCommentText"></span>
           </div>
         </div>
 
+        <!-- Navigation Tabs Bar -->
+        <div class="explorer-tabs-bar">
+          <button class="explorer-tab-btn active" onclick="switchExplorerTab('overview', this)">
+            <span>📊 Resumen</span>
+          </button>
+          <button class="explorer-tab-btn" onclick="switchExplorerTab('holdings', this)">
+            <span>🪙 Holdings & Jettons</span>
+            <span class="tab-badge" id="tabHoldingsCount">0</span>
+          </button>
+          <button class="explorer-tab-btn" onclick="switchExplorerTab('transactions', this)">
+            <span>📜 Transacciones</span>
+            <span class="tab-badge" id="tabTxCount">0</span>
+          </button>
+          <button class="explorer-tab-btn" onclick="switchExplorerTab('swaps', this)">
+            <span>🔄 Swaps Confirmados</span>
+            <span class="tab-badge" id="tabSwapsCount">0</span>
+          </button>
+          <button class="explorer-tab-btn" onclick="switchExplorerTab('counterparties', this)">
+            <span>🌐 Contrapartes & Topología</span>
+            <span class="tab-badge" id="tabCpCount">0</span>
+          </button>
+          <button class="explorer-tab-btn" onclick="switchExplorerTab('bridges', this)">
+            <span>🌉 Puentes Cross-Chain</span>
+            <span class="tab-badge" id="tabBridgesCount">0</span>
+          </button>
+          <button class="explorer-tab-btn" onclick="switchExplorerTab('anomalies', this)">
+            <span>⚠️ Señales & Anomalías</span>
+            <span class="tab-badge" id="tabAnomaliesCount">0</span>
+          </button>
+          <button class="explorer-tab-btn" onclick="switchExplorerTab('watchlist', this)">
+            <span>⭐ Watchlist & Notas</span>
+            <span class="tab-badge" id="tabWatchlistCount">0</span>
+          </button>
+        </div>
 
-        <div class="explorer-layout">
-          <!-- Left: TX History & Flow Analysis -->
-          <div class="card animate-fade-up delay-1">
+        <!-- ════════════════════════════════════════════════════════════════
+             TAB 1: OVERVIEW (RESUMEN)
+             ════════════════════════════════════════════════════════════════ -->
+        <div id="pane-overview" class="tab-pane active">
+          <!-- Inflow vs Outflow Visual Bar -->
+          <div class="card" style="margin-bottom:var(--space-6); padding:16px 20px;">
+            <div style="display:flex; justify-content:space-between; font-size:12px; font-family:var(--font-mono); margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+              <span style="color:#2ed573; font-weight:700;" id="inflowVolText">⬇ Entradas: 0 TON (0%)</span>
+              <span style="color:#00CFFF; font-weight:700;" id="netFlowText">Flujo Neto: 0 TON</span>
+              <span style="color:#ff4757; font-weight:700;" id="outflowVolText">⬆ Salidas: 0 TON (0%)</span>
+            </div>
+            <div style="width:100%; height:8px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; display:flex;">
+              <div id="inflowProgressBar" style="width:50%; height:100%; background:#2ed573; transition:width 0.5s ease;"></div>
+              <div id="outflowProgressBar" style="width:50%; height:100%; background:#ff4757; transition:width 0.5s ease;"></div>
+            </div>
+          </div>
+
+          <div class="explorer-layout" style="display:grid; grid-template-columns: 1.8fr 1.2fr; gap:var(--space-6);">
+            <!-- Left Column: Balance Trajectory & Latest Activity -->
+            <div style="display:flex; flex-direction:column; gap:var(--space-6);">
+              <!-- Cumulative Balance Trajectory Line Chart -->
+              <div class="card">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <div class="card-title">Trayectoria de Saldo Acumulado</div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Reconstrucción hacia atrás basada en transacciones observadas</div>
+                  </div>
+                  <span class="badge badge-muted" style="font-size:10px;">Flujo Observado</span>
+                </div>
+                <div class="card-body" style="height:220px; position:relative; padding-top:10px;">
+                  <canvas id="balChart"></canvas>
+                </div>
+                <div style="padding:0 16px 12px 16px; font-size:11px; color:var(--text-muted); line-height:1.4;">
+                  ℹ️ Trayectoria calculada matemáticamente a partir del saldo actual y los flujos entrantes/salientes observados.
+                </div>
+              </div>
+
+              <!-- Quick Recent Events Preview -->
+              <div class="card">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                  <div class="card-title">Actividad Reciente Observada</div>
+                  <button class="btn btn-ghost btn-sm" onclick="switchExplorerTab('transactions', document.querySelectorAll('.explorer-tab-btn')[2])">Ver Todas ➔</button>
+                </div>
+                <div class="data-table-wrap">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Contraparte</th>
+                        <th>Importe</th>
+                        <th>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody id="overviewRecentTxBody">
+                      <!-- Populated via JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Counterparties Donut & Observed Topology Preview -->
+            <div style="display:flex; flex-direction:column; gap:var(--space-6);">
+              <!-- Counterparties Donut Chart -->
+              <div class="card">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                  <div class="card-title">Distribución por Contrapartes</div>
+                  <span id="cpWindowLabel" style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">Historial Indexado</span>
+                </div>
+                <div class="card-body" style="height:210px; display:flex; align-items:center; justify-content:center; position:relative;">
+                  <canvas id="cpChart"></canvas>
+                  <div style="position:absolute; text-align:center; pointer-events:none;">
+                    <div style="font-size:var(--text-xs);color:var(--text-muted);">Volumen Total</div>
+                    <div style="font-size:var(--text-base);font-weight:700;font-family:var(--font-mono);" id="cpCenterVol">0 TON</div>
+                  </div>
+                </div>
+                <div id="cpListRank" style="padding: 0 16px 14px 16px; font-size:12px;"></div>
+              </div>
+
+              <!-- Relationship Topology Canvas -->
+              <div class="card">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                  <div class="card-title">Topología de Relaciones</div>
+                  <button class="btn btn-ghost btn-sm" onclick="switchExplorerTab('counterparties', document.querySelectorAll('.explorer-tab-btn')[4])">Expandir ➔</button>
+                </div>
+                <div class="card-body" style="padding:12px;">
+                  <div class="topology-container">
+                    <canvas id="topologyCanvas"></canvas>
+                  </div>
+                  <div style="margin-top:10px; font-size:11px; color:var(--text-muted); line-height:1.4;">
+                    <strong style="color:#00CFFF;">Etiquetas de Evidencia:</strong>
+                    <span style="color:#f59e0b;">● Exchange</span> · 
+                    <span style="color:#a78bfa;">● Contrato</span> · 
+                    <span style="color:#0088cc;">● Servicio</span> · 
+                    <span style="color:#64748b;">● Wallet No Identificada</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════════
+             TAB 2: HOLDINGS & JETTONS
+             ════════════════════════════════════════════════════════════════ -->
+        <div id="pane-holdings" class="tab-pane">
+          <!-- Jetton Master Contract Metadata Card (Displayed if the query is a Jetton Master) -->
+          <div id="jettonMasterCard" class="card" style="display:none; margin-bottom:var(--space-6); padding:18px;">
+            <div class="card-title" style="margin-bottom:12px; color:#00CFFF; display:flex; align-items:center; gap:8px;">
+              <span>🪙 Metadatos de Contrato Master Jetton (TEP-74)</span>
+              <span id="jmVerificationBadge" class="badge badge-green">Verificado</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; font-family:var(--font-mono); font-size:13px; margin-bottom:16px;">
+              <div>
+                <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Suministro Total (Supply)</div>
+                <div id="jmSupply" style="font-weight:700; color:#fff; font-size:16px;">—</div>
+              </div>
+              <div>
+                <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Estado de Acuñación (Mintable)</div>
+                <div id="jmMintable" style="font-weight:700;">—</div>
+              </div>
+              <div>
+                <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Total de Holders</div>
+                <div id="jmHolders" style="font-weight:700; color:#00CFFF;">—</div>
+              </div>
+              <div>
+                <div style="color:var(--text-muted); font-size:11px; text-transform:uppercase;">Dirección del Administrador</div>
+                <div id="jmAdmin" style="font-weight:600; color:#fff; word-break:break-all;">—</div>
+              </div>
+            </div>
+
+            <!-- Jetton Holders Top Distribution -->
+            <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:14px;">
+              <div style="font-weight:700; font-size:13px; margin-bottom:10px; color:var(--text-primary);">
+                Distribución de Principales Holders Observados
+              </div>
+              <div class="data-table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th># Ranking</th>
+                      <th>Dirección del Holder</th>
+                      <th>Propietario / Tipo</th>
+                      <th>Balance de Tokens</th>
+                      <th>% del Suministro</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="jettonHoldersTableBody">
+                    <tr><td colspan="6" style="text-align:center; padding:16px; color:var(--text-muted);">Consultando distribución de holders...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Account Jetton Holdings Table -->
+          <div class="card">
             <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
               <div>
-                <div class="card-title">Transaction History & Value Flows</div>
-                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">User-level transactions without trace double-counting</div>
+                <div class="card-title">Cartera de Jettons en Cadena</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Balances de tokens TEP-74 consultados en tiempo real</div>
+              </div>
+              <input type="text" id="jettonTableSearch" oninput="filterJettonsTable()" placeholder="Filtrar por símbolo o nombre..." style="padding:5px 12px; background:var(--bg-input); border:1px solid var(--border-default); border-radius:6px; color:#fff; font-size:12px;"/>
+            </div>
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Activo / Token</th>
+                    <th>Símbolo</th>
+                    <th>Balance On-Chain</th>
+                    <th>Valor Estimado (USD)</th>
+                    <th>Estado de Verificación</th>
+                    <th>Dirección de Contrato Master</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="jettonsTableFullBody">
+                  <tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-muted);">Sin datos de Jettons.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════════
+             TAB 3: TRANSACTIONS (ACTIVIDAD COMPLETA)
+             ════════════════════════════════════════════════════════════════ -->
+        <div id="pane-transactions" class="tab-pane">
+          <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <div>
+                <div class="card-title">Registro Completo de Actividad On-Chain</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Transacciones a nivel de usuario sin doble conteo de trazas internas</div>
               </div>
               <div style="display:flex; align-items:center; gap:8px;">
-                <span id="liveFeedStatus" style="font-size:12px; font-family:var(--font-mono); color:#00CFFF; display:flex; align-items:center; gap:5px;">
-                  <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#00CFFF; box-shadow:0 0 6px #00CFFF;"></span>
-                  Live Feed
-                </span>
+                <button class="btn btn-ghost btn-sm" onclick="exportDataToCsv()">📥 Exportar CSV</button>
               </div>
             </div>
 
-            <!-- Inflow vs Outflow Visual Bar -->
-            <div style="padding: 0 20px 14px 20px;">
-              <div style="display:flex; justify-content:space-between; font-size:12px; font-family:var(--font-mono); margin-bottom:5px;">
-                <span style="color:#2ed573; font-weight:700;" id="inflowVolText">⬇ Inflows: 0 TON (0%)</span>
-                <span style="color:#00CFFF; font-weight:600;" id="netFlowText">Net: 0 TON</span>
-                <span style="color:#ff4757; font-weight:700;" id="outflowVolText">⬆ Outflows: 0 TON (0%)</span>
-              </div>
-              <div style="width:100%; height:7px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; display:flex;">
-                <div id="inflowProgressBar" style="width:50%; height:100%; background:#2ed573; transition:width 0.5s ease;"></div>
-                <div id="outflowProgressBar" style="width:50%; height:100%; background:#ff4757; transition:width 0.5s ease;"></div>
-              </div>
-            </div>
-
-            <!-- Controls Bar: Date Range + Direction Filters -->
+            <!-- Controls Bar: Time Range + Flow Filters + Search Input -->
             <div class="tx-controls-bar">
               <!-- Date Range Filter -->
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <span style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Time Range:</span>
+                <span style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Periodo:</span>
                 <div class="filter-btn-group" id="dateFilterGroup">
-                  <span class="date-pill active" onclick="setDateRange('all', this)">All Indexed</span>
-                  <span class="date-pill" onclick="setDateRange('24h', this)">24 Hours</span>
-                  <span class="date-pill" onclick="setDateRange('7d', this)">7 Days</span>
-                  <span class="date-pill" onclick="setDateRange('30d', this)">30 Days</span>
+                  <span class="date-pill active" onclick="setDateRange('all', this)">Todo el Historial</span>
+                  <span class="date-pill" onclick="setDateRange('24h', this)">24 Horas</span>
+                  <span class="date-pill" onclick="setDateRange('7d', this)">7 Días</span>
+                  <span class="date-pill" onclick="setDateRange('30d', this)">30 Días</span>
                 </div>
               </div>
 
               <!-- Direction & Type Filter -->
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; border-top:1px solid rgba(255,255,255,0.04); padding-top:8px;">
-                <span style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Flow Filter:</span>
+                <span style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Tipo de Flujo:</span>
                 <div class="filter-btn-group">
-                  <button class="filter-btn active" id="btnFilterAll" onclick="setTxFilter('all', this)">All <span id="countAll" style="background:rgba(255,255,255,0.15); padding:1px 6px; border-radius:10px; font-size:10px;">0</span></button>
-                  <button class="filter-btn" id="btnFilterIn" onclick="setTxFilter('inflow', this)">⬇ Inflows <span id="countIn" style="background:rgba(46,213,115,0.2); color:#2ed573; padding:1px 6px; border-radius:10px; font-size:10px;">0</span></button>
-                  <button class="filter-btn" id="btnFilterOut" onclick="setTxFilter('outflow', this)">⬆ Outflows <span id="countOut" style="background:rgba(255,71,87,0.2); color:#ff4757; padding:1px 6px; border-radius:10px; font-size:10px;">0</span></button>
-                  <button class="filter-btn" id="btnFilterSwaps" onclick="setTxFilter('swaps', this)">🔄 Swaps & Calls <span id="countSwaps" style="background:rgba(139,92,246,0.2); color:#a78bfa; padding:1px 6px; border-radius:10px; font-size:10px;">0</span></button>
+                  <button class="filter-btn active" id="btnFilterAll" onclick="setTxFilter('all', this)">Todas <span id="countAll" style="background:rgba(255,255,255,0.15); padding:1px 6px; border-radius:10px; font-size:10px;">0</span></button>
+                  <button class="filter-btn" id="btnFilterIn" onclick="setTxFilter('inflow', this)">⬇ Entradas <span id="countIn" style="background:rgba(46,213,115,0.2); color:#2ed573; padding:1px 6px; border-radius:10px; font-size:10px;">0</span></button>
+                  <button class="filter-btn" id="btnFilterOut" onclick="setTxFilter('outflow', this)">⬆ Salidas <span id="countOut" style="background:rgba(255,71,87,0.2); color:#ff4757; padding:1px 6px; border-radius:10px; font-size:10px;">0</span></button>
+                  <button class="filter-btn" id="btnFilterSwaps" onclick="setTxFilter('swaps', this)">🔄 Swaps DEX <span id="countSwaps" style="background:rgba(139,92,246,0.2); color:#a78bfa; padding:1px 6px; border-radius:10px; font-size:10px;">0</span></button>
                   <button class="filter-btn" id="btnFilterTokens" onclick="setTxFilter('tokens', this)">🪙 Jettons <span id="countTokens" style="background:rgba(0,207,255,0.2); color:#00CFFF; padding:1px 6px; border-radius:10px; font-size:10px;">0</span></button>
+                </div>
+              </div>
+
+              <!-- Asset Dropdown + Search Counterparty -->
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; border-top:1px solid rgba(255,255,255,0.04); padding-top:8px;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Activo:</span>
+                  <select id="assetFilterSelect" onchange="handleAssetFilterChange()" style="padding:4px 10px; background:var(--bg-input); border:1px solid var(--border-default); border-radius:6px; color:#fff; font-size:12px; font-family:var(--font-mono);">
+                    <option value="all">Todos los Activos</option>
+                    <option value="TON">TON Nativo</option>
+                  </select>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:200px;">
+                  <input type="text" id="txTableSearch" oninput="handleTxSearchInput()" placeholder="Buscar por contraparte, hash o memo..." style="width:100%; padding:4px 10px; background:var(--bg-input); border:1px solid var(--border-default); border-radius:6px; color:#fff; font-size:12px;"/>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Ordenar:</span>
+                  <select id="txSortSelect" onchange="handleTxSortChange()" style="padding:4px 10px; background:var(--bg-input); border:1px solid var(--border-default); border-radius:6px; color:#fff; font-size:12px;">
+                    <option value="time_desc">Más recientes primero</option>
+                    <option value="time_asc">Más antiguas primero</option>
+                    <option value="val_desc">Mayor importe</option>
+                    <option value="val_asc">Menor importe</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -717,11 +1046,12 @@
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Date (UTC)</th>
-                    <th>Type / Action</th>
-                    <th>Counterparty</th>
-                    <th>Value / Tokens</th>
-                    <th>Status & Hash</th>
+                    <th>Fecha (UTC / Relativo)</th>
+                    <th>Tipo / Acción</th>
+                    <th>Contraparte</th>
+                    <th>Activo e Importe</th>
+                    <th>Comisión (Fee)</th>
+                    <th>Estado y Hash</th>
                   </tr>
                 </thead>
                 <tbody id="txHistoryBody">
@@ -729,75 +1059,212 @@
                 </tbody>
               </table>
             </div>
+
+            <!-- Pagination / Incremental Load Button -->
+            <div style="padding:16px; text-align:center; border-top:1px solid rgba(255,255,255,0.06);">
+              <button id="btnLoadMoreTx" onclick="loadMoreTransactions()" class="btn btn-ghost btn-sm" style="padding:8px 24px; font-weight:600; font-size:13px;">
+                ⬇ Cargar Más Transacciones
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════════
+             TAB 4: SWAPS CONFIRMADOS (DEX SWAPS)
+             ════════════════════════════════════════════════════════════════ -->
+        <div id="pane-swaps" class="tab-pane">
+          <div class="card" style="margin-bottom:var(--space-6); padding:16px 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <h3 style="color:#00CFFF; margin:0 0 4px 0; font-size:16px; font-weight:700;">Registro de Swaps en Exchanges Descentralizados</h3>
+                <p style="margin:0; font-size:12px; color:var(--text-muted);">
+                  Solo se contabilizan operaciones con evidencia confirmada de swap DEX (STON.fi, DeDust o payloads TEP-74). Las transferencias directas no se clasifican como compras o ventas.
+                </p>
+              </div>
+              <span class="badge badge-purple" id="confirmedSwapsBadge">0 Swaps Verificados</span>
+            </div>
           </div>
 
-          <!-- Right: Charts & Topology Relationships -->
-          <div class="dashboard-right">
-            <!-- Counterparties Donut Chart -->
-            <div class="card animate-fade-up delay-2">
-              <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
-                <div class="card-title">Top Counterparties</div>
-                <span id="cpWindowLabel" style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">All Indexed</span>
+          <div class="card">
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Fecha (UTC)</th>
+                    <th>Protocolo DEX</th>
+                    <th>Operación</th>
+                    <th>Activo Pagado (In)</th>
+                    <th>Activo Recibido (Out)</th>
+                    <th>Evidencia On-Chain</th>
+                    <th>Hash</th>
+                  </tr>
+                </thead>
+                <tbody id="swapsTableBody">
+                  <tr><td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">No se observan swaps confirmados en el historial indexado para esta dirección.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════════
+             TAB 5: COUNTERPARTIES & TOPOLOGY
+             ════════════════════════════════════════════════════════════════ -->
+        <div id="pane-counterparties" class="tab-pane">
+          <div style="display:grid; grid-template-columns: 1.4fr 1.6fr; gap:var(--space-6);" class="explorer-layout">
+            <!-- Left: Top Counterparties Table -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Ranking de Contrapartes Frecuentes</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Entidades con mayor volumen o recurrencia de transferencias</div>
               </div>
-              <div class="card-body" style="height: 220px; display:flex; align-items:center; justify-content:center; position:relative;">
-                <canvas id="cpChart"></canvas>
-                <div style="position:absolute; text-align:center; pointer-events:none;">
-                  <div style="font-size:var(--text-xs);color:var(--text-muted);">Flow Volume</div>
-                  <div style="font-size:var(--text-base);font-weight:700;font-family:var(--font-mono);" id="cpCenterVol">0 TON</div>
-                </div>
+              <div class="data-table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Contraparte</th>
+                      <th>Categoría</th>
+                      <th>Volumen (TON)</th>
+                      <th>TXs</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="counterpartiesFullTableBody">
+                    <tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">Sin contrapartes observadas.</td></tr>
+                  </tbody>
+                </table>
               </div>
-              <!-- Top Counterparty List -->
-              <div id="cpListRank" style="padding: 0 16px 14px 16px; font-size:12px;"></div>
             </div>
 
-            <!-- Balance History Delta Trajectory -->
-            <div class="card animate-fade-up delay-3">
+            <!-- Right: Interactive Graph Canvas -->
+            <div class="card">
               <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
-                <div class="card-title">Cumulative Balance Trajectory</div>
-                <span class="badge badge-muted" style="font-size:9px;">Observed Feed</span>
+                <div class="card-title">Grafo de Flujo y Topología de Entidades</div>
+                <span class="badge badge-cyan" style="font-size:10px;">Interactivo</span>
               </div>
-              <div class="card-body" style="height: 180px; padding-top:var(--space-2); position:relative;">
-                <canvas id="balChart"></canvas>
-              </div>
-              <div style="padding:0 16px 10px 16px; font-size:10px; color:var(--text-muted); line-height:1.4;">
-                ℹ️ Cumulative trajectory calculated backwards from current on-chain balance across observed transactions. Complete multi-year historical snapshots require archive node indexer.
-              </div>
-            </div>
-            
-            <!-- Related Entities & Topology Network -->
-            <div class="card animate-fade-up delay-4">
-              <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
-                <div class="card-title">Observed Entity Topology</div>
-                <span class="badge badge-cyan" style="font-size:9px;">GRAPH</span>
-              </div>
-              <div class="card-body" style="padding:12px;">
-                <div class="topology-container">
-                  <canvas id="topologyCanvas"></canvas>
+              <div class="card-body" style="padding:16px;">
+                <div class="topology-container" style="height:360px;">
+                  <canvas id="topologyCanvasFull"></canvas>
                 </div>
-                <div style="margin-top:10px; font-size:11px; color:var(--text-muted); line-height:1.4;">
-                  <strong style="color:#00CFFF;">Evidence Labels:</strong>
-                  <span style="color:#f59e0b;">● Exchange</span> · 
-                  <span style="color:#a78bfa;">● Contract</span> · 
-                  <span style="color:#0088cc;">● Service</span> · 
-                  <span style="color:#64748b;">● Unlabeled Wallet</span>
+                <div style="margin-top:12px; font-size:11px; color:var(--text-muted); line-height:1.5;">
+                  <strong style="color:#00CFFF;">Referencias de Clasificación:</strong>
+                  <span style="color:#f59e0b;">● Exchanges Centralizados (CEX)</span> · 
+                  <span style="color:#a78bfa;">● Smart Contracts (DEX / Vaults)</span> · 
+                  <span style="color:#0088cc;">● Servicios del Ecosistema</span> · 
+                  <span style="color:#64748b;">● Wallets No Identificadas</span>
                   <div style="margin-top:4px; font-size:10px; color:#94a3b8;">
-                    ⚠️ Interaction reflects verified transfer flow. Common ownership is NOT inferred.
+                    ⚠️ La presencia de un enlace refleja flujos de fondos observados en transacciones públicas. La propiedad compartida de las direcciones NO se infiere de forma automática.
                   </div>
                 </div>
-                <!-- Related Entities Badges -->
-                <div id="relatedEntitiesBadges" style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;"></div>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- ════════════════════════════════════════════════════════════════
+             TAB 6: BRIDGES (PUENTES CROSS-CHAIN)
+             ════════════════════════════════════════════════════════════════ -->
+        <div id="pane-bridges" class="tab-pane">
+          <div class="card" style="margin-bottom:var(--space-6); padding:16px 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <h3 style="color:#00CFFF; margin:0 0 4px 0; font-size:16px; font-weight:700;">Interacciones con Puentes Cross-Chain Verificados</h3>
+                <p style="margin:0; font-size:12px; color:var(--text-muted);">
+                  Identificación estricta de transferencias hacia/desde contratos de puentes reconocidos (TON Official ETH Bridge, TON Official BSC Bridge, Orbit Bridge).
+                </p>
+              </div>
+              <span class="badge badge-purple" id="bridgesCountBadge">0 Transferencias Detectadas</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Fecha (UTC)</th>
+                    <th>Puente / Protocolo</th>
+                    <th>Cadena Externa</th>
+                    <th>Tipo de Operación</th>
+                    <th>Importe</th>
+                    <th>Evidencia Verificable</th>
+                    <th>Hash de Transacción</th>
+                  </tr>
+                </thead>
+                <tbody id="bridgesTableBody">
+                  <tr><td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">Sin transferencias de puentes detectadas en el rango indexado. Los eventos analizados no muestran interacción con contratos de puentes cross-chain conocidos.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════════
+             TAB 7: ANOMALIES & SIGNALS (SEÑALES DE INVESTIGACIÓN)
+             ════════════════════════════════════════════════════════════════ -->
+        <div id="pane-anomalies" class="tab-pane">
+          <div class="card" style="margin-bottom:var(--space-6); padding:16px 20px; border-left:4px solid var(--cyan);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <h3 style="color:var(--text-primary); margin:0 0 4px 0; font-size:16px; font-weight:700;">Detecciones Explicables de Patrones On-Chain</h3>
+                <p style="margin:0; font-size:12px; color:var(--text-muted);">
+                  Señales automatizadas generadas a partir de métricas y datos observados (frecuencia atípica, movimientos de alto volumen, concentración de tokens y patrones automatizados).
+                </p>
+              </div>
+              <span class="badge badge-cyan" id="anomaliesCountBadge">0 Señales</span>
+            </div>
+          </div>
+
+          <div id="anomaliesListContainer">
+            <!-- JS populated anomaly cards -->
+          </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════════
+             TAB 8: WATCHLIST & NOTAS PRIVADAS
+             ════════════════════════════════════════════════════════════════ -->
+        <div id="pane-watchlist" class="tab-pane">
+          <div class="card" style="margin-bottom:var(--space-6); padding:16px 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <h3 style="color:#00CFFF; margin:0 0 4px 0; font-size:16px; font-weight:700;">Watchlist & Cuaderno de Investigación</h3>
+                <p style="margin:0; font-size:12px; color:var(--text-muted);">
+                  Guarda direcciones vigiladas, asigna etiquetas personalizadas y notas privadas persistidas en tu navegador.
+                </p>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="saveCurrentToWatchlistPrompt()">+ Guardar Dirección Actual</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Dirección</th>
+                    <th>Etiqueta Personalizada</th>
+                    <th>Notas de Investigación</th>
+                    <th>Fecha Agregada</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="watchlistTableBody">
+                  <tr><td colspan="5" style="text-align:center; padding:32px; color:var(--text-muted);">Tu Watchlist está vacía. Guarda una dirección para investigarla rápidamente más adelante.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </div>
-      
+
       <!-- Empty Search State -->
       <div id="emptyState" class="empty-state" style="display:none;">
         <div class="empty-icon">🔍</div>
-        <h3 style="color:var(--text-primary);margin-bottom:var(--space-2);font-size:var(--text-xl);">Search TON Blockchain</h3>
-        <p style="max-width:480px; margin:0 auto; line-height:1.6;">
-          Enter any TON wallet address (<code style="color:#00CFFF;">EQ...</code> / <code style="color:#00CFFF;">0:...</code>), Jetton contract, 64-character transaction hash, or known entity name (e.g. 'Binance', 'STON.fi') to begin live analysis.
+        <h3 style="color:var(--text-primary);margin-bottom:var(--space-2);font-size:var(--text-xl);">Investigador On-Chain de la Red TON</h3>
+        <p style="max-width:540px; margin:0 auto; line-height:1.6;">
+          Ingresa cualquier dirección de wallet de TON (<code style="color:#00CFFF;">EQ...</code> / <code style="color:#00CFFF;">0:...</code>), contrato master de Jetton (<code style="color:#00CFFF;">$NOT</code>, <code style="color:#00CFFF;">$USDT</code>), hash de transacción de 64 caracteres o nombre de entidad verificada (<code style="color:#00CFFF;">Binance</code>, <code style="color:#00CFFF;">STON.fi</code>) para iniciar el análisis en ANLGRAM.
         </p>
       </div>
 
@@ -806,7 +1273,21 @@
 </div>
 
 <!-- Copy Toast Notification -->
-<div id="copyToast" class="copy-toast">✓ Address copied to clipboard!</div>
+<div id="copyToast" class="copy-toast">✓ Copiado al portapapeles</div>
+
+<!-- QR Code Modal -->
+<div id="qrModal" class="modal-overlay" onclick="closeQrModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="margin:0; font-size:16px; color:#00CFFF;">Código QR de Dirección TON</h3>
+      <button onclick="closeQrModal()" class="btn btn-ghost btn-sm" style="padding:4px 8px;">✕</button>
+    </div>
+    <div style="text-align:center; padding:16px 0;">
+      <img id="qrImage" src="" alt="TON Address QR" style="width:200px; height:200px; background:#fff; padding:10px; border-radius:12px; margin:0 auto; display:block;"/>
+      <div id="qrAddressText" style="margin-top:14px; font-family:var(--font-mono); font-size:11px; color:#cbd5e1; word-break:break-all;"></div>
+    </div>
+  </div>
+</div>
 
 <script>
 // ==========================================
@@ -816,14 +1297,20 @@ let currentAccount = null;
 let currentRawTransactions = [];
 let currentParsedEvents = [];
 let currentJettonsList = [];
+let currentJettonHolders = [];
 let currentTxFilter = 'all';
 let currentDateFilter = 'all';
+let currentAssetFilter = 'all';
+let currentTxSearchText = '';
+let currentTxSort = 'time_desc';
 let isDemoMode = false;
 let cpChartInstance = null;
 let balChartInstance = null;
 let livePollingInterval = null;
+let activeTabName = 'overview';
+let paginationCursor = null;
 
-// Mock Simulated Dataset for Demo Mode (Clearly marked and isolated)
+// Isolated Demo Simulation Dataset (Clearly marked)
 const DEMO_SIMULATION_DATA = {
   account: {
     name: 'Demo Treasury Sandbox',
@@ -833,13 +1320,13 @@ const DEMO_SIMULATION_DATA = {
     is_wallet: true,
     status: 'active',
     badge: 'badge-demo',
-    type: 'Simulated Sandbox Account',
-    category: 'Unlabeled wallet',
+    type: 'Cuenta de Prueba Simulada',
+    category: 'Entorno de demostración',
     verified: false,
     trust: 'demo',
-    evidence: 'Generated simulated sandbox data for testing interface filters and graph interactions',
-    source: 'ANLGRAM Sandbox Generator',
-    lastReviewed: 'Demo Mode Active'
+    evidence: 'Dataset generado en sandbox para validar gráficos, filtros y detección de anomalías.',
+    source: 'Generador Sandbox ANLGRAM',
+    lastReviewed: 'Modo Demo Activo'
   },
   events: [
     {
@@ -851,28 +1338,58 @@ const DEMO_SIMULATION_DATA = {
         TonTransfer: {
           sender: { address: 'EQDKHZ7e70CzqdvZCC83Z4WVR8POC_ZB0J1Y4zo88G-zCXmC', name: 'Binance: Hot Wallet', is_wallet: true },
           recipient: { address: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', name: 'Demo Treasury', is_wallet: true },
-          amount: 5000000000000, // 5,000 TON
-          comment: 'Demo Deposit from Binance'
+          amount: 8000000000000, // 8,000 TON (Whale Inflow)
+          comment: 'Demo Depósito Institucional'
         }
       }]
     },
     {
       event_id: 'demo_tx_002_outflow',
-      timestamp: Math.floor(Date.now() / 1000) - 7200,
+      timestamp: Math.floor(Date.now() / 1000) - 1200,
       actions: [{
         type: 'TonTransfer',
         status: 'ok',
         TonTransfer: {
           sender: { address: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', name: 'Demo Treasury', is_wallet: true },
           recipient: { address: 'EQCSIMGBps_qzRG3uPYhON8bucyCtu0mYdL1-u4gSz77IBa3', name: 'STON.fi DEX AMM', is_wallet: false },
-          amount: 2000000000000, // 2,000 TON
-          comment: 'Liquidity Provision'
+          amount: 2500000000000, // 2,500 TON
+          comment: 'Provisión de Liquidez'
         }
       }]
     },
     {
-      event_id: 'demo_tx_003_jetton',
-      timestamp: Math.floor(Date.now() / 1000) - 86400,
+      event_id: 'demo_tx_003_swap',
+      timestamp: Math.floor(Date.now() / 1000) - 3600,
+      actions: [{
+        type: 'JettonSwap',
+        status: 'ok',
+        JettonSwap: {
+          dex: 'stonfi',
+          ton_out: 1500000000000,
+          amount_in: '1900000000',
+          router: { address: 'EQCSIMGBps_qzRG3uPYhON8bucyCtu0mYdL1-u4gSz77IBa3', name: 'STON.fi DEX AMM Router' },
+          jetton_master_in: { symbol: 'USDT', name: 'Tether USD', decimals: 6 },
+          jetton_master_out: { symbol: 'TON', name: 'Toncoin', decimals: 9 }
+        }
+      }]
+    },
+    {
+      event_id: 'demo_tx_004_bridge',
+      timestamp: Math.floor(Date.now() / 1000) - 14400,
+      actions: [{
+        type: 'TonTransfer',
+        status: 'ok',
+        TonTransfer: {
+          sender: { address: 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N', name: 'Demo Treasury', is_wallet: true },
+          recipient: { address: 'EQC210080zfqzqq4yR90fW650w7y9_712-A00n4486G-mC', name: 'TON: Official Ethereum Bridge', is_wallet: false },
+          amount: 3000000000000,
+          comment: 'Transferencia Puente a Ethereum'
+        }
+      }]
+    },
+    {
+      event_id: 'demo_tx_005_jetton',
+      timestamp: Math.floor(Date.now() / 1000) - 28800,
       actions: [{
         type: 'JettonTransfer',
         status: 'ok',
@@ -883,21 +1400,16 @@ const DEMO_SIMULATION_DATA = {
           jetton: { symbol: 'NOT', name: 'Notcoin', decimals: 9 }
         }
       }]
+    }
+  ],
+  jettons: [
+    {
+      balance: '25000000000000',
+      jetton: { address: 'EQAvlWFDxGF2lXm67y4yzC17wYKD9A0guwPkMs1gOsM__NOT', symbol: 'NOT', name: 'Notcoin', decimals: 9, verification: 'whitelist' }
     },
     {
-      event_id: 'demo_tx_004_swap',
-      timestamp: Math.floor(Date.now() / 1000) - 172800,
-      actions: [{
-        type: 'JettonSwap',
-        status: 'ok',
-        JettonSwap: {
-          dex: 'stonfi',
-          ton_out: 1500000000000,
-          amount_in: '15000000000',
-          router: { address: 'EQCSIMGBps_qzRG3uPYhON8bucyCtu0mYdL1-u4gSz77IBa3', name: 'STON.fi DEX' },
-          jetton_master_in: { symbol: 'USDT', name: 'Tether USD', decimals: 6 }
-        }
-      }]
+      balance: '5000000000',
+      jetton: { address: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id8gFg', symbol: 'USDT', name: 'Tether USD', decimals: 6, verification: 'whitelist' }
     }
   ]
 };
@@ -909,12 +1421,13 @@ const searchInput = document.getElementById('searchInput');
 const searchTypeBadge = document.getElementById('searchTypeBadge');
 
 function detectInputType(str) {
-  if (!str) return 'Empty';
+  if (!str) return 'Vacío';
   const clean = str.trim();
-  if (/^[0-9a-fA-F]{64}$/.test(clean)) return 'TX Hash';
-  if (clean.includes(':')) return 'Raw Address';
-  if (/^[A-Za-z0-9_-]{48}$/.test(clean)) return 'TON Address';
-  return 'Entity Search';
+  if (/^[0-9a-fA-F]{64}$/.test(clean)) return 'Hash TX';
+  if (clean.includes(':')) return 'Dirección Raw';
+  if (/^[A-Za-z0-9_-]{48}$/.test(clean)) return 'Dirección TON';
+  if (clean.startsWith('$') || clean.length <= 6) return 'Símbolo Jetton';
+  return 'Búsqueda de Entidad';
 }
 
 searchInput.addEventListener('input', () => {
@@ -930,7 +1443,7 @@ searchInput.addEventListener('keydown', (e) => {
 
 function clearSearchInput() {
   searchInput.value = '';
-  searchTypeBadge.textContent = 'Empty';
+  searchTypeBadge.textContent = 'Vacío';
   document.getElementById('clearSearchBtn').style.display = 'none';
   searchInput.focus();
 }
@@ -975,23 +1488,22 @@ async function handleSearchSubmit() {
     return;
   }
 
-  // 3. Organization or Name Search (Disambiguation Requirement)
-  const matches = await searchVerifiedEntities(query);
+  // 3. Organization, Jetton Name or Symbol Search (Disambiguation)
+  const matches = await searchAllEntitiesAndJettons(query.replace(/^\$/, ''));
   if (matches.length > 1) {
-    // Show Disambiguation Panel — NEVER guess a wallet arbitrarily!
+    // Show Disambiguation Panel — NEVER guess a contract arbitrarily!
     showDisambiguationPanel(query, matches);
     return;
   } else if (matches.length === 1) {
-    // Single verified exact match
     await performSearch(matches[0].address, 'address');
     return;
   }
 
   // 4. Invalid input format
   if (query.length >= 40 && !addrCheck.valid) {
-    showError(`Invalid TON address checksum: ${addrCheck.error || 'The entered address is malformed or corrupted.'}`);
+    showError(`Error de formato en dirección TON: ${addrCheck.error || 'La dirección está mal formada o el checksum es incorrecto.'}`);
   } else {
-    showError(`No verified entities found matching '${query}'. Please enter a valid TON address (EQ... / 0:...), a 64-char transaction hash, or a known entity like 'Binance' or 'OKX'.`);
+    showError(`No se encontraron entidades ni contratos verificados que coincidan con '${query}'. Ingresa una dirección TON válida (EQ... / 0:...), un símbolo ($NOT, $USDT) o una entidad como 'Binance' o 'STON.fi'.`);
   }
 }
 
@@ -1001,23 +1513,27 @@ function showDisambiguationPanel(query, matches) {
   const subtext = document.getElementById('disambiguationSubtext');
   if (!panel || !list) return;
 
-  subtext.textContent = `Found ${matches.length} verified addresses for '${query}'. Select the specific address you wish to analyze:`;
+  subtext.textContent = `Se encontraron ${matches.length} resultados para '${query}'. Selecciona el contrato o entidad específico para investigarlo:`;
   list.innerHTML = matches.map(m => `
     <div class="disambiguation-card">
-      <div>
-        <div style="font-weight:700; color:#fff; display:flex; align-items:center; gap:8px;">
-          <span>${m.name}</span>
-          <span class="badge ${m.badge || 'badge-gold'}">${m.type}</span>
+      <div style="flex:1; min-width:0;">
+        <div style="font-weight:700; color:#fff; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span>${escapeHtml(m.name)}</span>
+          ${m.symbol ? `<span class="badge badge-cyan" style="font-family:var(--font-mono);">${escapeHtml(m.symbol)}</span>` : ''}
+          <span class="badge ${m.badge || 'badge-gold'}">${escapeHtml(m.type)}</span>
+          <span class="badge ${m.verified ? 'badge-green' : 'badge-muted'}" style="font-size:10px;">
+            ${m.verified ? '✓ Whitelist' : 'Sin verificar'}
+          </span>
         </div>
-        <div style="font-family:var(--font-mono); font-size:12px; color:#00CFFF; margin-top:3px;">
-          ${m.address}
+        <div style="font-family:var(--font-mono); font-size:12px; color:#00CFFF; margin-top:4px; word-break:break-all;">
+          ${escapeHtml(m.address)}
         </div>
         <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
-          Evidence: ${m.evidence || 'Whitelisted Registry'} · Source: ${m.source}
+          Red: <strong style="color:#e2e8f0;">TON Mainnet</strong> · Evidencia: ${escapeHtml(m.evidence || 'Registro Oficial')} · Fuente: ${escapeHtml(m.source || 'TonAPI')}
         </div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="loadTargetAddress('${m.address}')" style="margin-left:12px; font-weight:600;">
-        Analyze ➔
+      <button class="btn btn-primary btn-sm" onclick="loadTargetAddress('${m.address}')" style="margin-left:14px; font-weight:700; flex-shrink:0;">
+        Analizar ➔
       </button>
     </div>
   `).join('');
@@ -1055,20 +1571,20 @@ async function performSearch(query, expectedType = 'address', isSilent = false) 
   if (!isSilent) {
     emptyState.style.display = 'none';
     explorerResult.style.display = 'block';
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:#00CFFF;font-weight:600;"><span class="dot-live" style="margin-right:6px;"></span> Querying real-time TonAPI v2 blockchain state for ${shortenAddress(query)}...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:#00CFFF;font-weight:600;"><span class="dot-live" style="margin-right:6px;"></span> Consultando estado on-chain en tiempo real para ${shortenAddress(query)}...</td></tr>`;
   }
 
   try {
     // 1. Fetch Account Info / Resolver
     const acc = await getAccountInfo(query);
     if (!acc) {
-      showError(`Unable to resolve address '${query}' on TON mainnet.`);
+      showError(`No se pudo resolver la dirección o contrato '${query}' en TON Mainnet.`);
       return;
     }
     currentAccount = acc;
 
     // 2. Render Profile Header
-    renderProfileHeader(acc);
+    await renderProfileHeader(acc);
 
     // 3. Handle TX Hash view vs Account view
     const txCard = document.getElementById('txDetailCard');
@@ -1080,15 +1596,15 @@ async function performSearch(query, expectedType = 'address', isSilent = false) 
         txCard.style.display = 'block';
         const inMsg = tx.in_msg || {};
         const outMsg = (tx.out_msgs && tx.out_msgs[0]) || {};
-        const srcAddr = inMsg.source?.address ? rawToFriendly(inMsg.source.address) : 'External / Masterchain';
-        const dstAddr = inMsg.destination?.address ? rawToFriendly(inMsg.destination.address) : (outMsg.destination?.address ? rawToFriendly(outMsg.destination.address) : 'Contract');
+        const srcAddr = inMsg.source?.address ? rawToFriendly(inMsg.source.address) : 'Externo / Masterchain';
+        const dstAddr = inMsg.destination?.address ? rawToFriendly(inMsg.destination.address) : (outMsg.destination?.address ? rawToFriendly(outMsg.destination.address) : 'Contrato');
         const valTon = (inMsg.value || outMsg.value || 0) / 1e9;
         
-        document.getElementById('txStatusBadge').textContent = tx.success ? 'Confirmed (Success)' : 'Failed';
+        document.getElementById('txStatusBadge').textContent = tx.success ? 'Confirmada (Éxito)' : 'Fallida';
         document.getElementById('txStatusBadge').className = `badge ${tx.success ? 'badge-green' : 'badge-red'}`;
         document.getElementById('txTimeUtc').textContent = tx.utime ? new Date(tx.utime * 1000).toUTCString() : '—';
-        document.getElementById('txSender').innerHTML = `<a href="https://tonviewer.com/${srcAddr}" target="_blank" style="color:#00CFFF;text-decoration:none;">${srcAddr}</a>`;
-        document.getElementById('txRecipient').innerHTML = `<a href="https://tonviewer.com/${dstAddr}" target="_blank" style="color:#00CFFF;text-decoration:none;">${dstAddr}</a>`;
+        document.getElementById('txSender').innerHTML = `<a href="javascript:void(0)" onclick="loadTargetAddress('${srcAddr}')" style="color:#00CFFF;text-decoration:none;">${srcAddr}</a>`;
+        document.getElementById('txRecipient').innerHTML = `<a href="javascript:void(0)" onclick="loadTargetAddress('${dstAddr}')" style="color:#00CFFF;text-decoration:none;">${dstAddr}</a>`;
         document.getElementById('txValue').textContent = `${valTon.toLocaleString('en-US', { maximumFractionDigits: 4 })} TON`;
         document.getElementById('txFees').textContent = `${formatNanoTon(tx.total_fees || 0)} TON`;
 
@@ -1103,17 +1619,18 @@ async function performSearch(query, expectedType = 'address', isSilent = false) 
       }
       if (jmCard) jmCard.style.display = 'none';
 
-      // Adapt single transaction to table
       currentParsedEvents = adaptRawTransactionsToEvents([tx], tx.account?.address || acc.address);
       currentJettonsList = [];
-      renderJettonHoldings([]);
+      renderHoldingsView([], null);
     } else {
       if (txCard) txCard.style.display = 'none';
 
-      // 4. If Jetton Master, show master details card
+      // 4. If Jetton Master, fetch holders distribution
       if (acc.is_jetton_master && acc.jettonData) {
-        renderJettonMasterCard(acc.jettonData);
         jmCard.style.display = 'block';
+        const holdersData = await getJettonHolders(acc.address, 15);
+        currentJettonHolders = holdersData.addresses || [];
+        renderJettonMasterView(acc.jettonData, currentJettonHolders);
       } else if (jmCard) {
         jmCard.style.display = 'none';
       }
@@ -1121,41 +1638,51 @@ async function performSearch(query, expectedType = 'address', isSilent = false) 
       // 5. Fetch Jetton Holdings
       const jettonsData = await getAccountJettons(acc.address);
       currentJettonsList = jettonsData.balances || [];
-      renderJettonHoldings(currentJettonsList);
+      renderHoldingsView(currentJettonsList, acc);
 
       // 6. Fetch Real Transactions & Parsed Events
-      const eventsData = await getAccountEvents(acc.address, 40);
+      const eventsData = await getAccountEvents(acc.address, 50);
       if (eventsData && eventsData.events && eventsData.events.length > 0) {
         currentParsedEvents = eventsData.events;
       } else {
-        // Fallback to raw transactions with normalized address matching
         const rawTxData = await getAccountTransactions(acc.address, 30);
         currentRawTransactions = rawTxData.transactions || [];
         currentParsedEvents = adaptRawTransactionsToEvents(currentRawTransactions, acc.address);
       }
     }
 
-    // 7. Apply Current Filter and Render Table
+    // 7. Update Provenance Timestamp
+    const provTime = document.getElementById('provTimestamp');
+    if (provTime) provTime.textContent = new Date().toLocaleTimeString();
+
+    // 8. Populate Asset Filter Select
+    populateAssetFilterOptions();
+
+    // 9. Apply Current Filters and Render Tables
     renderFilteredEvents();
 
-    // 8. Update Charts
+    // 10. Render Swaps, Bridges, Counterparties & Anomalies
+    renderConfirmedSwapsTable();
+    renderBridgesTable();
     updateHistoricalAnalytics();
+    renderAnomaliesSignals();
+    updateWatchlistButtonState();
 
-    // 9. Auto Poll every 15s
+    // 11. Auto Poll every 20s
     if (livePollingInterval) clearInterval(livePollingInterval);
     livePollingInterval = setInterval(() => {
       performSearch(query, expectedType, true);
-    }, 15000);
+    }, 20000);
 
   } catch (err) {
     console.error('API Error during performSearch:', err);
     if (!isSilent) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:28px;color:#ff4757;">⚠️ Network communication error with TonAPI. <button onclick="performSearch('${query}')" class="btn btn-ghost btn-sm" style="margin-left:8px;">Retry</button></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:28px;color:#ff4757;">⚠️ Error de comunicación con la API de TON. <button onclick="performSearch('${query}')" class="btn btn-ghost btn-sm" style="margin-left:8px;">Reintentar</button></td></tr>`;
     }
   }
 }
 
-// Convert raw transactions to uniform event structure when events endpoint is empty
+// Convert raw transactions to uniform event structure
 function adaptRawTransactionsToEvents(transactions, currentAddr) {
   if (!Array.isArray(transactions)) return [];
   const currentRaw = friendlyToRaw(currentAddr);
@@ -1197,12 +1724,11 @@ function adaptRawTransactionsToEvents(transactions, currentAddr) {
   });
 }
 
-
 // ==========================================
 // RENDER PROFILE HEADER
 // ==========================================
 async function renderProfileHeader(acc) {
-  document.getElementById('entityName').textContent = acc.name || 'TON Account';
+  document.getElementById('entityName').textContent = acc.name || 'Cuenta TON';
   document.getElementById('entityAddressDisplay').textContent = acc.address || '—';
   
   // Update links
@@ -1211,121 +1737,227 @@ async function renderProfileHeader(acc) {
   if (vLink) vLink.href = `https://tonviewer.com/${acc.address}`;
   if (sLink) sLink.href = `https://tonscan.org/address/${acc.address}`;
 
-  // Avatar
+  // Avatar / Logo
   const av = document.getElementById('entityAvatar');
   if (av) {
-    if (acc.name && acc.name.length > 0) {
+    if (acc.preview) {
+      av.innerHTML = `<img src="${acc.preview}" alt="${acc.name}" onerror="this.innerText='${(acc.name[0] || 'T').toUpperCase()}'"/>`;
+    } else if (acc.name && acc.name.length > 0) {
       av.textContent = acc.name[0].toUpperCase();
     } else {
       av.textContent = 'T';
     }
   }
 
-  // Category Badge
+  // Category & Trust Badges
   const catBadge = document.getElementById('entityCategoryBadge');
   if (catBadge) {
-    catBadge.textContent = acc.category || acc.type || 'Account';
+    catBadge.textContent = acc.category || acc.type || 'Cuenta';
     catBadge.className = 'badge ' + (acc.badge || 'badge-blue');
   }
 
-  // Audit Strip
-  document.getElementById('auditStatus').textContent = acc.verified ? 'Verified Whitelist' : 'Unlabeled';
-  document.getElementById('auditSource').textContent = acc.source || 'TonAPI v2 Live';
-  document.getElementById('auditReview').textContent = acc.lastReviewed || 'Real-Time';
-  document.getElementById('auditEvidence').textContent = acc.evidence || 'Public On-Chain Ledger';
+  const trustBadge = document.getElementById('entityTrustBadge');
+  if (trustBadge) {
+    if (acc.verified) {
+      trustBadge.textContent = '✓ Whitelist Oficial';
+      trustBadge.className = 'badge badge-green';
+      trustBadge.style.display = 'inline-block';
+    } else if (acc.trust === 'whitelist') {
+      trustBadge.textContent = 'Whitelist';
+      trustBadge.className = 'badge badge-gold';
+      trustBadge.style.display = 'inline-block';
+    } else {
+      trustBadge.textContent = 'Dirección Sin Identificar';
+      trustBadge.className = 'badge badge-muted';
+      trustBadge.style.display = 'inline-block';
+    }
+  }
 
-  // Balance & Price Calculation
+  // Audit Strip
+  document.getElementById('auditStatus').textContent = acc.verified ? 'Verificado en Whitelist' : (acc.trust === 'whitelist' ? 'Whitelist TonAPI' : 'Sin Verificar');
+  document.getElementById('auditSource').textContent = acc.source || 'TonAPI v2 Live';
+  document.getElementById('auditReview').textContent = acc.lastReviewed || 'En vivo';
+  document.getElementById('auditEvidence').textContent = acc.evidence || 'Registro público en la red TON';
+
+  // Balance & Reliable Price Calculation
   const tonPrice = await getTonPrice();
   const balTonStr = formatNanoTon(acc.balance);
   const balNum = Number(acc.balance || 0) / 1e9;
-  const usdVal = balNum * tonPrice;
 
   document.getElementById('statBalanceVal').textContent = `${balTonStr} TON`;
-  document.getElementById('statBalanceUsd').textContent = `≈ $${usdVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-  // Activity Status
-  const actEl = document.getElementById('statActivityVal');
-  if (actEl) {
-    if (acc.lastActivity) {
-      actEl.textContent = timeAgoTimestamp(acc.lastActivity);
-    } else if (acc.status === 'uninitialized') {
-      actEl.textContent = 'Uninitialized';
-    } else {
-      actEl.textContent = 'Active';
-    }
+  if (tonPrice && tonPrice > 0) {
+    const usdVal = balNum * tonPrice;
+    document.getElementById('statBalanceUsd').textContent = `≈ $${usdVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  } else {
+    document.getElementById('statBalanceUsd').textContent = 'Sin cotización fiable';
   }
 
   // Topbar price
   const tbPrice = document.getElementById('topbarTonPrice');
-  if (tbPrice) tbPrice.textContent = `$${tonPrice.toFixed(2)}`;
+  if (tbPrice && tonPrice) tbPrice.textContent = `$${tonPrice.toFixed(2)}`;
 }
 
 // ==========================================
-// RENDER JETTON HOLDINGS
+// RENDER HOLDINGS & JETTON MASTER
 // ==========================================
-function renderJettonHoldings(jettons) {
-  const container = document.getElementById('jettonShelfContainer');
-  const body = document.getElementById('jettonListBody');
-  const badgeCount = document.getElementById('jettonBadgeCount');
+function renderHoldingsView(jettons, acc) {
+  const tableBody = document.getElementById('jettonsTableFullBody');
   const statJettonVal = document.getElementById('statJettonCountVal');
+  const tabBadge = document.getElementById('tabHoldingsCount');
 
-  if (statJettonVal) {
-    statJettonVal.textContent = `${jettons.length} Token${jettons.length === 1 ? '' : 's'}`;
-  }
+  const count = jettons ? jettons.length : 0;
+  if (statJettonVal) statJettonVal.textContent = `${count} Token${count === 1 ? '' : 's'}`;
+  if (tabBadge) tabBadge.textContent = count;
 
   if (!jettons || jettons.length === 0) {
-    container.style.display = 'none';
+    tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">Sin holdings de Jettons detectados en esta dirección.</td></tr>`;
     return;
   }
 
-  container.style.display = 'block';
-  badgeCount.textContent = `${jettons.length} Tokens`;
-
-  body.innerHTML = jettons.map(j => {
+  tableBody.innerHTML = jettons.map(j => {
     const meta = j.jetton || {};
-    const symbol = meta.symbol || 'TOKEN';
-    const name = meta.name || 'Jetton';
+    const symbol = escapeHtml(meta.symbol || 'TOKEN');
+    const name = escapeHtml(meta.name || 'Jetton');
     const decimals = meta.decimals || 9;
     const formattedBal = formatTokenUnits(j.balance, decimals);
     const isWhitelisted = meta.verification === 'whitelist';
+    const contractAddr = meta.address || '';
     const imgUrl = meta.image || 'assets/img/anlgram-icon.svg';
 
     return `
-      <div class="jetton-card" onclick="loadTargetAddress('${meta.address}')" title="Inspect Jetton Master: ${name} (${symbol})">
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-          <img src="${imgUrl}" alt="${symbol}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;" onerror="this.src='assets/img/anlgram-icon.svg'"/>
-          <div>
-            <div style="font-weight:700; color:#fff; font-size:12px;">${symbol}</div>
-            <div style="font-size:10px; color:var(--text-muted);">${name.slice(0, 14)}</div>
+      <tr>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <img src="${imgUrl}" alt="${symbol}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;" onerror="this.src='assets/img/anlgram-icon.svg'"/>
+            <span style="font-weight:600; color:#fff;">${name}</span>
           </div>
-        </div>
-        <div style="font-family:var(--font-mono); font-weight:700; color:#00CFFF; font-size:13px;">${formattedBal}</div>
-        <div style="margin-top:4px;">
-          <span class="badge ${isWhitelisted ? 'badge-green' : 'badge-muted'}" style="font-size:9px; padding:1px 5px;">
-            ${isWhitelisted ? '✓ Whitelisted' : 'Unverified'}
+        </td>
+        <td style="font-family:var(--font-mono); font-weight:700; color:var(--cyan);">${symbol}</td>
+        <td style="font-family:var(--font-mono); font-weight:700; color:#fff;">${formattedBal}</td>
+        <td style="font-family:var(--font-mono); color:var(--text-secondary); font-size:12px;">
+          ${j.price ? `$${(Number(j.balance) / Math.pow(10, decimals) * j.price.prices.USD).toFixed(2)}` : 'Sin cotización'}
+        </td>
+        <td>
+          <span class="badge ${isWhitelisted ? 'badge-green' : 'badge-muted'}" style="font-size:10px;">
+            ${isWhitelisted ? '✓ Whitelist' : 'Comunitario'}
           </span>
-        </div>
-      </div>
+        </td>
+        <td>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-family:var(--font-mono); font-size:11px; color:#cbd5e1;">${shortenAddress(contractAddr)}</span>
+            <span class="copy-btn" onclick="navigator.clipboard.writeText('${contractAddr}'); showToast('Contrato copiado');" title="Copiar Contrato">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </span>
+          </div>
+        </td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="loadTargetAddress('${contractAddr}')" style="font-size:11px; padding:3px 8px;">
+            Inspeccionar ➔
+          </button>
+        </td>
+      </tr>
     `;
   }).join('');
 }
 
-// Render Jetton Master Card details
-function renderJettonMasterCard(jm) {
+function renderJettonMasterView(jm, holders) {
   const meta = jm.metadata || {};
   const decimals = Number(meta.decimals) || 9;
   const supplyStr = formatTokenUnits(jm.total_supply, decimals);
-  
-  document.getElementById('jmSupply').textContent = `${supplyStr} ${meta.symbol || ''}`;
-  document.getElementById('jmMintable').textContent = jm.mintable ? 'Yes (Minting Active)' : 'No (Supply Locked)';
-  document.getElementById('jmMintable').style.color = jm.mintable ? '#ff4757' : '#2ed573';
-  document.getElementById('jmHolders').textContent = (jm.holders_count ? jm.holders_count.toLocaleString() : 'N/A');
-  document.getElementById('jmVerification').textContent = (jm.verification === 'whitelist' ? 'Whitelisted by Tonkeeper' : 'None');
-  document.getElementById('jmVerification').style.color = (jm.verification === 'whitelist' ? '#2ed573' : '#a4b0be');
+  const totalSupplyNum = Number(jm.total_supply || 0);
+
+  document.getElementById('jmSupply').textContent = `${supplyStr} ${escapeHtml(meta.symbol || '')}`;
+  document.getElementById('jmMintable').textContent = jm.mintable ? 'Sí (Emisión abierta / Riesgo de inflación)' : 'No (Suministro fijado / Bloqueado)';
+  document.getElementById('jmMintable').style.color = jm.mintable ? '#f59e0b' : '#2ed573';
+  document.getElementById('jmHolders').textContent = jm.holders_count ? jm.holders_count.toLocaleString() : 'N/A';
+
+  const adminAddr = jm.admin?.address ? rawToFriendly(jm.admin.address) : 'Sin administrador (Descentralizado)';
+  const adminEl = document.getElementById('jmAdmin');
+  if (adminEl) {
+    if (jm.admin?.address) {
+      adminEl.innerHTML = `<a href="javascript:void(0)" onclick="loadTargetAddress('${adminAddr}')" style="color:var(--cyan);text-decoration:none;">${shortenAddress(adminAddr)} ↗</a>`;
+    } else {
+      adminEl.textContent = 'Sin administrador (Ownerless)';
+    }
+  }
+
+  // Render Holders Distribution Table
+  const tbody = document.getElementById('jettonHoldersTableBody');
+  if (!holders || holders.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:16px; color:var(--text-muted);">Sin datos detallados de holders provistos por el indexador.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = holders.map((h, idx) => {
+    const holderAddr = rawToFriendly(h.address);
+    const ownerAddr = h.owner?.address ? rawToFriendly(h.owner.address) : holderAddr;
+    const holderBal = formatTokenUnits(h.balance, decimals);
+    const pct = totalSupplyNum > 0 ? ((Number(h.balance) / totalSupplyNum) * 100).toFixed(2) : '—';
+    const isOwnerWallet = h.owner?.is_wallet;
+
+    return `
+      <tr>
+        <td style="font-weight:700; color:#00CFFF;">#${idx + 1}</td>
+        <td style="font-family:var(--font-mono); font-size:12px;">
+          <a href="javascript:void(0)" onclick="loadTargetAddress('${ownerAddr}')" style="color:#fff; text-decoration:none;">${shortenAddress(ownerAddr)}</a>
+        </td>
+        <td>
+          <span class="badge ${isOwnerWallet ? 'badge-blue' : 'badge-purple'}" style="font-size:10px;">
+            ${isOwnerWallet ? 'Wallet de Usuario' : 'Smart Contract / Pool'}
+          </span>
+        </td>
+        <td style="font-family:var(--font-mono); font-weight:700; color:#fff;">${holderBal}</td>
+        <td style="font-family:var(--font-mono); font-weight:700; color:${Number(pct) > 10 ? '#f59e0b' : '#2ed573'};">${pct}%</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="loadTargetAddress('${ownerAddr}')" style="font-size:11px; padding:2px 7px;">
+            Investigar
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 // ==========================================
-// TRANSACTION & EVENT CLASSIFIER & FILTERS
+// POPULATE ASSET FILTER & TAB SWITCHING
+// ==========================================
+function populateAssetFilterOptions() {
+  const select = document.getElementById('assetFilterSelect');
+  if (!select) return;
+  select.innerHTML = '<option value="all">Todos los Activos</option><option value="TON">TON Nativo</option>';
+
+  const addedSymbols = new Set(['TON']);
+  currentJettonsList.forEach(j => {
+    const sym = j.jetton?.symbol;
+    if (sym && !addedSymbols.has(sym)) {
+      addedSymbols.add(sym);
+      const opt = document.createElement('option');
+      opt.value = sym;
+      opt.textContent = `${sym} (${j.jetton?.name || 'Jetton'})`;
+      select.appendChild(opt);
+    }
+  });
+}
+
+function switchExplorerTab(tabName, btnElem) {
+  activeTabName = tabName;
+  const buttons = document.querySelectorAll('.explorer-tab-btn');
+  buttons.forEach(b => b.classList.remove('active'));
+  if (btnElem) btnElem.classList.add('active');
+
+  const panes = document.querySelectorAll('.tab-pane');
+  panes.forEach(p => p.classList.remove('active'));
+
+  const targetPane = document.getElementById(`pane-${tabName}`);
+  if (targetPane) targetPane.classList.add('active');
+
+  if (tabName === 'counterparties') {
+    setTimeout(() => renderTopologyCanvasFull(), 100);
+  }
+}
+
+// ==========================================
+// FILTERS & TRANSACTION RENDERING
 // ==========================================
 function setDateRange(range, elem) {
   currentDateFilter = range;
@@ -1334,7 +1966,7 @@ function setDateRange(range, elem) {
   if (elem) elem.classList.add('active');
   
   const cpLabel = document.getElementById('cpWindowLabel');
-  if (cpLabel) cpLabel.textContent = range === 'all' ? 'All Indexed' : range.toUpperCase();
+  if (cpLabel) cpLabel.textContent = range === 'all' ? 'Historial Indexado' : range.toUpperCase();
 
   renderFilteredEvents();
   updateHistoricalAnalytics();
@@ -1349,19 +1981,47 @@ function setTxFilter(type, btn) {
   renderFilteredEvents();
 }
 
+function handleAssetFilterChange() {
+  const select = document.getElementById('assetFilterSelect');
+  currentAssetFilter = select ? select.value : 'all';
+  renderFilteredEvents();
+}
+
+function handleTxSearchInput() {
+  const inp = document.getElementById('txTableSearch');
+  currentTxSearchText = inp ? inp.value.trim().toLowerCase() : '';
+  renderFilteredEvents();
+}
+
+function handleTxSortChange() {
+  const select = document.getElementById('txSortSelect');
+  currentTxSort = select ? select.value : 'time_desc';
+  renderFilteredEvents();
+}
+
 function parseEventAction(event, currentAddr) {
   const action = (event.actions && event.actions[0]) || {};
   const actionType = action.type;
-  let direction = 'other'; // 'inflow' | 'outflow' | 'swap' | 'other'
+  let direction = 'other';
   let amountTon = 0;
   let jettonAmount = '';
   let jettonSymbol = '';
   let counterpartyAddr = '';
   let counterpartyName = '';
   let comment = '';
-  let actionLabel = actionType || 'Transaction';
+  let actionLabel = actionType || 'Transacción';
 
-  if (actionType === 'TonTransfer') {
+  // Check DEX Swap first
+  const swapInfo = detectConfirmedSwap(action, currentAddr);
+
+  if (swapInfo.isSwap) {
+    direction = 'swap';
+    actionLabel = `🔄 Swap DEX (${swapInfo.dex})`;
+    counterpartyAddr = swapInfo.routerAddress;
+    counterpartyName = swapInfo.routerName;
+    amountTon = swapInfo.tonAmount || 0;
+    jettonSymbol = swapInfo.jettonSymbol || '';
+  } else if (actionType === 'TonTransfer') {
     const t = action.TonTransfer || {};
     const isIn = t.recipient?.address?.toLowerCase() === currentAddr?.toLowerCase();
     direction = isIn ? 'inflow' : 'outflow';
@@ -1369,7 +2029,7 @@ function parseEventAction(event, currentAddr) {
     counterpartyAddr = isIn ? t.sender?.address : t.recipient?.address;
     counterpartyName = isIn ? t.sender?.name : t.recipient?.name;
     comment = t.comment || '';
-    actionLabel = isIn ? '⬇ TON Inflow' : '⬆ TON Outflow';
+    actionLabel = isIn ? '⬇ Entrada TON' : '⬆ Salida TON';
   } else if (actionType === 'JettonTransfer') {
     const j = action.JettonTransfer || {};
     const isIn = j.recipient?.address?.toLowerCase() === currentAddr?.toLowerCase();
@@ -1379,26 +2039,21 @@ function parseEventAction(event, currentAddr) {
     counterpartyAddr = isIn ? j.sender?.address : j.recipient?.address;
     counterpartyName = isIn ? j.sender?.name : j.recipient?.name;
     comment = j.comment || '';
-    actionLabel = isIn ? `⬇ ${jettonSymbol} Inflow` : `⬆ ${jettonSymbol} Outflow`;
-  } else if (actionType === 'JettonSwap' || actionType === 'DexSwap') {
-    const s = action.JettonSwap || action.DexSwap || {};
-    direction = 'swap';
-    actionLabel = '🔄 DEX Swap';
-    counterpartyAddr = s.router?.address || 'DEX Router';
-    counterpartyName = s.router?.name || (s.dex ? s.dex.toUpperCase() : 'DEX Pool');
-    if (s.ton_out) amountTon = Number(s.ton_out) / 1e9;
-    if (s.jetton_master_in) jettonSymbol = s.jetton_master_in.symbol || '';
+    actionLabel = isIn ? `⬇ Entrada ${jettonSymbol}` : `⬆ Salida ${jettonSymbol}`;
   } else if (actionType === 'SmartContractExec') {
     const sc = action.SmartContractExec || {};
     direction = 'other';
-    actionLabel = '⚙️ Contract Call';
+    actionLabel = '⚙️ Llamada a Contrato';
     counterpartyAddr = sc.contract?.address;
-    counterpartyName = sc.operation || 'Contract Exec';
+    counterpartyName = sc.operation || 'Ejecución Contrato';
     if (sc.ton_attached) amountTon = Number(sc.ton_attached) / 1e9;
   } else {
     direction = 'other';
-    actionLabel = actionType || 'On-Chain Trace';
+    actionLabel = actionType || 'Evento On-Chain';
   }
+
+  // Cross-chain bridge check
+  const bridgeInfo = detectBridgeOperation(action);
 
   return {
     eventId: event.event_id,
@@ -1412,12 +2067,17 @@ function parseEventAction(event, currentAddr) {
     counterpartyAddr,
     counterpartyName,
     comment,
-    status: action.status || 'ok'
+    status: action.status || 'ok',
+    isSwap: swapInfo.isSwap,
+    swapInfo: swapInfo,
+    isBridge: bridgeInfo.isBridge,
+    bridgeInfo: bridgeInfo
   };
 }
 
 function renderFilteredEvents() {
   const tbody = document.getElementById('txHistoryBody');
+  const overviewTbody = document.getElementById('overviewRecentTxBody');
   const currentAddr = currentAccount?.address || '';
   const now = Math.floor(Date.now() / 1000);
 
@@ -1429,10 +2089,10 @@ function renderFilteredEvents() {
 
   const dateFiltered = currentParsedEvents.filter(e => e.timestamp >= dateCutoff);
 
-  // 2. Classify all events in date range
+  // 2. Classify all events
   const classified = dateFiltered.map(e => parseEventAction(e, currentAddr));
 
-  // 3. Calculate Aggregate Metrics
+  // 3. Aggregate Metrics
   let inCount = 0;
   let outCount = 0;
   let swapCount = 0;
@@ -1455,101 +2115,304 @@ function renderFilteredEvents() {
     }
   });
 
-  // Update Counters
+  // Update Counters & Tab Badges
   document.getElementById('countAll').textContent = classified.length;
   document.getElementById('countIn').textContent = inCount;
   document.getElementById('countOut').textContent = outCount;
   document.getElementById('countSwaps').textContent = swapCount;
   document.getElementById('countTokens').textContent = tokenCount;
   document.getElementById('statObservedTxVal').textContent = `${classified.length} TX`;
+  document.getElementById('tabTxCount').textContent = classified.length;
 
-  // Update Inflow vs Outflow Visual Bar
+  // Inflow vs Outflow Visual Bar & Net Flow
   const totalVol = inVol + outVol;
   const inPct = totalVol > 0 ? Math.round((inVol / totalVol) * 100) : 50;
   const outPct = totalVol > 0 ? (100 - inPct) : 50;
   const netFlow = inVol - outVol;
 
-  document.getElementById('inflowVolText').textContent = `⬇ Inflows: +${inVol.toLocaleString('en-US', { maximumFractionDigits: 2 })} TON (${inPct}%)`;
-  document.getElementById('outflowVolText').textContent = `⬆ Outflows: -${outVol.toLocaleString('en-US', { maximumFractionDigits: 2 })} TON (${outPct}%)`;
-  document.getElementById('netFlowText').textContent = `Net Flow: ${netFlow >= 0 ? '+' : ''}${netFlow.toLocaleString('en-US', { maximumFractionDigits: 2 })} TON`;
+  document.getElementById('inflowVolText').textContent = `⬇ Entradas: +${inVol.toLocaleString('en-US', { maximumFractionDigits: 2 })} TON (${inPct}%)`;
+  document.getElementById('outflowVolText').textContent = `⬆ Salidas: -${outVol.toLocaleString('en-US', { maximumFractionDigits: 2 })} TON (${outPct}%)`;
+  document.getElementById('netFlowText').textContent = `Flujo Neto: ${netFlow >= 0 ? '+' : ''}${netFlow.toLocaleString('en-US', { maximumFractionDigits: 2 })} TON`;
   document.getElementById('netFlowText').style.color = netFlow >= 0 ? '#2ed573' : '#ff4757';
+  
+  const statNetFlow = document.getElementById('statNetFlowVal');
+  if (statNetFlow) {
+    statNetFlow.textContent = `${netFlow >= 0 ? '+' : ''}${netFlow.toLocaleString('en-US', { maximumFractionDigits: 2 })} TON`;
+    statNetFlow.style.color = netFlow >= 0 ? '#2ed573' : '#ff4757';
+  }
 
   document.getElementById('inflowProgressBar').style.width = `${inPct}%`;
   document.getElementById('outflowProgressBar').style.width = `${outPct}%`;
 
-  // 4. Direction Filter
-  const filtered = classified.filter(item => {
+  // 4. Direction & Type Filter
+  let filtered = classified.filter(item => {
     if (currentTxFilter === 'inflow') return item.direction === 'inflow';
     if (currentTxFilter === 'outflow') return item.direction === 'outflow';
-    if (currentTxFilter === 'swaps') return item.direction === 'swap' || item.actionType.includes('Contract');
+    if (currentTxFilter === 'swaps') return item.direction === 'swap' || item.isSwap;
     if (currentTxFilter === 'tokens') return Boolean(item.jettonSymbol);
-    return true; // all
+    return true;
   });
 
-  // 5. Render Table Rows
+  // 5. Specific Asset Filter
+  if (currentAssetFilter !== 'all') {
+    filtered = filtered.filter(item => {
+      if (currentAssetFilter === 'TON') return !item.jettonSymbol && item.amountTon > 0;
+      return item.jettonSymbol && item.jettonSymbol.toUpperCase() === currentAssetFilter.toUpperCase();
+    });
+  }
+
+  // 6. Text Search Filter (Counterparty, hash, or memo)
+  if (currentTxSearchText) {
+    filtered = filtered.filter(item => {
+      const matchCp = (item.counterpartyName || '').toLowerCase().includes(currentTxSearchText) ||
+                      (item.counterpartyAddr || '').toLowerCase().includes(currentTxSearchText);
+      const matchHash = (item.eventId || '').toLowerCase().includes(currentTxSearchText);
+      const matchMemo = (item.comment || '').toLowerCase().includes(currentTxSearchText);
+      return matchCp || matchHash || matchMemo;
+    });
+  }
+
+  // 7. Sort
+  filtered.sort((a, b) => {
+    if (currentTxSort === 'time_asc') return a.timestamp - b.timestamp;
+    if (currentTxSort === 'val_desc') return b.amountTon - a.amountTon;
+    if (currentTxSort === 'val_asc') return a.amountTon - b.amountTon;
+    return b.timestamp - a.timestamp; // default time_desc
+  });
+
+  // Render Overview Recent 5 rows
+  if (overviewTbody) {
+    const recentFive = classified.slice(0, 5);
+    if (recentFive.length === 0) {
+      overviewTbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-muted);">Sin transacciones registradas.</td></tr>`;
+    } else {
+      overviewTbody.innerHTML = recentFive.map(item => renderTransactionRowHtml(item, now)).join('');
+    }
+  }
+
+  // Render Full Transactions Table
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted);font-size:13px;">No transactions match filter '${currentTxFilter.toUpperCase()}' in this time window.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted);font-size:13px;">No hay transacciones que coincidan con los filtros aplicados en este periodo.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = filtered.map(item => {
-    const isConfirmed = item.status === 'ok';
-    const cpDisplay = item.counterpartyName || shortenAddress(item.counterpartyAddr) || 'Protocol Router';
-    const isLiveRecent = (now - item.timestamp) < 60;
-    
-    // Amount display
-    let amtDisplay = '—';
-    let amtStyle = 'color:var(--text-secondary);';
-    if (item.jettonSymbol && item.jettonAmount) {
-      const pfx = item.direction === 'inflow' ? '+' : '-';
-      amtStyle = item.direction === 'inflow' ? 'color:#2ed573; font-weight:700;' : 'color:#ff4757; font-weight:700;';
-      amtDisplay = `${pfx}${item.jettonAmount} ${item.jettonSymbol}`;
-    } else if (item.amountTon > 0) {
-      const pfx = item.direction === 'inflow' ? '+' : '-';
-      amtStyle = item.direction === 'inflow' ? 'color:#2ed573; font-weight:700;' : 'color:#ff4757; font-weight:700;';
-      amtDisplay = `${pfx}${item.amountTon.toLocaleString('en-US', { maximumFractionDigits: 4 })} TON`;
-    }
+  tbody.innerHTML = filtered.map(item => renderTransactionRowHtml(item, now, true)).join('');
+}
 
-    const typeBadge = item.direction === 'inflow'
-      ? `<span class="badge badge-green">⬇ Inflow</span>`
-      : (item.direction === 'outflow'
-        ? `<span class="badge badge-red">⬆ Outflow</span>`
-        : (item.direction === 'swap'
-          ? `<span class="badge badge-purple">🔄 Swap</span>`
-          : `<span class="badge badge-cyan">${item.actionLabel}</span>`));
+function renderTransactionRowHtml(item, now, includeFees = false) {
+  const isConfirmed = item.status === 'ok';
+  const cpDisplay = item.counterpartyName || shortenAddress(item.counterpartyAddr) || 'Protocolo TON';
+  const isLiveRecent = (now - item.timestamp) < 60;
+  
+  let amtDisplay = '—';
+  let amtStyle = 'color:var(--text-secondary);';
+  if (item.jettonSymbol && item.jettonAmount) {
+    const pfx = item.direction === 'inflow' ? '+' : '-';
+    amtStyle = item.direction === 'inflow' ? 'color:#2ed573; font-weight:700;' : 'color:#ff4757; font-weight:700;';
+    amtDisplay = `${pfx}${item.jettonAmount} ${escapeHtml(item.jettonSymbol)}`;
+  } else if (item.amountTon > 0) {
+    const pfx = item.direction === 'inflow' ? '+' : '-';
+    amtStyle = item.direction === 'inflow' ? 'color:#2ed573; font-weight:700;' : 'color:#ff4757; font-weight:700;';
+    amtDisplay = `${pfx}${item.amountTon.toLocaleString('en-US', { maximumFractionDigits: 4 })} TON`;
+  }
 
-    const dateStr = new Date(item.timestamp * 1000).toISOString().replace('T', ' ').slice(0, 19);
+  let typeBadge = '';
+  if (item.direction === 'inflow') typeBadge = `<span class="badge badge-green">⬇ Entrada</span>`;
+  else if (item.direction === 'outflow') typeBadge = `<span class="badge badge-red">⬆ Salida</span>`;
+  else if (item.direction === 'swap' || item.isSwap) typeBadge = `<span class="badge badge-purple">🔄 Swap DEX</span>`;
+  else typeBadge = `<span class="badge badge-cyan">${escapeHtml(item.actionLabel)}</span>`;
+
+  const dateStr = new Date(item.timestamp * 1000).toISOString().replace('T', ' ').slice(0, 19);
+
+  return `
+    <tr style="${isLiveRecent ? 'background:rgba(0,207,255,0.06);' : ''}">
+      <td style="color:var(--text-muted); font-size:12px; font-family:var(--font-mono); white-space:nowrap;" title="${dateStr} UTC">
+        <div>${timeAgoTimestamp(item.timestamp)}</div>
+        <div style="font-size:10px; color:#64748b;">${dateStr.slice(5, 16)}</div>
+      </td>
+      <td>${typeBadge}</td>
+      <td>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:22px; height:22px; border-radius:6px; background:rgba(0,136,204,0.2); color:#00CFFF; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700;">
+            ${escapeHtml((cpDisplay[0] || '?').toUpperCase())}
+          </div>
+          <div>
+            <div style="font-size:12px; font-weight:600; color:#fff;">
+              ${item.counterpartyAddr ? `<a href="javascript:void(0)" onclick="loadTargetAddress('${item.counterpartyAddr}')" style="color:#fff; text-decoration:none;" title="Analizar contraparte">${escapeHtml(cpDisplay)}</a>` : escapeHtml(cpDisplay)}
+            </div>
+            ${item.counterpartyAddr ? `<span style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted);">${shortenAddress(item.counterpartyAddr)}</span>` : ''}
+          </div>
+        </div>
+      </td>
+      <td style="font-family:var(--font-mono); font-size:13px; ${amtStyle}">
+        ${amtDisplay}
+        ${item.comment ? `<div style="font-size:10px; color:var(--cyan); margin-top:2px;">💬 ${escapeHtml(item.comment.slice(0, 30))}</div>` : ''}
+      </td>
+      ${includeFees ? `<td style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);">< 0.01 TON</td>` : ''}
+      <td>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span class="badge ${isConfirmed ? 'badge-green' : 'badge-red'}" style="font-size:10px; padding:2px 6px;">
+            ${isConfirmed ? 'Confirmada' : 'Fallida'}
+          </span>
+          <a href="https://tonviewer.com/transaction/${item.eventId}" target="_blank" rel="noopener noreferrer" style="font-family:var(--font-mono); font-size:11px; color:#70a1ff; text-decoration:none;" title="Verificar en Tonviewer">
+            ${shortenAddress(item.eventId)} ↗
+          </a>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+// ==========================================
+// RENDER CONFIRMED SWAPS TABLE
+// ==========================================
+function renderConfirmedSwapsTable() {
+  const tbody = document.getElementById('swapsTableBody');
+  const badge = document.getElementById('confirmedSwapsBadge');
+  const tabBadge = document.getElementById('tabSwapsCount');
+  const currentAddr = currentAccount?.address || '';
+
+  const classified = currentParsedEvents.map(e => parseEventAction(e, currentAddr));
+  const swaps = classified.filter(c => c.isSwap || c.direction === 'swap');
+
+  if (badge) badge.textContent = `${swaps.length} Swaps Verificados`;
+  if (tabBadge) tabBadge.textContent = swaps.length;
+
+  if (swaps.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">No se observan swaps confirmados en el historial indexado para esta dirección.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = swaps.map(s => {
+    const dateStr = new Date(s.timestamp * 1000).toISOString().replace('T', ' ').slice(0, 19);
+    const dex = s.swapInfo?.dex || 'DEX Protocol';
+    const type = s.swapInfo?.swapType === 'sell' ? 'Venta (Jetton -> TON)' : 'Compra (TON -> Jetton)';
+    const tokenIn = s.swapInfo?.tokenIn || 'TON';
+    const tokenOut = s.swapInfo?.tokenOut || 'Jetton';
 
     return `
-      <tr style="${isLiveRecent ? 'background:rgba(0,207,255,0.06);' : ''}">
-        <td style="color:var(--text-muted); font-size:12px; font-family:var(--font-mono); white-space:nowrap;" title="${dateStr} UTC">
-          ${timeAgoTimestamp(item.timestamp)}
-          ${isLiveRecent ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#00CFFF;box-shadow:0 0 6px #00CFFF;margin-left:4px;"></span>' : ''}
-        </td>
-        <td>${typeBadge}</td>
+      <tr>
+        <td style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);">${dateStr}</td>
+        <td><span class="badge badge-purple">${escapeHtml(dex)}</span></td>
+        <td style="font-weight:600; color:#fff;">${type}</td>
+        <td style="font-family:var(--font-mono); font-weight:700; color:#ff4757;">- ${escapeHtml(tokenIn)}</td>
+        <td style="font-family:var(--font-mono); font-weight:700; color:#2ed573;">+ ${escapeHtml(tokenOut)}</td>
+        <td style="font-size:11px; color:var(--text-secondary);">${escapeHtml(s.swapInfo?.evidence || 'DEX Router Event')}</td>
         <td>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <div style="width:22px; height:22px; border-radius:6px; background:rgba(0,136,204,0.2); color:#00CFFF; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700;">
-              ${(cpDisplay[0] || '?').toUpperCase()}
-            </div>
-            <div>
-              <div style="font-size:12px; font-weight:600; color:#fff;">${cpDisplay}</div>
-              ${item.counterpartyAddr ? `<a href="https://tonviewer.com/${item.counterpartyAddr}" target="_blank" rel="noopener noreferrer" style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted); text-decoration:none;">${shortenAddress(item.counterpartyAddr)} ↗</a>` : ''}
-            </div>
-          </div>
-        </td>
-        <td style="font-family:var(--font-mono); font-size:13px; ${amtStyle}">${amtDisplay}</td>
-        <td>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span class="badge ${isConfirmed ? 'badge-green' : 'badge-red'}" style="font-size:10px; padding:2px 6px;">
-              ${isConfirmed ? 'Confirmed' : 'Failed'}
-            </span>
-            <a href="https://tonviewer.com/transaction/${item.eventId}" target="_blank" rel="noopener noreferrer" style="font-family:var(--font-mono); font-size:11px; color:#70a1ff; text-decoration:none;">
-              ${shortenAddress(item.eventId)} ↗
-            </a>
-          </div>
+          <a href="https://tonviewer.com/transaction/${s.eventId}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan); font-family:var(--font-mono); font-size:11px; text-decoration:none;">
+            ${shortenAddress(s.eventId)} ↗
+          </a>
         </td>
       </tr>
+    `;
+  }).join('');
+}
+
+// ==========================================
+// RENDER BRIDGES TABLE
+// ==========================================
+function renderBridgesTable() {
+  const tbody = document.getElementById('bridgesTableBody');
+  const badge = document.getElementById('bridgesCountBadge');
+  const tabBadge = document.getElementById('tabBridgesCount');
+  const currentAddr = currentAccount?.address || '';
+
+  const classified = currentParsedEvents.map(e => parseEventAction(e, currentAddr));
+  const bridgeTxs = classified.filter(c => c.isBridge);
+
+  if (badge) badge.textContent = `${bridgeTxs.length} Transferencias Detectadas`;
+  if (tabBadge) tabBadge.textContent = bridgeTxs.length;
+
+  if (bridgeTxs.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">Sin transferencias de puentes detectadas en el rango indexado. Los eventos analizados no muestran interacción con contratos de puentes cross-chain conocidos (TON Bridge, Orbit Bridge).</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = bridgeTxs.map(b => {
+    const dateStr = new Date(b.timestamp * 1000).toISOString().replace('T', ' ').slice(0, 19);
+    const info = b.bridgeInfo || {};
+
+    return `
+      <tr>
+        <td style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);">${dateStr}</td>
+        <td><span class="badge badge-purple">${escapeHtml(info.bridgeName || 'Bridge')}</span></td>
+        <td style="font-weight:600; color:#fff;">${escapeHtml(info.targetChain || 'Multi-Chain')}</td>
+        <td><span class="badge badge-cyan">${escapeHtml(info.direction || 'Transferencia')}</span></td>
+        <td style="font-family:var(--font-mono); font-weight:700; color:#fff;">${(info.amountTon || 0).toFixed(2)} TON</td>
+        <td style="font-size:11px; color:var(--text-secondary);">${escapeHtml(info.evidence || 'Interacción con contrato de puente')}</td>
+        <td>
+          <a href="https://tonviewer.com/transaction/${b.eventId}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan); font-family:var(--font-mono); font-size:11px; text-decoration:none;">
+            ${shortenAddress(b.eventId)} ↗
+          </a>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ==========================================
+// RENDER ANOMALIES & EXPLAINABLE SIGNALS
+// ==========================================
+function renderAnomaliesSignals() {
+  const container = document.getElementById('anomaliesListContainer');
+  const badge = document.getElementById('anomaliesCountBadge');
+  const tabBadge = document.getElementById('tabAnomaliesCount');
+
+  const anomalies = detectAnomalies(currentAccount, currentParsedEvents, currentJettonsList);
+
+  if (badge) badge.textContent = `${anomalies.length} Señales`;
+  if (tabBadge) tabBadge.textContent = anomalies.length;
+
+  if (anomalies.length === 0) {
+    container.innerHTML = `
+      <div class="card" style="padding:32px; text-align:center; color:var(--text-muted);">
+        <div style="font-size:32px; margin-bottom:8px;">🛡️</div>
+        <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Sin anomalías observadas</div>
+        <div style="font-size:12px;">No se detectaron movimientos atípicos ni picos de volumen fuera de los rangos normales en las transacciones indexadas.</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = anomalies.map(a => {
+    const confClass = a.confidence === 'Alta' ? 'badge-confidence-high' : (a.confidence === 'Media' ? 'badge-confidence-mid' : 'badge-confidence-low');
+    
+    return `
+      <div class="anomaly-card severity-${a.severity}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; font-size:15px; color:#fff;">${escapeHtml(a.title)}</span>
+              <span class="badge ${confClass}" style="font-size:10px;">Confianza ${a.confidence}</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Periodo analizado: ${escapeHtml(a.timeframe)}</div>
+          </div>
+          <span class="badge badge-muted" style="font-size:10px; font-family:var(--font-mono);">${escapeHtml(a.type.toUpperCase())}</span>
+        </div>
+
+        <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; margin:10px 0; font-size:12px; font-family:var(--font-mono); color:#00CFFF;">
+          <strong>Métrica activadora:</strong> ${escapeHtml(a.triggerMetrics)}
+        </div>
+
+        <div style="font-size:12px; color:var(--text-secondary); line-height:1.5; margin-bottom:8px;">
+          ${escapeHtml(a.explanation)}
+        </div>
+
+        ${a.triggeringTxIds && a.triggeringTxIds.length > 0 ? `
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+            <span style="font-size:11px; color:var(--text-muted);">Transacciones relacionadas:</span>
+            ${a.triggeringTxIds.map(txId => `
+              <a href="https://tonviewer.com/transaction/${txId}" target="_blank" rel="noopener noreferrer" style="font-family:var(--font-mono); font-size:11px; color:var(--cyan); text-decoration:none; background:rgba(0,207,255,0.08); padding:2px 6px; border-radius:4px;">
+                ${shortenAddress(txId)} ↗
+              </a>
+            `).join('')}
+          </div>
+        ` : ''}
+
+        <div style="font-size:11px; color:#94a3b8; font-style:italic; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
+          ⚠️ ${escapeHtml(a.disclaimer)}
+        </div>
+      </div>
     `;
   }).join('');
 }
@@ -1585,39 +2448,83 @@ function updateHistoricalAnalytics() {
   const centerEl = document.getElementById('cpCenterVol');
   if (centerEl) centerEl.textContent = `${totalCpVol.toLocaleString('en-US', { maximumFractionDigits: 1 })} TON`;
 
-  // Update Counterparty Donut Chart
-  renderCounterpartyChart(sortedCp.slice(0, 4));
+  const cpCountBadge = document.getElementById('tabCpCount');
+  if (cpCountBadge) cpCountBadge.textContent = sortedCp.length;
 
-  // Render Counterparty Rank List
+  // Render Charts & Tables
+  renderCounterpartyChart(sortedCp.slice(0, 4));
+  renderCounterpartyRankList(sortedCp.slice(0, 3));
+  renderCounterpartiesFullTable(sortedCp);
+  renderBalanceTrajectoryChart(classified);
+  renderTopologyCanvas(sortedCp);
+}
+
+function renderCounterpartyRankList(topThree) {
   const rankContainer = document.getElementById('cpListRank');
-  if (rankContainer) {
-    if (sortedCp.length === 0) {
-      rankContainer.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:8px;">No counterparties observed in this window.</div>';
-    } else {
-      rankContainer.innerHTML = sortedCp.slice(0, 3).map((cp, idx) => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span style="color:#00CFFF; font-weight:700; font-size:11px;">#${idx + 1}</span>
-            <span style="color:#fff; font-weight:600;">${cp.name}</span>
-          </div>
-          <span style="font-family:var(--font-mono); color:#2ed573; font-weight:700;">${cp.volTon.toFixed(2)} TON <span style="color:var(--text-muted); font-size:10px;">(${cp.txCount} tx)</span></span>
-        </div>
-      `).join('');
-    }
+  if (!rankContainer) return;
+
+  if (topThree.length === 0) {
+    rankContainer.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:8px;">Sin contrapartes observadas en este periodo.</div>';
+    return;
   }
 
-  // 2. Cumulative Balance Trajectory Line Chart
-  renderBalanceTrajectoryChart(classified);
+  rankContainer.innerHTML = topThree.map((cp, idx) => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="color:#00CFFF; font-weight:700; font-size:11px;">#${idx + 1}</span>
+        <a href="javascript:void(0)" onclick="loadTargetAddress('${cp.address}')" style="color:#fff; font-weight:600; text-decoration:none;" title="Inspeccionar">${escapeHtml(cp.name)}</a>
+      </div>
+      <span style="font-family:var(--font-mono); color:#2ed573; font-weight:700;">${cp.volTon.toFixed(2)} TON <span style="color:var(--text-muted); font-size:10px;">(${cp.txCount} tx)</span></span>
+    </div>
+  `).join('');
+}
 
-  // 3. Update Topology Graph
-  renderTopologyCanvas(sortedCp);
+function renderCounterpartiesFullTable(allCp) {
+  const tbody = document.getElementById('counterpartiesFullTableBody');
+  if (!tbody) return;
+
+  if (!allCp || allCp.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">Sin contrapartes observadas en el historial indexado.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = allCp.map((cp, idx) => {
+    let cat = 'Wallet No Identificada';
+    let badgeClass = 'badge-muted';
+    const lower = (cp.name + ' ' + cp.address).toLowerCase();
+    if (lower.includes('binance') || lower.includes('okx') || lower.includes('bybit')) {
+      cat = 'Exchange CEX'; badgeClass = 'badge-gold';
+    } else if (lower.includes('ston') || lower.includes('dedust') || lower.includes('pool') || lower.includes('vault')) {
+      cat = 'DEX AMM'; badgeClass = 'badge-purple';
+    } else if (lower.includes('tonkeeper') || lower.includes('foundation') || lower.includes('fragment') || lower.includes('bridge')) {
+      cat = 'Servicio Ecosistema'; badgeClass = 'badge-blue';
+    }
+
+    return `
+      <tr>
+        <td style="font-weight:700; color:var(--cyan);">#${idx + 1}</td>
+        <td>
+          <div style="font-weight:600; color:#fff;">${escapeHtml(cp.name)}</div>
+          <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);">${shortenAddress(cp.address)}</div>
+        </td>
+        <td><span class="badge ${badgeClass}" style="font-size:10px;">${cat}</span></td>
+        <td style="font-family:var(--font-mono); font-weight:700; color:#2ed573;">${cp.volTon.toFixed(2)} TON</td>
+        <td style="font-family:var(--font-mono); color:#fff;">${cp.txCount}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="loadTargetAddress('${cp.address}')" style="font-size:11px; padding:3px 8px;">
+            Investigar ➔
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function renderCounterpartyChart(topCp) {
   const ctx = document.getElementById('cpChart').getContext('2d');
   if (cpChartInstance) cpChartInstance.destroy();
 
-  const labels = topCp.length > 0 ? topCp.map(c => c.name) : ['No Counterparties'];
+  const labels = topCp.length > 0 ? topCp.map(c => c.name) : ['Sin Contrapartes'];
   const data = topCp.length > 0 ? topCp.map(c => Math.max(0.01, c.volTon)) : [1];
   const bgColors = ['#0088CC', '#00CFFF', '#8b5cf6', '#eab308'];
 
@@ -1654,16 +2561,13 @@ function renderBalanceTrajectoryChart(classified) {
   if (balChartInstance) balChartInstance.destroy();
 
   const currentBalTon = Number(currentAccount?.balance || 0) / 1e9;
-  
-  // Sort reverse chronological to reconstruct past balances backwards
   const chronEvents = [...classified].sort((a, b) => a.timestamp - b.timestamp);
 
-  // If insufficient transactions
   if (chronEvents.length === 0) {
     balChartInstance = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: ['Now'],
+        labels: ['Ahora'],
         datasets: [{
           data: [currentBalTon],
           borderColor: '#00CFFF',
@@ -1681,13 +2585,11 @@ function renderBalanceTrajectoryChart(classified) {
     return;
   }
 
-  // Delta calculation: balance(t)
-  // Total net flow during this window
   let runningBal = currentBalTon;
   const reversed = [...chronEvents].reverse();
   const points = [];
   
-  points.unshift({ time: 'Now', bal: runningBal });
+  points.unshift({ time: 'Ahora', bal: runningBal });
   reversed.forEach(ev => {
     if (ev.direction === 'inflow') runningBal -= ev.amountTon;
     else if (ev.direction === 'outflow') runningBal += ev.amountTon;
@@ -1711,7 +2613,7 @@ function renderBalanceTrajectoryChart(classified) {
         tension: 0.3,
         pointRadius: 0,
         backgroundColor: (context) => {
-          const g = context.chart.ctx.createLinearGradient(0, 0, 0, 160);
+          const g = context.chart.ctx.createLinearGradient(0, 0, 0, 180);
           g.addColorStop(0, 'rgba(0,207,255,0.25)');
           g.addColorStop(1, 'rgba(0,207,255,0)');
           return g;
@@ -1726,7 +2628,7 @@ function renderBalanceTrajectoryChart(classified) {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (c) => ` Reconstructed Balance: ${Number(c.raw).toFixed(2)} TON`
+            label: (c) => ` Saldo Reconstruido: ${Number(c.raw).toFixed(2)} TON`
           }
         }
       },
@@ -1743,16 +2645,41 @@ function renderBalanceTrajectoryChart(classified) {
 }
 
 // ==========================================
-// RELATIONSHIP TOPOLOGY GRAPH (HTML5 CANVAS)
+// TOPOLOGY CANVAS GRAPH
 // ==========================================
 function renderTopologyCanvas(counterparties) {
-  const canvas = document.getElementById('topologyCanvas');
+  drawTopologyOnCanvas('topologyCanvas', counterparties.slice(0, 6));
+}
+
+function renderTopologyCanvasFull() {
+  const currentAddr = currentAccount?.address || '';
+  const classified = currentParsedEvents.map(e => parseEventAction(e, currentAddr));
+  const cpMap = {};
+  classified.forEach(c => {
+    if (!c.counterpartyAddr || c.counterpartyAddr.toLowerCase() === currentAddr.toLowerCase()) return;
+    const key = c.counterpartyAddr;
+    if (!cpMap[key]) {
+      cpMap[key] = {
+        address: c.counterpartyAddr,
+        name: c.counterpartyName || shortenAddress(c.counterpartyAddr),
+        volTon: 0,
+        txCount: 0
+      };
+    }
+    cpMap[key].volTon += c.amountTon;
+    cpMap[key].txCount += 1;
+  });
+  const sortedCp = Object.values(cpMap).sort((a, b) => b.volTon - a.volTon);
+  drawTopologyOnCanvas('topologyCanvasFull', sortedCp.slice(0, 8));
+}
+
+function drawTopologyOnCanvas(canvasId, nodes) {
+  const canvas = document.getElementById(canvasId);
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   
-  // Set accurate display resolution
   const width = canvas.parentElement.clientWidth || 320;
-  const height = canvas.parentElement.clientHeight || 250;
+  const height = canvas.parentElement.clientHeight || 260;
   canvas.width = width * window.devicePixelRatio;
   canvas.height = height * window.devicePixelRatio;
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
@@ -1761,7 +2688,6 @@ function renderTopologyCanvas(counterparties) {
 
   const centerX = width / 2;
   const centerY = height / 2;
-  const nodes = counterparties.slice(0, 6);
 
   // Draw Center Node (Selected Target)
   ctx.beginPath();
@@ -1778,16 +2704,14 @@ function renderTopologyCanvas(counterparties) {
   ctx.textBaseline = 'middle';
   ctx.fillText('TARGET', centerX, centerY);
 
-  // If no nodes
-  if (nodes.length === 0) {
+  if (!nodes || nodes.length === 0) {
     ctx.fillStyle = '#64748b';
     ctx.font = '11px Inter';
-    ctx.fillText('No observed counterparties', centerX, centerY + 35);
+    ctx.fillText('Sin contrapartes observadas', centerX, centerY + 36);
     return;
   }
 
-  // Draw Satellite Nodes
-  const radius = Math.min(width, height) * 0.36;
+  const radius = Math.min(width, height) * 0.38;
   const step = (Math.PI * 2) / nodes.length;
 
   nodes.forEach((node, i) => {
@@ -1795,22 +2719,17 @@ function renderTopologyCanvas(counterparties) {
     const nx = centerX + radius * Math.cos(angle);
     const ny = centerY + radius * Math.sin(angle);
 
-    // Identify evidence category & color
-    let color = '#64748b'; // Unlabeled Wallet
-    let catLabel = 'Unlabeled wallet';
+    let color = '#64748b';
     const lower = (node.name + ' ' + node.address).toLowerCase();
     if (lower.includes('binance') || lower.includes('okx') || lower.includes('bybit')) {
-      color = '#f59e0b'; // Verified Exchange
-      catLabel = 'Verified exchange';
+      color = '#f59e0b';
     } else if (lower.includes('ston') || lower.includes('dedust') || lower.includes('pool') || lower.includes('vault')) {
-      color = '#a78bfa'; // Contract Address
-      catLabel = 'Contract address';
-    } else if (lower.includes('telegram') || lower.includes('fragment') || lower.includes('tonkeeper') || lower.includes('foundation')) {
-      color = '#0088cc'; // Known Service
-      catLabel = 'Known service';
+      color = '#a78bfa';
+    } else if (lower.includes('telegram') || lower.includes('fragment') || lower.includes('tonkeeper') || lower.includes('foundation') || lower.includes('bridge')) {
+      color = '#0088cc';
     }
 
-    // Connecting Link Line
+    // Link line
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
     ctx.lineTo(nx, ny);
@@ -1835,22 +2754,172 @@ function renderTopologyCanvas(counterparties) {
     // Label below node
     ctx.fillStyle = '#e2e8f0';
     ctx.font = '10px Inter';
-    ctx.fillText(node.name.slice(0, 10), nx, ny + 22);
+    ctx.fillText(node.name.slice(0, 11), nx, ny + 22);
   });
+}
 
-  // Render Badges below canvas
-  const badgesEl = document.getElementById('relatedEntitiesBadges');
-  if (badgesEl) {
-    badgesEl.innerHTML = nodes.map(n => `
-      <span class="badge" style="background:rgba(255,255,255,0.05); color:#fff; border:1px solid rgba(255,255,255,0.1); cursor:pointer;" onclick="loadTargetAddress('${n.address}')" title="Inspect ${n.name} (${n.address})">
-        ${n.name} · ${n.volTon.toFixed(1)} TON
-      </span>
-    `).join('');
+// ==========================================
+// WATCHLIST & LOCAL INVESTIGATION NOTES
+// ==========================================
+const WATCHLIST_STORAGE_KEY = 'anlgram_watchlist_entities';
+
+function getStoredWatchlist() {
+  try {
+    const data = localStorage.getItem(WATCHLIST_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveStoredWatchlist(list) {
+  try {
+    localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(list));
+    renderWatchlistTable();
+    updateWatchlistButtonState();
+  } catch (e) {}
+}
+
+function updateWatchlistButtonState() {
+  const btn = document.getElementById('watchlistBtnLabel');
+  if (!btn || !currentAccount?.address) return;
+  const list = getStoredWatchlist();
+  const exists = list.some(item => item.address.toLowerCase() === currentAccount.address.toLowerCase());
+  btn.textContent = exists ? '★ En Watchlist' : '⭐ Seguir Dirección';
+  const badge = document.getElementById('tabWatchlistCount');
+  if (badge) badge.textContent = list.length;
+}
+
+function toggleWatchlistCurrent() {
+  if (!currentAccount?.address) return;
+  const list = getStoredWatchlist();
+  const idx = list.findIndex(item => item.address.toLowerCase() === currentAccount.address.toLowerCase());
+
+  if (idx >= 0) {
+    list.splice(idx, 1);
+    saveStoredWatchlist(list);
+    showToast('Dirección eliminada de la Watchlist');
+  } else {
+    list.unshift({
+      address: currentAccount.address,
+      name: currentAccount.name || 'Cuenta TON',
+      tag: currentAccount.verified ? 'Verificada' : 'Investigación',
+      notes: '',
+      addedAt: Date.now()
+    });
+    saveStoredWatchlist(list);
+    showToast('Dirección guardada en tu Watchlist');
+  }
+}
+
+function saveCurrentToWatchlistPrompt() {
+  if (!currentAccount?.address) return;
+  const tag = prompt('Asigna una etiqueta (ej. Ballena, Arbitraje, Sospechosa):', 'Investigación');
+  if (tag === null) return;
+  const notes = prompt('Notas de investigación privadas:') || '';
+
+  const list = getStoredWatchlist();
+  const filtered = list.filter(item => item.address.toLowerCase() !== currentAccount.address.toLowerCase());
+  filtered.unshift({
+    address: currentAccount.address,
+    name: currentAccount.name || 'Cuenta TON',
+    tag: tag.trim() || 'Investigación',
+    notes: notes.trim(),
+    addedAt: Date.now()
+  });
+  saveStoredWatchlist(filtered);
+  showToast('Dirección y notas guardadas');
+}
+
+function renderWatchlistTable() {
+  const tbody = document.getElementById('watchlistTableBody');
+  const badge = document.getElementById('tabWatchlistCount');
+  if (!tbody) return;
+
+  const list = getStoredWatchlist();
+  if (badge) badge.textContent = list.length;
+
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:32px; color:var(--text-muted);">Tu Watchlist está vacía. Guarda una dirección para investigarla rápidamente más adelante.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map((item, idx) => {
+    const dateStr = new Date(item.addedAt).toLocaleDateString();
+    return `
+      <tr>
+        <td>
+          <div style="font-weight:600; color:#fff;">${escapeHtml(item.name)}</div>
+          <div style="font-family:var(--font-mono); font-size:11px; color:var(--cyan);">${shortenAddress(item.address)}</div>
+        </td>
+        <td><span class="badge badge-gold">${escapeHtml(item.tag || 'Investigación')}</span></td>
+        <td style="font-size:12px; color:var(--text-secondary); max-width:260px; word-break:break-word;">
+          ${escapeHtml(item.notes || '—')}
+        </td>
+        <td style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">${dateStr}</td>
+        <td>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-primary btn-sm" onclick="loadTargetAddress('${item.address}')" style="font-size:11px; padding:3px 8px;">
+              Analizar
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="removeWatchlistItem(${idx})" style="color:#ff6b81; font-size:11px; padding:3px 8px;">
+              ✕
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function removeWatchlistItem(index) {
+  const list = getStoredWatchlist();
+  list.splice(index, 1);
+  saveStoredWatchlist(list);
+  showToast('Elemento eliminado');
+}
+
+// ==========================================
+// PAGINATION / INCREMENTAL LOAD
+// ==========================================
+async function loadMoreTransactions() {
+  if (!currentAccount?.address) return;
+  const btn = document.getElementById('btnLoadMoreTx');
+  if (btn) btn.innerHTML = '<span class="dot-live"></span> Cargando más eventos...';
+
+  try {
+    const oldestEvent = currentParsedEvents[currentParsedEvents.length - 1];
+    const beforeLt = oldestEvent ? oldestEvent.timestamp : null;
+
+    let endpoint = `/accounts/${encodeURIComponent(currentAccount.address)}/events?limit=30`;
+    if (beforeLt) {
+      endpoint += `&before_lt=${beforeLt}`;
+    }
+
+    const moreData = await fetchTonApi(endpoint);
+    if (moreData && Array.isArray(moreData.events) && moreData.events.length > 0) {
+      // Append non-duplicate events
+      const seenIds = new Set(currentParsedEvents.map(e => e.event_id));
+      moreData.events.forEach(e => {
+        if (!seenIds.has(e.event_id)) {
+          seenIds.add(e.event_id);
+          currentParsedEvents.push(e);
+        }
+      });
+      renderFilteredEvents();
+      showToast(`+${moreData.events.length} transacciones cargadas`);
+    } else {
+      showToast('No hay transacciones adicionales indexadas');
+    }
+  } catch (e) {
+    showToast('Error al cargar transacciones adicionales');
+  } finally {
+    if (btn) btn.innerHTML = '⬇ Cargar Más Transacciones';
   }
 }
 
 // ==========================================
-// FUNCTIONAL CONTROLS IMPLEMENTATION
+// FUNCTIONAL CONTROLS & EXPORTS
 // ==========================================
 function goToVisualizer() {
   if (!currentAccount?.address) return;
@@ -1864,45 +2933,68 @@ function goToSetAlert() {
 
 function refreshCurrentTarget() {
   const btn = document.getElementById('btnRefresh');
-  if (btn) btn.innerHTML = '<span class="dot-live"></span> Refreshing...';
+  if (btn) btn.innerHTML = '<span class="dot-live"></span> Actualizando...';
   
   if (currentAccount?.address) {
     performSearch(currentAccount.address, 'address', false).then(() => {
-      if (btn) btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh';
+      if (btn) btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Actualizar';
     });
+  }
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('copyToast');
+  if (toast) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2200);
   }
 }
 
 function copyCurrentAddress() {
   if (!currentAccount?.address) return;
   navigator.clipboard.writeText(currentAccount.address).then(() => {
-    const toast = document.getElementById('copyToast');
-    if (toast) {
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2200);
-    }
+    showToast('✓ Dirección copiada al portapapeles');
   }).catch(err => {
     console.error('Clipboard copy failed:', err);
   });
 }
 
+function openQrModal() {
+  if (!currentAccount?.address) return;
+  const qrImg = document.getElementById('qrImage');
+  const qrText = document.getElementById('qrAddressText');
+  const modal = document.getElementById('qrModal');
+  
+  if (qrImg && qrText && modal) {
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentAccount.address)}`;
+    qrText.textContent = currentAccount.address;
+    modal.style.display = 'flex';
+  }
+}
+
+function closeQrModal(e) {
+  const modal = document.getElementById('qrModal');
+  if (modal) modal.style.display = 'none';
+}
+
 function exportDataToCsv() {
   if (!currentAccount) {
-    alert('No active entity selected for export.');
+    alert('No hay entidad activa seleccionada para exportar.');
     return;
   }
 
   const addr = currentAccount.address;
-  const name = currentAccount.name || 'TON Account';
+  const name = currentAccount.name || 'Cuenta TON';
   const classified = currentParsedEvents.map(e => parseEventAction(e, addr));
 
-  let csvContent = `# ANLGRAM Institutional Intelligence Platform — On-Chain Entity Export\n`;
-  csvContent += `# Entity Name: ${name}\n`;
-  csvContent += `# Address: ${addr}\n`;
-  csvContent += `# Status: ${currentAccount.verified ? 'Verified Whitelist' : 'Unlabeled'}\n`;
-  csvContent += `# Export Timestamp (UTC): ${new Date().toISOString()}\n`;
-  csvContent += `# Source Engine: TonAPI v2 Live On-Chain Resolver\n#\n`;
-  csvContent += `Timestamp_UTC,Unix_Timestamp,Event_ID,Action_Type,Direction,Status,Value_TON,Jetton_Amount,Jetton_Symbol,Counterparty_Address,Counterparty_Name,Comment,Explorer_Link\n`;
+  let csvContent = `# ANLGRAM On-Chain Intelligence Platform — Exportación Oficial\n`;
+  csvContent += `# Entidad: ${name}\n`;
+  csvContent += `# Direccion: ${addr}\n`;
+  csvContent += `# Estado: ${currentAccount.verified ? 'Verified Whitelist' : 'Unlabeled'}\n`;
+  csvContent += `# Timestamp UTC: ${new Date().toISOString()}\n`;
+  csvContent += `# Fuente: TonAPI v2 Live Indexer & CoinGecko Rates\n#\n`;
+  csvContent += `Fecha_UTC,Timestamp_Unix,ID_Evento,Tipo_Accion,Direccion_Flujo,Estado,Valor_TON,Cantidad_Jetton,Simbolo_Jetton,Direccion_Contraparte,Nombre_Contraparte,Memo_Comentario,Link_Explorador\n`;
 
   classified.forEach(row => {
     const dateStr = new Date(row.timestamp * 1000).toISOString();
@@ -1923,8 +3015,39 @@ function exportDataToCsv() {
   document.body.removeChild(downloadLink);
 }
 
+function exportDataToJson() {
+  if (!currentAccount) {
+    alert('No hay entidad activa para exportar.');
+    return;
+  }
+
+  const payload = {
+    exportMetadata: {
+      platform: 'ANLGRAM On-Chain Intelligence',
+      exportedAt: new Date().toISOString(),
+      network: 'The Open Network (Mainnet)',
+      source: 'TonAPI v2 Live Indexer & CoinGecko Prices'
+    },
+    account: currentAccount,
+    jettonsHoldings: currentJettonsList,
+    jettonHoldersDistribution: currentJettonHolders,
+    observedTransactions: currentParsedEvents,
+    anomaliesDetected: detectAnomalies(currentAccount, currentParsedEvents, currentJettonsList)
+  };
+
+  const jsonStr = JSON.stringify(payload, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const downloadLink = document.createElement('a');
+  downloadLink.setAttribute('href', url);
+  downloadLink.setAttribute('download', `anlgram_${currentAccount.address.slice(0, 8)}_${Date.now()}.json`);
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+}
+
 // ==========================================
-// DEMO SIMULATION MODE (Isolated Sandbox)
+// DEMO SIMULATION MODE
 // ==========================================
 function toggleDemoMode() {
   isDemoMode = !isDemoMode;
@@ -1936,7 +3059,7 @@ function toggleDemoMode() {
     pillBtn.style.background = 'rgba(234,179,8,0.3)';
     pillBtn.style.borderColor = '#eab308';
     pillBtn.style.color = '#fff';
-    pillBtn.textContent = '🧪 Exit Demo';
+    pillBtn.textContent = '🧪 Salir de Demo';
     demoBadge.style.display = 'inline-block';
     profileCard.classList.add('demo-mode-active');
     loadDemoSimulationData();
@@ -1944,7 +3067,7 @@ function toggleDemoMode() {
     pillBtn.style.background = 'rgba(255, 255, 255, 0.04)';
     pillBtn.style.borderColor = 'rgba(234,179,8,0.4)';
     pillBtn.style.color = '#eab308';
-    pillBtn.textContent = '🧪 Demo Mode';
+    pillBtn.textContent = '🧪 Modo Demo';
     demoBadge.style.display = 'none';
     profileCard.classList.remove('demo-mode-active');
     performSearch(searchInput.value || 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N');
@@ -1954,15 +3077,16 @@ function toggleDemoMode() {
 function loadDemoSimulationData() {
   currentAccount = DEMO_SIMULATION_DATA.account;
   currentParsedEvents = DEMO_SIMULATION_DATA.events;
-  currentJettonsList = [{
-    balance: '1000000000000',
-    jetton: { symbol: 'NOT', name: 'Notcoin', decimals: 9, verification: 'whitelist' }
-  }];
+  currentJettonsList = DEMO_SIMULATION_DATA.jettons;
 
   renderProfileHeader(currentAccount);
-  renderJettonHoldings(currentJettonsList);
+  renderHoldingsView(currentJettonsList, currentAccount);
   renderFilteredEvents();
+  renderConfirmedSwapsTable();
+  renderBridgesTable();
   updateHistoricalAnalytics();
+  renderAnomaliesSignals();
+  updateWatchlistButtonState();
 }
 
 // ==========================================
@@ -1975,6 +3099,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     const tbPrice = document.getElementById('topbarTonPrice');
     if (tbPrice) tbPrice.textContent = `$${price.toFixed(2)}`;
   }
+
+  // Render initial stored watchlist
+  renderWatchlistTable();
 
   // Handle URL Query Parameter (Deep-linking)
   const urlParams = new URLSearchParams(window.location.search);

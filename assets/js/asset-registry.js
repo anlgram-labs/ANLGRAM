@@ -7,6 +7,7 @@
   'use strict';
 
   const IPFS_GATEWAY = 'https://cloudflare-ipfs.com/ipfs/';
+  const _root = typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {});
 
   /**
    * Canonical Asset Registry Entries
@@ -36,11 +37,11 @@
       tvSymbol: 'BYBIT:TONUSDT'
     },
     {
-      id: 'ton:EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id8gFg',
+      id: 'ton:EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs',
       network: 'TON',
       isNative: false,
-      contractAddress: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id8gFg',
-      rawAddress: '0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621df2',
+      contractAddress: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs',
+      rawAddress: '0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe',
       symbol: 'USD₮',
       displaySymbol: 'USDT',
       name: 'Tether USD',
@@ -203,10 +204,10 @@
       primaryDex: 'STON.fi'
     },
     {
-      id: 'ton:EQCuPm01Hldi-uQ55xaBF_1kaW_WAUy5DHey8suqzU_MAA_1',
+      id: 'ton:EQCuPm01HldiduQ55xaBF_1kaW_WAUy5DHey8suqzU_MAJOR',
       network: 'TON',
       isNative: false,
-      contractAddress: 'EQCuPm01Hldi-uQ55xaBF_1kaW_WAUy5DHey8suqzU_MAA_1',
+      contractAddress: 'EQCuPm01HldiduQ55xaBF_1kaW_WAUy5DHey8suqzU_MAJOR',
       rawAddress: '0:ae3e6d351e576276e439e7168117fd64696fd6014cb90c77b2f2cbaacd4fcc00',
       symbol: 'MAJOR',
       name: 'Major',
@@ -240,6 +241,126 @@
       verificationStatus: 'verified',
       isLaunched: true,
       description: 'Liquid staking derivative representing staked Toncoin and accumulated staking yield.',
+      primaryDex: 'STON.fi'
+    },
+    {
+      id: 'ton:EQCJbp0kBpPwPoBG-U5C-cWfP_jnksvotGfArPF50Q9Qiv9h',
+      network: 'TON',
+      isNative: false,
+      contractAddress: 'EQCJbp0kBpPwPoBG-U5C-cWfP_jnksvotGfArPF50Q9Qiv9h',
+      rawAddress: '0:896e9d240693f03e8046f94e42f9c59f3ff8e792cbe8b467c0acf179d10f508a',
+      symbol: 'RAFF',
+      name: 'Ton Raffles',
+      decimals: 9,
+      category: 'Launchpad / Raffles',
+      imageUri: 'https://tonraffles.store/raffjetton/jetton.svg',
+      imageSource: 'Ton Raffles Official Project Infrastructure',
+      imagePermissions: 'Official ecosystem asset',
+      providers: ['TonAPI', 'STON.fi', 'DeDust'],
+      explorerUrl: 'https://tonviewer.com/EQCJbp0kBpPwPoBG-U5C-cWfP_jnksvotGfArPF50Q9Qiv9h',
+      verificationStatus: 'verified',
+      isLaunched: true,
+      description: 'Decentralized fair-launchpad and raffles protocol on TON.',
+      primaryDex: 'STON.fi'
+    },
+    {
+      id: 'ton:EQBX6K9aXVl3nXINCyPPL86C4ONVmQ8vK360u6dykFKXpHCa',
+      network: 'TON',
+      isNative: false,
+      contractAddress: 'EQBX6K9aXVl3nXINCyPPL86C4ONVmQ8vK360u6dykFKXpHCa',
+      rawAddress: '0:57e8af5a5d59779d720d0b23cf2fce82e0e355990f2f2b7eb4bba772905297a4',
+      symbol: 'GEMSTON',
+      name: 'GemSTON',
+      decimals: 9,
+      category: 'Ecosystem Utility',
+      imageUri: 'https://static.ston.fi/logo/gemston_symbol.png',
+      imageSource: 'STON.fi Verified Asset Index',
+      imagePermissions: 'Official ecosystem asset',
+      providers: ['TonAPI', 'STON.fi'],
+      explorerUrl: 'https://tonviewer.com/EQBX6K9aXVl3nXINCyPPL86C4ONVmQ8vK360u6dykFKXpHCa',
+      verificationStatus: 'verified',
+      isLaunched: true,
+      description: 'GemSTON utility ecosystem token on TON.',
+      primaryDex: 'STON.fi'
+    },
+    {
+      id: 'ton:EQCdpz6QhJtDtm2s9-krV2ygl45Pwl-KJJCV1-XrP-Xuuxoq',
+      network: 'TON',
+      isNative: false,
+      contractAddress: 'EQCdpz6QhJtDtm2s9-krV2ygl45Pwl-KJJCV1-XrP-Xuuxoq',
+      rawAddress: '0:9da73e90849b43b66dacf7e92b576ca0978e4fc25f8a249095d7e5eb3fe5eebb',
+      symbol: 'PUNK',
+      name: 'TON Punks',
+      decimals: 9,
+      category: 'Community / NFT Ecosystem',
+      imageUri: 'https://cache.tonapi.io/imgproxy/mehFYlb1uDc1wa0RaKBQPCAKxBBiPcwIHHXd0-u4Ejo/rs:fill:200:200:1/g:no/aHR0cHM6Ly9wdW5rLW1ldGF2ZXJzZS5mcmExLmRpZ2l0YWxvY2VhbnNwYWNlcy5jb20vbG9nby9wdW5rLnBuZw.webp',
+      imageSource: 'TON Punks Official Metadata Archive / TonAPI Proxy',
+      imagePermissions: 'Official ecosystem asset',
+      providers: ['TonAPI', 'STON.fi', 'DeDust'],
+      explorerUrl: 'https://tonviewer.com/EQCdpz6QhJtDtm2s9-krV2ygl45Pwl-KJJCV1-XrP-Xuuxoq',
+      verificationStatus: 'verified',
+      isLaunched: true,
+      description: 'Official token of the TON Punks club.',
+      primaryDex: 'STON.fi'
+    },
+    {
+      id: 'ton:EQD26zcd6Cqpz7WyLKVH8x_cD6D7tBrom6hKcycv8L8hV0GP',
+      network: 'TON',
+      isNative: false,
+      contractAddress: 'EQD26zcd6Cqpz7WyLKVH8x_cD6D7tBrom6hKcycv8L8hV0GP',
+      rawAddress: '0:f6eb371de82aa9cfb5b22ca547f31fdc0fa0fbb41ae89ba84a73272ff0bf2157',
+      symbol: 'DFC',
+      name: 'DeFinder Capital',
+      decimals: 9,
+      category: 'DeFi / Investment Fund',
+      imageUri: 'https://cache.tonapi.io/imgproxy/TENmVD1ZlCwI7F4dyM9k6PPyLzMrd7rZHIAyeom79SA/rs:fill:200:200:1/g:no/aHR0cHM6Ly90YW4tdG91Z2gtc2x1Zy0zNTEubXlwaW5hdGEuY2xvdWQvaXBmcy9RbVhRb2pKVVB2a0dDQ2VSOVF1OFd3bWNaRjFnTERZMjhlcExMaFBZdkR5OFRr.webp',
+      imageSource: 'DeFinder Capital IPFS Metadata / TonAPI Proxy',
+      imagePermissions: 'Official ecosystem asset',
+      providers: ['TonAPI', 'STON.fi', 'DeDust'],
+      explorerUrl: 'https://tonviewer.com/EQD26zcd6Cqpz7WyLKVH8x_cD6D7tBrom6hKcycv8L8hV0GP',
+      verificationStatus: 'verified',
+      isLaunched: true,
+      description: 'Community investment fund token on TON.',
+      primaryDex: 'STON.fi'
+    },
+    {
+      id: 'ton:EQB2MznQGkJyLsebxufcl8-hT-dn4D304W_RezZRSpExoHg0',
+      network: 'TON',
+      isNative: false,
+      contractAddress: 'EQB2MznQGkJyLsebxufcl8-hT-dn4D304W_RezZRSpExoHg0',
+      rawAddress: '0:763339d01a42722ec79bc6e7dc97cfa14fe767e03df4e16fd17b36514a9131a0',
+      symbol: 'HMSTR',
+      name: 'TON HAMSTER',
+      decimals: 9,
+      category: 'Meme / Community',
+      imageUri: 'assets/img/anlgram-icon.svg',
+      imageSource: 'Neutral Verified Fallback (External CDN Host Offline)',
+      imagePermissions: 'Official placeholder fallback',
+      providers: ['TonAPI'],
+      explorerUrl: 'https://tonviewer.com/EQB2MznQGkJyLsebxufcl8-hT-dn4D304W_RezZRSpExoHg0',
+      verificationStatus: 'verified',
+      isLaunched: true,
+      description: 'Hamster-themed community Jetton on TON.',
+      primaryDex: 'STON.fi'
+    },
+    {
+      id: 'ton:EQAw63ZqLmnwRA77PW07CWIEngwg-eIiysaqZ8IWpUL0nP7a',
+      network: 'TON',
+      isNative: false,
+      contractAddress: 'EQAw63ZqLmnwRA77PW07CWIEngwg-eIiysaqZ8IWpUL0nP7a',
+      rawAddress: '0:30eb766a2e69f0440efb3d6d3b0962049e0c20f9e222cac6aa67c216a542f49c',
+      symbol: 'UTYAB',
+      name: 'Utya Black',
+      decimals: 9,
+      category: 'Meme / Community',
+      imageUri: 'assets/img/anlgram-icon.svg',
+      imageSource: 'Neutral Verified Fallback (Host Domain Offline)',
+      imagePermissions: 'Official placeholder fallback',
+      providers: ['TonAPI'],
+      explorerUrl: 'https://tonviewer.com/EQAw63ZqLmnwRA77PW07CWIEngwg-eIiysaqZ8IWpUL0nP7a',
+      verificationStatus: 'verified',
+      isLaunched: true,
+      description: 'The Faster Duck on TON community token.',
       primaryDex: 'STON.fi'
     },
 
@@ -851,7 +972,7 @@
   }
 
   // Global handler for image load errors to avoid inline quotes issues
-  window.handleAssetLogoError = function(img, symbol, network) {
+  _root.handleAssetLogoError = function(img, symbol, network) {
     if (!img) return;
     img.onerror = null;
     img.src = getNeutralFallbackSvg(symbol, network);
@@ -871,10 +992,15 @@
     getAssetByContract(contractAddress, network = 'TON') {
       if (!contractAddress) return null;
       const clean = String(contractAddress).trim().toLowerCase();
+      const rawFn = _root.friendlyToRaw || (typeof friendlyToRaw !== 'undefined' ? friendlyToRaw : null);
+      const raw = (rawFn && (clean.startsWith('eq') || clean.startsWith('uq') || clean.startsWith('kq'))) 
+        ? (rawFn(contractAddress) || '').toLowerCase() 
+        : null;
       return ASSET_REGISTRY.find(a => 
         a.network.toLowerCase() === network.toLowerCase() &&
         ((a.contractAddress && a.contractAddress.toLowerCase() === clean) ||
-         (a.rawAddress && a.rawAddress.toLowerCase() === clean))
+         (a.rawAddress && a.rawAddress.toLowerCase() === clean) ||
+         (raw && a.rawAddress && a.rawAddress.toLowerCase() === raw))
       ) || null;
     },
 
@@ -926,8 +1052,17 @@
     }
   };
 
-  // Export to window
-  window.ANLGRAM_ASSET_REGISTRY = AssetRegistry;
-  window.AssetRegistry = AssetRegistry;
+  // Export to window / global
+  _root.ANLGRAM_ASSET_REGISTRY = AssetRegistry;
+  _root.AssetRegistry = AssetRegistry;
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+      AssetRegistry,
+      ANLGRAM_ASSET_REGISTRY: AssetRegistry,
+      ASSET_REGISTRY,
+      DIRECTORY_REGISTRY
+    };
+  }
 
 })();

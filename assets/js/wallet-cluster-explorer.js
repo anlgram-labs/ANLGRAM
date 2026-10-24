@@ -20,7 +20,9 @@
       raw_address: "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
       decimals: 6,
       verification: "whitelist",
-      logo: "https://tether.to/images/logoCircle.png",
+      logo: "https://assets.coingecko.com/coins/images/325/small/Tether.png",
+      holders: 3446012,
+      totalSupply: "1429976002510000",
       description: "Official Tether USD on TON Mainnet."
     },
     {
@@ -31,6 +33,8 @@
       decimals: 9,
       verification: "whitelist",
       logo: "https://cdn.joincommunity.xyz/clicker/not_logo.png",
+      holders: 2856230,
+      totalSupply: "102452655868343930134",
       description: "Community token for the Notcoin tap-to-earn ecosystem."
     },
     {
@@ -41,6 +45,8 @@
       decimals: 9,
       verification: "whitelist",
       logo: "https://cdn.dogs.dev/dogs.png",
+      holders: 4899834,
+      totalSupply: "545217353977227105724",
       description: "Telegram-native community meme coin."
     },
     {
@@ -51,6 +57,8 @@
       decimals: 9,
       verification: "whitelist",
       logo: "https://static.ston.fi/logo/ston_symbol.png",
+      holders: 71288,
+      totalSupply: "99999999776549320",
       description: "Governance & utility token of the STON.fi DEX."
     },
     {
@@ -61,6 +69,8 @@
       decimals: 9,
       verification: "whitelist",
       logo: "https://cache.tonapi.io/imgproxy/rJ4qAiXZRWvGV6CCF8jHz-qE0-hmqWMUkI9BDDrfaXc/rs:fill:200:200:1/g:no/aXBmczovL1FtYVpuOHkzSm5kcmVQamVVYkRRdEJ5UFY2ZXpId1A2N3BWYUpHM1dXcGFtTEI.webp",
+      holders: 24894,
+      totalSupply: "16683255458619011",
       description: "Utility token of the DeDust DeFi protocol on TON."
     },
     {
@@ -71,6 +81,8 @@
       decimals: 9,
       verification: "whitelist",
       logo: "https://raw.githubusercontent.com/Resistance-Dog/resistance-dog/main/resistance-dog.webp",
+      holders: 27657,
+      totalSupply: "99999990054876073",
       description: "Symbol of digital resistance and internet freedom."
     },
     {
@@ -80,7 +92,9 @@
       raw_address: "0:4dcd423af6c19208231269db1550a746c0cd4130a4be1ca09618f93ad3164683",
       decimals: 9,
       verification: "whitelist",
-      logo: "https://www.tonfish.io/BLUECOIN2.png",
+      logo: "https://coin-images.coingecko.com/coins/images/34651/small/photo_2024-10-18_16.55.49.jpeg?1729307732",
+      holders: 67232,
+      totalSupply: "399910955135521953138831",
       description: "Community memecoin on The Open Network."
     },
     {
@@ -91,27 +105,33 @@
       decimals: 9,
       verification: "whitelist",
       logo: "https://gramcoin.org/img/icon.png",
+      holders: 90969,
+      totalSupply: "2430868391120966822",
       description: "PoW minable Jetton on TON."
     },
     {
       symbol: "MAJOR",
       name: "Major",
-      contract: "EQCuPm01Hldi-uQ55xaBF_1kaW_WAUy5DHey8suqzU_MAA_1",
+      contract: "EQCuPm01HldiduQ55xaBF_1kaW_WAUy5DHey8suqzU_MAJOR",
       raw_address: "0:ae3e6d351e576276e439e7168117fd64696fd6014cb90c77b2f2cbaacd4fcc00",
       decimals: 9,
       verification: "whitelist",
       logo: "https://cache.tonapi.io/imgproxy/bnKC81e4nVrK99wRHoO3-LcpA3pl6Q0YqJuUWa5o9z4/rs:fill:200:200:1/g:no/aHR0cHM6Ly9jYWNoZS50b25hcGkuaW8vaW1ncHJveHkvR0syNGcyRk1KeUpyN3YyNE8yV1gyck8wMnRzSjdfNzJacXhsZXh1WG1yYy9yczpmaWxsOjIwMDoyMDA6MS9nOm5vL2FIUjBjSE02THk5dFlXcHZjaTVpYjNRdmFXMWhaMlZ6TDNSaGMydHpMMjFoYW05eVgyeHZaMjh1YzNabi53ZWJw.webp",
+      holders: 173575,
+      totalSupply: "92694329611313311",
       description: "Major gaming stars ecosystem token."
     },
     {
       symbol: "HMSTR",
       name: "TON HAMSTER",
-      contract: "EQB2MznQGkJyLsebxtfcl8-hT-dn4D304W_RezZRSkExoA_m",
+      contract: "EQB2MznQGkJyLsebxufcl8-hT-dn4D304W_RezZRSpExoHg0",
       raw_address: "0:763339d01a42722ec79bc6e7dc97cfa14fe767e03df4e16fd17b36514a9131a0",
       decimals: 9,
       verification: "whitelist",
-      logo: "https://cache.tonapi.io/imgproxy/txWMButths-XCqAlnMf8yJMvFiNQZ_n-_gKjuKMMVr0/rs:fill:200:200:1/g:no/aHR0cHM6Ly9jYWNoZS50b25hcGkuaW8vaW1ncHJveHkvTHdaMkdzOW90YjVndU0xY05hRWVXN0xUNTRiSVRSZFF6MEN6R3NveVlYay9yczpmaWxsOjIwMDoyMDA6MS9nOm5vL2FIUjBjSE02THk5a01USXhkblI1TnpVNWJuQmhhUzVqYkc5MVpHWnliMjUwTG01bGRDOXBiV0ZuWlhNdk9HVmxaRE0yTjJFMU5tWm1OR1JtTlRrd1pEYzFOVGRqWm1NNU9EUTBOVGN1Y0c1bi53ZWJw.webp",
-      description: "Hamster-themed community Jetton."
+      logo: null,
+      holders: 328,
+      totalSupply: "990600885294847713",
+      description: "Hamster-themed community Jetton on TON."
     },
     {
       symbol: "RAFF",
@@ -121,6 +141,8 @@
       decimals: 9,
       verification: "whitelist",
       logo: "https://tonraffles.store/raffjetton/jetton.svg",
+      holders: 142983,
+      totalSupply: "15495255660714120",
       description: "Decentralized fair-launchpad and raffles protocol on TON."
     },
     {
@@ -131,26 +153,32 @@
       decimals: 9,
       verification: "whitelist",
       logo: "https://static.ston.fi/logo/gemston_symbol.png",
+      holders: 16292,
+      totalSupply: "21046729647454630",
       description: "GemSTON utility ecosystem token."
     },
     {
       symbol: "UTYAB",
       name: "Utya Black",
-      contract: "EQAw6bZqLmnwRA77PW07CWIEnwwg-eIizsaqZ8IWpUL0nE1A",
+      contract: "EQAw63ZqLmnwRA77PW07CWIEngwg-eIiysaqZ8IWpUL0nP7a",
       raw_address: "0:30eb766a2e69f0440efb3d6d3b0962049e0c20f9e222cac6aa67c216a542f49c",
       decimals: 9,
       verification: "whitelist",
-      logo: "https://utyab-ton-com.preview-domain.com/wp-content/uploads/2024/04/UTYAB_LOGO_256px.png",
+      logo: null,
+      holders: 3771,
+      totalSupply: "1000000000000000000",
       description: "The Faster Duck on TON community token."
     },
     {
       symbol: "PUNK",
       name: "TON Punks",
-      contract: "EQC4_E63tHq7Q1iT9GvhjN6D81uE5t46lU2jQ4lW6ZJ7g09a",
-      raw_address: "0:c3e04eb7b47abb435893f46be18ed6e12e4b4348e655ba649ee0d16e9927b834",
+      contract: "EQCdpz6QhJtDtm2s9-krV2ygl45Pwl-KJJCV1-XrP-Xuuxoq",
+      raw_address: "0:9da73e90849b43b66dacf7e92b576ca0978e4fc25f8a249095d7e5eb3fe5eebb",
       decimals: 9,
       verification: "whitelist",
-      logo: "https://tonviewer.com/logo/PUNK.png",
+      logo: "https://cache.tonapi.io/imgproxy/mehFYlb1uDc1wa0RaKBQPCAKxBBiPcwIHHXd0-u4Ejo/rs:fill:200:200:1/g:no/aHR0cHM6Ly9wdW5rLW1ldGF2ZXJzZS5mcmExLmRpZ2l0YWxvY2VhbnNwYWNlcy5jb20vbG9nby9wdW5rLnBuZw.webp",
+      holders: 57794,
+      totalSupply: "49779668001715786",
       description: "Official token of the TON Punks club."
     },
     {
@@ -160,17 +188,21 @@
       raw_address: "0:cbfdfa8098d129b54b4f73b5bac5d1e1fd91eb054169c3916dfc8cccd4344025",
       decimals: 9,
       verification: "whitelist",
-      logo: "https://asset.ston.fi/img/EQC98_qAmNEptUtPc7W6xdHh_ZHrBUFpw5Ft_IzNU20QAJav/38f530facb209e4696b8aef17af51df94d16bd879926c517b07d25841da287b7",
+      logo: "https://cache.tonapi.io/imgproxy/GjhSro_E6Qxod2SDQeDhJA_F3yARNomyZFKeKw8TVOU/rs:fill:200:200:1/g:no/aHR0cHM6Ly90b25zdGFrZXJzLmNvbS9qZXR0b24vbG9nby5zdmc.webp",
+      holders: 144486,
+      totalSupply: "123424027896426054",
       description: "Liquid staking token from Tonstakers."
     },
     {
       symbol: "DFC",
       name: "DeFinder Capital",
-      contract: "EQB-MPwrd1G6WKNkLz_VnV6WqBDd142KMQv-dp1II9OcUR3E",
-      raw_address: "0:7ee30ab1d542e8248c8bcf55e56a843775e3628c42ff9da75208f4e7548f4e71",
+      contract: "EQD26zcd6Cqpz7WyLKVH8x_cD6D7tBrom6hKcycv8L8hV0GP",
+      raw_address: "0:f6eb371de82aa9cfb5b22ca547f31fdc0fa0fbb41ae89ba84a73272ff0bf2157",
       decimals: 9,
       verification: "whitelist",
-      logo: "https://tonviewer.com/logo/DFC.png",
+      logo: "https://cache.tonapi.io/imgproxy/TENmVD1ZlCwI7F4dyM9k6PPyLzMrd7rZHIAyeom79SA/rs:fill:200:200:1/g:no/aHR0cHM6Ly90YW4tdG91Z2gtc2x1Zy0zNTEubXlwaW5hdGEuY2xvdWQvaXBmcy9RbVhRb2pKVVB2a0dDQ2VSOVF1OFd3bWNaRjFnTERZMjhlcExMaFBZdkR5OFRr.webp",
+      holders: 87945,
+      totalSupply: "98899995371057065",
       description: "Community investment fund token."
     }
   ];
@@ -285,7 +317,7 @@
   }
 
   function formatMoney(num) {
-    if (num == null || isNaN(num) || num <= 0) return 'N/A';
+    if (num == null || isNaN(num) || num <= 0) return '<span class="val-nodata">N/D</span>';
     if (num >= 1e9) return '$' + (num / 1e9).toFixed(2) + 'B';
     if (num >= 1e6) return '$' + (num / 1e6).toFixed(2) + 'M';
     if (num >= 1e3) return '$' + (num / 1e3).toFixed(2) + 'K';
@@ -293,15 +325,19 @@
   }
 
   function formatPrice(num) {
-    if (num == null || isNaN(num) || num <= 0) return '--';
-    if (num < 0.00001) return '$' + Number(num).toFixed(8);
-    if (num < 0.001) return '$' + Number(num).toFixed(6);
-    if (num < 1) return '$' + Number(num).toFixed(4);
-    return '$' + Number(num).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    if (num == null || isNaN(num) || num <= 0) {
+      return '<span class="val-nodata" title="Precio no disponible o sin par de liquidez verificado en DEX">Sin datos</span>';
+    }
+    const val = Number(num);
+    if (val < 0.00000001) return '$' + val.toExponential(3);
+    if (val < 0.00001) return '$' + val.toFixed(8);
+    if (val < 0.001) return '$' + val.toFixed(6);
+    if (val < 1) return '$' + val.toFixed(4);
+    return '$' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
   }
 
   function formatCompactNumber(num) {
-    if (num == null || isNaN(num)) return '--';
+    if (num == null || isNaN(num)) return '<span class="val-nodata">N/D</span>';
     return Number(num).toLocaleString();
   }
 
@@ -343,54 +379,79 @@
     return `${Math.floor(seconds / 86400)}d ago`;
   }
 
-  // --- SVG Fallback Logo Generator ---
+  // --- SVG Fallback Logo Generator (Valid URI & High-Contrast Design) ---
   function getNeutralFallbackSvg(symbol) {
-    const cleanSym = (symbol || '?').toUpperCase().substring(0, 3);
-    const hash = cleanSym.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const hue = (hash * 47) % 360;
+    const cleanSym = (symbol || '?').toUpperCase().trim().substring(0, 3);
+    let hash = 0;
+    for (let i = 0; i < cleanSym.length; i++) {
+      hash = (hash * 31 + cleanSym.charCodeAt(i)) & 0xffffffff;
+    }
+    const hue = Math.abs(hash) % 360;
     
-    return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
       <defs>
-        <linearGradient id="g_${hue}" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="hsl(${hue}, 70%, 45%)" />
-          <stop offset="100%" stop-color="hsl(${(hue + 40) % 360}, 80%, 25%)" />
+        <linearGradient id="fb_${hue}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="hsl(${hue}, 65%, 26%)" />
+          <stop offset="100%" stop-color="hsl(${(hue + 45) % 360}, 75%, 15%)" />
         </linearGradient>
       </defs>
-      <rect width="64" height="64" rx="32" fill="url(#g_${hue})" />
-      <circle cx="32" cy="32" r="30" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" />
-      <text x="32" y="37" fill="#ffffff" font-family="Inter, sans-serif" font-size="16" font-weight="700" text-anchor="middle" letter-spacing="0.5">${cleanSym}</text>
+      <rect width="64" height="64" rx="32" fill="url(#fb_${hue})" />
+      <circle cx="32" cy="32" r="30" fill="none" stroke="rgba(0, 240, 255, 0.4)" stroke-width="2" />
+      <text x="32" y="38" fill="#e0f2fe" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif" font-size="16" font-weight="700" text-anchor="middle" letter-spacing="0.5">${cleanSym}</text>
     </svg>`;
+    
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
 
+  // Centralized image fallback error handler
+  window.handleTokenLogoError = function(img, symbol) {
+    if (!img) return;
+    img.onerror = null; // Prevent loop
+    img.src = getNeutralFallbackSvg(symbol);
+  };
+
   function resolveLogoUrl(token) {
+    if (!token) return getNeutralFallbackSvg('?');
+
     // Asset Priority Rule:
-    // 1. Verified on-chain metadata image URI (converted if ipfs)
-    // 2. Image supplied by trusted data provider (preview webp from tonapi)
-    // 3. Project logo
-    // 4. Neutral fallback SVG icon
-    let url = null;
+    // 1. Shared Verified AssetRegistry lookup by exact contract address
+    if (window.AssetRegistry && token.contract) {
+      const asset = window.AssetRegistry.getAssetByContract(token.contract, 'TON');
+      if (asset && asset.imageUri) {
+        return asset.imageUri;
+      }
+    }
+
+    // 2. Token object's verified seed logo (if valid URL)
+    if (token.logo) {
+      if (token.logo.startsWith('ipfs://')) {
+        return `${IPFS_GATEWAY}${token.logo.replace('ipfs://', '')}`;
+      }
+      if (token.logo.startsWith('http://') || token.logo.startsWith('https://') || token.logo.startsWith('data:image')) {
+        return token.logo;
+      }
+    }
+
+    // 3. On-chain metadata image URI (converted if ipfs)
     if (token.metadata && token.metadata.image) {
-      url = token.metadata.image;
-    } else if (token.preview) {
-      url = token.preview;
-    } else if (token.logo) {
-      url = token.logo;
+      const img = token.metadata.image;
+      if (img.startsWith('ipfs://')) {
+        return `${IPFS_GATEWAY}${img.replace('ipfs://', '')}`;
+      }
+      if (img.startsWith('http://') || img.startsWith('https://') || img.startsWith('data:image')) {
+        return img;
+      }
     }
 
-    if (!url) return getNeutralFallbackSvg(token.symbol);
-
-    // IPFS protocol converter
-    if (url.startsWith('ipfs://')) {
-      const cid = url.replace('ipfs://', '');
-      return `${IPFS_GATEWAY}${cid}`;
+    // 4. Image supplied by trusted data provider (preview webp from tonapi)
+    if (token.preview) {
+      if (token.preview.startsWith('http://') || token.preview.startsWith('https://')) {
+        return token.preview;
+      }
     }
 
-    // Ensure valid HTTP/HTTPS protocol
-    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('data:image')) {
-      return getNeutralFallbackSvg(token.symbol);
-    }
-
-    return url;
+    // 5. Neutral fallback SVG icon
+    return getNeutralFallbackSvg(token.symbol);
   }
 
   // --- Network API Service ---
@@ -531,8 +592,8 @@
       change24h: null,
       marketCap: null,
       volume: null,
-      holders: null,
-      totalSupply: null,
+      holders: t.holders || null,
+      totalSupply: t.totalSupply || null,
       circulatingSupply: null,
       lastIndexed: new Date().toISOString(),
       isCustomIndexed: false
@@ -566,6 +627,12 @@
           const r = rates[token.contract];
           if (r.prices && r.prices.USD != null) {
             token.price = Number(r.prices.USD);
+            // Calculate market cap dynamically from verified supply and live price
+            if (token.totalSupply && token.decimals) {
+              const divisor = Math.pow(10, token.decimals);
+              const supply = Number(token.totalSupply) / divisor;
+              token.marketCap = supply * token.price;
+            }
           }
           if (r.diff_24h && r.diff_24h.USD) {
             const cleanStr = String(r.diff_24h.USD).replace('−', '-').replace('%', '').trim();
@@ -729,8 +796,8 @@
           return state.sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         case 'marketCap':
         default:
-          valA = a.marketCap ?? (a.price ? a.price * 1000000 : -1);
-          valB = b.marketCap ?? (b.price ? b.price * 1000000 : -1);
+          valA = a.marketCap ?? -1;
+          valB = b.marketCap ?? -1;
           break;
       }
 
@@ -803,7 +870,7 @@
       const globalIndex = startIndex + idx + 1;
       const isPos = token.change24h != null && token.change24h >= 0;
       const changeClass = token.change24h == null ? '' : (isPos ? 'text-green' : 'text-red');
-      const changeStr = token.change24h == null ? '--' : ((isPos ? '+' : '') + token.change24h.toFixed(2) + '%');
+      const changeStr = token.change24h == null ? '<span class="val-nodata">N/D</span>' : ((isPos ? '+' : '') + token.change24h.toFixed(2) + '%');
       const logoUrl = resolveLogoUrl(token);
 
       // Verification Badge Logic
@@ -822,7 +889,7 @@
         <div class="col-rank">${globalIndex}</div>
         <div class="col-token">
           <div class="token-avatar-wrap">
-            <img src="${logoUrl}" alt="${token.symbol}" class="row-logo" onerror="this.onerror=null; this.src='${getNeutralFallbackSvg(token.symbol)}'">
+            <img src="${logoUrl}" alt="${token.symbol}" class="row-logo" loading="lazy" onerror="window.handleTokenLogoError(this, '${token.symbol}')" />
           </div>
           <div class="token-identity">
             <div class="row-name-wrap">
@@ -842,8 +909,8 @@
         <div class="col-24h ${changeClass}">${changeStr}</div>
         <div class="col-mcap">${formatMoney(token.marketCap)}</div>
         <div class="col-vol">${formatMoney(token.volume)}</div>
-        <div class="col-holders data-font">${token.holders ? formatCompactNumber(token.holders) : '--'}</div>
-        <div class="col-last-indexed">${timeAgo(token.lastIndexed)}</div>
+        <div class="col-holders data-font">${token.holders ? formatCompactNumber(token.holders) : '<span class="val-nodata">N/D</span>'}</div>
+        <div class="col-last-indexed">${token.lastIndexed ? timeAgo(token.lastIndexed) : '<span class="val-nodata">N/D</span>'}</div>
         <div class="col-action">
           <button class="btn-map" data-token="${token.symbol}">Explore Clusters</button>
         </div>
@@ -1848,8 +1915,11 @@
     // Header info
     document.getElementById('dt-token-name').textContent = token.name;
     document.getElementById('dt-token-symbol').textContent = token.symbol;
-    document.getElementById('dt-token-logo').src = resolveLogoUrl(token);
-    document.getElementById('dt-token-logo').onerror = function() { this.src = getNeutralFallbackSvg(token.symbol); };
+    const dtLogo = document.getElementById('dt-token-logo');
+    if (dtLogo) {
+      dtLogo.src = resolveLogoUrl(token);
+      dtLogo.onerror = function() { window.handleTokenLogoError(this, token.symbol); };
+    }
     
     // Verification Badge
     const badgeEl = document.getElementById('dt-token-badge');
@@ -1865,8 +1935,10 @@
         logoSourceEl.textContent = 'Verified On-Chain Metadata Image URI';
       } else if (token.preview) {
         logoSourceEl.textContent = 'Trusted Data Provider CDN Proxy (TonAPI)';
+      } else if (token.logo) {
+        logoSourceEl.textContent = 'Verified Project CDN Repository Asset';
       } else {
-        logoSourceEl.textContent = 'Neutral Fallback Glyph (No verified image found)';
+        logoSourceEl.textContent = 'Neutral Fallback Glyph (Unverified external asset)';
       }
     }
 
@@ -1881,25 +1953,119 @@
         }
       };
     }
+
+    const copyContractBtn = document.getElementById('dt-btn-copy-contract');
+    if (copyContractBtn) {
+      copyContractBtn.onclick = () => {
+        if (token.contract) {
+          navigator.clipboard.writeText(token.contract);
+          const span = copyContractBtn.querySelector('span');
+          if (span) {
+            span.textContent = '¡Copiado!';
+            setTimeout(() => { span.textContent = 'Copiar'; }, 2000);
+          }
+        }
+      };
+    }
+
     const linkTonviewer = document.getElementById('dt-link-tonviewer');
     const linkTonscan = document.getElementById('dt-link-tonscan');
+    const linkStonfi = document.getElementById('dt-link-stonfi');
     if (linkTonviewer && token.contract) linkTonviewer.href = `https://tonviewer.com/${token.contract}`;
     if (linkTonscan && token.contract) linkTonscan.href = `https://tonscan.org/jetton/${token.contract}`;
+    if (linkStonfi && token.contract) linkStonfi.href = `https://app.ston.fi/swap?chartVisible=true&ft=TON&tt=${encodeURIComponent(token.contract)}`;
 
-    // Metrics
-    document.getElementById('dt-token-price').textContent = formatPrice(token.price);
-    document.getElementById('dt-token-holders').textContent = token.holders ? Number(token.holders).toLocaleString() : 'N/A';
-    document.getElementById('dt-token-mcap').textContent = formatMoney(token.marketCap);
-    document.getElementById('dt-token-vol').textContent = formatMoney(token.volume);
+    // Key Statistics
+    document.getElementById('dt-token-price').innerHTML = formatPrice(token.price);
+    
+    const changeEl = document.getElementById('dt-token-change24h');
+    if (changeEl) {
+      if (token.change24h != null) {
+        const isPos = token.change24h >= 0;
+        changeEl.innerHTML = `<span style="color:${isPos ? 'var(--color-green)' : 'var(--color-pink)'}; font-weight:700;">${isPos ? '+' : ''}${token.change24h.toFixed(2)}%</span>`;
+      } else {
+        changeEl.innerHTML = '<span class="val-nodata">N/D</span>';
+      }
+    }
+
+    document.getElementById('dt-token-mcap').innerHTML = formatMoney(token.marketCap);
+    document.getElementById('dt-token-vol').innerHTML = formatMoney(token.volume);
+    
+    const liqEl = document.getElementById('dt-token-liquidity');
+    if (liqEl) {
+      liqEl.innerHTML = token.liquidity != null ? formatMoney(token.liquidity) : '<span class="val-nodata">N/D (Sin datos de pool)</span>';
+    }
+
+    document.getElementById('dt-token-holders').innerHTML = token.holders ? Number(token.holders).toLocaleString() : '<span class="val-nodata">N/D</span>';
     
     // Total supply
     const supplyEl = document.getElementById('dt-token-supply');
     if (supplyEl) {
-      supplyEl.textContent = token.totalSupply ? formatTokenUnits(token.totalSupply, token.decimals) + ' ' + token.symbol : 'Unreported';
+      supplyEl.innerHTML = token.totalSupply && token.decimals ? formatTokenUnits(token.totalSupply, token.decimals) + ' ' + token.symbol : '<span class="val-nodata">N/D</span>';
     }
 
-    // Holder Concentration calculation
-    if (state.graphData && state.graphData.nodes) {
+    const syncEl = document.getElementById('dt-token-last-sync');
+    if (syncEl) {
+      if (token.lastIndexed) {
+        const d = new Date(token.lastIndexed);
+        syncEl.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' · ' + d.toLocaleDateString();
+      } else {
+        syncEl.innerHTML = '<span class="val-nodata">N/D</span>';
+      }
+    }
+
+    // Direct Cluster Exploration Action Button
+    const btnExplore = document.getElementById('dt-btn-explore-cluster');
+    if (btnExplore) {
+      btnExplore.onclick = async () => {
+        modal.style.display = 'none';
+        const dropdown = document.getElementById('search-results-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+        
+        let targetToken = state.tokens.find(t => t.contract.toLowerCase() === token.contract.toLowerCase());
+        if (!targetToken) {
+          const res = await indexJettonMasterContract(token.contract);
+          targetToken = res.token || token;
+        }
+        openBubbleMap(targetToken);
+      };
+    }
+
+    // Asynchronously enrich metadata if token was selected from search results without full state
+    if (token.contract && (token.holders == null || token.totalSupply == null)) {
+      ApiService.fetchJettonDetails(token.contract).then(jettonData => {
+        if (jettonData && modal.style.display === 'flex') {
+          if (jettonData.metadata) {
+            if (!token.decimals && jettonData.metadata.decimals) token.decimals = Number(jettonData.metadata.decimals);
+            if (jettonData.metadata.description && !token.description) token.description = jettonData.metadata.description;
+          }
+          if (jettonData.holders_count != null) {
+            token.holders = jettonData.holders_count;
+            const hEl = document.getElementById('dt-token-holders');
+            if (hEl) hEl.textContent = Number(token.holders).toLocaleString();
+          }
+          if (jettonData.total_supply != null) {
+            token.totalSupply = jettonData.total_supply;
+            const sEl = document.getElementById('dt-token-supply');
+            if (sEl) sEl.innerHTML = formatTokenUnits(token.totalSupply, token.decimals || 9) + ' ' + token.symbol;
+          }
+          if (token.price && token.totalSupply && token.decimals && !token.marketCap) {
+            try {
+              const dec = token.decimals || 9;
+              const baseSupply = Number(BigInt(token.totalSupply) / BigInt(10 ** Math.min(dec, 18)));
+              token.marketCap = baseSupply * token.price;
+              const mcEl = document.getElementById('dt-token-mcap');
+              if (mcEl) mcEl.innerHTML = formatMoney(token.marketCap);
+            } catch (e) {}
+          }
+        }
+      });
+    }
+
+    // Holder Concentration calculation & Tables
+    const hasActiveGraph = state.graphData && state.graphData.nodes && state.activeToken && state.activeToken.contract === token.contract;
+
+    if (hasActiveGraph) {
       const sorted = [...state.graphData.nodes].sort((a, b) => b.balance - a.balance);
       const top5Pct = sorted.slice(0, 5).reduce((s, n) => s + n.percentOfTracked, 0);
       const top10Pct = sorted.slice(0, 10).reduce((s, n) => s + n.percentOfTracked, 0);
@@ -1974,6 +2140,28 @@
           tradesTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No direct DEX pool swaps in sampled events window</td></tr>`;
         }
       }
+    } else {
+      // Graph not currently loaded for this specific token
+      document.getElementById('dt-top5-share').innerHTML = '<span class="val-nodata">--</span>';
+      document.getElementById('dt-top10-share').innerHTML = '<span class="val-nodata">--</span>';
+      document.getElementById('dt-top20-share').innerHTML = '<span class="val-nodata">--</span>';
+      const concRating = document.getElementById('dt-concentration-level');
+      if (concRating) {
+        concRating.textContent = 'PENDIENTE DE GRAFO';
+        concRating.style.color = 'var(--text-muted)';
+      }
+      const holdersTbody = document.getElementById('dt-holders-tbody');
+      if (holdersTbody) {
+        holdersTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:16px;">Haz clic arriba en <strong>Explorar Clusters de Wallets</strong> para mapear los holders y calcular la concentración en tiempo real.</td></tr>`;
+      }
+      const transfersTbody = document.getElementById('dt-transfers-tbody');
+      if (transfersTbody) {
+        transfersTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:16px;">Inicia la exploración de clusters para trazar transferencias directas entre billeteras.</td></tr>`;
+      }
+      const tradesTbody = document.getElementById('dt-trades-tbody');
+      if (tradesTbody) {
+        tradesTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:16px;">Inicia la exploración de clusters para clasificar swaps y operaciones DEX.</td></tr>`;
+      }
     }
   }
 
@@ -2022,12 +2210,12 @@
 
     if (logoEl) {
       logoEl.src = resolveLogoUrl(token);
-      logoEl.onerror = function() { this.src = getNeutralFallbackSvg(token.symbol); };
+      logoEl.onerror = function() { window.handleTokenLogoError(this, token.symbol); };
     }
     if (nameEl) nameEl.textContent = token.name;
     if (tickerEl) tickerEl.textContent = token.symbol;
-    if (priceEl) priceEl.textContent = formatPrice(token.price);
-    if (mcapEl) mcapEl.textContent = formatMoney(token.marketCap);
+    if (priceEl) priceEl.innerHTML = formatPrice(token.price);
+    if (mcapEl) mcapEl.innerHTML = formatMoney(token.marketCap);
 
     if (contractEl) {
       if (token.contract) {
@@ -2086,26 +2274,360 @@
     }
   }
 
+  // --- TON Memecoin & Jetton Discovery Engine ---
+  const searchCache = new Map();
+  let searchDebounceTimer = null;
+
+  async function searchTonTokens(query) {
+    const clean = safeTrim(query);
+    if (!clean) return [];
+
+    const cacheKey = clean.toLowerCase();
+    const cached = searchCache.get(cacheKey);
+    if (cached) return cached;
+
+    const isAddress = (clean.startsWith('EQ') || clean.startsWith('UQ') || clean.startsWith('kQ') || clean.startsWith('0:')) && clean.length >= 24;
+
+    // 1. Direct Contract Address Search
+    if (isAddress) {
+      const local = state.tokens.find(t => 
+        (t.contract && t.contract.toLowerCase() === clean.toLowerCase()) ||
+        (t.raw_address && t.raw_address.toLowerCase() === clean.toLowerCase())
+      );
+      if (local) {
+        searchCache.set(cacheKey, [local]);
+        return [local];
+      }
+
+      // Query TonAPI for this exact Jetton Master contract
+      const jettonData = await ApiService.fetchJettonDetails(clean);
+      if (jettonData && jettonData.metadata) {
+        const meta = jettonData.metadata;
+        const friendly = (window.rawToFriendly && meta.address) ? window.rawToFriendly(meta.address) : clean;
+        const raw = (window.friendlyToRaw && friendly) ? window.friendlyToRaw(friendly) : (meta.address || clean);
+        const tokenObj = {
+          symbol: meta.symbol || 'UNKNOWN',
+          name: meta.name || 'Unnamed Jetton',
+          contract: friendly,
+          raw_address: raw,
+          decimals: Number(meta.decimals) || 9,
+          verification: jettonData.verification || 'none',
+          logo: meta.image || null,
+          preview: jettonData.preview || null,
+          description: meta.description || '',
+          price: null,
+          change24h: null,
+          marketCap: null,
+          volume: null,
+          holders: jettonData.holders_count || 0,
+          totalSupply: jettonData.total_supply || null,
+          lastIndexed: new Date().toISOString()
+        };
+
+        try {
+          const rates = await ApiService.fetchJettonRates([friendly]);
+          const r = rates[friendly] || rates[raw];
+          if (r && r.prices && r.prices.USD != null) {
+            tokenObj.price = r.prices.USD;
+            if (r.diff_24h && r.diff_24h.USD) {
+              tokenObj.change24h = parseFloat(r.diff_24h.USD.replace('%', ''));
+            }
+          }
+        } catch (e) {}
+
+        searchCache.set(cacheKey, [tokenObj]);
+        return [tokenObj];
+      }
+      return [];
+    }
+
+    // 2. Text Search (symbol or name)
+    const qLower = clean.toLowerCase();
+    
+    // Filter local catalog
+    const localMatches = state.tokens.filter(t => 
+      t.symbol.toLowerCase().includes(qLower) ||
+      t.name.toLowerCase().includes(qLower) ||
+      (t.contract && t.contract.toLowerCase().includes(qLower))
+    );
+
+    // Concurrently fetch accounts from TonAPI
+    let remoteTokens = [];
+    try {
+      const remoteAccounts = await ApiService.searchAccountJettons(clean);
+      if (Array.isArray(remoteAccounts)) {
+        for (const a of remoteAccounts) {
+          const friendlyAddr = (window.rawToFriendly && a.address) ? window.rawToFriendly(a.address) : a.address;
+          
+          // Deduplicate against local catalog matches strictly by contract address
+          const alreadyLocal = localMatches.some(lm => 
+            (lm.contract && lm.contract.toLowerCase() === friendlyAddr.toLowerCase()) ||
+            (lm.raw_address && lm.raw_address.toLowerCase() === (a.address || '').toLowerCase())
+          );
+          if (alreadyLocal) continue;
+
+          // Strip " · jetton" suffix if present
+          let cleanName = a.name ? a.name.replace(/\s*·\s*jetton/i, '').trim() : 'Jetton';
+          let symbol = cleanName;
+          if (cleanName.includes(' ')) {
+            const parts = cleanName.split(' ');
+            symbol = parts[0].length <= 8 ? parts[0] : cleanName;
+          }
+
+          // Distinct tokens with the same name/symbol are preserved separately by contract
+          remoteTokens.push({
+            symbol: symbol,
+            name: cleanName,
+            contract: friendlyAddr,
+            raw_address: a.address,
+            decimals: 9,
+            verification: a.trust === 'whitelist' ? 'whitelist' : 'none',
+            logo: null,
+            preview: a.preview || null,
+            description: '',
+            price: null,
+            change24h: null,
+            marketCap: null,
+            volume: null,
+            holders: null,
+            totalSupply: null,
+            lastIndexed: new Date().toISOString()
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('TonAPI account search warning:', e);
+    }
+
+    // Batch query rates for top remote tokens (up to 10)
+    const topRemoteToRate = remoteTokens.slice(0, 10);
+    const contractsToRate = topRemoteToRate.map(t => t.contract).filter(Boolean);
+    if (contractsToRate.length > 0) {
+      try {
+        const rates = await ApiService.fetchJettonRates(contractsToRate);
+        topRemoteToRate.forEach(t => {
+          const r = rates[t.contract] || rates[t.raw_address];
+          if (r && r.prices && r.prices.USD != null) {
+            t.price = r.prices.USD;
+            if (r.diff_24h && r.diff_24h.USD) {
+              t.change24h = parseFloat(r.diff_24h.USD.replace('%', ''));
+            }
+          }
+        });
+      } catch (e) {}
+    }
+
+    // Combine local and remote results; each entry represents a distinct contract
+    const combined = [...localMatches, ...remoteTokens];
+    
+    // Cache result set for 60 seconds
+    searchCache.set(cacheKey, combined);
+    setTimeout(() => searchCache.delete(cacheKey), 60000);
+
+    return combined;
+  }
+
+  function renderSearchResultsDropdown(results, query) {
+    const dropdown = document.getElementById('search-results-dropdown');
+    if (!dropdown) return;
+
+    dropdown.style.display = 'block';
+
+    if (!results || results.length === 0) {
+      dropdown.innerHTML = `
+        <div class="search-state-box">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted); margin-bottom:4px;">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <div style="font-weight:600; color:#fff;">No se encontraron tokens en la red TON</div>
+          <div style="font-size:12px; color:var(--text-muted); max-width:340px; line-height:1.4;">
+            No hay tokens ni memecoins que coincidan con "<strong>${escapeHtml(query)}</strong>". Si conoces el contrato Master (EQ... / 0:...), ingrésalo para indexarlo directamente de la blockchain.
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    const itemsHtml = results.map((token, idx) => {
+      const logoSrc = resolveLogoUrl(token);
+      const friendlyShort = shortenAddress(token.contract, 4);
+      const isVer = token.verification === 'whitelist';
+      const badgeHtml = isVer 
+        ? '<span class="badge-ver badge-verified" style="font-size:10px; padding:1px 6px;">VERIFICADO</span>'
+        : '<span class="badge-ver badge-unverified" style="font-size:10px; padding:1px 6px;">COMUNIDAD</span>';
+      
+      const priceDisplay = token.price != null ? formatPrice(token.price) : '<span class="val-nodata" style="font-size:11px;">Sin cotización</span>';
+      const changeDisplay = token.change24h != null 
+        ? `<span style="color:${token.change24h >= 0 ? 'var(--color-green)' : 'var(--color-pink)'}; font-size:11px; font-weight:600;">${token.change24h >= 0 ? '+' : ''}${token.change24h.toFixed(2)}%</span>`
+        : '<span class="val-nodata" style="font-size:10px;">N/D (24h)</span>';
+
+      const safeSym = escapeHtml(token.symbol || 'TOKEN');
+      const safeName = escapeHtml(token.name || 'Jetton Token');
+      const safeContract = escapeHtml(token.contract || '');
+
+      return `
+        <div class="search-result-item" data-idx="${idx}">
+          <div class="search-item-left">
+            <img src="${logoSrc}" class="search-token-icon" alt="${safeSym}" onerror="window.handleTokenLogoError(this, '${safeSym}')">
+            <div class="search-token-info">
+              <div class="search-token-top">
+                <span class="search-token-name" title="${safeName}">${safeName}</span>
+                <span class="search-token-symbol">${safeSym}</span>
+                ${badgeHtml}
+              </div>
+              <div class="search-token-bottom">
+                <span class="search-token-contract" title="Copiar contrato: ${safeContract}" data-contract="${safeContract}">${friendlyShort}</span>
+                ${token.holders ? `<span style="color:var(--text-muted); font-size:11px;">· ${Number(token.holders).toLocaleString()} holders</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="search-item-right">
+            <div class="search-price-box">
+              <div class="search-token-price">${priceDisplay}</div>
+              <div class="search-token-change">${changeDisplay}</div>
+            </div>
+            <div class="search-item-actions">
+              <button class="btn-search-action btn-action-details" data-idx="${idx}" title="Ver Ficha de Información">Ficha</button>
+              <button class="btn-search-action primary btn-action-clusters" data-idx="${idx}" title="Explorar grafo de clusters">Clusters</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    dropdown.innerHTML = `
+      <div class="search-dropdown-header">
+        <span>Tokens y Memecoins en TON (${results.length})</span>
+        <span style="color:var(--color-cyan); font-size:11px; text-transform:none; font-weight:500;">Red: TON Mainnet</span>
+      </div>
+      <div class="search-results-list">
+        ${itemsHtml}
+      </div>
+    `;
+
+    // Bind item click listeners
+    dropdown.querySelectorAll('.search-result-item').forEach(el => {
+      const idx = parseInt(el.getAttribute('data-idx'), 10);
+      const token = results[idx];
+      if (!token) return;
+
+      // Clicking row opens Token Details Drawer
+      el.onclick = (e) => {
+        if (e.target.classList.contains('search-token-contract')) {
+          e.stopPropagation();
+          navigator.clipboard.writeText(token.contract);
+          e.target.textContent = '¡Copiado!';
+          setTimeout(() => { e.target.textContent = shortenAddress(token.contract, 4); }, 1500);
+          return;
+        }
+        if (e.target.classList.contains('btn-action-clusters')) {
+          return; // Handled by button listener
+        }
+        dropdown.style.display = 'none';
+        openTokenDetailsDrawer(token);
+      };
+
+      // Direct cluster exploration button
+      const btnClusters = el.querySelector('.btn-action-clusters');
+      if (btnClusters) {
+        btnClusters.onclick = async (e) => {
+          e.stopPropagation();
+          dropdown.style.display = 'none';
+          
+          let targetToken = state.tokens.find(t => t.contract.toLowerCase() === token.contract.toLowerCase());
+          if (!targetToken) {
+            const res = await indexJettonMasterContract(token.contract);
+            targetToken = res.token || token;
+          }
+          openBubbleMap(targetToken);
+        };
+      }
+    });
+  }
+
   // --- UI Event Bindings ---
   function bindUIEvents() {
-    // Top Search Input
+    // Top Search Input & Live Discovery Dropdown
     const searchInput = document.getElementById('token-search-input');
     const searchClear = document.getElementById('search-clear-btn');
+    const searchDropdown = document.getElementById('search-results-dropdown');
+
     if (searchInput) {
+      // Focus handler
+      searchInput.addEventListener('focus', () => {
+        if (safeTrim(searchInput.value).length > 0 && searchDropdown) {
+          searchDropdown.style.display = 'block';
+        }
+      });
+
+      // Input handler with debounce
       searchInput.addEventListener('input', (e) => {
-        state.searchQuery = e.target.value;
+        const val = e.target.value;
+        const clean = safeTrim(val);
+
+        // Keep catalog table filter in sync
+        state.searchQuery = val;
         state.page = 1;
         applyFiltersAndSort();
         renderTokenTable();
+
+        // Update clear button
+        if (searchClear) {
+          searchClear.style.display = clean.length > 0 ? 'block' : 'none';
+        }
+
+        // Handle live discovery dropdown
+        if (searchDebounceTimer) {
+          clearTimeout(searchDebounceTimer);
+        }
+
+        if (clean.length === 0) {
+          if (searchDropdown) searchDropdown.style.display = 'none';
+          return;
+        }
+
+        if (searchDropdown) {
+          searchDropdown.style.display = 'block';
+          searchDropdown.innerHTML = `
+            <div class="search-state-box">
+              <div class="search-state-spinner"></div>
+              <span style="color:var(--color-cyan); font-weight:600;">Buscando tokens y memecoins en TON...</span>
+            </div>
+          `;
+        }
+
+        searchDebounceTimer = setTimeout(async () => {
+          try {
+            const results = await searchTonTokens(clean);
+            if (safeTrim(searchInput.value) === clean) {
+              renderSearchResultsDropdown(results, clean);
+            }
+          } catch (err) {
+            if (searchDropdown) {
+              searchDropdown.innerHTML = `
+                <div class="search-state-box" style="color:var(--color-pink);">
+                  <div style="font-weight:700;">Error de conexión con el indexador TON</div>
+                  <div style="font-size:12px; color:var(--text-muted);">No se pudieron obtener resultados en tiempo real.</div>
+                </div>
+              `;
+            }
+          }
+        }, 280);
       });
 
+      // Keydown handler
       searchInput.addEventListener('keydown', async (e) => {
+        if (e.key === 'Escape') {
+          if (searchDropdown) searchDropdown.style.display = 'none';
+          return;
+        }
         if (e.key === 'Enter') {
           const val = safeTrim(searchInput.value);
-          if (val.length >= 40) { // likely an address
+          if (val.length >= 36) { // likely an address
+            if (searchDropdown) searchDropdown.style.display = 'none';
             const res = await indexJettonMasterContract(val);
             if (res.success && res.token) {
-              openBubbleMap(res.token);
+              openTokenDetailsDrawer(res.token);
             }
           }
         }
@@ -2116,13 +2638,25 @@
       searchClear.onclick = () => {
         if (searchInput) {
           searchInput.value = '';
+          searchClear.style.display = 'none';
           state.searchQuery = '';
           state.page = 1;
           applyFiltersAndSort();
           renderTokenTable();
         }
+        if (searchDropdown) {
+          searchDropdown.style.display = 'none';
+        }
       };
     }
+
+    // Click outside search bar closes dropdown
+    document.addEventListener('click', (e) => {
+      const searchWrapper = document.querySelector('.search-bar-wrapper');
+      if (searchDropdown && searchWrapper && !searchWrapper.contains(e.target)) {
+        searchDropdown.style.display = 'none';
+      }
+    });
 
     // Filter Tabs
     const filterTabs = document.querySelectorAll('.filter-tab');

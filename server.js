@@ -32,6 +32,40 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Handle secure TonAPI proxy endpoint to keep API keys server-side
+  if (cleanUrl.startsWith('/api/ton/')) {
+    const subPath = cleanUrl.slice('/api/ton'.length);
+    const queryString = req.url.includes('?') ? '?' + req.url.split('?').slice(1).join('?') : '';
+    const targetUrl = `https://tonapi.io/v2${subPath}${queryString}`;
+
+    const headers = {
+      'Accept': 'application/json'
+    };
+    if (process.env.TONAPI_KEY) {
+      headers['Authorization'] = `Bearer ${process.env.TONAPI_KEY.trim()}`;
+    }
+
+    fetch(targetUrl, {
+      method: req.method,
+      headers: headers
+    }).then(async (apiRes) => {
+      const data = await apiRes.text();
+      res.writeHead(apiRes.status, {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=15',
+        ...SECURITY_HEADERS
+      });
+      res.end(data);
+    }).catch((err) => {
+      res.writeHead(502, {
+        'Content-Type': 'application/json',
+        ...SECURITY_HEADERS
+      });
+      res.end(JSON.stringify({ error: 'TonAPI proxy failure', message: err.message }));
+    });
+    return;
+  }
+
   const safePath = path.normalize(cleanUrl).replace(/^(\.\.[\/\\])+/, '');
   let filePath = path.resolve(__dirname, safePath === '/' || safePath === '\\' ? 'index.html' : '.' + safePath);
   
