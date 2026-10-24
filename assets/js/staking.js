@@ -3584,13 +3584,6 @@ const InsightsController = {
         time: telemetry?.updatedAtStr || 'En vivo',
       },
       {
-        icon: '💎',
-        type: 'success',
-        title: 'Comisión ANLGRAM: 0.35% (35 bps) en Depósitos Confirmados',
-        body: `Fórmula entera: feeNano = (principalNano * 35n) / 10000n. Sin cobro por retiro ni reclamo (0%). Wallet receptora: ${STAKING_CONFIG.ANLGRAM_FEE_RECIPIENT}.`,
-        time: 'Verificado',
-      },
-      {
         icon: '📈',
         type: 'info',
         title: 'Mecanismo de Recompensas (tsTON · liquidTF)',
