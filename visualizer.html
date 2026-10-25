@@ -101,13 +101,25 @@
               <span>TON</span>
             </div>
             <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input type="text" id="token-search-input" placeholder="Buscar por nombre, símbolo o contrato (EQ... / 0:...)..." autocomplete="off" spellcheck="false">
+            <input type="text" id="token-search-input" placeholder="Buscar por nombre, símbolo, entidad o dirección (EQ... / 0:...)..." autocomplete="off" spellcheck="false">
             <button id="search-clear-btn" class="search-clear-btn" title="Limpiar búsqueda" style="display: none;">&times;</button>
           </div>
           <!-- Live Floating Search Results Dropdown -->
           <div id="search-results-dropdown" class="search-results-dropdown" style="display: none;">
             <!-- Populated dynamically via JS -->
           </div>
+        </div>
+
+        <!-- Institutional View Mode Toggle Tabs -->
+        <div class="view-mode-tabs">
+          <button id="tab-nav-flow" class="view-mode-btn active" title="Visualizador de Flujos On-Chain Arkham-Style">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="5" cy="18" r="2"/><path d="M10 10.5 6.5 7.5M14 10.5l3.5-3M10 13.5l-3.5 3M14 13.5l3.5 3"/></svg>
+            Flow Visualizer
+          </button>
+          <button id="tab-nav-clusters" class="view-mode-btn" title="Explorador de Clústeres y Catálogo de Tokens">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Token Clusters
+          </button>
         </div>
       </div>
       
@@ -122,8 +134,314 @@
 
     <div class="app-container">
       
+      <!-- STATE C: Arkham-Inspired Professional Wallet Flow Visualizer -->
+      <div id="view-flow" class="view-flow">
+        
+        <!-- Investigation Toolbar -->
+        <div class="flow-investigation-toolbar">
+          <div class="flow-toolbar-row-top">
+            <!-- Search Box with TON Badge -->
+            <div class="flow-search-box">
+              <div class="flow-network-pill" title="Red activa: TON Mainnet">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#00CFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>TON</span>
+              </div>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px; color:var(--text-secondary);"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" id="flow-wallet-input" placeholder="Buscar dirección TON o entidad (EQ..., 0:..., TON Foundation, Binance)..." autocomplete="off" spellcheck="false"/>
+              <button id="flow-wallet-search-btn" class="flow-btn-search">Investigar</button>
+              <button id="flow-wallet-clear-btn" class="flow-btn-clear" style="display:none;">&times;</button>
+            </div>
+
+            <!-- Quick Sample Entities -->
+            <div class="flow-quick-samples">
+              <span class="quick-label">Ejemplos:</span>
+              <button class="flow-sample-chip" data-addr="EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N">TON Foundation</button>
+              <button class="flow-sample-chip" data-addr="EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO">STON.fi Router</button>
+              <button class="flow-sample-chip" data-addr="EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt">OKX Hot Wallet</button>
+            </div>
+          </div>
+
+          <div class="flow-toolbar-row-bottom">
+            <!-- Date Range Selector -->
+            <div class="flow-control-group">
+              <span class="group-label">Período:</span>
+              <div class="flow-pill-group" id="flow-date-range-pills">
+                <button class="flow-pill-btn" data-range="24h">24H</button>
+                <button class="flow-pill-btn" data-range="7d">7D</button>
+                <button class="flow-pill-btn active" data-range="30d">30D</button>
+                <button class="flow-pill-btn" data-range="90d">90D</button>
+                <button class="flow-pill-btn" data-range="all">Todo</button>
+              </div>
+            </div>
+
+            <!-- Inflow / Outflow Toggles -->
+            <div class="flow-control-group">
+              <span class="group-label">Flujo:</span>
+              <div class="flow-pill-group">
+                <button class="flow-pill-toggle active-in" id="flow-toggle-in" title="Mostrar transferencias entrantes">
+                  <span class="dot-in"></span> Entradas
+                </button>
+                <button class="flow-pill-toggle active-out" id="flow-toggle-out" title="Mostrar transferencias salientes">
+                  <span class="dot-out"></span> Salidas
+                </button>
+              </div>
+            </div>
+
+            <!-- Asset Selector -->
+            <div class="flow-control-group">
+              <span class="group-label">Activo:</span>
+              <select id="flow-asset-select" class="flow-select">
+                <option value="all">Todos los Activos</option>
+                <option value="TON">TON</option>
+              </select>
+            </div>
+
+            <!-- Min Transfer Amount -->
+            <div class="flow-control-group">
+              <span class="group-label">Monto Mín:</span>
+              <div class="flow-input-wrap">
+                <input type="number" id="flow-min-amount" class="flow-number-input" placeholder="0" min="0" step="any"/>
+                <span class="unit-label">TON</span>
+              </div>
+            </div>
+
+            <!-- Max Connections -->
+            <div class="flow-control-group">
+              <span class="group-label">Conexiones:</span>
+              <select id="flow-max-conn-select" class="flow-select">
+                <option value="15">Top 15</option>
+                <option value="30" selected>Top 30</option>
+                <option value="50">Top 50</option>
+                <option value="100">Top 100</option>
+              </select>
+            </div>
+
+            <!-- Actions -->
+            <div class="flow-actions-group">
+              <button id="flow-btn-expand" class="flow-action-btn" title="Expandir profundidad de conexiones">+ Expandir</button>
+              <button id="flow-btn-fit" class="flow-action-btn" title="Ajustar grafo a pantalla">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                Ajustar
+              </button>
+              <button id="flow-btn-reset" class="flow-action-btn" title="Reiniciar vista">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                Reset
+              </button>
+              <button id="flow-btn-refresh" class="flow-action-btn" title="Recargar datos de la blockchain">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+                Recargar
+              </button>
+              <button id="flow-btn-clear-filters" class="flow-action-btn flow-btn-clear-filters" title="Limpiar todos los filtros">
+                Limpiar Filtros
+              </button>
+            </div>
+          </div>
+
+          <!-- Active Filter Chips Bar -->
+          <div id="flow-active-chips" class="flow-active-chips-bar" style="display: none;"></div>
+        </div>
+
+        <!-- D3 Canvas Container -->
+        <div class="flow-canvas-container" id="flow-canvas-container">
+          <svg id="flow-svg" class="flow-svg"></svg>
+          <div id="flow-tooltip" class="flow-tooltip" style="display: none;"></div>
+
+          <!-- Entity Legend -->
+          <div class="flow-legend floating-panel">
+            <div class="legend-header">Leyenda de Entidades</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#00CFFF; box-shadow:0 0 8px #00CFFF;"></span> Billetera Central</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#8B5CF6; box-shadow:0 0 8px #8B5CF6;"></span> Exchange (CEX)</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#10B981; box-shadow:0 0 8px #10B981;"></span> Protocolo DEX / AMM</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#F59E0B; box-shadow:0 0 8px #F59E0B;"></span> Puente Cross-Chain</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#EC4899; box-shadow:0 0 8px #EC4899;"></span> Mega Whale</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#38BDF8; box-shadow:0 0 8px #38BDF8;"></span> Billetera Verificada</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#64748B; box-shadow:0 0 8px #64748B;"></span> Billetera Desconocida</div>
+            <div class="legend-divider"></div>
+            <div class="legend-item"><span class="legend-arrow-line in"></span> Entrada (Inflow)</div>
+            <div class="legend-item"><span class="legend-arrow-line out"></span> Salida (Outflow)</div>
+          </div>
+
+          <!-- Loading Indicator -->
+          <div id="flow-loading" class="flow-loading-overlay" style="display: none;">
+            <div class="flow-spinner"></div>
+            <div class="flow-loading-title">Indexando Flujo de Fondos On-Chain...</div>
+            <div class="flow-loading-subtitle" id="flow-loading-status">Consultando TonAPI v2 Gateway</div>
+          </div>
+
+          <!-- Empty State -->
+          <div id="flow-empty" class="flow-empty-overlay" style="display: none;">
+            <div class="empty-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            </div>
+            <div class="empty-title" id="flow-empty-title">Sin Transacciones Observadas</div>
+            <div class="empty-desc" id="flow-empty-desc">Esta dirección no presenta transferencias registradas en el período seleccionado.</div>
+            <button class="btn-primary" id="flow-empty-action" style="margin-top:14px; padding:6px 16px; font-size:0.85rem; border-radius:6px;">Restablecer Filtros</button>
+          </div>
+        </div>
+
+        <!-- Right-Side Investigation Panel -->
+        <div id="flow-panel-right" class="flow-panel-right floating-panel" style="display: none;">
+          <!-- Wallet View -->
+          <div id="flow-panel-wallet" style="display: none;">
+            <div class="panel-header-row">
+              <div id="fp-wallet-badge" class="badge-ver badge-verified">BILLETERA INVESTIGADA</div>
+              <button id="fp-btn-close" class="btn-close-panel" title="Cerrar panel">&times;</button>
+            </div>
+
+            <div class="fp-wallet-name" id="fp-wallet-name">TON Foundation: Treasury</div>
+
+            <div class="fp-address-row">
+              <span class="data-font fp-address-text" id="fp-wallet-address">EQCD39...xqB2N</span>
+              <button id="fp-btn-copy-addr" class="btn-copy-pill" title="Copiar dirección completa">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>Copiar</span>
+              </button>
+            </div>
+
+            <!-- Balances -->
+            <div class="fp-section">
+              <div class="fp-section-title">Balances On-Chain</div>
+              <div class="fp-stat-grid">
+                <div class="fp-stat-card">
+                  <div class="fp-stat-label">Balance TON</div>
+                  <div class="fp-stat-val data-font text-cyan" id="fp-ton-balance">0 TON</div>
+                  <div class="fp-stat-sub" id="fp-ton-usd">≈ $0.00</div>
+                </div>
+                <div class="fp-stat-card">
+                  <div class="fp-stat-label">Holdings Jettons</div>
+                  <div class="fp-stat-val data-font" id="fp-jetton-count">0 Tokens</div>
+                  <div class="fp-stat-sub" id="fp-jettons-summary">Sin Jettons</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Flow Metrics -->
+            <div class="fp-section">
+              <div class="fp-section-title">Resumen de Flujos en la Ventana</div>
+              <div class="fp-flow-metrics">
+                <div class="fp-flow-row in">
+                  <span class="flow-label"><span class="dot-in"></span> Entradas Observadas:</span>
+                  <span class="flow-val data-font" id="fp-in-total">+0 TON (0 TX)</span>
+                </div>
+                <div class="fp-flow-row out">
+                  <span class="flow-label"><span class="dot-out"></span> Salidas Observadas:</span>
+                  <span class="flow-val data-font" id="fp-out-total">-0 TON (0 TX)</span>
+                </div>
+                <div class="fp-flow-row net">
+                  <span class="flow-label">Flujo Neto Observado:</span>
+                  <span class="flow-val data-font" id="fp-net-total">0 TON</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Traceability Timestamps -->
+            <div class="fp-section">
+              <div class="fp-section-title">Trazabilidad Temporal</div>
+              <div class="fp-meta-row">
+                <span>Primera Observada:</span>
+                <span class="data-font" id="fp-first-seen">--</span>
+              </div>
+              <div class="fp-meta-row">
+                <span>Última Observada:</span>
+                <span class="data-font" id="fp-last-seen">--</span>
+              </div>
+              <div class="fp-meta-row">
+                <span>Proveedor de Datos:</span>
+                <span id="fp-provider-info" style="color:var(--color-cyan); font-weight:600;">TonAPI v2 Gateway</span>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="fp-actions">
+              <button id="fp-btn-recenter" class="btn-primary w-full" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                Re-centrar Flujo Aquí
+              </button>
+              <button id="fp-btn-open-explorer" class="btn-secondary w-full" onclick="if (window.ANLGRAM_FLOW?.state?.selectedNode?.id) { window.location.href = `explorer.html?address=${encodeURIComponent(window.ANLGRAM_FLOW.state.selectedNode.id)}`; }" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                Abrir en Entity Explorer ↗
+              </button>
+              <a id="fp-link-tonviewer" href="#" target="_blank" rel="noopener noreferrer" class="fp-external-link">
+                Ver en Tonviewer ↗
+              </a>
+            </div>
+          </div>
+
+          <!-- Edge View -->
+          <div id="flow-panel-edge" style="display: none;">
+            <div class="panel-header-row">
+              <div class="badge-ver badge-verified" id="fp-edge-badge">FLUJO TRANSACCIONAL</div>
+              <button id="fp-btn-close-edge" class="btn-close-panel" title="Cerrar panel">&times;</button>
+            </div>
+
+            <div class="fp-wallet-name" id="fp-edge-title">Detalles de Transferencia</div>
+
+            <div class="fp-section">
+              <div class="fp-meta-row">
+                <span>Emisor (From):</span>
+                <span class="data-font fp-linkable-addr" id="fp-edge-from" title="Click para investigar">EQ...</span>
+              </div>
+              <div class="fp-meta-row">
+                <span>Receptor (To):</span>
+                <span class="data-font fp-linkable-addr" id="fp-edge-to" title="Click para investigar">EQ...</span>
+              </div>
+              <div class="fp-meta-row">
+                <span>Activo & Volumen:</span>
+                <span class="data-font text-cyan" id="fp-edge-amount">0 TON</span>
+              </div>
+              <div class="fp-meta-row">
+                <span>Valor Estimado USD:</span>
+                <span class="data-font" id="fp-edge-usd">--</span>
+              </div>
+              <div class="fp-meta-row">
+                <span>Fecha / Hora:</span>
+                <span class="data-font" id="fp-edge-time">--</span>
+              </div>
+            </div>
+
+            <!-- Grouped individual transfers -->
+            <div class="fp-section" id="fp-edge-grouped-section" style="display: none;">
+              <div class="fp-section-title" id="fp-edge-grouped-title">Transferencias Individuales</div>
+              <div class="fp-tx-list" id="fp-edge-tx-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Activity Timeline Panel -->
+        <div class="flow-timeline-panel floating-panel" id="flow-timeline-panel">
+          <div class="timeline-header">
+            <div class="timeline-title-row">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span class="timeline-title">Línea de Tiempo y Actividad Histórica On-Chain</span>
+              <span class="timeline-coverage-badge" id="flow-timeline-count">0 eventos observados</span>
+            </div>
+            <div class="timeline-date-range">
+              <span id="flow-timeline-start">Inicio</span>
+              <span class="range-arrow">&rarr;</span>
+              <span id="flow-timeline-end">Fin</span>
+            </div>
+          </div>
+
+          <!-- D3 Histogram Container with Brush Selector -->
+          <div class="timeline-histogram-wrap" id="flow-timeline-histogram">
+            <svg id="timeline-svg" class="timeline-svg"></svg>
+          </div>
+
+          <div class="timeline-footer">
+            <div class="timeline-legend">
+              <span class="t-legend-item"><span class="dot-in"></span> Entradas</span>
+              <span class="t-legend-item"><span class="dot-out"></span> Salidas</span>
+              <span class="t-legend-hint">Arrastra los controles del selector para filtrar el grafo interactivamente por ventana de tiempo</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      
       <!-- STATE A: Token Discovery & Index Catalog -->
-      <div id="view-list" class="view-list">
+      <div id="view-list" class="view-list" style="display: none;">
         <div class="list-container">
           <div class="list-header-row">
             <div>
@@ -609,5 +927,72 @@
 
   <!-- Rebuilt Universal Wallet Cluster Explorer Engine -->
   <script src="assets/js/wallet-cluster-explorer.js?v=2026.42"></script>
+  <!-- Arkham-Inspired Flow Visualizer Engine -->
+  <script src="assets/js/wallet-flow-visualizer.js?v=2026.45"></script>
+
+  <script>
+    // Tab switching between Flow Visualizer and Token Clusters
+    function switchVisualizerTab(targetTab) {
+      const viewFlow = document.getElementById('view-flow');
+      const viewList = document.getElementById('view-list');
+      const viewMap = document.getElementById('view-map');
+      const tabFlow = document.getElementById('tab-nav-flow');
+      const tabClusters = document.getElementById('tab-nav-clusters');
+
+      if (targetTab === 'flow') {
+        if (viewFlow) viewFlow.style.display = 'flex';
+        if (viewList) viewList.style.display = 'none';
+        if (viewMap) viewMap.style.display = 'none';
+        if (tabFlow) tabFlow.classList.add('active');
+        if (tabClusters) tabClusters.classList.remove('active');
+        window.dispatchEvent(new Event('resize'));
+      } else {
+        if (viewFlow) viewFlow.style.display = 'none';
+        if (viewList) viewList.style.display = 'block';
+        if (viewMap) viewMap.style.display = 'none';
+        if (tabFlow) tabFlow.classList.remove('active');
+        if (tabClusters) tabClusters.classList.add('active');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const tabFlow = document.getElementById('tab-nav-flow');
+      const tabClusters = document.getElementById('tab-nav-clusters');
+      if (tabFlow) tabFlow.onclick = () => switchVisualizerTab('flow');
+      if (tabClusters) tabClusters.onclick = () => switchVisualizerTab('clusters');
+
+      // Check deep link parameter
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('token') || params.get('contract') || params.get('cluster')) {
+        switchVisualizerTab('clusters');
+      } else {
+        switchVisualizerTab('flow');
+      }
+
+      // Intercept Global Header Search to support addresses and entities in Flow Visualizer
+      const tokenSearchInput = document.getElementById('token-search-input');
+      if (tokenSearchInput) {
+        tokenSearchInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            const query = tokenSearchInput.value.trim();
+            if (!query) return;
+            const isAddress = (query.startsWith('EQ') || query.startsWith('UQ') || query.startsWith('0:') || query.startsWith('kQ')) && query.length >= 24;
+            const matchedRegistry = (window.VERIFIED_TON_REGISTRY || []).find(it => 
+              (it.name && it.name.toLowerCase() === query.toLowerCase()) ||
+              (it.address && it.address.toLowerCase() === query.toLowerCase())
+            );
+
+            if (isAddress || matchedRegistry) {
+              const targetAddr = matchedRegistry ? matchedRegistry.address : query;
+              switchVisualizerTab('flow');
+              if (window.ANLGRAM_FLOW && typeof window.ANLGRAM_FLOW.fetchWalletFlowData === 'function') {
+                window.ANLGRAM_FLOW.fetchWalletFlowData(targetAddr);
+              }
+            }
+          }
+        });
+      }
+    });
+  </script>
 </body>
 </html>
