@@ -15,7 +15,40 @@
   <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/tma-mobile.css?v=2026.50"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
-  <link rel="stylesheet" href="assets/css/explorer-stitch.css?v=2026.50"/>
+  <link rel="stylesheet" href="assets/css/explorer-stitch.css?v=2026.52"/>
+  <style>
+    /* Absolute Unconstrained Natural Scrolling Guarantee */
+    html {
+      height: auto !important;
+      min-height: 100% !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      scroll-behavior: auto !important;
+    }
+    body.stitch-theme {
+      height: auto !important;
+      min-height: 100vh !important;
+      overflow-x: hidden !important;
+      overflow-y: visible !important;
+      background-color: var(--surface-canvas, #070B13) !important;
+    }
+    body.stitch-theme .app-shell,
+    .app-shell.stitch-shell {
+      display: block !important;
+      height: auto !important;
+      min-height: 100vh !important;
+      overflow-x: hidden !important;
+      overflow-y: visible !important;
+      background: var(--surface-canvas, #070B13) !important;
+      position: relative !important;
+    }
+    .stitch-main-viewport {
+      height: auto !important;
+      min-height: 100vh !important;
+      overflow-x: hidden !important;
+      overflow-y: visible !important;
+    }
+  </style>
 
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"/>
   <link rel="shortcut icon" href="favicon.ico?v=2"/>
@@ -92,7 +125,7 @@
   </aside>
 
   <!-- Main Viewport -->
-  <main class="stitch-main-viewport">
+  <main class="stitch-main-viewport" style="min-height:100vh; height:auto; overflow-x:hidden; overflow-y:visible;">
     <!-- Top Fixed Command Bar -->
     <header class="stitch-topbar">
       <!-- Left: Telemetry Tickers -->
