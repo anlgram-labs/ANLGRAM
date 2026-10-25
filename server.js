@@ -27,6 +27,20 @@ const proxyCache = new Map();
 // In-memory rate limiting map per client IP (max 120 requests / 60 seconds)
 const clientRateMap = new Map();
 
+const ALLOWED_PROXY_ROUTES = [
+  /^\/accounts\/[a-zA-Z0-9_\-\:]+$/,
+  /^\/accounts\/[a-zA-Z0-9_\-\:]+\/jettons$/,
+  /^\/accounts\/[a-zA-Z0-9_\-\:]+\/nfts$/,
+  /^\/accounts\/[a-zA-Z0-9_\-\:]+\/events$/,
+  /^\/accounts\/search$/,
+  /^\/rates$/,
+  /^\/jettons\/[a-zA-Z0-9_\-\:]+$/,
+  /^\/jettons\/[a-zA-Z0-9_\-\:]+\/holders$/,
+  /^\/blockchain\/transactions\/[a-fA-F0-9]+$/,
+  /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/transactions$/,
+  /^\/blockchain\/masterchain-head$/
+];
+
 function checkClientRateLimit(clientIp) {
   const now = Date.now();
   let record = clientRateMap.get(clientIp);
@@ -52,6 +66,12 @@ const server = http.createServer((req, res) => {
 
   // Handle secure TonAPI proxy endpoint to keep API keys server-side
   if (cleanUrl.startsWith('/api/ton/')) {
+    if (req.method !== 'GET' && req.method !== 'OPTIONS') {
+      res.writeHead(405, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+      res.end(JSON.stringify({ error: 'Method Not Allowed', message: 'Only GET requests are permitted on this proxy' }));
+      return;
+    }
+
     const clientIp = req.socket.remoteAddress || 'local';
     if (!checkClientRateLimit(clientIp)) {
       res.writeHead(429, {
@@ -65,6 +85,21 @@ const server = http.createServer((req, res) => {
 
     let subPath = path.posix.normalize('/' + cleanUrl.slice('/api/ton'.length));
     if (subPath.startsWith('/v2/')) { subPath = subPath.slice(3); }
+
+    // Healthcheck endpoint
+    if (subPath === '/' || subPath === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+      res.end(JSON.stringify({ status: 'ok', service: 'ANLGRAM TonAPI Proxy', authenticated: !!process.env.TONAPI_KEY }));
+      return;
+    }
+
+    // Whitelist check
+    const isWhitelisted = ALLOWED_PROXY_ROUTES.some(p => p.test(subPath));
+    if (!isWhitelisted) {
+      res.writeHead(403, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+      res.end(JSON.stringify({ error: 'Forbidden', message: 'The requested path is not permitted by this proxy' }));
+      return;
+    }
     const queryString = req.url.includes('?') ? '?' + req.url.split('?').slice(1).join('?') : '';
     const cacheKey = `${subPath}${queryString}`;
     const now = Date.now();

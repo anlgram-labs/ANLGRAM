@@ -469,17 +469,35 @@ function friendlyToRaw(friendlyAddr) {
 
 /**
  * Helper to make API requests with timeout & error handling
- * Gracefully tries server-side proxy `/api/ton` first to leverage server TONAPI_KEY if available,
+ * Gracefully tries server-side proxy (Cloudflare Worker or `/api/ton`) first to leverage server TONAPI_KEY if available,
  * then falls back directly to public TonAPI endpoint with exponential backoff on HTTP 429.
  */
 const _apiCache = new Map();
+let _activeWalletRequestId = 0;
+let _lastTonApiSource = 'unknown';
 
 function clearApiCache() {
   _apiCache.clear();
 }
 
+function setActiveWalletQuery(addr) {
+  _activeWalletRequestId++;
+  return _activeWalletRequestId;
+}
+
+function isWalletQueryActive(reqId) {
+  return reqId === _activeWalletRequestId;
+}
+
+function getTonApiSource() {
+  return _lastTonApiSource;
+}
+
 if (typeof window !== 'undefined') {
   window.clearApiCache = clearApiCache;
+  window.setActiveWalletQuery = setActiveWalletQuery;
+  window.isWalletQueryActive = isWalletQueryActive;
+  window.getTonApiSource = getTonApiSource;
 }
 
 async function fetchTonApi(endpoint) {
@@ -494,26 +512,43 @@ async function fetchTonApi(endpoint) {
     return cached.data;
   }
 
-  const isWebOrigin = typeof window !== 'undefined' && window.location && (window.location.protocol === 'http:' || window.location.protocol === 'https:') && !window.location.hostname.includes('tonapi.io');
+  // Determine proxy base URL: prioritize configured Cloudflare Worker / API endpoint
+  let proxyBase = '/api/ton';
+  if (typeof window !== 'undefined') {
+    if (window.ANLGRAM_TON_PROXY_URL) {
+      proxyBase = window.ANLGRAM_TON_PROXY_URL.replace(/\/+$/, '');
+    } else if (window.ANLGRAM_CONFIG && window.ANLGRAM_CONFIG.TON_PROXY_URL) {
+      proxyBase = window.ANLGRAM_CONFIG.TON_PROXY_URL.replace(/\/+$/, '');
+    }
+  }
+
+  const isWebOrigin = typeof window !== 'undefined' && window.location && (window.location.protocol === 'http:' || window.location.protocol === 'https:');
   
-  // 1. Try server proxy first if served over HTTP/HTTPS on current origin
+  // 1. Try secure proxy first (Worker or server-side proxy)
   if (isWebOrigin) {
     let attempts = 0;
     const maxAttempts = 3;
-    let delay = 500;
+    let delay = 600;
 
     while (attempts < maxAttempts) {
       attempts++;
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 9000);
-        const localResp = await fetch(`/api/ton${endpoint}`, { signal: controller.signal });
+        const proxyUrl = proxyBase.startsWith('http') ? `${proxyBase}${endpoint}` : `${proxyBase}${endpoint}`;
+        const localResp = await fetch(proxyUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
 
+        // Do not retry permanent client errors (400, 401, 403, 404)
+        if (localResp.status === 400 || localResp.status === 401 || localResp.status === 403 || localResp.status === 404) {
+          break; // Fallback to direct or report null
+        }
+
         if (localResp.status === 429) {
+          const retryAfterSec = Number(localResp.headers.get('Retry-After')) || (delay / 1000);
           if (attempts < maxAttempts) {
-            console.warn(`[TonAPI Proxy] Rate limit reached. Retrying attempt ${attempts}/${maxAttempts}...`);
-            await new Promise(r => setTimeout(r, delay));
+            console.warn(`[TonAPI Proxy] Rate limit (429). Retrying after ${retryAfterSec}s...`);
+            await new Promise(r => setTimeout(r, Math.max(delay, retryAfterSec * 1000)));
             delay *= 2;
             continue;
           }
@@ -521,6 +556,7 @@ async function fetchTonApi(endpoint) {
 
         if (localResp.ok) {
           const json = await localResp.json();
+          _lastTonApiSource = 'proxy';
           _apiCache.set(endpoint, { data: json, timestamp: now });
           return json;
         }
@@ -545,6 +581,11 @@ async function fetchTonApi(endpoint) {
       const response = await fetch(`${TONAPI_BASE}${endpoint}`, { signal: controller.signal });
       clearTimeout(timeoutId);
 
+      // Do not retry 400, 401, 403, 404
+      if (response.status === 400 || response.status === 401 || response.status === 403 || response.status === 404) {
+        return null;
+      }
+
       if (response.status === 429) {
         if (directAttempts < maxDirect) {
           console.warn(`[TonAPI Direct] Rate limit (429). Retrying...`);
@@ -559,6 +600,7 @@ async function fetchTonApi(endpoint) {
         return null;
       }
       const json = await response.json();
+      _lastTonApiSource = 'direct_public';
       _apiCache.set(endpoint, { data: json, timestamp: now });
       return json;
     } catch (error) {

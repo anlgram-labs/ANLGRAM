@@ -1,0 +1,11 @@
+name = "anlgram-ton-proxy"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+
+# Observability
+[observability]
+enabled = true
+
+# NOTE: Do NOT place TONAPI_KEY here.
+# Deploy secrets securely using:
+# wrangler secret put TONAPI_KEY
