@@ -57,7 +57,7 @@ html {
   min-height: 100% !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
-  scroll-behavior: smooth;
+  scroll-behavior: auto !important;
 }
 
 body.stitch-theme {
@@ -71,7 +71,7 @@ body.stitch-theme {
   min-height: 100vh !important;
   height: auto !important;
   overflow-x: hidden !important;
-  overflow-y: auto !important;
+  overflow-y: visible !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
