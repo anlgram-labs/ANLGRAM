@@ -426,8 +426,15 @@
     const UIClass = SDK?.TonConnectUI || SDK;
     if (typeof UIClass === 'function') {
       try {
-        // Always use the public HTTPS manifest so mobile wallets (Tonkeeper, etc.) can fetch it via cellular/Wi-Fi
-        const manifestUrl = 'https://anlgram-labs.github.io/ANLGRAM/tonconnect-manifest.json';
+        // Always use valid HTTPS manifest matching the current origin to prevent CORS/origin mismatch in TON Connect
+        let manifestUrl = 'https://anlgram.com/tonconnect-manifest.json';
+        if (typeof window !== 'undefined') {
+          if (window.location.protocol === 'https:') {
+            manifestUrl = `${window.location.origin}/tonconnect-manifest.json`;
+          } else if (window.location.hostname.includes('github.io')) {
+            manifestUrl = 'https://anlgram-labs.github.io/ANLGRAM/tonconnect-manifest.json';
+          }
+        }
 
         tonConnectUI = new UIClass({
           manifestUrl: manifestUrl,

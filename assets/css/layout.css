@@ -687,3 +687,107 @@ html.device-phone .main-content {
 @media (max-width: 420px) {
   #anlgramDevicePill { padding: 3px 6px !important; font-size: 9px !important; }
 }
+
+/* ── Telegram Mini App (TMA) Native Adaptations ───────────────────────────── */
+body.tma-active {
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0)) !important;
+  min-height: 100vh;
+  min-height: var(--tg-viewport-height, 100vh);
+  overscroll-behavior-y: none;
+}
+
+body.tma-active .app-header,
+body.tma-active .topbar {
+  padding-top: calc(env(safe-area-inset-top, 0) + 6px);
+}
+
+/* Unified TMA & Mobile Bottom Navigation Bar */
+#anlgram-tma-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(3, 7, 18, 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid rgba(0, 240, 255, 0.22);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.85), 0 0 16px rgba(0, 240, 255, 0.1);
+  z-index: 999999;
+  display: none;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 4px calc(env(safe-area-inset-bottom, 0));
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  #anlgram-tma-nav {
+    display: flex !important;
+  }
+}
+
+body.tma-active #anlgram-tma-nav {
+  display: flex !important;
+}
+
+.tma-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: #64748b;
+  text-decoration: none !important;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  padding: 6px 10px;
+  border-radius: 10px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex: 1;
+  text-align: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tma-nav-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  transition: transform 0.2s ease, stroke 0.2s ease;
+}
+
+.tma-nav-btn:hover {
+  color: #94a3b8;
+}
+
+.tma-nav-btn.active {
+  color: #00f0ff;
+  background: rgba(0, 240, 255, 0.08);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+}
+
+.tma-nav-btn.active svg {
+  stroke: #00f0ff;
+  transform: translateY(-1px) scale(1.1);
+}
+
+.tma-user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(0, 136, 204, 0.15);
+  border: 1px solid rgba(0, 207, 255, 0.3);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #00f0ff;
+  font-family: var(--font-mono, monospace);
+}
+
+

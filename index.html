@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ANLGRAM — Powered by Community. Built on TON.</title>
   <meta name="description" content="ANLGRAM is the premier memecoin built on the TON blockchain. Community driven, transparent, and ultra-fast."/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io https://telegram.org; object-src 'none'; base-uri 'self';"/>
   <meta property="og:title" content="ANLGRAM - The Memecoin of TON"/>
   <meta property="og:description" content="Powered by Community. Built on TON."/>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"/>
@@ -16,6 +16,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
+  <!-- Telegram Mini App (TMA) Native SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="assets/js/telegram-mini-app.js"></script>
   <script src="assets/js/security.js"></script>
   <style>
     /* ── Web3 Landing Specific ────────────────────── */
@@ -382,13 +385,13 @@
   </a>
 
   <div class="nav-links">
-    <a href="#about" class="nav-link">About</a>
-    <a href="#tokenomics" class="nav-link">Tokenomics</a>
-    <a href="#roadmap" class="nav-link">Roadmap</a>
-    <a href="#buy" class="nav-link">How to Buy</a>
-    <a href="dashboard.html" class="nav-link">Platform Demo</a>
+    <a href="explorer.html" class="nav-link" style="color:var(--neon-cyan);font-weight:700;">🔍 Explorer</a>
+    <a href="visualizer.html" class="nav-link">🌐 Flow Visualizer</a>
     <a href="staking.html" class="nav-link" style="color:var(--neon-cyan);font-weight:700;">⚡ Staking</a>
-    <a href="profit-calculator.html" class="nav-link" style="color:var(--cyan);font-weight:600;">ProfitLab</a>
+    <a href="intel-exchange.html" class="nav-link">📊 Intel Hub</a>
+    <a href="profit-calculator.html" class="nav-link">ProfitLab</a>
+    <a href="#tokenomics" class="nav-link">Tokenomics</a>
+    <a href="#buy" class="nav-link">How to Buy</a>
   </div>
 
   <div class="nav-cta">
@@ -408,7 +411,8 @@
     
     <div class="hero-eyebrow">
       <span class="dot-live"></span>
-      The Premier TON Memecoin
+      <span>The Premier TON Intelligence & Ecosystem Hub</span>
+      <span class="tma-user-greeting" id="tma-user-pill" style="margin-left:8px;"></span>
     </div>
 
     <h1 class="hero-title">
@@ -467,6 +471,102 @@
   </div>
 </section>
 
+<!-- ── On-Chain Intelligence Suite (DApp Hub) ─────────── -->
+<section id="ecosystem" class="section-container" style="padding-top:40px;">
+  <div class="section-header">
+    <div class="badge badge-accent" style="margin-bottom:12px; display:inline-block; font-size:11px; padding:4px 12px; border-radius:20px; background:rgba(0,240,255,0.1); border:1px solid rgba(0,240,255,0.3); color:var(--neon-cyan);">ANLGRAM ECOSYSTEM</div>
+    <h2>On-Chain Intelligence Applications</h2>
+    <p>Explore institutional-grade analytics, interactive flow mapping, liquid staking, and real-time market data on TON.</p>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
+    <!-- Explorer -->
+    <a href="explorer.html" class="stat-card" style="text-align:left; text-decoration:none; display:flex; flex-direction:column; justify-content:space-between; border:1px solid rgba(0,240,255,0.25); background:linear-gradient(180deg, rgba(10,13,20,0.8) 0%, rgba(3,7,18,0.95) 100%);">
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div style="width:40px; height:40px; border-radius:10px; background:rgba(0,240,255,0.1); border:1px solid rgba(0,240,255,0.3); display:flex; align-items:center; justify-content:center; color:var(--neon-cyan);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </div>
+          <span style="font-size:11px; font-weight:700; color:var(--neon-cyan); font-family:var(--font-mono);">EXPLORER</span>
+        </div>
+        <h3 style="font-size:18px; font-weight:700; color:#fff; margin-bottom:8px;">Entity Explorer</h3>
+        <p style="font-size:13px; color:var(--text-secondary); line-height:1.5;">Investigate wallets, Jettons, confirmed swaps, bridges, and explainable anomaly signals with live TonAPI data.</p>
+      </div>
+      <div style="margin-top:20px; font-size:13px; font-weight:700; color:var(--neon-cyan); display:flex; align-items:center; gap:6px;">
+        Launch Explorer →
+      </div>
+    </a>
+
+    <!-- Flow Visualizer -->
+    <a href="visualizer.html" class="stat-card" style="text-align:left; text-decoration:none; display:flex; flex-direction:column; justify-content:space-between; border:1px solid rgba(0,136,204,0.35); background:linear-gradient(180deg, rgba(10,13,20,0.8) 0%, rgba(3,7,18,0.95) 100%);">
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div style="width:40px; height:40px; border-radius:10px; background:rgba(0,136,204,0.1); border:1px solid rgba(0,136,204,0.3); display:flex; align-items:center; justify-content:center; color:#38bdf8;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="5" cy="18" r="2"/><path d="M10 10.5 6.5 7.5M14 10.5l3.5-3M10 13.5l-3.5 3M14 13.5l3.5 3"/></svg>
+          </div>
+          <span style="font-size:11px; font-weight:700; color:#38bdf8; font-family:var(--font-mono);">ARKHAM-STYLE</span>
+        </div>
+        <h3 style="font-size:18px; font-weight:700; color:#fff; margin-bottom:8px;">Flow Visualizer</h3>
+        <p style="font-size:13px; color:var(--text-secondary); line-height:1.5;">Map on-chain fund flows, interactive counterparty topologies, and token cluster liquidity networks.</p>
+      </div>
+      <div style="margin-top:20px; font-size:13px; font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+        Open Flow Visualizer →
+      </div>
+    </a>
+
+    <!-- Staking Center -->
+    <a href="staking.html" class="stat-card" style="text-align:left; text-decoration:none; display:flex; flex-direction:column; justify-content:space-between; border:1px solid rgba(34,197,94,0.35); background:linear-gradient(180deg, rgba(10,13,20,0.8) 0%, rgba(3,7,18,0.95) 100%);">
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div style="width:40px; height:40px; border-radius:10px; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); display:flex; align-items:center; justify-content:center; color:#22c55e;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <span style="font-size:11px; font-weight:700; color:#22c55e; font-family:var(--font-mono);">0.35% ESCROW</span>
+        </div>
+        <h3 style="font-size:18px; font-weight:700; color:#fff; margin-bottom:8px;">Staking Center</h3>
+        <p style="font-size:13px; color:var(--text-secondary); line-height:1.5;">1-Vault-per-deposit isolated liquid staking with Tonstakers protocol. Verifiable on-chain escrow & zero fee on rewards.</p>
+      </div>
+      <div style="margin-top:20px; font-size:13px; font-weight:700; color:#22c55e; display:flex; align-items:center; gap:6px;">
+        Enter Staking Hub →
+      </div>
+    </a>
+
+    <!-- Intel Hub -->
+    <a href="intel-exchange.html" class="stat-card" style="text-align:left; text-decoration:none; display:flex; flex-direction:column; justify-content:space-between; border:1px solid rgba(168,85,247,0.35); background:linear-gradient(180deg, rgba(10,13,20,0.8) 0%, rgba(3,7,18,0.95) 100%);">
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div style="width:40px; height:40px; border-radius:10px; background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.3); display:flex; align-items:center; justify-content:center; color:#a855f7;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <span style="font-size:11px; font-weight:700; color:#a855f7; font-family:var(--font-mono);">25+ ASSETS</span>
+        </div>
+        <h3 style="font-size:18px; font-weight:700; color:#fff; margin-bottom:8px;">Exchange Intel Hub</h3>
+        <p style="font-size:13px; color:var(--text-secondary); line-height:1.5;">Institutional-grade crypto terminal, multi-source price tracking, verified Web3 directory, and market sync.</p>
+      </div>
+      <div style="margin-top:20px; font-size:13px; font-weight:700; color:#a855f7; display:flex; align-items:center; gap:6px;">
+        Access Market Terminal →
+      </div>
+    </a>
+
+    <!-- ProfitLab -->
+    <a href="profit-calculator.html" class="stat-card" style="text-align:left; text-decoration:none; display:flex; flex-direction:column; justify-content:space-between; border:1px solid rgba(245,158,11,0.35); background:linear-gradient(180deg, rgba(10,13,20,0.8) 0%, rgba(3,7,18,0.95) 100%);">
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div style="width:40px; height:40px; border-radius:10px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); display:flex; align-items:center; justify-content:center; color:#f59e0b;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/></svg>
+          </div>
+          <span style="font-size:11px; font-weight:700; color:#f59e0b; font-family:var(--font-mono);">PROFITLAB</span>
+        </div>
+        <h3 style="font-size:18px; font-weight:700; color:#fff; margin-bottom:8px;">ProfitLab Calculator</h3>
+        <p style="font-size:13px; color:var(--text-secondary); line-height:1.5;">Modern crypto profit, fee impact, and break-even scenario simulator with live market price pre-fills.</p>
+      </div>
+      <div style="margin-top:20px; font-size:13px; font-weight:700; color:#f59e0b; display:flex; align-items:center; gap:6px;">
+        Simulate Returns →
+      </div>
+    </a>
+  </div>
+</section>
+
 <!-- ── Tokenomics ─────────────────────────────────────── -->
 <section id="tokenomics" class="section-container">
   <div class="section-header">
@@ -511,9 +611,9 @@
     </div>
     
     <div class="audit-links">
-      <a href="#" class="audit-badge">🔍 View on Tonviewer</a>
-      <a href="#" class="audit-badge">💧 STON.fi Pool</a>
-      <a href="#" class="audit-badge">🌪 DeDust Pool</a>
+      <a href="https://tonviewer.com/UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd" target="_blank" rel="noopener" class="audit-badge">🔍 View on Tonviewer</a>
+      <a href="https://app.ston.fi/" target="_blank" rel="noopener" class="audit-badge">💧 STON.fi Pool</a>
+      <a href="https://dedust.io/" target="_blank" rel="noopener" class="audit-badge">🌪 DeDust Pool</a>
     </div>
   </div>
 </section>

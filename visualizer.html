@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ANLGRAM | Wallet Cluster Explorer</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.ston.fi https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io; object-src 'none'; base-uri 'self';"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.ston.fi https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io https://telegram.org; object-src 'none'; base-uri 'self';"/>
   
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
@@ -16,6 +16,10 @@
   <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/gram-terminal-v2.css?v=2026.42"/>
   
+  <!-- Telegram Mini App (TMA) Native SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="assets/js/telegram-mini-app.js"></script>
+
   <!-- D3.js Visualization Engine -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
   
@@ -128,7 +132,7 @@
           <span class="dot-live"></span>
           <span>Indexer: Live · Ready</span>
         </div>
-        <button class="btn-connect">Connect Wallet</button>
+        <button id="topbarWalletBtn" class="btn-connect connect-wallet-btn" data-wallet-btn="true">Connect Wallet</button>
       </div>
     </header>
 
@@ -994,5 +998,7 @@
       }
     });
   </script>
+  <script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
+  <script src="assets/js/wallet-connect.js?v=2026.45"></script>
 </body>
 </html>

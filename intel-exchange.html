@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ANLGRAM | Intel Exchange & Institutional Web3 Terminal</title>
   <meta name="description" content="Institutional-grade crypto intelligence, market data terminal, and verified Web3 directory for TON and global markets." />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob: https://t0.gstatic.com https://t1.gstatic.com https://t2.gstatic.com https://t3.gstatic.com https://www.google.com; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io https://s.tradingview.com https://*.tradingview.com; object-src 'none'; base-uri 'self';"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob: https://t0.gstatic.com https://t1.gstatic.com https://t2.gstatic.com https://t3.gstatic.com https://www.google.com; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io https://s.tradingview.com https://*.tradingview.com https://telegram.org; object-src 'none'; base-uri 'self';"/>
   
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
@@ -16,6 +16,10 @@
   <!-- Shared Design System & Layout -->
   <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
+
+  <!-- Telegram Mini App (TMA) Native SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="assets/js/telegram-mini-app.js"></script>
 
   <!-- Shared Security, Asset Registry & Data Engine -->
   <script src="assets/js/security.js"></script>

@@ -1,11 +1,11 @@
 {
-  "name": "ANLGRAM TON Staking Intelligence Center",
-  "short_name": "ANLGRAM Staking",
-  "description": "Enterprise-grade TON Staking Intelligence & Liquid Staking Hub",
-  "start_url": "./staking.html",
+  "name": "ANLGRAM On-Chain Intelligence",
+  "short_name": "ANLGRAM",
+  "description": "Institutional-grade TON blockchain intelligence, flow visualizer, staking, and market terminal",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0b0e14",
-  "theme_color": "#0088cc",
+  "background_color": "#030712",
+  "theme_color": "#00f0ff",
   "orientation": "any",
   "icons": [
     {
