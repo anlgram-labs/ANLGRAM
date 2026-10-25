@@ -1,0 +1,75 @@
+{
+  "timestamp": "2026-10-25T17:04:06.631Z",
+  "network": "TON Mainnet",
+  "provider": "TonAPI v2 Public Node",
+  "categories": {
+    "multi_message_dex_operation": {
+      "verified": true,
+      "category": "Operación con comisiones y mensajes internos múltiples",
+      "txHash": "6ce3b2a18af0738cf87d2890e093b355faddb1381dabe9b7fae8654f26a48813",
+      "timestamp": 1792947840,
+      "dateUtc": "2026-10-25T17:04:00.000Z",
+      "actionCount": 1,
+      "actions": [
+        "JettonSwap"
+      ],
+      "totalFeesNanoton": -288533949328,
+      "totalFeesTon": -288.533949328,
+      "classifiedType": "SELL",
+      "dex": "STON.fi DEX",
+      "tokenSymbol": "USD₮",
+      "counterAsset": "TON",
+      "tokenAmount": 366.05847,
+      "counterAmount": 288.533949328,
+      "formula": "Fee = event.total_fees / 10^9 (sin doble cómputo en trazas internas)"
+    },
+    "trade_with_loss": {
+      "verified": true,
+      "category": "Operación con pérdida realizada",
+      "txHash": "2111113ba9177fc64aecde629ca7f3d787a434b25d39f2bfda82d4913f0603d4",
+      "timestamp": 1792947650,
+      "dateUtc": "2026-10-25T17:00:50.000Z",
+      "tokenSymbol": "ATF",
+      "amountSold": 4058.660862694,
+      "costBasisUsd": 5.8617,
+      "grossProceedsUsd": 5.7877,
+      "feeUsd": 0.1575,
+      "netProceedsUsd": 5.6302,
+      "realizedPnlUsd": -0.2315,
+      "roiPct": -3.9494,
+      "formula": "Realized PnL = Net Proceeds ($5.6302) - FIFO Cost Basis ($5.8617) = $-0.2315"
+    },
+    "jetton_to_jetton_swap": {
+      "verified": true,
+      "category": "Swap directo entre dos Jettons",
+      "txHash": "14af6dfc37cdc89f1256ff9269eac37a8a60d1a851f3a08f25de3f3803bf7a97",
+      "timestamp": 1792947804,
+      "dateUtc": "2026-10-25T17:03:24.000Z",
+      "tokenOut": "LOOT",
+      "amountOut": 438.28845405,
+      "counterAssetIn": "ATF",
+      "counterAmountIn": 8003,
+      "dex": "STON.fi DEX",
+      "formula": "Desinversión de Token A e inversión en Token B con contravalor registrado"
+    },
+    "trade_with_profit": {
+      "verified": false,
+      "reason": "No observada en la ventana de 30 eventos de esta wallet (todas las ventas cerradas tuvieron retorno negativo o coste de adquisición desconocido previo a la ventana)"
+    },
+    "partial_sale": {
+      "verified": false,
+      "reason": "No observada en esta ventana (las 4 ventas evaluables consumieron el saldo íntegro de sus lotes correspondientes)"
+    }
+  },
+  "summary": {
+    "totalEventsIndexed": 30,
+    "totalClosedTradesDetected": 8,
+    "evaluableTradesCount": 6,
+    "uncalculableTradesCount": 2,
+    "accountedRatioPct": 75,
+    "winRatePct": 0,
+    "totalRealizedPnlUsd": -13.8178,
+    "totalFeesUsd": 4.095,
+    "disclaimer": "6 de 8 operaciones contabilizadas (2 ventas excluidas honestamente del Win Rate por coste no documentado)."
+  }
+}

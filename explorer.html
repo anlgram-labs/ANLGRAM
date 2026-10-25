@@ -59,6 +59,7 @@
   <script src="assets/js/security.js"></script>
   <script src="assets/js/api.js?v=2026.58"></script>
   <script src="assets/js/asset-registry.js?v=2026.45"></script>
+  <script src="assets/js/wallet-intelligence-engine.js?v=2026.60"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body class="stitch-theme">
@@ -428,6 +429,131 @@
           </div>
           <div id="txCommentRow" style="margin-top:10px; padding:8px 12px; background:rgba(0,0,0,0.3); border-radius:4px; font-size:11px; color:var(--accent-electric); display:none;">
             <strong>Comentario / Memo:</strong> <span id="txCommentText"></span>
+          </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- INSTITUTIONAL FINANCIAL DASHBOARD (DASHBOARD FINANCIERO V2)               -->
+        <!-- ========================================================================= -->
+        <div id="financialDashboardSection" class="financial-dashboard-grid">
+          <!-- Card 1: Valor Estimado del Portafolio -->
+          <div class="fin-stat-card accent-cyan">
+            <div class="fin-stat-header">
+              <span class="fin-stat-title">
+                <span class="material-symbols-outlined" style="font-size:15px; color:var(--accent-electric);">account_balance_wallet</span>
+                Valor Posiciones
+              </span>
+              <span class="fin-stat-badge" id="dashPortfolioBadge">USD</span>
+            </div>
+            <div class="fin-stat-value" id="dashPortfolioVal">$0.00</div>
+            <div class="fin-stat-meta">
+              <span id="dashPortfolioCoverage">Cobertura: 100% verificada</span>
+            </div>
+          </div>
+
+          <!-- Card 2: PnL Realizado Acumulado -->
+          <div class="fin-stat-card accent-positive" id="cardRealizedPnl">
+            <div class="fin-stat-header">
+              <span class="fin-stat-title">
+                <span class="material-symbols-outlined" style="font-size:15px; color:var(--flow-positive);">payments</span>
+                PnL Realizado
+              </span>
+              <span class="fin-stat-badge">FIFO</span>
+            </div>
+            <div class="fin-stat-value" id="dashRealizedPnl">$0.00</div>
+            <div class="fin-stat-meta">
+              <span id="dashRealizedMeta">Ventas evaluables con coste</span>
+            </div>
+          </div>
+
+          <!-- Card 3: PnL No Realizado (Latente) -->
+          <div class="fin-stat-card accent-neutral" id="cardUnrealizedPnl">
+            <div class="fin-stat-header">
+              <span class="fin-stat-title">
+                <span class="material-symbols-outlined" style="font-size:15px;">trending_up</span>
+                PnL No Realizado
+              </span>
+              <span class="fin-stat-badge">Latente</span>
+            </div>
+            <div class="fin-stat-value" id="dashUnrealizedPnl">—</div>
+            <div class="fin-stat-meta">
+              <span id="dashUnrealizedMeta">Posiciones abiertas con coste</span>
+            </div>
+          </div>
+
+          <!-- Card 4: PnL Neto Estimado -->
+          <div class="fin-stat-card accent-cyan" id="cardNetPnl">
+            <div class="fin-stat-header">
+              <span class="fin-stat-title">
+                <span class="material-symbols-outlined" style="font-size:15px; color:var(--accent-electric);">calculate</span>
+                PnL Neto Estimado
+              </span>
+              <span class="fin-stat-badge" id="dashNetBadge">Neto</span>
+            </div>
+            <div class="fin-stat-value" id="dashNetPnl">—</div>
+            <div class="fin-stat-meta">
+              <span id="dashNetMeta">Realizado + No Realizado - Fees</span>
+            </div>
+          </div>
+
+          <!-- Card 5: Rentabilidad % (ROI) -->
+          <div class="fin-stat-card accent-positive" id="cardRoiPct">
+            <div class="fin-stat-header">
+              <span class="fin-stat-title">
+                <span class="material-symbols-outlined" style="font-size:15px;">percent</span>
+                Rentabilidad %
+              </span>
+              <span class="fin-stat-badge">ROI</span>
+            </div>
+            <div class="fin-stat-value" id="dashRoiPct">—</div>
+            <div class="fin-stat-meta">
+              <span id="dashRoiMeta">Base de coste ponderada</span>
+            </div>
+          </div>
+
+          <!-- Card 6: Operaciones DEX Identificadas -->
+          <div class="fin-stat-card accent-neutral">
+            <div class="fin-stat-header">
+              <span class="fin-stat-title">
+                <span class="material-symbols-outlined" style="font-size:15px;">swap_horiz</span>
+                Operaciones DEX
+              </span>
+              <span class="fin-stat-badge" id="dashDexCoverageBadge">DEX</span>
+            </div>
+            <div class="fin-stat-value" id="dashDexTradesCount">0</div>
+            <div class="fin-stat-meta">
+              <span id="dashDexMeta">STON.fi & DeDust auditadas</span>
+            </div>
+          </div>
+
+          <!-- Card 7: Comisiones Totales Identificadas -->
+          <div class="fin-stat-card accent-negative">
+            <div class="fin-stat-header">
+              <span class="fin-stat-title">
+                <span class="material-symbols-outlined" style="font-size:15px; color:var(--flow-negative);">local_gas_station</span>
+                Comisiones de Red
+              </span>
+              <span class="fin-stat-badge">Gas + DEX</span>
+            </div>
+            <div class="fin-stat-value" id="dashTotalFees">$0.00</div>
+            <div class="fin-stat-meta">
+              <span id="dashTotalFeesTon">0 TON en gas</span>
+            </div>
+          </div>
+
+          <!-- Card 8: Cobertura de Coste de Adquisición -->
+          <div class="fin-stat-card accent-cyan">
+            <div class="fin-stat-header">
+              <span class="fin-stat-title">
+                <span class="material-symbols-outlined" style="font-size:15px; color:var(--accent-electric);">verified_user</span>
+                Cobertura de Coste
+              </span>
+              <span class="fin-stat-badge" id="dashCoverageLevelBadge">Auditoría</span>
+            </div>
+            <div class="fin-stat-value" id="dashCostCoverage">0%</div>
+            <div class="fin-stat-meta">
+              <span id="dashCostCoverageMeta">Posiciones con trazabilidad</span>
+            </div>
           </div>
         </div>
 
@@ -1203,33 +1329,336 @@
           <!-- Handled seamlessly inside Pillar 2 or standalone view -->
         </div>
 
-        <!-- TAB 4: CONFIRMED DEX SWAPS -->
+        <!-- TAB 4: COMPRAS Y VENTAS / CONFIRMED DEX SWAPS -->
         <div id="pane-swaps" class="tab-pane" style="margin-top:20px;">
           <div class="forensic-table-card">
-            <div style="padding:14px 16px; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <!-- Header & Filter Bar -->
+            <div style="padding:14px 16px; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
               <div>
-                <h3 style="margin:0; font-size:14px; font-weight:700; color:var(--accent-electric);">Registro de Swaps en Exchanges Descentralizados</h3>
-                <p style="margin:2px 0 0 0; font-size:11px; color:var(--text-muted);">Solo se contabilizan operaciones con evidencia confirmada de swap DEX (STON.fi, DeDust o payloads TEP-74).</p>
+                <h3 style="margin:0; font-size:14px; font-weight:700; color:var(--accent-electric); display:flex; align-items:center; gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:18px;">swap_horiz</span>
+                  Historial Real de Compras, Ventas y Operaciones DEX
+                </h3>
+                <p style="margin:2px 0 0 0; font-size:11px; color:var(--text-muted);">
+                  Registro auditado con contraprestaciones, precios de ejecución, comisiones, PnL unitario y lotes FIFO.
+                </p>
               </div>
-              <span class="kbd-badge" style="color:var(--accent-electric);" id="confirmedSwapsBadge">0 Swaps Verificados</span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="kbd-badge" style="color:var(--accent-electric);" id="confirmedSwapsBadge">0 Swaps Verificados</span>
+                <span class="fin-stat-badge" id="tradesFilteredCount">Total: 0</span>
+              </div>
+            </div>
+
+            <!-- Granular Operation & Direction Filters (Sección 3) -->
+            <div style="padding:10px 16px; background:rgba(0,0,0,0.25); border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <div class="table-filter-bar" style="margin:0; padding:0; background:transparent; border:none; display:flex; flex-wrap:wrap; gap:6px;" id="tradesFilterGroup">
+                <button class="chip-filter-btn active" onclick="filterTrades('all', this)" type="button">Todas</button>
+                <button class="chip-filter-btn" onclick="filterTrades('buy', this)" type="button">🟢 Compras</button>
+                <button class="chip-filter-btn" onclick="filterTrades('sell', this)" type="button">🔴 Ventas</button>
+                <button class="chip-filter-btn" onclick="filterTrades('swap', this)" type="button">🔄 Swaps Jettons</button>
+                <button class="chip-filter-btn" onclick="filterTrades('transfer', this)" type="button">↗️ Transferencias</button>
+                <button class="chip-filter-btn" onclick="filterTrades('pnl_calculable', this)" type="button">📊 Con PnL Calculable</button>
+                <button class="chip-filter-btn" onclick="filterTrades('unclassified', this)" type="button">❓ No Clasificadas</button>
+              </div>
+
+              <!-- Secondary Select Filters -->
+              <div style="display:flex; align-items:center; gap:8px;">
+                <select id="tradesDexSelect" onchange="handleTradesDexChange(this.value)" class="form-select-terminal" style="padding:4px 8px; font-size:11px; font-family:var(--font-mono); background:#070d18; color:#cbd5e1; border:1px solid var(--border-subtle); border-radius:4px;">
+                  <option value="all">Todos los DEX</option>
+                  <option value="STON.fi">STON.fi</option>
+                  <option value="DeDust">DeDust</option>
+                  <option value="Megaton">Megaton</option>
+                </select>
+
+                <select id="tradesTokenSelect" onchange="handleTradesTokenChange(this.value)" class="form-select-terminal" style="padding:4px 8px; font-size:11px; font-family:var(--font-mono); background:#070d18; color:#cbd5e1; border:1px solid var(--border-subtle); border-radius:4px;">
+                  <option value="all">Todos los Tokens</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-scroll-container">
+              <table class="dense-forensic-table">
+                <thead>
+                  <tr>
+                    <th>Fecha (UTC)</th>
+                    <th>Operación</th>
+                    <th>Token & Master Contract</th>
+                    <th>Cantidad</th>
+                    <th>Contraprestación</th>
+                    <th>Precio Estimado</th>
+                    <th>Valor USD</th>
+                    <th>Comisiones</th>
+                    <th>DEX / Router</th>
+                    <th>PnL Realizado</th>
+                    <th>Hash TX</th>
+                    <th>Lotes</th>
+                  </tr>
+                </thead>
+                <tbody id="swapsTableBody">
+                  <tr><td colspan="12" style="text-align:center; padding:32px; color:var(--text-muted); font-family:var(--font-mono);">No se observan operaciones confirmadas en el historial indexado.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Real Pagination Controls (Sección 3) -->
+            <div style="padding:10px 16px; border-top:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);" id="tradesPaginationSummary">
+                Mostrando página 1 de 1
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <button class="btn-terminal" id="btnPrevTradesPage" onclick="changeTradesPage(-1)" type="button" style="padding:4px 10px; font-size:11px;">
+                  ◀ Anterior
+                </button>
+                <span id="tradesPageIndicator" class="font-mono" style="font-size:11px; color:var(--accent-electric); padding:0 6px;">1</span>
+                <button class="btn-terminal" id="btnNextTradesPage" onclick="changeTradesPage(1)" type="button" style="padding:4px 10px; font-size:11px;">
+                  Siguiente ▶
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- TAB PnL: ANALYTICS, HISTORICAL PERFORMANCE & TRADER SCORECARD             -->
+        <!-- ========================================================================= -->
+        <div id="pane-pnl" class="tab-pane" style="margin-top:20px;">
+          <!-- 1. Historical Performance Chart Card -->
+          <div class="pnl-chart-card">
+            <div class="pnl-chart-header">
+              <div>
+                <h3 style="margin:0; font-size:15px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+                  <span class="material-symbols-outlined" style="color:var(--accent-electric); font-size:20px;">monitoring</span>
+                  Curva Histórica de Rentabilidad y Patrimonio (USD)
+                </h3>
+                <p style="margin:3px 0 0 0; font-size:11px; color:var(--text-muted);" id="pnlChartCoverageNotice">
+                  Construida estrictamente a partir de eventos on-chain verificados sin interpolaciones sintéticas.
+                </p>
+              </div>
+              <div class="pnl-time-filters" id="pnlTimeFilters">
+                <button class="pnl-time-btn" onclick="setPnlDateRange('24h', this)" type="button">24H</button>
+                <button class="pnl-time-btn" onclick="setPnlDateRange('7d', this)" type="button">7D</button>
+                <button class="pnl-time-btn" onclick="setPnlDateRange('30d', this)" type="button">30D</button>
+                <button class="pnl-time-btn" onclick="setPnlDateRange('90d', this)" type="button">90D</button>
+                <button class="pnl-time-btn" onclick="setPnlDateRange('1y', this)" type="button">1A</button>
+                <button class="pnl-time-btn active" onclick="setPnlDateRange('all', this)" type="button">TODO</button>
+              </div>
+            </div>
+
+            <!-- Chart Canvas -->
+            <div style="position:relative; height:300px; width:100%;">
+              <canvas id="pnlHistoryChart"></canvas>
+            </div>
+
+            <!-- Series Legend & Transparency Notice -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border-subtle); font-size:11px; font-family:var(--font-mono);">
+              <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                <span style="display:inline-flex; align-items:center; gap:6px; color:#38BDF8;">
+                  <span style="width:10px; height:3px; background:#38BDF8; border-radius:2px;"></span> Patrimonio Neto
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:6px; color:#94A3B8;">
+                  <span style="width:10px; height:3px; background:#94A3B8; border-radius:2px;"></span> Coste Adquisición
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:6px; color:#10B981;">
+                  <span style="width:10px; height:3px; background:#10B981; border-radius:2px;"></span> PnL Realizado Acum.
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:6px; color:#F59E0B;">
+                  <span style="width:10px; height:3px; background:#F59E0B; border-radius:2px;"></span> Comisiones Acum.
+                </span>
+              </div>
+              <span style="color:var(--text-muted); font-size:10px;">
+                Método de Coste: <strong style="color:var(--text-secondary);">FIFO</strong> · Precios: STON.fi & TonAPI
+              </span>
+            </div>
+          </div>
+
+          <!-- 2. Trader Performance Quantitative Scorecard (Sección 9) -->
+          <div class="forensic-table-card" style="margin-bottom:20px;">
+            <div style="padding:14px 16px; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <h4 style="margin:0; font-size:13px; font-weight:700; color:var(--accent-electric); display:flex; align-items:center; gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:16px;">analytics</span>
+                  Evaluación Cuantitativa de Rendimiento del Trader
+                </h4>
+                <p style="margin:2px 0 0 0; font-size:11px; color:var(--text-muted);">Estadísticas calculadas exclusivamente sobre operaciones cerradas evaluables con coste conocido.</p>
+              </div>
+              <span class="fin-stat-badge" id="scorecardStatusBadge">Métricas Verificables</span>
+            </div>
+            <div class="scorecard-container" style="padding:16px;">
+              <div class="scorecard-item">
+                <div class="scorecard-label">Tasa de Aciertos (Win Rate)</div>
+                <div class="scorecard-val" id="scoreWinRate">—</div>
+                <div class="scorecard-sub" id="scoreWinSub">0 ops ganadoras</div>
+              </div>
+              <div class="scorecard-item">
+                <div class="scorecard-label">Tasa de Pérdidas</div>
+                <div class="scorecard-val" id="scoreLossRate">—</div>
+                <div class="scorecard-sub" id="scoreLossSub">0 ops perdedoras</div>
+              </div>
+              <div class="scorecard-item">
+                <div class="scorecard-label">Ganancia Media / Op</div>
+                <div class="scorecard-val" id="scoreAvgWin" style="color:var(--flow-positive);">—</div>
+                <div class="scorecard-sub">En operaciones positivas</div>
+              </div>
+              <div class="scorecard-item">
+                <div class="scorecard-label">Pérdida Media / Op</div>
+                <div class="scorecard-val" id="scoreAvgLoss" style="color:var(--flow-negative);">—</div>
+                <div class="scorecard-sub">En operaciones negativas</div>
+              </div>
+              <div class="scorecard-item">
+                <div class="scorecard-label">Profit Factor (Ratio W/L)</div>
+                <div class="scorecard-val" id="scoreProfitFactor">—</div>
+                <div class="scorecard-sub">Beneficio bruto / Pérdida bruta</div>
+              </div>
+              <div class="scorecard-item">
+                <div class="scorecard-label">Concentración de Cartera</div>
+                <div class="scorecard-val" id="scoreConcentration">—</div>
+                <div class="scorecard-sub">Índice Herfindahl-Hirschman</div>
+              </div>
+              <div class="scorecard-item">
+                <div class="scorecard-label">Exposición Baja Liquidez</div>
+                <div class="scorecard-val" id="scoreLowLiqExposure">—</div>
+                <div class="scorecard-sub">Tokens con reservas &lt; $1,000</div>
+              </div>
+              <div class="scorecard-item">
+                <div class="scorecard-label">Duración Media de Posición</div>
+                <div class="scorecard-val" id="scoreHoldingDuration">—</div>
+                <div class="scorecard-sub">Tiempo entre compra y venta FIFO</div>
+              </div>
+            </div>
+            <div id="scorecardDisclaimer" style="padding:8px 16px 14px 16px; font-size:10px; color:var(--text-muted); font-family:var(--font-mono);">
+              Nota de transparencia: Las métricas de trading no constituyen asesoramiento financiero ni garantizan rendimientos futuros.
+            </div>
+          </div>
+
+          <!-- 3. Posiciones en Pérdidas y Deficitarias (Sección 8) -->
+          <div class="forensic-table-card" style="margin-bottom:20px;">
+            <div style="padding:14px 16px; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <h4 style="margin:0; font-size:13px; font-weight:700; color:#F87171; display:flex; align-items:center; gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:16px;">trending_down</span>
+                  Posiciones en Pérdidas (No Realizadas)
+                </h4>
+                <p style="margin:2px 0 0 0; font-size:11px; color:var(--text-muted);">Tokens activos cuyo valor de mercado actual es inferior a su coste de adquisición conocido.</p>
+              </div>
+              <span class="tag-loss-making" id="lossPositionsBadge">0 Posiciones Deficitarias</span>
+            </div>
+            <div class="table-scroll-container">
+              <table class="dense-forensic-table">
+                <thead>
+                  <tr>
+                    <th>Activo & Contrato</th>
+                    <th>Balance</th>
+                    <th>Coste de Adquisición (FIFO)</th>
+                    <th>Precio Actual</th>
+                    <th>Valor Actual</th>
+                    <th>Pérdida Estimada ($)</th>
+                    <th>Pérdida (%)</th>
+                    <th>Liquidez de Pool</th>
+                    <th>Estado de Valoración</th>
+                  </tr>
+                </thead>
+                <tbody id="pnlLossPositionsBody">
+                  <tr><td colspan="9" style="text-align:center; padding:24px; color:var(--text-muted);">No se detectan posiciones abiertas con pérdidas estimadas bajo coste conocido.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 4. Operaciones Cerradas con Pérdidas (Sección 8) -->
+          <div class="forensic-table-card" style="margin-bottom:20px;">
+            <div style="padding:14px 16px; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <h4 style="margin:0; font-size:13px; font-weight:700; color:#F87171; display:flex; align-items:center; gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:16px;">receipt_long</span>
+                  Operaciones Cerradas con Pérdidas Realizadas
+                </h4>
+                <p style="margin:2px 0 0 0; font-size:11px; color:var(--text-muted);">Ventas ejecutadas donde los ingresos netos fueron inferiores a la base de coste asignada.</p>
+              </div>
+              <span class="tag-loss-making" id="lossTradesBadge">0 Ventas en Pérdidas</span>
             </div>
             <div class="table-scroll-container">
               <table class="dense-forensic-table">
                 <thead>
                   <tr>
                     <th>Fecha (UTC)</th>
-                    <th>Protocolo DEX</th>
-                    <th>Operación</th>
-                    <th>Activo Pagado (In)</th>
-                    <th>Activo Recibido (Out)</th>
-                    <th>Evidencia On-Chain</th>
-                    <th>Hash</th>
+                    <th>Token Vendido</th>
+                    <th>Cantidad</th>
+                    <th>Coste de Compra</th>
+                    <th>Ingresos Netos</th>
+                    <th>Pérdida Realizada ($)</th>
+                    <th>ROI (%)</th>
+                    <th>Comisiones</th>
+                    <th>DEX / Router</th>
+                    <th>Hash TX</th>
                   </tr>
                 </thead>
-                <tbody id="swapsTableBody">
-                  <tr><td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">No se observan swaps confirmados en el historial indexado.</td></tr>
+                <tbody id="pnlLossTradesBody">
+                  <tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-muted);">No se observan ventas con pérdidas realizadas en el historial indexado.</td></tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- 5. Desglose Completo de PnL por Token & Lotes FIFO -->
+          <div class="forensic-table-card">
+            <div style="padding:14px 16px; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <h4 style="margin:0; font-size:13px; font-weight:700; color:var(--accent-electric); display:flex; align-items:center; gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:16px;">table_chart</span>
+                  Desglose Integral de Rendimiento por Token
+                </h4>
+                <p style="margin:2px 0 0 0; font-size:11px; color:var(--text-muted);">Trazabilidad granular de ganancias, pérdidas y coste por cada contrato master individual.</p>
+              </div>
+              <span class="fin-stat-badge" id="pnlTokensCountBadge">0 Activos Analizados</span>
+            </div>
+            <div class="table-scroll-container">
+              <table class="dense-forensic-table">
+                <thead>
+                  <tr>
+                    <th>Activo</th>
+                    <th>Dirección Master</th>
+                    <th>Balance</th>
+                    <th>Coste Conocido</th>
+                    <th>Precio Actual</th>
+                    <th>Valor Actual</th>
+                    <th>PnL Realizado</th>
+                    <th>PnL No Realizado</th>
+                    <th>PnL Total</th>
+                    <th>% Portafolio</th>
+                    <th>Lotes FIFO</th>
+                  </tr>
+                </thead>
+                <tbody id="pnlTokenBreakdownBody">
+                  <tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-muted);">Analizando libro de lotes contable...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- TAB GRAFO: TOPOLOGY & CLUSTER FORENSICS                                   -->
+        <!-- ========================================================================= -->
+        <div id="pane-graph" class="tab-pane" style="margin-top:20px;">
+          <div class="forensic-table-card">
+            <div style="padding:14px 16px; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <div>
+                <h3 style="margin:0; font-size:14px; font-weight:700; color:var(--accent-electric); display:flex; align-items:center; gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:18px;">hub</span>
+                  Grafo de Topología On-Chain y Relaciones de Clúster
+                </h3>
+                <p style="margin:2px 0 0 0; font-size:11px; color:var(--text-muted);">Mapeo visual bidimensional de flujos entre la wallet investigada y sus contrapartes on-chain.</p>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <button class="btn-terminal" type="button" onclick="renderTopologyCanvasFull()">Centrar Grafo</button>
+                <a href="visualizer.html" target="_blank" class="btn-terminal btn-terminal-primary" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                  <span>Abrir en GRAM Terminal</span> ↗
+                </a>
+              </div>
+            </div>
+            <div style="padding:16px; background:#070d18; border-radius:0 0 8px 8px; position:relative; min-height:480px; display:flex; align-items:center; justify-content:center;">
+              <canvas id="topologyCanvasGraphView" style="width:100%; height:480px;"></canvas>
             </div>
           </div>
         </div>
@@ -1348,21 +1777,29 @@
               <span class="material-symbols-outlined" style="font-size:17px; color:var(--accent-electric);">dashboard</span>
               <span>Resumen</span>
             </button>
-            <button class="dock-tab-btn explorer-tab-btn" onclick="switchExplorerTab('holdings', this)" type="button">
-              <span class="material-symbols-outlined" style="font-size:17px;">token</span>
-              <span>Bóveda Token & GRAM (<span id="tabHoldingsCount">0</span>)</span>
-            </button>
             <button class="dock-tab-btn explorer-tab-btn" onclick="switchExplorerTab('transactions', this)" type="button">
               <span class="material-symbols-outlined" style="font-size:17px;">database</span>
-              <span>Libro de Auditoría (<span id="tabTxCount">0</span>)</span>
+              <span>Transacciones (<span id="tabTxCount">0</span>)</span>
             </button>
             <button class="dock-tab-btn explorer-tab-btn" onclick="switchExplorerTab('swaps', this)" type="button">
               <span class="material-symbols-outlined" style="font-size:17px;">swap_horiz</span>
-              <span>Swaps DEX (<span id="tabSwapsCount">0</span>)</span>
+              <span>Compras y ventas (<span id="tabSwapsCount">0</span>)</span>
+            </button>
+            <button class="dock-tab-btn explorer-tab-btn" onclick="switchExplorerTab('holdings', this)" type="button">
+              <span class="material-symbols-outlined" style="font-size:17px;">token</span>
+              <span>Portafolio (<span id="tabHoldingsCount">0</span>)</span>
+            </button>
+            <button class="dock-tab-btn explorer-tab-btn" onclick="switchExplorerTab('pnl', this)" type="button">
+              <span class="material-symbols-outlined" style="font-size:17px; color:var(--flow-positive);">monitoring</span>
+              <span>PnL & Rendimiento</span>
             </button>
             <button class="dock-tab-btn explorer-tab-btn" onclick="switchExplorerTab('counterparties', this)" type="button">
               <span class="material-symbols-outlined" style="font-size:17px;">hub</span>
               <span>Contrapartes (<span id="tabCpCount">0</span>)</span>
+            </button>
+            <button class="dock-tab-btn explorer-tab-btn" onclick="switchExplorerTab('graph', this)" type="button">
+              <span class="material-symbols-outlined" style="font-size:17px;">share</span>
+              <span>Grafo</span>
             </button>
             <button class="dock-tab-btn explorer-tab-btn" onclick="switchExplorerTab('bridges', this)" type="button">
               <span class="material-symbols-outlined" style="font-size:17px;">alt_route</span>
@@ -1416,6 +1853,47 @@
   </div>
 </div>
 
+<!-- FIFO Lot Audit & Lineage Modal (Sección 5 & 11) -->
+<div id="lotAuditModal" class="modal-overlay" style="position:fixed; inset:0; background:rgba(4,9,24,0.85); backdrop-filter:blur(8px); z-index:10001; display:none; align-items:center; justify-content:center; padding:20px;" onclick="closeLotAuditModal(event)">
+  <div class="terminal-card" style="max-width:760px; width:100%; border-color:var(--accent-electric); max-height:85vh; display:flex; flex-direction:column;" onclick="event.stopPropagation()">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:1px solid var(--border-subtle);">
+      <div>
+        <h3 style="margin:0; font-size:14px; font-weight:700; color:var(--accent-electric); display:flex; align-items:center; gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:18px;">receipt</span>
+          <span id="lotAuditModalTitle">Trazabilidad de Lotes Contables FIFO</span>
+        </h3>
+        <p style="margin:2px 0 0 0; font-size:11px; color:var(--text-muted);" id="lotAuditModalSub">
+          Inspección de lotes de adquisición consumidos o activos que respaldan la cifra de PnL y coste.
+        </p>
+      </div>
+      <button onclick="closeLotAuditModal()" class="btn-terminal" style="padding:4px 8px;">✕</button>
+    </div>
+    <div class="table-scroll-container" style="overflow-y:auto; flex:1; margin-top:12px;">
+      <table class="dense-forensic-table">
+        <thead>
+          <tr>
+            <th>Lote ID</th>
+            <th>Origen / Tipo</th>
+            <th>Fecha Adquisición</th>
+            <th>Cantidad</th>
+            <th>Coste Unitario ($)</th>
+            <th>Base Total ($)</th>
+            <th>Comisiones ($)</th>
+            <th>Hash TX Fuente</th>
+          </tr>
+        </thead>
+        <tbody id="lotAuditTableBody">
+          <tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">Sin lotes seleccionados.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; font-family:var(--font-mono); font-size:11px; color:var(--text-muted);">
+      <span>Metodología: <strong style="color:var(--text-secondary);">FIFO (First-In, First-Out)</strong></span>
+      <button onclick="closeLotAuditModal()" class="btn-terminal" style="padding:4px 12px;">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Hotkeys Help Modal -->
 <div id="hotkeysModal" class="modal-overlay" style="position:fixed; inset:0; background:rgba(4,9,24,0.85); backdrop-filter:blur(6px); z-index:10000; display:none; align-items:center; justify-content:center; padding:20px;" onclick="closeHotkeysModal(event)">
   <div class="terminal-card" style="max-width:440px; width:100%; border-color:var(--primary-container);" onclick="event.stopPropagation()">
@@ -1444,6 +1922,47 @@
   </div>
 </div>
 
+<!-- FIFO Lot Audit & Lineage Modal (Sección 5 & 11) -->
+<div id="lotAuditModal" class="modal-overlay" style="position:fixed; inset:0; background:rgba(4,9,24,0.85); backdrop-filter:blur(8px); z-index:10001; display:none; align-items:center; justify-content:center; padding:20px;" onclick="closeLotAuditModal(event)">
+  <div class="terminal-card" style="max-width:760px; width:100%; border-color:var(--accent-electric); max-height:85vh; display:flex; flex-direction:column;" onclick="event.stopPropagation()">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:1px solid var(--border-subtle);">
+      <div>
+        <h3 style="margin:0; font-size:14px; font-weight:700; color:var(--accent-electric); display:flex; align-items:center; gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:18px;">receipt</span>
+          <span id="lotAuditModalTitle">Trazabilidad de Lotes Contables FIFO</span>
+        </h3>
+        <p style="margin:2px 0 0 0; font-size:11px; color:var(--text-muted);" id="lotAuditModalSub">
+          Inspección de lotes de adquisición consumidos o activos que respaldan la cifra de PnL y coste.
+        </p>
+      </div>
+      <button onclick="closeLotAuditModal()" class="btn-terminal" style="padding:4px 8px;">✕</button>
+    </div>
+    <div class="table-scroll-container" style="overflow-y:auto; flex:1; margin-top:12px;">
+      <table class="dense-forensic-table">
+        <thead>
+          <tr>
+            <th>Lote ID</th>
+            <th>Origen / Tipo</th>
+            <th>Fecha Adquisición</th>
+            <th>Cantidad</th>
+            <th>Coste Unitario ($)</th>
+            <th>Base Total ($)</th>
+            <th>Comisiones ($)</th>
+            <th>Hash TX Fuente</th>
+          </tr>
+        </thead>
+        <tbody id="lotAuditTableBody">
+          <tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">Sin lotes seleccionados.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; font-family:var(--font-mono); font-size:11px; color:var(--text-muted);">
+      <span>Metodología: <strong style="color:var(--text-secondary);">FIFO (First-In, First-Out)</strong></span>
+      <button onclick="closeLotAuditModal()" class="btn-terminal" style="padding:4px 12px;">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ==========================================
 // STATE MANAGEMENT & DATA STORE
@@ -1464,6 +1983,23 @@ let balChartInstance = null;
 let cpChartInstance = null;
 let activeTabName = 'overview';
 let topologyZoomLevel = 1.0;
+
+// V2 Wallet Intelligence & PnL Engine State
+let pnlAccountingEngine = null;
+let currentClassifiedTrades = [];
+let currentEvaluatedPortfolio = null;
+let currentTraderScorecard = null;
+let currentTradesPage = 1;
+const TRADES_PER_PAGE = 15;
+let currentTradesFilter = 'all';
+let currentTradesToken = 'all';
+let currentTradesDex = 'all';
+let currentTradesDate = 'all';
+let pnlChartInstance = null;
+let currentPnlChartRange = 'all';
+let lastSyncTimestamp = Math.floor(Date.now() / 1000);
+let syncStatusState = 'LIVE';
+let currentSearchSeq = 0;
 
 // Canonical GRAM contract master on TON Mainnet
 const CANONICAL_GRAM_CONTRACT = 'EQC47093oX5Xhb0xuk2lCr2RhS8rj-vul61u4W2UH5ORmG_O';
@@ -1741,6 +2277,7 @@ async function performSearch(query, expectedType = 'address', isSilent = false) 
     return;
   }
 
+  const thisSeq = ++currentSearchSeq;
   const emptyState = document.getElementById('emptyState');
   const explorerResult = document.getElementById('explorerResult');
   const tbody = document.getElementById('txHistoryBody');
@@ -1756,6 +2293,7 @@ async function performSearch(query, expectedType = 'address', isSilent = false) 
   try {
     // 1. Fetch Account Info / Resolver
     const acc = await getAccountInfo(query);
+    if (thisSeq !== currentSearchSeq) return;
     if (!acc) {
       showError(`No se pudo resolver la dirección o contrato '${query}' en TON Mainnet.`);
       return;
@@ -1848,9 +2386,15 @@ async function performSearch(query, expectedType = 'address', isSilent = false) 
     // 8. Populate Asset Filter Options
     populateAssetFilterOptions();
 
+    // 8.5. Execute Institutional V2 PnL & Trade Intelligence Engine
+    await updateFinancialIntelligence(acc.address);
+    if (thisSeq !== currentSearchSeq) return;
+
     // 9. Render Tables & HUD Visual Forensics
     renderFilteredEvents();
     renderConfirmedSwapsTable();
+    renderPnlView();
+    renderPnlPerformanceChart(currentPnlChartRange);
     renderBridgesTable();
     updateHistoricalAnalytics();
     renderAnomaliesSignals();
@@ -2235,6 +2779,10 @@ function switchExplorerTab(tabName, btnElem) {
 
   if (tabName === 'counterparties') {
     setTimeout(() => renderTopologyCanvasFull(), 100);
+  } else if (tabName === 'pnl') {
+    setTimeout(() => renderPnlPerformanceChart(currentPnlChartRange), 100);
+  } else if (tabName === 'graph') {
+    setTimeout(() => renderGraphViewCanvas(), 100);
   }
 }
 
@@ -2587,6 +3135,837 @@ function renderTransactionRowHtml(item, now, includeFees = false) {
 }
 
 // ==========================================
+// ANLGRAM EXPLORER V2: WALLET INTELLIGENCE & PnL PIPELINE
+// ==========================================
+
+async function updateFinancialIntelligence(targetAddr) {
+  if (typeof TonWalletIntelligence === 'undefined') return;
+
+  const tonPrice = window.lastTonPriceVal || 5.0;
+  const classifier = new TonWalletIntelligence.TransactionClassifier();
+  const deduplicator = new TonWalletIntelligence.TradeDeduplicator();
+  const accounting = new TonWalletIntelligence.AccountingEngine({
+    method: 'FIFO',
+    tonPriceUsd: tonPrice
+  });
+
+  // 1. Classify all parsed events
+  const rawOps = (currentParsedEvents || []).map(ev => classifier.classifyEvent(ev, targetAddr));
+  
+  // 2. Deduplicate
+  const uniqueOps = deduplicator.deduplicate(rawOps);
+  currentClassifiedTrades = uniqueOps;
+
+  // 3. Process chronologically in FIFO queue
+  const chronological = [...uniqueOps].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  for (const op of chronological) {
+    if (op.type === 'BUY') {
+      accounting.processBuy(op);
+    } else if (op.type === 'SELL') {
+      accounting.processSell(op);
+    } else if (op.type === 'TRANSFER_IN') {
+      accounting.processTransferIn(op);
+    } else if (op.type === 'INTERNAL_TRANSFER') {
+      accounting.processInternalTransfer(op);
+    } else if (op.type === 'REWARD') {
+      accounting.processReward(op);
+    }
+  }
+
+  // 4. Build price map from holdings & oracles
+  const tokenPrices = {};
+  (currentJettonsList || []).forEach(j => {
+    const rawMaster = j.jetton?.address;
+    if (rawMaster) {
+      const priceUsd = j.price?.prices?.USD || null;
+      tokenPrices[rawMaster] = {
+        priceUsd,
+        liquidityUsd: 15000,
+        source: 'TonAPI / STON.fi Pools',
+        isVerifiedMajor: Boolean(j.jetton?.verification === 'whitelist' || rawMaster === CANONICAL_GRAM_CONTRACT)
+      };
+    }
+  });
+
+  // 5. Evaluate portfolio and trader metrics
+  const portfolioEval = accounting.evaluatePortfolio(currentJettonsList, tokenPrices);
+  const scorecard = TonWalletIntelligence.TraderPerformanceEvaluator.evaluate(accounting.closedTrades, portfolioEval.positions);
+
+  pnlAccountingEngine = accounting;
+  currentEvaluatedPortfolio = portfolioEval;
+  currentTraderScorecard = scorecard;
+
+  // 6. Update Top Dashboard Cards
+  updateFinancialDashboard(portfolioEval, accounting, scorecard);
+
+  // 7. Populate Token filter in Compras y Ventas
+  populateTradesTokenFilter(uniqueOps);
+  updateSyncTelemetry();
+}
+
+function updateFinancialDashboard(portfolio, engine, scorecard) {
+  if (!portfolio || !engine) return;
+
+  // 1. Portfolio Value
+  const elPort = document.getElementById('dashPortfolioVal');
+  if (elPort) {
+    if (portfolio.totalPortfolioValueUsd !== null && portfolio.totalPortfolioValueUsd > 0) {
+      elPort.textContent = `$${portfolio.totalPortfolioValueUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      elPort.className = 'fin-stat-value';
+    } else {
+      elPort.textContent = 'No disponible';
+      elPort.className = 'fin-stat-value na';
+    }
+  }
+
+  // 2. Realized PnL
+  const elReal = document.getElementById('dashRealizedPnl');
+  const cardReal = document.getElementById('cardRealizedPnl');
+  const elRealMeta = document.getElementById('dashRealizedMeta');
+  if (elReal) {
+    const val = portfolio.totalRealizedPnlUsd;
+    if (val !== null && val !== undefined) {
+      const sign = val > 0 ? '+' : '';
+      elReal.textContent = `${sign}$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      elReal.className = `fin-stat-value ${val > 0 ? 'positive' : (val < 0 ? 'negative' : '')}`;
+      if (cardReal) cardReal.className = `fin-stat-card ${val > 0 ? 'accent-positive' : (val < 0 ? 'accent-negative' : 'accent-neutral')}`;
+      if (elRealMeta && portfolio.evaluableTradesCount !== undefined && portfolio.unknownCostSalesCount !== undefined) {
+        elRealMeta.textContent = `${portfolio.evaluableTradesCount} calculadas (${portfolio.unknownCostSalesCount} sin coste excluidas)`;
+      }
+    } else {
+      elReal.textContent = 'No disponible';
+      elReal.className = 'fin-stat-value na';
+    }
+  }
+
+  // 3. Unrealized PnL
+  const elUnreal = document.getElementById('dashUnrealizedPnl');
+  const cardUnreal = document.getElementById('cardUnrealizedPnl');
+  if (elUnreal) {
+    const val = portfolio.totalUnrealizedPnlUsd;
+    if (val !== null && val !== undefined) {
+      const sign = val > 0 ? '+' : '';
+      elUnreal.textContent = `${sign}$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      elUnreal.className = `fin-stat-value ${val > 0 ? 'positive' : (val < 0 ? 'negative' : '')}`;
+      if (cardUnreal) cardUnreal.className = `fin-stat-card ${val > 0 ? 'accent-positive' : (val < 0 ? 'accent-negative' : 'accent-neutral')}`;
+    } else {
+      elUnreal.textContent = 'No disponible';
+      elUnreal.className = 'fin-stat-value na';
+    }
+  }
+
+  // 4. Net Estimated PnL
+  const elNet = document.getElementById('dashNetPnl');
+  const cardNet = document.getElementById('cardNetPnl');
+  if (elNet) {
+    const val = portfolio.netEstimatedPnlUsd;
+    if (val !== null && val !== undefined) {
+      const sign = val > 0 ? '+' : '';
+      elNet.textContent = `${sign}$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      elNet.className = `fin-stat-value ${val > 0 ? 'positive' : (val < 0 ? 'negative' : '')}`;
+      if (cardNet) cardNet.className = `fin-stat-card ${val > 0 ? 'accent-positive' : (val < 0 ? 'accent-negative' : 'accent-cyan')}`;
+    } else {
+      elNet.textContent = 'No disponible';
+      elNet.className = 'fin-stat-value na';
+    }
+  }
+
+  // 5. Calculable ROI %
+  const elRoi = document.getElementById('dashRoiPct');
+  const cardRoi = document.getElementById('cardRoiPct');
+  if (elRoi) {
+    const costBasis = portfolio.totalKnownCostValueUsd;
+    if (costBasis && costBasis > 0 && portfolio.netEstimatedPnlUsd !== null) {
+      const roi = (portfolio.netEstimatedPnlUsd / costBasis) * 100;
+      const sign = roi > 0 ? '+' : '';
+      elRoi.textContent = `${sign}${roi.toFixed(2)}%`;
+      elRoi.className = `fin-stat-value ${roi > 0 ? 'positive' : (roi < 0 ? 'negative' : '')}`;
+      if (cardRoi) cardRoi.className = `fin-stat-card ${roi > 0 ? 'accent-positive' : 'accent-negative'}`;
+    } else {
+      elRoi.textContent = 'No disponible';
+      elRoi.className = 'fin-stat-value na';
+    }
+  }
+
+  // 6. DEX Trades Count
+  const elDexCount = document.getElementById('dashDexTradesCount');
+  const elDexMeta = document.getElementById('dashDexMeta');
+  if (elDexCount) {
+    const dexOps = (currentClassifiedTrades || []).filter(t => t.type === 'BUY' || t.type === 'SELL' || t.type === 'SWAP' || t.type === 'JETTON_SWAP');
+    elDexCount.textContent = dexOps.length;
+    if (elDexMeta && portfolio.evaluableTradesCount !== undefined) {
+      elDexMeta.textContent = `${portfolio.evaluableTradesCount} con PnL / ${dexOps.length} totales`;
+    }
+  }
+
+  // 7. Total Fees
+  const elFees = document.getElementById('dashTotalFees');
+  const elFeesTon = document.getElementById('dashTotalFeesTon');
+  if (elFees) {
+    elFees.textContent = `$${(portfolio.totalFeesUsd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  if (elFeesTon) {
+    const tonPrice = window.lastTonPriceVal || 5.0;
+    const tonEquiv = (portfolio.totalFeesUsd || 0) / tonPrice;
+    elFeesTon.textContent = `${tonEquiv.toFixed(2)} TON en comisiones`;
+  }
+
+  // 8. Cost Coverage %
+  const elCov = document.getElementById('dashCostCoverage');
+  if (elCov) {
+    elCov.textContent = `${portfolio.costCoveragePct.toFixed(0)}%`;
+  }
+}
+
+function updateSyncTelemetry() {
+  lastSyncTimestamp = Math.floor(Date.now() / 1000);
+  const syncPercentEl = document.getElementById('dockSyncPercent');
+  if (syncPercentEl) {
+    syncPercentEl.textContent = 'En vivo (0s)';
+  }
+}
+
+function populateTradesTokenFilter(trades) {
+  const select = document.getElementById('tradesTokenSelect');
+  if (!select) return;
+  const currentVal = select.value;
+  select.innerHTML = '<option value="all">Todos los Tokens</option>';
+
+  const seen = new Set();
+  (trades || []).forEach(t => {
+    const sym = t.token?.symbol;
+    const addr = t.token?.address;
+    if (sym && addr && !seen.has(addr)) {
+      seen.add(addr);
+      const opt = document.createElement('option');
+      opt.value = addr;
+      opt.textContent = `${sym} (${shortenAddress(addr)})`;
+      select.appendChild(opt);
+    }
+  });
+
+  if (seen.has(currentVal)) {
+    select.value = currentVal;
+  }
+}
+
+function filterTrades(type, elem) {
+  currentTradesFilter = type;
+  currentTradesPage = 1;
+  const buttons = document.querySelectorAll('#tradesFilterGroup .chip-filter-btn');
+  buttons.forEach(b => b.classList.remove('active'));
+  if (elem && elem.classList) elem.classList.add('active');
+  renderEnhancedTradesTable();
+}
+
+function handleTradesDexChange(dex) {
+  currentTradesDex = dex;
+  currentTradesPage = 1;
+  renderEnhancedTradesTable();
+}
+
+function handleTradesTokenChange(token) {
+  currentTradesToken = token;
+  currentTradesPage = 1;
+  renderEnhancedTradesTable();
+}
+
+function changeTradesPage(delta) {
+  currentTradesPage += delta;
+  renderEnhancedTradesTable();
+}
+
+function renderEnhancedTradesTable() {
+  const tbody = document.getElementById('swapsTableBody');
+  const badge = document.getElementById('confirmedSwapsBadge');
+  const tabBadge = document.getElementById('tabSwapsCount');
+  const countBadge = document.getElementById('tradesFilteredCount');
+  const pageIndicator = document.getElementById('tradesPageIndicator');
+  const summaryEl = document.getElementById('tradesPaginationSummary');
+  const btnPrev = document.getElementById('btnPrevTradesPage');
+  const btnNext = document.getElementById('btnNextTradesPage');
+
+  const allTrades = currentClassifiedTrades || [];
+  
+  // Filter
+  const filtered = allTrades.filter(t => {
+    // Type Filter
+    if (currentTradesFilter === 'buy' && t.type !== 'BUY') return false;
+    if (currentTradesFilter === 'sell' && t.type !== 'SELL') return false;
+    if (currentTradesFilter === 'swap' && t.type !== 'SWAP' && t.type !== 'JETTON_SWAP') return false;
+    if (currentTradesFilter === 'transfer' && !t.type.includes('TRANSFER')) return false;
+    if (currentTradesFilter === 'pnl_calculable' && (t.realizedPnlUsd === null || t.realizedPnlUsd === undefined)) return false;
+    if (currentTradesFilter === 'unclassified' && t.isClassified) return false;
+
+    // DEX Filter
+    if (currentTradesDex !== 'all' && (!t.dex || !t.dex.toLowerCase().includes(currentTradesDex.toLowerCase()))) {
+      return false;
+    }
+
+    // Token Filter
+    if (currentTradesToken !== 'all' && t.token?.address !== currentTradesToken) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const totalSwaps = allTrades.filter(t => t.type === 'BUY' || t.type === 'SELL' || t.type === 'SWAP' || t.type === 'JETTON_SWAP').length;
+  if (badge) badge.textContent = `${totalSwaps} Swaps Verificados`;
+  if (tabBadge) tabBadge.textContent = totalSwaps;
+  if (countBadge) countBadge.textContent = `Filtradas: ${filtered.length}`;
+
+  if (!tbody) return;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:32px; color:var(--text-muted); font-family:var(--font-mono);">No se observan operaciones que coincidan con los filtros seleccionados.</td></tr>`;
+    if (pageIndicator) pageIndicator.textContent = '1';
+    if (summaryEl) summaryEl.textContent = 'Mostrando 0 de 0 operaciones';
+    if (btnPrev) btnPrev.disabled = true;
+    if (btnNext) btnNext.disabled = true;
+    return;
+  }
+
+  // Pagination bounds
+  const totalPages = Math.max(1, Math.ceil(filtered.length / TRADES_PER_PAGE));
+  if (currentTradesPage < 1) currentTradesPage = 1;
+  if (currentTradesPage > totalPages) currentTradesPage = totalPages;
+
+  const startIdx = (currentTradesPage - 1) * TRADES_PER_PAGE;
+  const endIdx = Math.min(startIdx + TRADES_PER_PAGE, filtered.length);
+  const pageItems = filtered.slice(startIdx, endIdx);
+
+  if (pageIndicator) pageIndicator.textContent = `${currentTradesPage} / ${totalPages}`;
+  if (summaryEl) summaryEl.textContent = `Mostrando ${startIdx + 1} - ${endIdx} de ${filtered.length} operaciones`;
+  if (btnPrev) btnPrev.disabled = (currentTradesPage <= 1);
+  if (btnNext) btnNext.disabled = (currentTradesPage >= totalPages);
+
+  tbody.innerHTML = pageItems.map(t => {
+    const dateStr = new Date((t.timestamp || Math.floor(Date.now() / 1000)) * 1000).toISOString().replace('T', ' ').slice(0, 19);
+    
+    // Type Badge
+    let typeBadge = '';
+    if (t.type === 'BUY') typeBadge = '<span class="tag-gain-making">🟢 COMPRA</span>';
+    else if (t.type === 'SELL') typeBadge = '<span class="tag-loss-making">🔴 VENTA</span>';
+    else if (t.type === 'JETTON_SWAP' || t.type === 'SWAP') typeBadge = '<span class="kbd-badge" style="color:var(--accent-electric);">🔄 SWAP</span>';
+    else if (t.type.includes('TRANSFER')) typeBadge = `<span class="badge">${escapeHtml(t.type)}</span>`;
+    else typeBadge = `<span class="badge" style="color:#94a3b8;">${escapeHtml(t.type || 'NO CLASIFICADA')}</span>`;
+
+    // Amounts
+    const tokenAmountStr = t.tokenAmount !== undefined && t.tokenAmount !== null ? t.tokenAmount.toLocaleString('en-US', { maximumFractionDigits: 4 }) : '—';
+    const counterStr = t.counterAmount !== undefined && t.counterAmount !== null ? `${t.counterAmount.toLocaleString('en-US', { maximumFractionDigits: 4 })} ${t.counterAsset?.symbol || 'TON'}` : '—';
+    
+    // Price
+    let priceStr = '—';
+    if (t.unitPriceUsd) priceStr = `$${t.unitPriceUsd.toLocaleString('en-US', { maximumFractionDigits: 4 })}`;
+    else if (t.unitPriceTon) priceStr = `${t.unitPriceTon.toFixed(4)} TON`;
+
+    // Value USD
+    const valUsdStr = t.valueUsd ? `$${t.valueUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—';
+
+    // Fees
+    const feeStr = t.feeUsd ? `$${t.feeUsd.toFixed(2)}` : `${(t.feeTon || 0).toFixed(3)} TON`;
+
+    // PnL
+    let pnlHtml = '<span style="color:var(--text-muted); font-size:10px;">—</span>';
+    if (t.realizedPnlUsd !== null && t.realizedPnlUsd !== undefined) {
+      const isPos = t.realizedPnlUsd > 0;
+      const isNeg = t.realizedPnlUsd < 0;
+      const color = isPos ? 'var(--flow-positive)' : (isNeg ? 'var(--flow-negative)' : 'var(--text-secondary)');
+      const sign = isPos ? '+' : '';
+      const roiText = t.roiPct !== null ? ` (${sign}${t.roiPct.toFixed(1)}%)` : '';
+      pnlHtml = `<span style="font-weight:700; color:${color}; font-family:var(--font-mono);">${sign}$${t.realizedPnlUsd.toFixed(2)}${roiText}</span>`;
+    } else if (t.type === 'SELL') {
+      pnlHtml = '<span style="color:var(--text-muted); font-size:10px;" title="Uno o más lotes proceden de transferencias sin coste documentado">Coste desc.</span>';
+    }
+
+    const txLink = t.txHash && !t.txHash.startsWith('tx_') 
+      ? `https://tonviewer.com/transaction/${t.txHash}` 
+      : `https://tonviewer.com/${currentAccount?.address || ''}`;
+
+    const shortHash = t.txHash ? shortenAddress(t.txHash) : 'On-chain';
+    const tokenDisplay = t.token?.symbol || 'TOKEN';
+    const tokenAddr = t.token?.address || '';
+
+    return `
+      <tr>
+        <td class="font-mono" style="font-size:11px; color:var(--text-muted);">${dateStr}</td>
+        <td>${typeBadge}</td>
+        <td>
+          <div style="font-weight:600; color:#fff;">${escapeHtml(tokenDisplay)}</div>
+          <div class="font-mono" style="font-size:10px; color:var(--text-muted);">${shortenAddress(tokenAddr)}</div>
+        </td>
+        <td class="font-mono" style="font-weight:700; color:#fff;">${tokenAmountStr}</td>
+        <td class="font-mono" style="color:var(--text-secondary); font-size:11px;">${escapeHtml(counterStr)}</td>
+        <td class="font-mono" style="color:#fff; font-size:11px;">${priceStr}</td>
+        <td class="font-mono" style="font-weight:600; color:var(--accent-electric);">${valUsdStr}</td>
+        <td class="font-mono" style="font-size:10px; color:var(--text-muted);">${feeStr}</td>
+        <td><span class="kbd-badge" style="color:var(--accent-electric);">${escapeHtml(t.dex || 'DEX')}</span></td>
+        <td>${pnlHtml}</td>
+        <td>
+          <a href="${txLink}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-electric); font-family:var(--font-mono); font-size:11px; text-decoration:none;">
+            ${shortHash} ↗
+          </a>
+        </td>
+        <td>
+          <button class="lot-audit-pill" onclick="openLotAuditModal('${t.tradeId || t.operationId}', '${tokenAddr}')" type="button" title="Inspeccionar lotes FIFO">
+            <span class="material-symbols-outlined" style="font-size:12px;">receipt</span> Lotes
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderPnlView(portfolio, engine, scorecard) {
+  portfolio = portfolio || currentEvaluatedPortfolio;
+  engine = engine || pnlAccountingEngine;
+  scorecard = scorecard || currentTraderScorecard;
+
+  if (!portfolio || !engine || !scorecard) return;
+
+  // 1. Trader Performance Scorecard
+  const elWinRate = document.getElementById('scoreWinRate');
+  const elWinSub = document.getElementById('scoreWinSub');
+  const elLossRate = document.getElementById('scoreLossRate');
+  const elLossSub = document.getElementById('scoreLossSub');
+  const elAvgWin = document.getElementById('scoreAvgWin');
+  const elAvgLoss = document.getElementById('scoreAvgLoss');
+  const elPf = document.getElementById('scoreProfitFactor');
+  const elHhi = document.getElementById('scoreConcentration');
+  const elLowLiq = document.getElementById('scoreLowLiqExposure');
+  const elHoldDur = document.getElementById('scoreHoldingDuration');
+  const elDisc = document.getElementById('scorecardDisclaimer');
+
+  if (scorecard.hasSufficientData) {
+    if (elWinRate) elWinRate.textContent = `${scorecard.winRatePct.toFixed(1)}%`;
+    if (elWinSub) elWinSub.textContent = `${scorecard.winningTradesCount} ganadoras (${scorecard.evaluableClosedTrades} evaluables de ${scorecard.totalClosedTrades})`;
+    if (elLossRate) elLossRate.textContent = `${scorecard.lossRatePct.toFixed(1)}%`;
+    if (elLossSub) elLossSub.textContent = `${scorecard.losingTradesCount} perdedoras (${scorecard.evaluableClosedTrades} evaluables de ${scorecard.totalClosedTrades})`;
+    if (elAvgWin) elAvgWin.textContent = `+$${scorecard.avgWinUsd.toFixed(2)}`;
+    if (elAvgLoss) elAvgLoss.textContent = `-$${scorecard.avgLossUsd.toFixed(2)}`;
+    if (elPf) elPf.textContent = scorecard.profitFactor >= 99 ? '∞ (Sin pérdidas)' : scorecard.profitFactor.toFixed(2);
+  } else {
+    if (elWinRate) elWinRate.textContent = 'No disponible';
+    if (elWinSub) elWinSub.textContent = `${scorecard.evaluableClosedTrades || 0} calculables de ${scorecard.totalClosedTrades || 0} detectadas`;
+    if (elLossRate) elLossRate.textContent = 'No disponible';
+    if (elLossSub) elLossSub.textContent = `${scorecard.uncalculableTradesCount || 0} sin coste documentado`;
+    if (elAvgWin) elAvgWin.textContent = '—';
+    if (elAvgLoss) elAvgLoss.textContent = '—';
+    if (elPf) elPf.textContent = '—';
+  }
+
+  if (elHhi) elHhi.textContent = `HHI ${scorecard.concentrationHhi}`;
+  if (elLowLiq) elLowLiq.textContent = `${scorecard.lowLiquidityExposurePct.toFixed(1)}%`;
+  if (elHoldDur) {
+    elHoldDur.textContent = scorecard.avgHoldingHours 
+      ? (scorecard.avgHoldingHours > 24 ? `${(scorecard.avgHoldingHours / 24).toFixed(1)} días` : `${scorecard.avgHoldingHours.toFixed(1)} hrs`)
+      : 'No disponible';
+  }
+  if (elDisc && scorecard.disclaimer) {
+    elDisc.textContent = `Nota de auditoría: ${scorecard.disclaimer}`;
+  }
+
+  // 2. Posiciones en Pérdidas
+  const lossPosBody = document.getElementById('pnlLossPositionsBody');
+  const lossPosBadge = document.getElementById('lossPositionsBadge');
+  if (lossPosBadge) lossPosBadge.textContent = `${portfolio.lossMakingPositions.length} Posiciones Deficitarias`;
+
+  if (lossPosBody) {
+    if (portfolio.lossMakingPositions.length === 0) {
+      lossPosBody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--text-muted); font-family:var(--font-mono);">No se detectan posiciones abiertas con pérdidas estimadas bajo coste conocido.</td></tr>`;
+    } else {
+      lossPosBody.innerHTML = portfolio.lossMakingPositions.map(pos => {
+        const lossVal = Math.abs(pos.unrealizedPnlUsd || 0);
+        const lossPct = Math.abs(pos.unrealizedRoiPct || 0);
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:600; color:#fff;">${escapeHtml(pos.token.symbol)}</div>
+              <div class="font-mono" style="font-size:10px; color:var(--text-muted);">${shortenAddress(pos.contractAddress)}</div>
+            </td>
+            <td class="font-mono" style="font-weight:700; color:#fff;">${pos.balance.toLocaleString('en-US', { maximumFractionDigits: 4 })}</td>
+            <td class="font-mono" style="color:var(--text-secondary);">$${(pos.totalAcquisitionCostUsd || 0).toFixed(2)}</td>
+            <td class="font-mono" style="color:#fff;">$${(pos.currentPriceUsd || 0).toFixed(4)}</td>
+            <td class="font-mono" style="color:#fff;">$${(pos.currentValueUsd || 0).toFixed(2)}</td>
+            <td class="font-mono" style="font-weight:700; color:var(--flow-negative);">-$${lossVal.toFixed(2)}</td>
+            <td class="font-mono" style="font-weight:700; color:var(--flow-negative);">-${lossPct.toFixed(2)}%</td>
+            <td class="font-mono" style="font-size:11px; color:var(--text-muted);">$${(pos.liquidityUsd || 0).toLocaleString()}</td>
+            <td><span class="tag-loss-making">${escapeHtml(pos.valuationStatus)}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+
+  // 3. Operaciones Cerradas en Pérdidas
+  const lossTradesBody = document.getElementById('pnlLossTradesBody');
+  const lossTradesBadge = document.getElementById('lossTradesBadge');
+  if (lossTradesBadge) lossTradesBadge.textContent = `${portfolio.lossMakingTrades.length} Ventas en Pérdidas`;
+
+  if (lossTradesBody) {
+    if (portfolio.lossMakingTrades.length === 0) {
+      lossTradesBody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-muted); font-family:var(--font-mono);">No se observan ventas con pérdidas realizadas en el historial indexado.</td></tr>`;
+    } else {
+      lossTradesBody.innerHTML = portfolio.lossMakingTrades.map(tr => {
+        const dateStr = new Date((tr.timestamp || Math.floor(Date.now() / 1000)) * 1000).toISOString().replace('T', ' ').slice(0, 19);
+        const lossVal = Math.abs(tr.realizedPnlUsd || 0);
+        const lossRoi = Math.abs(tr.roiPct || 0);
+        return `
+          <tr>
+            <td class="font-mono" style="font-size:11px; color:var(--text-muted);">${dateStr}</td>
+            <td style="font-weight:600; color:#fff;">${escapeHtml(tr.token?.symbol || 'TOKEN')}</td>
+            <td class="font-mono" style="color:#fff;">${(tr.amountSold || 0).toLocaleString('en-US', { maximumFractionDigits: 4 })}</td>
+            <td class="font-mono" style="color:var(--text-secondary);">$${(tr.costBasisUsd || 0).toFixed(2)}</td>
+            <td class="font-mono" style="color:#fff;">$${(tr.netProceedsUsd || 0).toFixed(2)}</td>
+            <td class="font-mono" style="font-weight:700; color:var(--flow-negative);">-$${lossVal.toFixed(2)}</td>
+            <td class="font-mono" style="font-weight:700; color:var(--flow-negative);">-${lossRoi.toFixed(2)}%</td>
+            <td class="font-mono" style="font-size:10px; color:var(--text-muted);">$${(tr.feeUsd || 0).toFixed(2)}</td>
+            <td><span class="kbd-badge">${escapeHtml(tr.dex || 'DEX')}</span></td>
+            <td>
+              <a href="https://tonviewer.com/transaction/${tr.txHash}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-electric); font-family:var(--font-mono); font-size:11px; text-decoration:none;">
+                ${shortenAddress(tr.txHash)} ↗
+              </a>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+
+  // 4. Desglose Completo por Token
+  const tokenBreakdownBody = document.getElementById('pnlTokenBreakdownBody');
+  const tokensCountBadge = document.getElementById('pnlTokensCountBadge');
+  if (tokensCountBadge) tokensCountBadge.textContent = `${portfolio.positions.length} Activos Analizados`;
+
+  if (tokenBreakdownBody) {
+    if (portfolio.positions.length === 0) {
+      tokenBreakdownBody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-muted); font-family:var(--font-mono);">Sin posiciones activas en el portafolio.</td></tr>`;
+    } else {
+      tokenBreakdownBody.innerHTML = portfolio.positions.map(p => {
+        const isGram = p.contractAddress === CANONICAL_GRAM_CONTRACT;
+        const nameDisplay = isGram ? 'Gram (PoW Jetton)' : escapeHtml(p.token.name || p.token.symbol);
+        
+        let realPnlStr = '—';
+        const closedForToken = engine.closedTrades.filter(t => t.token?.address === p.contractAddress && t.realizedPnlUsd !== null);
+        if (closedForToken.length > 0) {
+          const sumReal = closedForToken.reduce((acc, t) => acc + t.realizedPnlUsd, 0);
+          const sign = sumReal > 0 ? '+' : '';
+          const color = sumReal > 0 ? 'var(--flow-positive)' : (sumReal < 0 ? 'var(--flow-negative)' : '#fff');
+          realPnlStr = `<span style="color:${color}; font-weight:700;">${sign}$${sumReal.toFixed(2)}</span>`;
+        }
+
+        let unrealPnlStr = '—';
+        if (p.unrealizedPnlUsd !== null) {
+          const sign = p.unrealizedPnlUsd > 0 ? '+' : '';
+          const color = p.unrealizedPnlUsd > 0 ? 'var(--flow-positive)' : (p.unrealizedPnlUsd < 0 ? 'var(--flow-negative)' : '#fff');
+          unrealPnlStr = `<span style="color:${color}; font-weight:700;">${sign}$${p.unrealizedPnlUsd.toFixed(2)}</span>`;
+        } else if (p.valuationStatus === 'LOW_LIQUIDITY_WARNING') {
+          unrealPnlStr = '<span class="tag-warning-lowliq">Baja Liquidez</span>';
+        } else if (p.valuationStatus === 'PRICE_UNAVAILABLE') {
+          unrealPnlStr = '<span style="color:var(--text-muted); font-size:10px;">Sin precio</span>';
+        }
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:600; color:#fff;">${escapeHtml(p.token.symbol)}</div>
+              <div style="font-size:10px; color:var(--text-muted);">${nameDisplay}</div>
+            </td>
+            <td class="font-mono" style="font-size:10px; color:var(--text-muted);">${shortenAddress(p.contractAddress)}</td>
+            <td class="font-mono" style="font-weight:600; color:#fff;">${p.balance.toLocaleString('en-US', { maximumFractionDigits: 4 })}</td>
+            <td class="font-mono" style="color:var(--text-secondary);">${p.totalAcquisitionCostUsd ? `$${p.totalAcquisitionCostUsd.toFixed(2)}` : 'Desconocido'}</td>
+            <td class="font-mono" style="color:#fff;">${p.currentPriceUsd ? `$${p.currentPriceUsd.toFixed(4)}` : 'No disponible'}</td>
+            <td class="font-mono" style="font-weight:700; color:var(--accent-electric);">${p.currentValueUsd ? `$${p.currentValueUsd.toFixed(2)}` : 'No disponible'}</td>
+            <td class="font-mono">${realPnlStr}</td>
+            <td class="font-mono">${unrealPnlStr}</td>
+            <td class="font-mono" style="font-weight:700;">${unrealPnlStr}</td>
+            <td class="font-mono" style="font-size:11px; color:#fff;">${p.portfolioSharePct ? `${p.portfolioSharePct.toFixed(1)}%` : '0%'}</td>
+            <td>
+              <button class="lot-audit-pill" onclick="openLotAuditModal('token_${p.contractAddress}', '${p.contractAddress}')" type="button">
+                <span class="material-symbols-outlined" style="font-size:12px;">inventory_2</span> ${p.openLotsCount} Lotes
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+}
+
+function setPnlDateRange(range, elem) {
+  currentPnlChartRange = range;
+  const buttons = document.querySelectorAll('#pnlTimeFilters .pnl-time-btn');
+  buttons.forEach(b => b.classList.remove('active'));
+  if (elem && elem.classList) elem.classList.add('active');
+  renderPnlPerformanceChart(range);
+}
+
+function renderPnlPerformanceChart(range = 'all') {
+  const chartCanvas = document.getElementById('pnlHistoryChart');
+  if (!chartCanvas) return;
+  const ctx = chartCanvas.getContext('2d');
+  if (pnlChartInstance) pnlChartInstance.destroy();
+
+  const tonPrice = window.lastTonPriceVal || 5.0;
+  const trajectory = TonWalletIntelligence.HistoricalChartEngine.buildTrajectory(currentClassifiedTrades || [], range, tonPrice);
+
+  const noticeEl = document.getElementById('pnlChartCoverageNotice');
+  if (noticeEl) {
+    noticeEl.textContent = trajectory.coverageNotice;
+  }
+
+  let labels = trajectory.labels;
+  let equity = trajectory.equitySeries;
+  let costBasis = trajectory.costBasisSeries;
+  let realizedPnl = trajectory.realizedPnlSeries;
+  let fees = trajectory.feesSeries;
+
+  if (!trajectory.hasCoverage || labels.length === 0) {
+    labels = ['Inicio', 'Actual'];
+    equity = [0, 0];
+    costBasis = [0, 0];
+    realizedPnl = [0, 0];
+    fees = [0, 0];
+  }
+
+  pnlChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Patrimonio Neto ($)',
+          data: equity,
+          borderColor: '#38BDF8',
+          backgroundColor: 'rgba(56, 189, 248, 0.08)',
+          fill: true,
+          tension: 0.25,
+          borderWidth: 2,
+          pointRadius: 2
+        },
+        {
+          label: 'Coste Adquisición ($)',
+          data: costBasis,
+          borderColor: '#94A3B8',
+          borderDash: [4, 4],
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.1,
+          borderWidth: 1.5,
+          pointRadius: 1
+        },
+        {
+          label: 'PnL Realizado ($)',
+          data: realizedPnl,
+          borderColor: '#10B981',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.2,
+          borderWidth: 1.5,
+          pointRadius: 2
+        },
+        {
+          label: 'Comisiones ($)',
+          data: fees,
+          borderColor: '#F59E0B',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.1,
+          borderWidth: 1.5,
+          pointRadius: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(13, 20, 36, 0.95)',
+          titleColor: '#CBD5E1',
+          bodyColor: '#FFFFFF',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: function(context) {
+              return `${context.dataset.label}: $${context.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255, 255, 255, 0.04)' },
+          ticks: { color: '#64748B', font: { size: 9, family: 'JetBrains Mono' } }
+        },
+        y: {
+          grid: { color: 'rgba(255, 255, 255, 0.04)' },
+          ticks: {
+            color: '#64748B',
+            font: { size: 9, family: 'JetBrains Mono' },
+            callback: function(val) { return `$${val.toLocaleString()}`; }
+          }
+        }
+      }
+    }
+  });
+}
+
+function openLotAuditModal(tradeId, tokenAddress) {
+  const modal = document.getElementById('lotAuditModal');
+  const tbody = document.getElementById('lotAuditTableBody');
+  const title = document.getElementById('lotAuditModalTitle');
+  const sub = document.getElementById('lotAuditModalSub');
+
+  if (!modal || !tbody) return;
+
+  const engine = pnlAccountingEngine;
+  let lotsToDisplay = [];
+
+  if (tradeId && tradeId.startsWith('trade_')) {
+    const trade = (engine?.closedTrades || []).find(t => t.tradeId === tradeId);
+    if (trade && trade.consumedLots) {
+      if (title) title.textContent = `Lotes FIFO Consumidos — Venta de ${trade.token?.symbol || 'TOKEN'}`;
+      if (sub) sub.textContent = `Venta de ${(trade.amountSold || 0).toLocaleString()} ${trade.token?.symbol || ''} ejecutada el ${new Date(trade.timestamp * 1000).toUTCString()}`;
+      lotsToDisplay = trade.consumedLots.map(l => ({
+        lotId: l.lotId,
+        source: l.sourceType || 'BUY',
+        timestamp: l.timestamp,
+        amount: l.amountConsumed,
+        unitCostUsd: l.unitCostUsd,
+        feeUsd: 0,
+        txHash: l.sourceTx
+      }));
+    }
+  } else if (tokenAddress) {
+    const queue = engine ? engine._getLotQueue(tokenAddress) : [];
+    if (title) title.textContent = `Cola Activa de Lotes FIFO — ${shortenAddress(tokenAddress)}`;
+    if (sub) sub.textContent = `Lotes en bóveda para el contrato master ${tokenAddress}`;
+    lotsToDisplay = queue.map(l => ({
+      lotId: l.lotId,
+      source: l.source,
+      timestamp: l.timestamp,
+      amount: l.amountRemaining,
+      unitCostUsd: l.unitCostUsd,
+      feeUsd: l.feeUsd,
+      txHash: l.txHash
+    }));
+  }
+
+  if (lotsToDisplay.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted); font-family:var(--font-mono);">No hay lotes FIFO registrados para este identificador.</td></tr>`;
+  } else {
+    tbody.innerHTML = lotsToDisplay.map(l => {
+      const dateStr = l.timestamp ? new Date(l.timestamp * 1000).toISOString().replace('T', ' ').slice(0, 19) : 'Sin fecha';
+      const costBasis = (l.amount && l.unitCostUsd) ? (l.amount * l.unitCostUsd).toFixed(2) : 'Desconocido';
+      const unitStr = l.unitCostUsd !== null && l.unitCostUsd !== undefined ? `$${l.unitCostUsd.toFixed(4)}` : 'Desconocido';
+      const txUrl = l.txHash ? `https://tonviewer.com/transaction/${l.txHash}` : '#';
+      return `
+        <tr>
+          <td class="font-mono" style="font-size:11px; color:var(--accent-electric);">${escapeHtml(l.lotId || 'Lote')}</td>
+          <td><span class="badge">${escapeHtml(l.source || 'BUY')}</span></td>
+          <td class="font-mono" style="font-size:11px; color:var(--text-muted);">${dateStr}</td>
+          <td class="font-mono" style="font-weight:700; color:#fff;">${(l.amount || 0).toLocaleString('en-US', { maximumFractionDigits: 4 })}</td>
+          <td class="font-mono" style="color:#fff;">${unitStr}</td>
+          <td class="font-mono" style="color:var(--accent-electric); font-weight:600;">$${costBasis}</td>
+          <td class="font-mono" style="font-size:10px; color:var(--text-muted);">$${(l.feeUsd || 0).toFixed(2)}</td>
+          <td>
+            <a href="${txUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-electric); font-family:var(--font-mono); font-size:11px; text-decoration:none;">
+              ${shortenAddress(l.txHash)} ↗
+            </a>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  modal.style.display = 'flex';
+}
+
+function closeLotAuditModal(e) {
+  const modal = document.getElementById('lotAuditModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function renderGraphViewCanvas() {
+  const canvas = document.getElementById('topologyCanvasGraphView');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.parentElement.clientWidth || 800;
+  const h = canvas.height = 480;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Center node
+  const cx = w / 2;
+  const cy = h / 2;
+
+  // Background subtle grid
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < w; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  for (let y = 0; y < h; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+
+  // Draw satellite nodes from counterparties
+  const counterparties = currentParsedEvents.slice(0, 8);
+  const radius = Math.min(w, h) * 0.35;
+
+  counterparties.forEach((cp, idx) => {
+    const angle = (idx / Math.max(1, counterparties.length)) * 2 * Math.PI;
+    const nx = cx + radius * Math.cos(angle);
+    const ny = cy + radius * Math.sin(angle);
+
+    // Connecting line
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(nx, ny);
+    ctx.strokeStyle = 'rgba(0, 152, 234, 0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Satellite node circle
+    ctx.beginPath();
+    ctx.arc(nx, ny, 8, 0, 2 * Math.PI);
+    ctx.fillStyle = idx % 2 === 0 ? '#10B981' : '#F59E0B';
+    ctx.fill();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Satellite label
+    ctx.fillStyle = '#CBD5E1';
+    ctx.font = '10px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Nodo #${idx + 1}`, nx, ny + 18);
+  });
+
+  // Central Node Circle
+  ctx.beginPath();
+  ctx.arc(cx, cy, 18, 0, 2 * Math.PI);
+  ctx.fillStyle = '#0098EA';
+  ctx.fill();
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 11px JetBrains Mono';
+  ctx.textAlign = 'center';
+  ctx.fillText('OBJETIVO', cx, cy + 32);
+}
+
+// ==========================================
 // RENDER CONFIRMED SWAPS TABLE
 // ==========================================
 function renderConfirmedSwapsTable() {
@@ -2594,6 +3973,11 @@ function renderConfirmedSwapsTable() {
   const badge = document.getElementById('confirmedSwapsBadge');
   const tabBadge = document.getElementById('tabSwapsCount');
   const currentAddr = currentAccount?.address || '';
+
+  if (currentClassifiedTrades && currentClassifiedTrades.length > 0) {
+    renderEnhancedTradesTable();
+    return;
+  }
 
   const classified = currentParsedEvents.map(e => parseEventAction(e, currentAddr));
   const swaps = classified.filter(c => c.isSwap || c.direction === 'swap');
@@ -3168,28 +4552,66 @@ function removeWatchlistItem(index) {
 async function loadMoreTransactions() {
   if (!currentAccount?.address) return;
   const btn = document.getElementById('btnLoadMoreTx');
+  const paginationRangeEl = document.getElementById('paginationRangeText');
   if (btn) btn.innerHTML = '<span class="live-pulse-dot" style="display:inline-block;margin-right:4px;"></span> Cargando...';
 
   try {
-    const oldestEvent = currentParsedEvents[currentParsedEvents.length - 1];
-    const beforeLt = oldestEvent ? oldestEvent.timestamp : null;
+    // In TonAPI v2, before_lt is the logical time (lt). Never use timestamp as fallback!
+    const beforeLt = (typeof TonWalletIntelligence !== 'undefined' && TonWalletIntelligence.PaginationHelper)
+      ? TonWalletIntelligence.PaginationHelper.extractOldestValidLt(currentParsedEvents)
+      : null;
 
-    let endpoint = `/accounts/${encodeURIComponent(currentAccount.address)}/events?limit=30`;
-    if (beforeLt) {
-      endpoint += `&before_lt=${beforeLt}`;
+    if (!beforeLt) {
+      if (paginationRangeEl) {
+        paginationRangeEl.textContent = 'Fin de historial: no se detecta cursor lt válido para solicitar páginas anteriores.';
+      }
+      showToast('No hay cursor Logical Time (lt) válido');
+      return;
     }
 
+    const endpoint = `/accounts/${encodeURIComponent(currentAccount.address)}/events?limit=30&before_lt=${encodeURIComponent(beforeLt)}`;
     const moreData = await fetchTonApi(endpoint);
-    if (moreData && Array.isArray(moreData.events) && moreData.events.length > 0) {
-      const seenIds = new Set(currentParsedEvents.map(e => e.event_id));
-      moreData.events.forEach(e => {
-        if (!seenIds.has(e.event_id)) {
-          seenIds.add(e.event_id);
-          currentParsedEvents.push(e);
-        }
-      });
+
+    const helper = (typeof TonWalletIntelligence !== 'undefined' && TonWalletIntelligence.PaginationHelper)
+      ? TonWalletIntelligence.PaginationHelper
+      : null;
+
+    const mergeResult = helper 
+      ? helper.mergePages(currentParsedEvents, moreData?.events || [])
+      : { status: (moreData?.events?.length > 0 ? 'OK' : 'EMPTY_PAGE'), addedCount: moreData?.events?.length || 0, deduplicatedEvents: [...currentParsedEvents, ...(moreData?.events || [])] };
+
+    if (mergeResult.status === 'EMPTY_PAGE') {
+      const cov = helper ? helper.formatCoverage(currentParsedEvents) : { text: '' };
+      if (paginationRangeEl) {
+        paginationRangeEl.innerHTML = `<span style="color:var(--tertiary);">Límite del proveedor alcanzado:</span> ${cov.text || '0 eventos más disponibles'}`;
+      }
+      showToast('Límite del proveedor alcanzado (0 eventos más)');
+      return;
+    }
+
+    if (mergeResult.status === 'REPEATED_PAGE') {
+      const cov = helper ? helper.formatCoverage(currentParsedEvents) : { text: '' };
+      if (paginationRangeEl) {
+        paginationRangeEl.innerHTML = `<span style="color:var(--accent-warning);">Límite de paginación alcanzado:</span> ${cov.text || 'página repetida devuelta'}`;
+      }
+      showToast('Página repetida detectada (fin de historial indexado)');
+      return;
+    }
+
+    if (mergeResult.addedCount > 0) {
+      currentParsedEvents = mergeResult.deduplicatedEvents;
+      await updateFinancialIntelligence(currentAccount.address);
       renderFilteredEvents();
-      showToast(`+${moreData.events.length} transacciones cargadas`);
+      renderConfirmedSwapsTable();
+      renderPnlView();
+      renderPnlPerformanceChart(currentPnlChartRange);
+      updateHistoricalAnalytics();
+
+      const cov = helper ? helper.formatCoverage(currentParsedEvents) : null;
+      if (paginationRangeEl && cov) {
+        paginationRangeEl.textContent = cov.text;
+      }
+      showToast(`+${mergeResult.addedCount} transacciones incorporadas al historial FIFO`);
     } else {
       showToast('No hay transacciones adicionales indexadas');
     }
@@ -3404,12 +4826,16 @@ function loadDemoSimulationData() {
 
   renderProfileHeader(currentAccount);
   renderHoldingsView(currentJettonsList, currentAccount);
-  renderFilteredEvents();
-  renderConfirmedSwapsTable();
-  renderBridgesTable();
-  updateHistoricalAnalytics();
-  renderAnomaliesSignals();
-  updateWatchlistButtonState();
+  updateFinancialIntelligence(currentAccount.address).then(() => {
+    renderFilteredEvents();
+    renderConfirmedSwapsTable();
+    renderPnlView();
+    renderPnlPerformanceChart(currentPnlChartRange);
+    renderBridgesTable();
+    updateHistoricalAnalytics();
+    renderAnomaliesSignals();
+    updateWatchlistButtonState();
+  });
 }
 
 // ==========================================
