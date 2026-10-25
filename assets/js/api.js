@@ -470,39 +470,104 @@ function friendlyToRaw(friendlyAddr) {
 /**
  * Helper to make API requests with timeout & error handling
  * Gracefully tries server-side proxy `/api/ton` first to leverage server TONAPI_KEY if available,
- * then falls back directly to public TonAPI endpoint.
+ * then falls back directly to public TonAPI endpoint with exponential backoff on HTTP 429.
  */
+const _apiCache = new Map();
+
+function clearApiCache() {
+  _apiCache.clear();
+}
+
+if (typeof window !== 'undefined') {
+  window.clearApiCache = clearApiCache;
+}
+
 async function fetchTonApi(endpoint) {
-  // 1. Try server proxy first if served over HTTP/HTTPS on current origin
+  const now = Date.now();
+  // 0. Check client cache (TTL: 10s for events, 60s for rates, 15s for balances)
+  let ttl = 15000;
+  if (endpoint.includes('rates')) ttl = 60000;
+  else if (endpoint.includes('events') || endpoint.includes('transactions')) ttl = 10000;
+
+  const cached = _apiCache.get(endpoint);
+  if (cached && (now - cached.timestamp < ttl)) {
+    return cached.data;
+  }
+
   const isWebOrigin = typeof window !== 'undefined' && window.location && (window.location.protocol === 'http:' || window.location.protocol === 'https:') && !window.location.hostname.includes('tonapi.io');
   
+  // 1. Try server proxy first if served over HTTP/HTTPS on current origin
   if (isWebOrigin) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000);
-      const localResp = await fetch(`/api/ton${endpoint}`, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (localResp.ok) {
-        return await localResp.json();
+    let attempts = 0;
+    const maxAttempts = 3;
+    let delay = 500;
+
+    while (attempts < maxAttempts) {
+      attempts++;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 9000);
+        const localResp = await fetch(`/api/ton${endpoint}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (localResp.status === 429) {
+          if (attempts < maxAttempts) {
+            console.warn(`[TonAPI Proxy] Rate limit reached. Retrying attempt ${attempts}/${maxAttempts}...`);
+            await new Promise(r => setTimeout(r, delay));
+            delay *= 2;
+            continue;
+          }
+        }
+
+        if (localResp.ok) {
+          const json = await localResp.json();
+          _apiCache.set(endpoint, { data: json, timestamp: now });
+          return json;
+        }
+      } catch (e) {
+        if (attempts >= maxAttempts) break;
+        await new Promise(r => setTimeout(r, delay));
+        delay *= 2;
       }
-    } catch (e) {
-      // Continue to direct public endpoint
     }
   }
 
-  // 2. Direct fallback to public TonAPI endpoint
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
-    const response = await fetch(`${TONAPI_BASE}${endpoint}`, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (!response.ok) {
-      return null;
+  // 2. Direct fallback to public TonAPI endpoint with backoff
+  let directAttempts = 0;
+  const maxDirect = 2;
+  let directDelay = 600;
+
+  while (directAttempts < maxDirect) {
+    directAttempts++;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      const response = await fetch(`${TONAPI_BASE}${endpoint}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (response.status === 429) {
+        if (directAttempts < maxDirect) {
+          console.warn(`[TonAPI Direct] Rate limit (429). Retrying...`);
+          await new Promise(r => setTimeout(r, directDelay));
+          directDelay *= 2;
+          continue;
+        }
+        return null;
+      }
+
+      if (!response.ok) {
+        return null;
+      }
+      const json = await response.json();
+      _apiCache.set(endpoint, { data: json, timestamp: now });
+      return json;
+    } catch (error) {
+      if (directAttempts >= maxDirect) return null;
+      await new Promise(r => setTimeout(r, directDelay));
+      directDelay *= 2;
     }
-    return await response.json();
-  } catch (error) {
-    return null;
   }
+  return null;
 }
 
 /**
@@ -1371,7 +1436,8 @@ if (typeof module !== 'undefined' && module.exports) {
     shortenAddress,
     timeAgoTimestamp,
     escapeHtml,
-    sanitizeUrl
+    sanitizeUrl,
+    clearApiCache
   };
 }
 

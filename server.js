@@ -20,6 +20,25 @@ const SECURITY_HEADERS = {
   'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://raw.githubusercontent.com https://tonapi.io https://api.ston.fi https://*.ston.fi https://testnet.tonapi.io https://*.tonapi.io https://toncenter.com https://testnet.toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io https://telegram.org; frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://telegram.org; object-src 'none'; base-uri 'self';"
 };
 
+// In-memory cache for TonAPI proxy responses
+// Key: `${subPath}${queryString}` -> { data: string, status: number, timestamp: number, ttl: number }
+const proxyCache = new Map();
+
+// In-memory rate limiting map per client IP (max 120 requests / 60 seconds)
+const clientRateMap = new Map();
+
+function checkClientRateLimit(clientIp) {
+  const now = Date.now();
+  let record = clientRateMap.get(clientIp);
+  if (!record || (now - record.resetTime > 60000)) {
+    record = { count: 1, resetTime: now };
+    clientRateMap.set(clientIp, record);
+    return true;
+  }
+  record.count++;
+  return record.count <= 120;
+}
+
 const server = http.createServer((req, res) => {
   // Remove query params and decode URI safely
   let cleanUrl = req.url.split('?')[0];
@@ -33,36 +52,131 @@ const server = http.createServer((req, res) => {
 
   // Handle secure TonAPI proxy endpoint to keep API keys server-side
   if (cleanUrl.startsWith('/api/ton/')) {
+    const clientIp = req.socket.remoteAddress || 'local';
+    if (!checkClientRateLimit(clientIp)) {
+      res.writeHead(429, {
+        'Content-Type': 'application/json',
+        'Retry-After': '10',
+        ...SECURITY_HEADERS
+      });
+      res.end(JSON.stringify({ error: 'Client rate limit reached. Retrying in 10s...' }));
+      return;
+    }
+
     let subPath = path.posix.normalize('/' + cleanUrl.slice('/api/ton'.length));
     if (subPath.startsWith('/v2/')) { subPath = subPath.slice(3); }
     const queryString = req.url.includes('?') ? '?' + req.url.split('?').slice(1).join('?') : '';
-    const targetUrl = `https://tonapi.io/v2${subPath}${queryString}`;
+    const cacheKey = `${subPath}${queryString}`;
+    const now = Date.now();
 
+    // Cache hit check (TTL: 60s for rates, 15s for balances/jettons, 10s for events)
+    let ttl = 15000;
+    if (subPath.includes('rates')) ttl = 60000;
+    else if (subPath.includes('events') || subPath.includes('transactions')) ttl = 10000;
+
+    const cached = proxyCache.get(cacheKey);
+    if (cached && (now - cached.timestamp < cached.ttl)) {
+      res.writeHead(cached.status, {
+        'Content-Type': 'application/json',
+        'Cache-Control': `public, max-age=${Math.floor(ttl / 1000)}`,
+        'X-Proxy-Cached': 'HIT',
+        ...SECURITY_HEADERS
+      });
+      res.end(cached.data);
+      return;
+    }
+
+    const targetUrl = `https://tonapi.io/v2${subPath}${queryString}`;
     const headers = {
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      'User-Agent': 'ANLGRAM-Institutional-Proxy/2.0'
     };
     if (process.env.TONAPI_KEY) {
       headers['Authorization'] = `Bearer ${process.env.TONAPI_KEY.trim()}`;
     }
 
-    fetch(targetUrl, {
-      method: req.method,
-      headers: headers
-    }).then(async (apiRes) => {
-      const data = await apiRes.text();
-      res.writeHead(apiRes.status, {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=15',
-        ...SECURITY_HEADERS
-      });
-      res.end(data);
-    }).catch((err) => {
-      res.writeHead(502, {
-        'Content-Type': 'application/json',
-        ...SECURITY_HEADERS
-      });
-      res.end(JSON.stringify({ error: 'TonAPI proxy failure', message: err.message }));
-    });
+    // Exponential Backoff with up to 3 attempts
+    (async function proxyFetchWithRetry() {
+      let attempts = 0;
+      const maxAttempts = 3;
+      let delayMs = 500;
+
+      while (attempts < maxAttempts) {
+        attempts++;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8500);
+
+        try {
+          const apiRes = await fetch(targetUrl, {
+            method: req.method,
+            headers: headers,
+            signal: controller.signal
+          });
+          clearTimeout(timeout);
+
+          // Handle 429 Too Many Requests from upstream TonAPI
+          if (apiRes.status === 429) {
+            if (attempts < maxAttempts) {
+              await new Promise(r => setTimeout(r, delayMs));
+              delayMs *= 2;
+              continue;
+            }
+            res.writeHead(429, {
+              'Content-Type': 'application/json',
+              'Retry-After': '3',
+              ...SECURITY_HEADERS
+            });
+            res.end(JSON.stringify({
+              error: 'Rate limit reached on TonAPI upstream. Retrying...',
+              status: 429,
+              retryAfter: 3
+            }));
+            return;
+          }
+
+          // Handle 5xx Server Errors from upstream
+          if (apiRes.status >= 500 && attempts < maxAttempts) {
+            await new Promise(r => setTimeout(r, delayMs));
+            delayMs *= 2;
+            continue;
+          }
+
+          const data = await apiRes.text();
+          
+          // Cache successful 200 responses
+          if (apiRes.status === 200) {
+            proxyCache.set(cacheKey, { data, status: 200, timestamp: now, ttl });
+          }
+
+          res.writeHead(apiRes.status, {
+            'Content-Type': 'application/json',
+            'Cache-Control': `public, max-age=${Math.floor(ttl / 1000)}`,
+            'X-Proxy-Cached': 'MISS',
+            ...SECURITY_HEADERS
+          });
+          res.end(data);
+          return;
+        } catch (fetchErr) {
+          clearTimeout(timeout);
+          if (attempts < maxAttempts) {
+            await new Promise(r => setTimeout(r, delayMs));
+            delayMs *= 2;
+            continue;
+          }
+
+          const isTimeout = fetchErr.name === 'AbortError';
+          res.writeHead(isTimeout ? 504 : 502, {
+            'Content-Type': 'application/json',
+            ...SECURITY_HEADERS
+          });
+          res.end(JSON.stringify({
+            error: isTimeout ? 'Request timed out on TonAPI upstream.' : 'Data provider temporarily unavailable.',
+            message: fetchErr.message
+          }));
+          return;
+        }
+      }
+    })();
     return;
   }
 

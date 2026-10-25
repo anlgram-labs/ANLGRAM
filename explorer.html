@@ -1069,6 +1069,22 @@
               </table>
             </div>
           </div>
+
+          <!-- Sub-module: On-Chain NFT Items & Collections -->
+          <div class="forensic-table-card" style="margin-top:16px;">
+            <div style="padding:14px 16px; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="material-symbols-outlined" style="font-size:18px; color:var(--primary);">diamond</span>
+                <h4 style="margin:0; font-size:13px; font-weight:700; color:var(--text-primary);">Colecciones e Items NFT On-Chain</h4>
+              </div>
+              <span class="kbd-badge" id="tabNftCountBadge" style="color:var(--accent-electric);">0 NFTs</span>
+            </div>
+            <div id="nftGridContainer" style="padding:16px; display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px;">
+              <div style="grid-column:1/-1; padding:24px; text-align:center; color:var(--text-muted); font-size:12px; font-family:var(--font-mono);">
+                Sin colecciones ni items NFT detectados en esta dirección.
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- TAB 3: FULL TRANSACTIONS (Reuses Master Filter) -->
@@ -2004,6 +2020,85 @@ function closeDisambiguation() {
   if (panel) panel.style.display = 'none';
 }
 
+function updateUrlAddress(address) {
+  if (typeof window !== 'undefined' && window.history && window.history.replaceState && address) {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('address', address);
+      window.history.replaceState({}, '', url.toString());
+    } catch (e) {}
+  }
+}
+
+function resetExplorerState() {
+  if (typeof clearApiCache === 'function') clearApiCache();
+  currentAccount = null;
+  currentJettonsList = [];
+  currentParsedEvents = [];
+  currentClassifiedTrades = [];
+  currentRawTransactions = [];
+  currentJettonHolders = [];
+  pnlAccountingEngine = null;
+  currentEvaluatedPortfolio = null;
+  currentTraderScorecard = null;
+
+  if (balChartInstance) {
+    try { balChartInstance.destroy(); } catch (e) {}
+    balChartInstance = null;
+  }
+  if (cpChartInstance) {
+    try { cpChartInstance.destroy(); } catch (e) {}
+    cpChartInstance = null;
+  }
+
+  const containers = [
+    'topAssetConcentrationList',
+    'counterpartyHeatmapBar',
+    'counterpartyBreakdownGrid',
+    'hudOrbitNodesContainer',
+    'swapsTableBody',
+    'txHistoryBody',
+    'overviewRecentTxBody',
+    'jettonsTableFullBody',
+    'counterpartiesFullTableBody',
+    'bridgesTableBody',
+    'anomaliesListContainer',
+    'nftGridContainer'
+  ];
+  containers.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+
+  const defaults = [
+    ['statBalanceVal', '0 TON'],
+    ['statBalanceUsd', '—'],
+    ['statJettonCountVal', '0 Tokens'],
+    ['statNetFlowVal', '—'],
+    ['statObservedTxVal', '0 TX'],
+    ['riskIndexScore', 'Calculando...'],
+    ['tabHoldingsCount', '0'],
+    ['tabTxCount', '0'],
+    ['tabSwapsCount', '0'],
+    ['tabCpCount', '0'],
+    ['tabBridgesCount', '0'],
+    ['tabAnomaliesCount', '0'],
+    ['tabNftCountBadge', '0 NFTs'],
+    ['dashPortfolioVal', '$0.00'],
+    ['dashRealizedPnl', '$0.00'],
+    ['dashUnrealizedPnl', '—'],
+    ['dashNetPnl', '—'],
+    ['dashRoiPct', '—'],
+    ['dashDexTradesCount', '0'],
+    ['dashTotalFees', '$0.00'],
+    ['overviewTxCountBadge', '0 TXs']
+  ];
+  defaults.forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  });
+}
+
 function loadTargetAddress(addr) {
   closeDisambiguation();
   dismissError();
@@ -2030,6 +2125,8 @@ async function performSearch(query, expectedType = 'address', isSilent = false) 
   const tbody = document.getElementById('txHistoryBody');
 
   if (!isSilent) {
+    updateUrlAddress(query);
+    resetExplorerState();
     if (emptyState) emptyState.style.display = 'none';
     if (explorerResult) explorerResult.style.display = 'block';
     if (tbody) {
@@ -2106,10 +2203,11 @@ async function performSearch(query, expectedType = 'address', isSilent = false) 
         jmCard.style.display = 'none';
       }
 
-      // 5. Fetch Jetton Holdings
+      // 5. Fetch Jetton Holdings & NFTs
       const jettonsData = await getAccountJettons(acc.address);
       currentJettonsList = jettonsData.balances || [];
       renderHoldingsView(currentJettonsList, acc);
+      loadAccountNfts(acc.address);
 
       // 6. Fetch Real Transactions & Events
       const eventsData = await getAccountEvents(acc.address, 50);
@@ -2126,8 +2224,8 @@ async function performSearch(query, expectedType = 'address', isSilent = false) 
     const provSrc = document.getElementById('provSource');
     const provScp = document.getElementById('provScope');
     const provTime = document.getElementById('provTimestamp');
-    if (provSrc) provSrc.textContent = 'TonAPI v2 Live Indexer & STON.fi Pools';
-    if (provScp) provScp.textContent = 'Eventos on-chain verificables';
+    if (provSrc) provSrc.textContent = 'TON MAINNET (TonAPI v2 Live & STON.fi Pools)';
+    if (provScp) provScp.textContent = 'LIVE (Eventos on-chain verificados)';
     if (provTime) provTime.textContent = new Date().toLocaleTimeString();
 
     // 8. Populate Asset Filter Options
@@ -2155,8 +2253,19 @@ async function performSearch(query, expectedType = 'address', isSilent = false) 
 
   } catch (err) {
     console.error('API Error during performSearch:', err);
+    let errMsg = 'Error de comunicación con TonAPI o proveedores DEX.';
+    if (err.message && err.message.includes('429')) {
+      errMsg = 'Rate limit reached. Retrying... (Límite de peticiones alcanzado en TonAPI)';
+    } else if (err.message && (err.message.includes('500') || err.message.includes('502'))) {
+      errMsg = 'Data provider temporarily unavailable. (Proveedor temporalmente no disponible)';
+    } else if (err.name === 'AbortError' || (err.message && err.message.includes('timed out'))) {
+      errMsg = 'Request timed out. Please retry. (Tiempo de espera agotado)';
+    }
+    showError(errMsg);
+    const provScp = document.getElementById('provScope');
+    if (provScp) provScp.textContent = 'OFFLINE (Error en consulta)';
     if (!isSilent && tbody) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--flow-negative);font-family:var(--font-mono);">⚠️ Error de comunicación con TonAPI o proveedores DEX. <button onclick="performSearch('${query}')" class="btn-terminal" style="margin-left:8px;">Reintentar</button></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--flow-negative);font-family:var(--font-mono);">⚠️ ${escapeHtml(errMsg)} <button onclick="performSearch('${query}')" class="btn-terminal" style="margin-left:8px;">Reintentar</button></td></tr>`;
     }
   }
 }
@@ -2470,6 +2579,46 @@ function renderAssetConcentration(jettons, acc) {
     `;
   }).join('');
 }
+
+async function loadAccountNfts(addr) {
+  const container = document.getElementById('nftGridContainer');
+  const badge = document.getElementById('tabNftCountBadge');
+  if (!container || !addr) return;
+
+  try {
+    const data = await fetchTonApi(`/accounts/${encodeURIComponent(addr)}/nfts?limit=24`);
+    const nfts = data?.nft_items || [];
+    if (badge) badge.textContent = `${nfts.length} NFT${nfts.length === 1 ? '' : 's'}`;
+
+    if (nfts.length === 0) {
+      container.innerHTML = '<div style="grid-column:1/-1; padding:24px; text-align:center; color:var(--text-muted); font-size:12px; font-family:var(--font-mono);">Sin colecciones ni items NFT detectados en esta dirección.</div>';
+      return;
+    }
+
+    container.innerHTML = nfts.map(nft => {
+      const meta = nft.metadata || {};
+      const img = meta.image || 'assets/img/anlgram-icon.svg';
+      const name = escapeHtml(meta.name || `NFT #${shortenAddress(nft.address)}`);
+      const collectionName = escapeHtml(nft.collection?.name || 'Colección Independiente');
+      const itemAddr = typeof toUserFriendly === 'function' ? toUserFriendly(nft.address, true) : shortenAddress(nft.address);
+
+      return `
+        <div class="terminal-card" style="padding:12px; display:flex; flex-direction:column; gap:8px;">
+          <img src="${img}" alt="${name}" style="width:100%; height:140px; object-fit:cover; border-radius:6px; background:var(--surface-container);" onerror="this.src='assets/img/anlgram-icon.svg'"/>
+          <div>
+            <div style="font-weight:700; font-size:12px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${name}</div>
+            <div style="font-size:10px; color:var(--accent-electric); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${collectionName}</div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto; font-family:var(--font-mono); font-size:10px;">
+            <span style="color:var(--text-muted);">${shortenAddress(itemAddr)}</span>
+            <a href="https://tonviewer.com/${itemAddr}" target="_blank" rel="noopener" style="color:var(--accent-electric); text-decoration:none;">Ver ↗</a>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    if (container) container.innerHTML = '<div style="grid-column:1/-1; padding:16px; text-align:center; color:var(--text-muted); font-size:11px;">Metadatos NFT no disponibles.</div>';
+  }
 }
 
 function renderJettonMasterView(jm, holders) {
@@ -3050,20 +3199,31 @@ async function updateFinancialIntelligence(targetAddr) {
     }
   }
 
-  // 4. Build price map from holdings & oracles
+  // 4. Build price map from holdings & oracles (Real verified pool liquidity without fake fallback)
   const tokenPrices = {};
-  (currentJettonsList || []).forEach(j => {
+  for (const j of (currentJettonsList || [])) {
     const rawMaster = j.jetton?.address;
     if (rawMaster) {
       const priceUsd = j.price?.prices?.USD || null;
+      let poolLiq = null;
+      if (typeof fetchStonfiPool === 'function') {
+        try {
+          const poolData = await fetchStonfiPool(rawMaster);
+          if (poolData && poolData.lp_total_supply_usd) {
+            poolLiq = Number(poolData.lp_total_supply_usd);
+          }
+        } catch (e) {
+          poolLiq = null;
+        }
+      }
       tokenPrices[rawMaster] = {
         priceUsd,
-        liquidityUsd: 15000,
-        source: 'TonAPI / STON.fi Pools',
+        liquidityUsd: poolLiq, // real pool liquidity or null (NEVER $15,000)
+        source: poolLiq ? 'STON.fi Pools' : 'Cotización Indexada',
         isVerifiedMajor: Boolean(j.jetton?.verification === 'whitelist' || rawMaster === CANONICAL_GRAM_CONTRACT)
       };
     }
-  });
+  }
 
   // 5. Evaluate portfolio and trader metrics
   const portfolioEval = accounting.evaluatePortfolio(currentJettonsList, tokenPrices);
@@ -3377,8 +3537,8 @@ function renderEnhancedTradesTable() {
       const sign = isPos ? '+' : '';
       const roiText = t.roiPct !== null ? ` (${sign}${t.roiPct.toFixed(1)}%)` : '';
       pnlHtml = `<span style="font-weight:700; color:${color}; font-family:var(--font-mono);">${sign}$${t.realizedPnlUsd.toFixed(2)}${roiText}</span>`;
-    } else if (t.type === 'SELL') {
-      pnlHtml = '<span style="color:var(--text-muted); font-size:10px;" title="Uno o más lotes proceden de transferencias sin coste documentado">Coste desc.</span>';
+    } else if (t.type === 'SELL' || t.costBasisStatus === 'UNKNOWN_COST_BASIS') {
+      pnlHtml = '<span class="kbd-badge" style="color:var(--text-muted); font-size:9px;" title="Cost basis unavailable because the asset entered the wallet through an external transfer.">Cost basis unavailable (Transferencia externa)</span>';
     }
 
     const txLink = t.txHash && !t.txHash.startsWith('tx_') 
@@ -4524,7 +4684,7 @@ async function loadMoreTransactions() {
       return;
     }
 
-    const endpoint = `/accounts/${encodeURIComponent(currentAccount.address)}/events?limit=30&before_lt=${encodeURIComponent(beforeLt)}`;
+    const endpoint = `/accounts/${encodeURIComponent(currentAccount.address)}/events?limit=50&before_lt=${encodeURIComponent(beforeLt)}`;
     const moreData = await fetchTonApi(endpoint);
 
     const helper = (typeof TonWalletIntelligence !== 'undefined' && TonWalletIntelligence.PaginationHelper)
@@ -4538,16 +4698,16 @@ async function loadMoreTransactions() {
     if (mergeResult.status === 'EMPTY_PAGE') {
       const cov = helper ? helper.formatCoverage(currentParsedEvents) : { text: '' };
       if (paginationRangeEl) {
-        paginationRangeEl.innerHTML = `<span style="color:var(--tertiary);">Límite del proveedor alcanzado:</span> ${cov.text || '0 eventos más disponibles'}`;
+        paginationRangeEl.innerHTML = `<span style="color:var(--tertiary);">Fin de historial indexado:</span> ${currentParsedEvents.length} transacciones recuperadas.`;
       }
-      showToast('Límite del proveedor alcanzado (0 eventos más)');
+      showToast('Fin de historial (0 eventos más)');
       return;
     }
 
     if (mergeResult.status === 'REPEATED_PAGE') {
       const cov = helper ? helper.formatCoverage(currentParsedEvents) : { text: '' };
       if (paginationRangeEl) {
-        paginationRangeEl.innerHTML = `<span style="color:var(--accent-warning);">Límite de paginación alcanzado:</span> ${cov.text || 'página repetida devuelta'}`;
+        paginationRangeEl.innerHTML = `<span style="color:var(--accent-warning);">Límite alcanzado:</span> ${currentParsedEvents.length} transacciones recuperadas.`;
       }
       showToast('Página repetida detectada (fin de historial indexado)');
       return;
@@ -4562,9 +4722,13 @@ async function loadMoreTransactions() {
       renderPnlPerformanceChart(currentPnlChartRange);
       updateHistoricalAnalytics();
 
-      const cov = helper ? helper.formatCoverage(currentParsedEvents) : null;
-      if (paginationRangeEl && cov) {
-        paginationRangeEl.textContent = cov.text;
+      const overviewBadge = document.getElementById('overviewTxCountBadge');
+      if (overviewBadge) overviewBadge.textContent = `${currentParsedEvents.length} TXs`;
+      const statObserved = document.getElementById('statObservedTxVal');
+      if (statObserved) statObserved.textContent = `${currentParsedEvents.length} TX`;
+
+      if (paginationRangeEl) {
+        paginationRangeEl.textContent = `Recuperadas: ${currentParsedEvents.length} transacciones on-chain (+${mergeResult.addedCount} en lote)`;
       }
       showToast(`+${mergeResult.addedCount} transacciones incorporadas al historial FIFO`);
     } else {
