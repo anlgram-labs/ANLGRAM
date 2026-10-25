@@ -57,7 +57,7 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="assets/js/telegram-mini-app.js?v=2026.56"></script>
   <script src="assets/js/security.js"></script>
-  <script src="assets/js/api.js?v=2026.45"></script>
+  <script src="assets/js/api.js?v=2026.58"></script>
   <script src="assets/js/asset-registry.js?v=2026.45"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -1724,8 +1724,9 @@ function closeDisambiguation() {
 function loadTargetAddress(addr) {
   closeDisambiguation();
   dismissError();
+  const cleanAddr = typeof toUserFriendly === 'function' ? toUserFriendly(addr) : addr;
   if (searchInput) {
-    searchInput.value = addr;
+    searchInput.value = cleanAddr;
     if (searchTypeBadge) searchTypeBadge.textContent = detectInputType(addr);
   }
   performSearch(addr, 'address');
@@ -1774,8 +1775,8 @@ async function performSearch(query, expectedType = 'address', isSilent = false) 
         txCard.style.display = 'block';
         const inMsg = tx.in_msg || {};
         const outMsg = (tx.out_msgs && tx.out_msgs[0]) || {};
-        const srcAddr = inMsg.source?.address ? rawToFriendly(inMsg.source.address) : 'Externo / Masterchain';
-        const dstAddr = inMsg.destination?.address ? rawToFriendly(inMsg.destination.address) : (outMsg.destination?.address ? rawToFriendly(outMsg.destination.address) : 'Contrato');
+        const srcAddr = inMsg.source?.address ? (typeof toUserFriendly === 'function' ? toUserFriendly(inMsg.source.address, false) : rawToFriendly(inMsg.source.address)) : 'Externo / Masterchain';
+        const dstAddr = inMsg.destination?.address ? (typeof toUserFriendly === 'function' ? toUserFriendly(inMsg.destination.address, false) : rawToFriendly(inMsg.destination.address)) : (outMsg.destination?.address ? (typeof toUserFriendly === 'function' ? toUserFriendly(outMsg.destination.address, false) : rawToFriendly(outMsg.destination.address)) : 'Contrato');
         const valTon = (inMsg.value || outMsg.value || 0) / 1e9;
         
         document.getElementById('txStatusBadge').textContent = tx.success ? 'Confirmada (Éxito)' : 'Fallida';
@@ -1882,7 +1883,7 @@ function adaptRawTransactionsToEvents(transactions, currentAddr) {
     const value = isIn ? (tx.in_msg.value || 0) : (outMsg ? (outMsg.value || 0) : 0);
     
     const cpRaw = isIn ? rawSrc : (outMsg?.destination?.address || 'External');
-    const cpFriendly = cpRaw ? rawToFriendly(cpRaw) : '';
+    const cpFriendly = cpRaw ? (typeof toUserFriendly === 'function' ? toUserFriendly(cpRaw, false) : rawToFriendly(cpRaw)) : '';
     const cpName = isIn ? tx.in_msg?.source?.name : outMsg?.destination?.name;
 
     return {
@@ -1915,6 +1916,9 @@ function adaptRawTransactionsToEvents(transactions, currentAddr) {
 // ==========================================
 async function renderProfileHeader(acc) {
   const isGram = acc.address === CANONICAL_GRAM_CONTRACT || acc.raw_address === CANONICAL_GRAM_RAW;
+  const isContract = isGram || acc.is_jetton_master || (!acc.is_wallet && acc.type !== 'Active Wallet');
+  const userFriendlyAddr = typeof toUserFriendly === 'function' ? toUserFriendly(acc.address, isContract) : acc.address;
+  acc.address = userFriendlyAddr;
   
   const entityNameEl = document.getElementById('entityName');
   if (entityNameEl) {
@@ -1922,19 +1926,19 @@ async function renderProfileHeader(acc) {
   }
 
   const addrDisp = document.getElementById('entityAddressDisplay');
-  if (addrDisp) addrDisp.textContent = acc.address || '—';
+  if (addrDisp) addrDisp.textContent = userFriendlyAddr || '—';
 
   // HUD Labels
   const hudCenter = document.getElementById('hudCenterLabel');
   if (hudCenter) hudCenter.textContent = isGram ? 'GRAM MASTER' : (acc.name ? acc.name.slice(0, 16).toUpperCase() : 'OBJETIVO');
   const hudSub = document.getElementById('hudCenterSub');
-  if (hudSub) hudSub.textContent = shortenAddress(acc.address);
+  if (hudSub) hudSub.textContent = shortenAddress(userFriendlyAddr, isContract);
 
   // Links
   const vLink = document.getElementById('tonviewerLink');
   const sLink = document.getElementById('tonscanLink');
-  if (vLink) vLink.href = `https://tonviewer.com/${acc.address}`;
-  if (sLink) sLink.href = `https://tonscan.org/address/${acc.address}`;
+  if (vLink) vLink.href = `https://tonviewer.com/${userFriendlyAddr}`;
+  if (sLink) sLink.href = `https://tonscan.org/address/${userFriendlyAddr}`;
 
   // Avatar / Preview
   const av = document.getElementById('entityAvatar');
@@ -2161,11 +2165,11 @@ function renderJettonMasterView(jm, holders) {
 
   if (tbody) {
     tbody.innerHTML = holders.map((h, idx) => {
-      const holderAddr = rawToFriendly(h.address);
-      const ownerAddr = h.owner?.address ? rawToFriendly(h.owner.address) : holderAddr;
+      const holderAddr = typeof toUserFriendly === 'function' ? toUserFriendly(h.address, true) : h.address;
+      const isOwnerWallet = h.owner?.is_wallet !== false;
+      const ownerAddr = typeof toUserFriendly === 'function' ? toUserFriendly(h.owner?.address || holderAddr, !isOwnerWallet) : holderAddr;
       const holderBal = formatTokenUnits(h.balance, decimals);
       const pct = totalSupplyNum > 0 ? ((Number(h.balance) / totalSupplyNum) * 100).toFixed(2) : '—';
-      const isOwnerWallet = h.owner?.is_wallet;
 
       return `
         <tr>
@@ -2308,7 +2312,8 @@ function parseEventAction(event, currentAddr) {
     const isIn = t.recipient?.address?.toLowerCase() === currentAddr?.toLowerCase();
     direction = isIn ? 'inflow' : 'outflow';
     amountTon = Number(t.amount || 0) / 1e9;
-    counterpartyAddr = isIn ? t.sender?.address : t.recipient?.address;
+    const rawCp = isIn ? t.sender?.address : t.recipient?.address;
+    counterpartyAddr = typeof toUserFriendly === 'function' ? toUserFriendly(rawCp, false) : (rawCp || '');
     counterpartyName = isIn ? t.sender?.name : t.recipient?.name;
     comment = t.comment || '';
     actionLabel = isIn ? '⬇ Entrada TON' : '⬆ Salida TON';
@@ -2318,7 +2323,8 @@ function parseEventAction(event, currentAddr) {
     direction = isIn ? 'inflow' : 'outflow';
     jettonSymbol = j.jetton?.symbol || 'TOKEN';
     jettonAmount = formatTokenUnits(j.amount, j.jetton?.decimals || 9);
-    counterpartyAddr = isIn ? j.sender?.address : j.recipient?.address;
+    const rawCpJ = isIn ? j.sender?.address : j.recipient?.address;
+    counterpartyAddr = typeof toUserFriendly === 'function' ? toUserFriendly(rawCpJ, false) : (rawCpJ || '');
     counterpartyName = isIn ? j.sender?.name : j.recipient?.name;
     comment = j.comment || '';
     actionLabel = isIn ? `⬇ Entrada ${jettonSymbol}` : `⬆ Salida ${jettonSymbol}`;
@@ -2326,7 +2332,7 @@ function parseEventAction(event, currentAddr) {
     const sc = action.SmartContractExec || {};
     direction = 'other';
     actionLabel = '⚙️ Llamada a Contrato';
-    counterpartyAddr = sc.contract?.address;
+    counterpartyAddr = typeof toUserFriendly === 'function' ? toUserFriendly(sc.contract?.address, true) : (sc.contract?.address || '');
     counterpartyName = sc.operation || 'Ejecución Contrato';
     if (sc.ton_attached) amountTon = Number(sc.ton_attached) / 1e9;
   } else {
@@ -3229,7 +3235,10 @@ function showToast(msg) {
 
 function copyCurrentAddress() {
   if (!currentAccount?.address) return;
-  navigator.clipboard.writeText(currentAccount.address).then(() => {
+  const isGram = currentAccount.address === CANONICAL_GRAM_CONTRACT || currentAccount.raw_address === CANONICAL_GRAM_RAW;
+  const isContract = isGram || currentAccount.is_jetton_master || (!currentAccount.is_wallet && currentAccount.type !== 'Active Wallet');
+  const fullAddr = typeof toUserFriendly === 'function' ? toUserFriendly(currentAccount.address, isContract) : currentAccount.address;
+  navigator.clipboard.writeText(fullAddr).then(() => {
     const copyIcon = document.getElementById('copyIcon');
     const copiedText = document.getElementById('copiedText');
     if (copyIcon && copiedText) {
@@ -3248,13 +3257,16 @@ function copyCurrentAddress() {
 
 function openQrModal() {
   if (!currentAccount?.address) return;
+  const isGram = currentAccount.address === CANONICAL_GRAM_CONTRACT || currentAccount.raw_address === CANONICAL_GRAM_RAW;
+  const isContract = isGram || currentAccount.is_jetton_master || (!currentAccount.is_wallet && currentAccount.type !== 'Active Wallet');
+  const fullAddr = typeof toUserFriendly === 'function' ? toUserFriendly(currentAccount.address, isContract) : currentAccount.address;
   const qrImg = document.getElementById('qrImage');
   const qrText = document.getElementById('qrAddressText');
   const modal = document.getElementById('qrModal');
   
   if (qrImg && qrText && modal) {
-    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentAccount.address)}`;
-    qrText.textContent = currentAccount.address;
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(fullAddr)}`;
+    qrText.textContent = fullAddr;
     modal.style.display = 'flex';
   }
 }

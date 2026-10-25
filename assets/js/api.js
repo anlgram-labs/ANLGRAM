@@ -319,7 +319,14 @@ function validateTonAddress(addr) {
   if (!addr || typeof addr !== 'string') {
     return { valid: false, error: 'Input is empty' };
   }
-  const s = addr.trim();
+  let s = addr.trim();
+
+  // Normalize 0x hex if provided without workchain
+  if (/^0x[0-9a-fA-F]{64}$/i.test(s)) {
+    s = '0:' + s.slice(2).toLowerCase();
+  } else if (/^0x-?[0-9]+:[0-9a-fA-F]{64}$/i.test(s)) {
+    s = s.slice(2);
+  }
 
   // Raw Address (workchain:64hex)
   if (s.includes(':')) {
@@ -380,11 +387,20 @@ function validateTonAddress(addr) {
  */
 function rawToFriendly(rawAddr, bounceable = true) {
   if (!rawAddr || typeof rawAddr !== 'string') return '';
-  if (rawAddr.includes(':')) {
-    const parts = rawAddr.split(':');
+  let clean = rawAddr.trim();
+
+  // Normalize 0x prefix if present
+  if (clean.startsWith('0x') && !clean.includes(':')) {
+    clean = '0:' + clean.slice(2);
+  } else if (clean.startsWith('0x') && clean.includes(':')) {
+    clean = clean.slice(2);
+  }
+
+  if (clean.includes(':')) {
+    const parts = clean.split(':');
     const workchain = parseInt(parts[0], 10);
     const hexAddr = parts[1];
-    if (hexAddr.length !== 64) return rawAddr;
+    if (hexAddr.length !== 64) return clean;
     const buf = new Uint8Array(36);
     buf[0] = bounceable ? 0x11 : 0x51;
     buf[1] = workchain & 0xff;
@@ -401,7 +417,33 @@ function rawToFriendly(rawAddr, bounceable = true) {
     for (let i = 0; i < 36; i++) binary += String.fromCharCode(buf[i]);
     return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
-  return rawAddr;
+
+  // If already friendly EQ... and non-bounceable UQ... was requested (standard for wallets)
+  if (!bounceable && (clean.startsWith('EQ') || clean.startsWith('Ef'))) {
+    const raw = friendlyToRaw(clean);
+    if (raw && raw.includes(':')) {
+      return rawToFriendly(raw, false);
+    }
+  }
+
+  // If already friendly UQ... and bounceable EQ... was requested (for contracts)
+  if (bounceable && (clean.startsWith('UQ') || clean.startsWith('Uf'))) {
+    const raw = friendlyToRaw(clean);
+    if (raw && raw.includes(':')) {
+      return rawToFriendly(raw, true);
+    }
+  }
+
+  return clean;
+}
+
+/**
+ * Universal Address Formatter: converts any TON address to user-friendly format.
+ * Defaults to non-bounceable (UQ...) for standard user wallets (matching Tonkeeper & Telegram Wallet).
+ */
+function toUserFriendly(addr, isContract = false) {
+  if (!addr || typeof addr !== 'string') return '';
+  return rawToFriendly(addr, isContract);
 }
 
 /**
@@ -1217,9 +1259,12 @@ function formatTokenUnits(amountStr, decimals = 9) {
 /**
  * Shorten address (e.g., EQC...x8Kp)
  */
-function shortenAddress(addr) {
+function shortenAddress(addr, isContract = false) {
   if (!addr) return '';
-  const str = addr.toString();
+  let str = addr.toString().trim();
+  if (str.includes(':') || str.startsWith('0x')) {
+    str = toUserFriendly(str, isContract);
+  }
   if (str.length <= 14) return str;
   return str.substring(0, 6) + '...' + str.substring(str.length - 5);
 }
@@ -1271,6 +1316,7 @@ if (typeof window !== 'undefined') {
   window.KNOWN_TON_ENTITIES = KNOWN_TON_ENTITIES;
   window.validateTonAddress = validateTonAddress;
   window.rawToFriendly = rawToFriendly;
+  window.toUserFriendly = toUserFriendly;
   window.friendlyToRaw = friendlyToRaw;
   window.fetchTonApi = fetchTonApi;
   window.getTonPrice = getTonPrice;
@@ -1302,6 +1348,7 @@ if (typeof module !== 'undefined' && module.exports) {
     KNOWN_TON_ENTITIES,
     validateTonAddress,
     rawToFriendly,
+    toUserFriendly,
     friendlyToRaw,
     fetchTonApi,
     getTonPrice,

@@ -384,7 +384,10 @@
 
   function shortenAddress(addr, chars = 4) {
     if (!addr) return '';
-    const s = String(addr);
+    let s = String(addr).trim();
+    if (typeof window.toUserFriendly === 'function' && (s.includes(':') || s.startsWith('0x'))) {
+      s = window.toUserFriendly(s, false);
+    }
     if (s.length <= chars * 2 + 3) return s;
     return `${s.substring(0, chars + 2)}...${s.substring(s.length - chars)}`;
   }
