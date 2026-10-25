@@ -50,7 +50,11 @@
   let isTmaInitialized = false;
 
   function isTelegramEnvironment() {
-    return Boolean(typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp && (window.Telegram.WebApp.initData || window.Telegram.WebApp.platform));
+    if (typeof window === 'undefined' || !window.Telegram || !window.Telegram.WebApp) return false;
+    const tg = window.Telegram.WebApp;
+    const hasInitData = typeof tg.initData === 'string' && tg.initData.length > 0;
+    const isRealPlatform = typeof tg.platform === 'string' && tg.platform !== 'unknown';
+    return Boolean(hasInitData || isRealPlatform);
   }
 
   function getTelegramUser() {

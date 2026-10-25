@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
   <title>Entity Explorer — ANLGRAM On-Chain Intelligence</title>
   <meta name="description" content="Investigación on-chain institucional de la red TON: balances, holdings de Jettons, transacciones verificadas, swaps DEX, puentes cross-chain, contrapartes y detección de anomalías."/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://api.ston.fi https://*.ston.fi https://testnet.tonapi.io https://*.tonapi.io https://toncenter.com https://testnet.toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io https://telegram.org; object-src 'none'; base-uri 'self';"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://raw.githubusercontent.com https://tonapi.io https://api.ston.fi https://*.ston.fi https://testnet.tonapi.io https://*.tonapi.io https://toncenter.com https://testnet.toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io https://telegram.org; object-src 'none'; base-uri 'self';"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/tma-mobile.css?v=2026.50"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
-  <link rel="stylesheet" href="assets/css/explorer-stitch.css?v=2026.52"/>
+  <link rel="stylesheet" href="assets/css/explorer-stitch.css?v=2026.56"/>
   <style>
     /* Absolute Unconstrained Natural Scrolling Guarantee */
     html {
@@ -23,13 +23,14 @@
       min-height: 100% !important;
       overflow-x: hidden !important;
       overflow-y: auto !important;
+      overscroll-behavior: auto !important;
       scroll-behavior: auto !important;
     }
     body.stitch-theme {
       height: auto !important;
       min-height: 100vh !important;
-      overflow-x: hidden !important;
-      overflow-y: visible !important;
+      overflow: visible !important;
+      overscroll-behavior-y: auto !important;
       background-color: var(--surface-canvas, #070B13) !important;
     }
     body.stitch-theme .app-shell,
@@ -37,16 +38,14 @@
       display: block !important;
       height: auto !important;
       min-height: 100vh !important;
-      overflow-x: hidden !important;
-      overflow-y: visible !important;
+      overflow: visible !important;
       background: var(--surface-canvas, #070B13) !important;
       position: relative !important;
     }
     .stitch-main-viewport {
       height: auto !important;
       min-height: 100vh !important;
-      overflow-x: hidden !important;
-      overflow-y: visible !important;
+      overflow: visible !important;
     }
   </style>
 
@@ -56,14 +55,14 @@
 
   <!-- Telegram Mini App (TMA) Native SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="assets/js/telegram-mini-app.js"></script>
+  <script src="assets/js/telegram-mini-app.js?v=2026.56"></script>
   <script src="assets/js/security.js"></script>
   <script src="assets/js/api.js?v=2026.45"></script>
   <script src="assets/js/asset-registry.js?v=2026.45"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body class="stitch-theme">
-<div class="app-shell stitch-shell" style="background:var(--surface-canvas); display:block; height:auto; min-height:100vh; overflow-x:hidden; overflow-y:visible; position:relative;">
+<div class="app-shell stitch-shell" style="background:var(--surface-canvas); display:block; height:auto; min-height:100vh; overflow:visible; position:relative;">
 
   <!-- Main ANLGRAM Sidebar Navigation (Brand Theme) -->
   <aside class="sidebar" id="appSidebar" style="position:fixed; left:0; top:0; bottom:0; width:var(--sidebar-width, 240px); z-index:50; overflow-y:auto; background:var(--surface-base, #040918); border-right:1px solid var(--border-subtle, #1E293B);">
@@ -125,7 +124,7 @@
   </aside>
 
   <!-- Main Viewport -->
-  <main class="stitch-main-viewport" style="min-height:100vh; height:auto; overflow-x:hidden; overflow-y:visible;">
+  <main class="stitch-main-viewport" style="min-height:100vh; height:auto; overflow:visible;">
     <!-- Top Fixed Command Bar -->
     <header class="stitch-topbar">
       <!-- Left: Telemetry Tickers -->
@@ -703,7 +702,7 @@
                   <div class="canvas-cyber-grid"></div>
 
                   <!-- Dynamic SVG Directed Rays -->
-                  <svg id="topologySvgRays" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;" xmlns="http://www.w3.org/2000/svg">
+                  <svg id="topologySvgRays" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                       <linearGradient id="rayGradOut" x1="0%" y1="0%" x2="100%" y2="100%">
                         <stop offset="0%" stop-color="#0098ea" stop-opacity="0.9"></stop>
@@ -714,11 +713,11 @@
                         <stop offset="100%" stop-color="#38BDF8" stop-opacity="0.8"></stop>
                       </linearGradient>
                     </defs>
-                    <path class="ray-line" d="M 50% 50% Q 65% 35%, 80% 25%" fill="none" stroke="url(#rayGradOut)" stroke-dasharray="4,4" stroke-width="2"></path>
-                    <path class="ray-line" d="M 50% 50% Q 32% 32%, 20% 28%" fill="none" stroke="url(#rayGradIn)" stroke-width="2.5"></path>
-                    <path class="ray-line" d="M 50% 50% Q 70% 68%, 78% 74%" fill="none" stroke="url(#rayGradIn)" stroke-width="2"></path>
-                    <path class="ray-line" d="M 50% 50% Q 34% 65%, 22% 76%" fill="none" stroke="url(#rayGradOut)" stroke-dasharray="6,4" stroke-width="2"></path>
-                    <path class="ray-line" d="M 50% 50% Q 30% 50%, 15% 52%" fill="none" stroke="#64748B" stroke-dasharray="2,3" stroke-width="1.5"></path>
+                    <path class="ray-line" d="M 50 50 Q 65 35, 80 25" fill="none" stroke="url(#rayGradOut)" stroke-dasharray="4,4" stroke-width="2"></path>
+                    <path class="ray-line" d="M 50 50 Q 32 32, 20 28" fill="none" stroke="url(#rayGradIn)" stroke-width="2.5"></path>
+                    <path class="ray-line" d="M 50 50 Q 70 68, 78 74" fill="none" stroke="url(#rayGradIn)" stroke-width="2"></path>
+                    <path class="ray-line" d="M 50 50 Q 34 65, 22 76" fill="none" stroke="url(#rayGradOut)" stroke-dasharray="6,4" stroke-width="2"></path>
+                    <path class="ray-line" d="M 50 50 Q 30 50, 15 52" fill="none" stroke="#64748B" stroke-dasharray="2,3" stroke-width="1.5"></path>
                   </svg>
 
                   <!-- Central Target Node -->
