@@ -26,6 +26,22 @@ const VERIFIED_TON_REGISTRY = [
     lastReviewed: '2026-03-15'
   },
   {
+    id: 'gram-token',
+    organization: 'Gram',
+    name: 'Gram (PoW Jetton Master)',
+    symbol: 'GRM',
+    address: 'EQC47093oX5Xhb0xuk2lCr2RhS8rj-vul61u4W2UH5ORmG_O',
+    raw_address: '0:b8ef4f77a17e5785bd31ba4da50abd91852f2b8febee97ad6ee16d941f939198',
+    type: 'Jetton Master Contract',
+    category: 'Contract address',
+    badge: 'badge-gold',
+    verified: true,
+    trust: 'whitelist',
+    evidence: 'First-ever Proof-of-Work minable Jetton on TON Blockchain · Decentralized Givers',
+    source: 'TonAPI Whitelisted Directory & Gramcoin.org Official Contract',
+    lastReviewed: '2026-03-20'
+  },
+  {
     id: 'binance-deposit',
     organization: 'Binance',
     name: 'Binance: Settlement & Deposit Router',
@@ -466,7 +482,12 @@ async function getTonPrice() {
     if (data && data.rates && data.rates.TON && data.rates.TON.prices && data.rates.TON.prices.USD) {
       _cachedTonPrice = Number(data.rates.TON.prices.USD);
       _cachedTonPriceTime = now;
-      window.lastTonPriceVal = _cachedTonPrice;
+      if (typeof window !== 'undefined') {
+        window.lastTonPriceVal = _cachedTonPrice;
+        if (data.rates.TON.diff_24h && data.rates.TON.diff_24h.USD) {
+          window.lastTonPriceDiff24h = data.rates.TON.diff_24h.USD;
+        }
+      }
       return _cachedTonPrice;
     }
   } catch (e) {}
@@ -748,6 +769,53 @@ async function getJettonHolders(masterAddress, limit = 15) {
     return data;
   }
   return { addresses: [], total: 0 };
+}
+
+/**
+ * Get rates for multiple jettons and currencies from TonAPI v2
+ */
+async function getJettonRates(tokenAddresses, currencies = 'usd') {
+  if (!tokenAddresses || tokenAddresses.length === 0) return {};
+  const tokenList = Array.isArray(tokenAddresses) ? tokenAddresses.join(',') : tokenAddresses;
+  const data = await fetchTonApi(`/rates?tokens=${encodeURIComponent(tokenList)}&currencies=${encodeURIComponent(currencies)}`);
+  return (data && data.rates) || {};
+}
+
+/**
+ * Fetch STON.fi pool details by pool address
+ */
+async function fetchStonfiPool(poolAddress) {
+  if (!poolAddress) return null;
+  try {
+    const res = await fetch(`https://api.ston.fi/v1/pools/${encodeURIComponent(poolAddress)}`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.pool || json;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Fetch STON.fi asset details by contract address
+ */
+async function fetchStonfiAsset(contractAddress) {
+  if (!contractAddress) return null;
+  try {
+    const res = await fetch(`https://api.ston.fi/v1/assets/${encodeURIComponent(contractAddress)}`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.asset || json;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Get Masterchain Head info (live block height, shard, etc.)
+ */
+async function getMasterchainHead() {
+  return await fetchTonApi('/blockchain/masterchain-head');
 }
 
 /**
@@ -1211,6 +1279,10 @@ if (typeof window !== 'undefined') {
   window.searchAllEntitiesAndJettons = searchAllEntitiesAndJettons;
   window.getAccountJettons = getAccountJettons;
   window.getJettonHolders = getJettonHolders;
+  window.getJettonRates = getJettonRates;
+  window.fetchStonfiPool = fetchStonfiPool;
+  window.fetchStonfiAsset = fetchStonfiAsset;
+  window.getMasterchainHead = getMasterchainHead;
   window.getAccountEvents = getAccountEvents;
   window.getAccountTransactions = getAccountTransactions;
   window.detectConfirmedSwap = detectConfirmedSwap;
@@ -1238,6 +1310,10 @@ if (typeof module !== 'undefined' && module.exports) {
     searchAllEntitiesAndJettons,
     getAccountJettons,
     getJettonHolders,
+    getJettonRates,
+    fetchStonfiPool,
+    fetchStonfiAsset,
+    getMasterchainHead,
     getAccountEvents,
     getAccountTransactions,
     detectConfirmedSwap,
