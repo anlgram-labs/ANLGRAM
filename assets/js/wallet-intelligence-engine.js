@@ -1296,6 +1296,198 @@
     }
   }
 
+  // =========================================================================
+  // 6. TRANSPARENT ON-CHAIN RISK EVALUATION ENGINE (Section 28)
+  // =========================================================================
+  class RiskEngine {
+    /**
+     * Calculates transparent Risk Score (0 - 100) based strictly on observable on-chain signals.
+     */
+    static evaluate(account, jettons = [], events = [], portfolioEval = null, counterparties = []) {
+      const reasons = [];
+      let score = 0;
+
+      if (!account) {
+        return {
+          score: null,
+          level: 'No disponible',
+          displayBadge: 'Datos insuficientes',
+          reasons: ['No se detectó información suficiente de la cuenta para calcular riesgo.']
+        };
+      }
+
+      const balTon = Number(account.balance || 0) / 1e9;
+      const positions = portfolioEval?.positions || [];
+      const totalPortfolioVal = portfolioEval?.totalPortfolioValueUsd || (balTon * 5.0);
+
+      // Signal 1: Portfolio Concentration (HHI & Top asset %)
+      if (positions.length > 0 && totalPortfolioVal > 0) {
+        const sortedPos = [...positions].sort((a, b) => (b.currentValueUsd || 0) - (a.currentValueUsd || 0));
+        const topPos = sortedPos[0];
+        const topShare = topPos.portfolioSharePct || ((topPos.currentValueUsd || 0) / totalPortfolioVal * 100);
+
+        if (topShare >= 80) {
+          score += 25;
+          reasons.push(`Alta concentración: ${topShare.toFixed(0)}% del portafolio en un solo activo (${topPos.token?.symbol || 'Token'})`);
+        } else if (topShare >= 50) {
+          score += 15;
+          reasons.push(`Concentración moderada: ${topShare.toFixed(0)}% del portafolio en ${topPos.token?.symbol || 'Token'}`);
+        } else {
+          reasons.push(`Portafolio diversificado: mayor posición representa el ${topShare.toFixed(0)}% del valor`);
+        }
+      } else {
+        reasons.push('Activo único observado en cuenta (100% TON nativo)');
+      }
+
+      // Signal 2: Low-Liquidity Asset Exposure (< $1,000 pool reserve)
+      if (positions.length > 0) {
+        const lowLiqPositions = positions.filter(p => p.valuationStatus === 'LOW_LIQUIDITY_WARNING' || p.valuationCategory === 'RIESGO_DESLIZAMIENTO' || (p.liquidityUsd > 0 && p.liquidityUsd < 1000));
+        if (lowLiqPositions.length > 0) {
+          const count = lowLiqPositions.length;
+          score += Math.min(25, count * 10);
+          reasons.push(`Exposición a ${count} token(s) con liquidez reducida (< $1,000 USD de reserva en DEX)`);
+        } else {
+          reasons.push('Sin exposición detectada a activos con baja liquidez');
+        }
+      }
+
+      // Signal 3: Counterparty Concentration
+      if (counterparties && counterparties.length > 0) {
+        const totalCpVol = counterparties.reduce((sum, cp) => sum + (cp.volTon || 0), 0);
+        if (totalCpVol > 0) {
+          const topCp = counterparties[0];
+          const topCpPct = (topCp.volTon / totalCpVol) * 100;
+          if (topCpPct >= 75 && counterparties.length > 1) {
+            score += 15;
+            reasons.push(`Concentración con una sola contraparte: ${topCpPct.toFixed(0)}% del volumen con ${topCp.name || topCp.address}`);
+          }
+        }
+      }
+
+      // Signal 4: Account Status & History
+      const isUninit = account.status === 'uninit' || account.status === 'nonexist';
+      if (isUninit) {
+        score += 30;
+        reasons.push('Cuenta no inicializada en la red TON');
+      }
+
+      const txCount = events.length;
+      if (txCount === 0 && !isUninit) {
+        score += 10;
+        reasons.push('Sin historial de transacciones en la ventana observada');
+      } else if (txCount >= 50) {
+        reasons.push(`Historial activo verificado con ${txCount}+ transacciones observadas`);
+      }
+
+      let level = 'Bajo';
+      let color = 'var(--flow-positive)';
+      let displayBadge = `${score}/100 (Bajo Riesgo)`;
+
+      if (score >= 70) {
+        level = 'Alto';
+        color = 'var(--flow-negative)';
+        displayBadge = `${score}/100 (Alto Riesgo)`;
+      } else if (score >= 40) {
+        level = 'Medio';
+        color = 'var(--accent-warning)';
+        displayBadge = `${score}/100 (Moderado)`;
+      } else {
+        displayBadge = `${score}/100 (Bajo Riesgo)`;
+      }
+
+      return {
+        score,
+        level,
+        color,
+        displayBadge,
+        reasons
+      };
+    }
+  }
+
+  // =========================================================================
+  // 7. TOKEN BREAKDOWN ANALYTICS (Section 15)
+  // =========================================================================
+  class TokenBreakdownEngine {
+    static generate(closedTrades = [], positions = [], rawOperations = []) {
+      const breakdownMap = new Map();
+
+      positions.forEach(pos => {
+        const key = pos.contractAddress;
+        breakdownMap.set(key, {
+          token: pos.token,
+          contractAddress: key,
+          currentBalance: pos.balance,
+          currentPriceUsd: pos.currentPriceUsd,
+          currentValueUsd: pos.currentValueUsd,
+          totalBought: 0,
+          totalSold: 0,
+          totalCostUsd: 0,
+          totalProceedsUsd: 0,
+          realizedPnlUsd: 0,
+          unrealizedPnlUsd: pos.unrealizedPnlUsd,
+          totalFeesUsd: 0,
+          tradeCount: 0,
+          avgBuyPriceUsd: null,
+          avgSellPriceUsd: null,
+          hasKnownCost: pos.knownCostBalance > 0
+        });
+      });
+
+      rawOperations.forEach(op => {
+        if (!op || !op.token?.address) return;
+        const key = op.token.address;
+        if (!breakdownMap.has(key)) {
+          breakdownMap.set(key, {
+            token: op.token,
+            contractAddress: key,
+            currentBalance: 0,
+            currentPriceUsd: null,
+            currentValueUsd: null,
+            totalBought: 0,
+            totalSold: 0,
+            totalCostUsd: 0,
+            totalProceedsUsd: 0,
+            realizedPnlUsd: 0,
+            unrealizedPnlUsd: null,
+            totalFeesUsd: 0,
+            tradeCount: 0,
+            avgBuyPriceUsd: null,
+            avgSellPriceUsd: null,
+            hasKnownCost: false
+          });
+        }
+        const item = breakdownMap.get(key);
+        item.tradeCount++;
+        item.totalFeesUsd += (op.feeUsd || 0);
+
+        if (op.type === 'BUY') {
+          item.totalBought += (op.tokenAmount || 0);
+          item.totalCostUsd += (op.valueUsd || 0);
+        } else if (op.type === 'SELL') {
+          item.totalSold += (op.tokenAmount || 0);
+          item.totalProceedsUsd += (op.grossProceedsUsd || op.valueUsd || 0);
+        }
+      });
+
+      closedTrades.forEach(tr => {
+        const key = tr.token?.address;
+        if (breakdownMap.has(key) && tr.realizedPnlUsd !== null) {
+          const item = breakdownMap.get(key);
+          item.realizedPnlUsd += tr.realizedPnlUsd;
+        }
+      });
+
+      return Array.from(breakdownMap.values()).map(item => {
+        item.avgBuyPriceUsd = item.totalBought > 0 ? (item.totalCostUsd / item.totalBought) : null;
+        item.avgSellPriceUsd = item.totalSold > 0 ? (item.totalProceedsUsd / item.totalSold) : null;
+        item.totalPnlUsd = (item.realizedPnlUsd || 0) + (item.unrealizedPnlUsd || 0) - (item.totalFeesUsd || 0);
+        item.roiPct = item.totalCostUsd > 0 ? (item.totalPnlUsd / item.totalCostUsd) * 100 : null;
+        return item;
+      });
+    }
+  }
+
   // Export to global scope & Node.js environment
   const TonWalletIntelligence = {
     CANONICAL_GRAM_CONTRACT,
@@ -1309,7 +1501,9 @@
     TradeDeduplicator,
     AccountingEngine,
     TraderPerformanceEvaluator,
-    HistoricalChartEngine
+    HistoricalChartEngine,
+    RiskEngine,
+    TokenBreakdownEngine
   };
 
   if (typeof module !== 'undefined' && module.exports) {

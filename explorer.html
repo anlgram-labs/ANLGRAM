@@ -295,12 +295,12 @@
 
               <!-- Large Balance Display -->
               <div class="balance-hero-container">
-                <div class="balance-hero-usd" id="statBalanceUsd">$2,325,111.64</div>
+                <div class="balance-hero-usd" id="statBalanceUsd">—</div>
                 <div style="display:flex; align-items:center; gap:8px;">
-                  <span class="balance-hero-ton" id="statBalanceVal">1,592,542 TON</span>
-                  <span class="balance-hero-delta positive" id="statFlowDelta">
+                  <span class="balance-hero-ton" id="statBalanceVal">0 TON</span>
+                  <span class="balance-hero-delta" id="statFlowDelta" style="display:none;">
                     <span class="material-symbols-outlined" style="font-size:14px;">trending_up</span>
-                    <span id="statFlowDeltaText">+3.42%</span>
+                    <span id="statFlowDeltaText">—</span>
                   </span>
                 </div>
               </div>
@@ -309,30 +309,30 @@
               <div class="credentials-row">
                 <div class="address-chip-terminal" id="addressPill" onclick="copyCurrentAddress()" title="Haga clic para copiar dirección completa">
                   <span class="material-symbols-outlined" style="font-size:15px; color:var(--text-muted);" id="entityAvatar">account_balance_wallet</span>
-                  <span id="entityAddressDisplay">EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N</span>
+                  <span id="entityAddressDisplay">—</span>
                   <span class="material-symbols-outlined" id="copyIcon" style="font-size:14px; color:var(--text-muted);">content_copy</span>
                   <span id="copiedText" style="display:none; color:var(--flow-positive); font-weight:600; font-size:11px;">Copiado</span>
                 </div>
                 <div class="credential-tag">
                   <span class="material-symbols-outlined" style="font-size:15px; color:var(--tertiary);">check_circle</span>
-                  <span id="auditStatus">TonAPI Verificada</span>
+                  <span id="auditStatus">Conexión TON Mainnet</span>
                 </div>
-                <div class="credential-tag">
+                <div class="credential-tag" id="riskIndexWrap">
                   <span class="live-pulse-dot" style="width:6px; height:6px;"></span>
                   <span>Riesgo:</span>
-                  <span style="color:var(--flow-positive); font-weight:700;" id="riskIndexScore">0.02 (Ultra Seguro)</span>
+                  <span style="font-weight:700;" id="riskIndexScore">Calculando...</span>
                 </div>
                 <div class="credential-tag">
-                  <span class="material-symbols-outlined" style="font-size:15px; color:var(--accent-electric);">group_work</span>
-                  <span id="auditReview">Multi-sig: 5 / 7 Firmantes</span>
+                  <span class="material-symbols-outlined" style="font-size:15px; color:var(--accent-electric);">terminal</span>
+                  <span id="auditReview">Tipo: Wallet TON</span>
                 </div>
                 <div class="credential-tag" style="display:none;" id="auditEvidenceWrap">
-                  <span id="auditSource">TonAPI Whitelist</span> · <span id="auditEvidence">Entidad Oficial</span>
+                  <span id="auditSource">TonAPI v2 Live</span> · <span id="auditEvidence">Registro Oficial</span>
                 </div>
-                <a id="tonviewerLink" href="https://tonviewer.com/EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" target="_blank" rel="noopener noreferrer" class="credential-tag" style="color:var(--accent-electric); text-decoration:none;" title="Abrir en Tonviewer">
+                <a id="tonviewerLink" href="https://tonviewer.com" target="_blank" rel="noopener noreferrer" class="credential-tag" style="color:var(--accent-electric); text-decoration:none;" title="Abrir en Tonviewer">
                   Tonviewer ↗
                 </a>
-                <a id="tonscanLink" href="https://tonscan.org/address/EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N" target="_blank" rel="noopener noreferrer" class="credential-tag" style="color:#70a1ff; text-decoration:none;" title="Abrir en Tonscan">
+                <a id="tonscanLink" href="https://tonscan.org" target="_blank" rel="noopener noreferrer" class="credential-tag" style="color:#70a1ff; text-decoration:none;" title="Abrir en Tonscan">
                   Tonscan ↗
                 </a>
               </div>
@@ -345,11 +345,11 @@
                 <div class="radial-svg-box">
                   <svg class="radial-svg-circle" viewBox="0 0 36 36">
                     <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--surface-canvas)" stroke-width="3.5"></path>
-                    <path id="radialStakedSegment" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--primary-container)" stroke-dasharray="68.2, 100" stroke-linecap="round" stroke-width="3.5"></path>
-                    <path id="radialLiquidSegment" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--accent-electric)" stroke-dasharray="31.8, 100" stroke-dashoffset="-68.2" stroke-linecap="round" stroke-width="3.5"></path>
+                    <path id="radialStakedSegment" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--primary-container)" stroke-dasharray="0, 100" stroke-linecap="round" stroke-width="3.5"></path>
+                    <path id="radialLiquidSegment" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--accent-electric)" stroke-dasharray="0, 100" stroke-dashoffset="0" stroke-linecap="round" stroke-width="3.5"></path>
                   </svg>
                   <div class="radial-center-text">
-                    <span class="font-mono" style="font-weight:700; font-size:12px; color:var(--text-primary);" id="radialCenterPct">100%</span>
+                    <span class="font-mono" style="font-weight:700; font-size:12px; color:var(--text-primary);" id="radialCenterPct">0%</span>
                     <span style="font-family:var(--font-mono); font-size:8px; color:var(--text-muted); text-transform:uppercase;">FONDO</span>
                   </div>
                 </div>
@@ -358,12 +358,12 @@
                   <div style="display:flex; align-items:center; gap:6px;">
                     <span style="width:6px; height:6px; border-radius:50%; background:var(--accent-electric);"></span>
                     <span style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary);">Líquido:</span>
-                    <span class="font-mono" style="font-size:11px; font-weight:600; color:var(--text-primary);" id="liquidTopologyStat">31.8% ($739K)</span>
+                    <span class="font-mono" style="font-size:11px; font-weight:600; color:var(--text-primary);" id="liquidTopologyStat">—</span>
                   </div>
                   <div style="display:flex; align-items:center; gap:6px;">
                     <span style="width:6px; height:6px; border-radius:50%; background:var(--primary-container);"></span>
                     <span style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary);">Staked/Holdings:</span>
-                    <span class="font-mono" style="font-size:11px; font-weight:600; color:var(--text-primary);" id="stakedTopologyStat">68.2% ($1.58M)</span>
+                    <span class="font-mono" style="font-size:11px; font-weight:600; color:var(--text-primary);" id="stakedTopologyStat">—</span>
                   </div>
                 </div>
               </div>
@@ -581,13 +581,13 @@
                 <div class="flow-in-out-strip">
                   <div class="flow-stat-box">
                     <span style="font-family:var(--font-mono); font-size:10px; text-transform:uppercase; color:var(--text-muted);">Entradas</span>
-                    <span class="font-mono" style="font-size:16px; font-weight:700; color:var(--flow-positive);" id="inflowVolText">+$1.20M</span>
-                    <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);" id="inflowCountText">175 operaciones</span>
+                    <span class="font-mono" style="font-size:16px; font-weight:700; color:var(--flow-positive);" id="inflowVolText">0 TON</span>
+                    <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);" id="inflowCountText">0 operaciones</span>
                   </div>
                   <div class="flow-stat-box">
                     <span style="font-family:var(--font-mono); font-size:10px; text-transform:uppercase; color:var(--text-muted);">Salidas</span>
-                    <span class="font-mono" style="font-size:16px; font-weight:700; color:var(--flow-negative);" id="outflowVolText">-$951K</span>
-                    <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);" id="outflowCountText">89 transferencias</span>
+                    <span class="font-mono" style="font-size:16px; font-weight:700; color:var(--flow-negative);" id="outflowVolText">0 TON</span>
+                    <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);" id="outflowCountText">0 transferencias</span>
                   </div>
                 </div>
 
@@ -595,11 +595,11 @@
                 <div style="display:flex; flex-direction:column; gap:6px;">
                   <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px;">
                     <span style="color:var(--text-muted);">Flujo Neto Observado:</span>
-                    <span class="font-mono" style="font-weight:700; color:var(--accent-electric);" id="netFlowText">+249,000 TON</span>
+                    <span class="font-mono" style="font-weight:700; color:var(--accent-electric);" id="netFlowText">0 TON</span>
                   </div>
                   <div style="width:100%; height:6px; background:var(--surface-canvas); border-radius:9999px; overflow:hidden; display:flex;">
-                    <div id="inflowProgressBar" style="width:56%; height:100%; background:var(--flow-positive); transition:width 0.5s ease;"></div>
-                    <div id="outflowProgressBar" style="width:44%; height:100%; background:var(--flow-negative); transition:width 0.5s ease;"></div>
+                    <div id="inflowProgressBar" style="width:50%; height:100%; background:var(--flow-positive); transition:width 0.5s ease;"></div>
+                    <div id="outflowProgressBar" style="width:50%; height:100%; background:var(--flow-negative); transition:width 0.5s ease;"></div>
                   </div>
                 </div>
 
@@ -652,84 +652,8 @@
 
                 <!-- Dynamic Top Asset List -->
                 <div style="display:flex; flex-direction:column; gap:8px;" id="topAssetConcentrationList">
-                  <!-- TON Nativo -->
-                  <div class="asset-token-row" onclick="filterByAsset('TON')">
-                    <div class="asset-token-info">
-                      <div style="display:flex; align-items:center; gap:8px;">
-                        <div class="asset-icon-chip" style="background:var(--primary-container);">T</div>
-                        <div>
-                          <span class="font-mono" style="font-weight:700; color:var(--text-primary); font-size:12px;">TON</span>
-                          <span style="display:block; font-size:10px; color:var(--text-muted);">Toncoin Nativo</span>
-                        </div>
-                      </div>
-                      <div style="text-align:right;">
-                        <span class="font-mono" style="font-weight:700; color:var(--text-primary); font-size:12px;" id="concTonUsd">$1,482,100</span>
-                        <span class="font-mono" style="display:block; font-size:10px; color:var(--flow-positive);">+3.8%</span>
-                      </div>
-                    </div>
-                    <div class="depth-meter-bar">
-                      <div class="depth-meter-fill" style="background:var(--primary-container); width:64%;"></div>
-                    </div>
-                  </div>
-
-                  <!-- GRAM PoW Jetton -->
-                  <div class="asset-token-row" onclick="loadTargetAddress('EQC47093oX5Xhb0xuk2lCr2RhS8rj-vul61u4W2UH5ORmG_O')">
-                    <div class="asset-token-info">
-                      <div style="display:flex; align-items:center; gap:8px;">
-                        <div class="asset-icon-chip" style="background:#f59e0b; color:#060913;">G</div>
-                        <div>
-                          <span class="font-mono" style="font-weight:700; color:var(--accent-electric); font-size:12px;">GRAM</span>
-                          <span style="display:block; font-size:10px; color:var(--text-muted);">PoW Jetton Master</span>
-                        </div>
-                      </div>
-                      <div style="text-align:right;">
-                        <span class="font-mono" style="font-weight:700; color:var(--text-primary); font-size:12px;" id="concGramUsd">Pool STON.fi</span>
-                        <span class="font-mono" style="display:block; font-size:10px; color:var(--flow-positive);">+2.9%</span>
-                      </div>
-                    </div>
-                    <div class="depth-meter-bar">
-                      <div class="depth-meter-fill" style="background:#f59e0b; width:15%;"></div>
-                    </div>
-                  </div>
-
-                  <!-- USDT Tether -->
-                  <div class="asset-token-row" onclick="filterByAsset('USDT')">
-                    <div class="asset-token-info">
-                      <div style="display:flex; align-items:center; gap:8px;">
-                        <div class="asset-icon-chip" style="background:var(--tertiary); color:#003824;">₮</div>
-                        <div>
-                          <span class="font-mono" style="font-weight:700; color:var(--text-primary); font-size:12px;">USDT</span>
-                          <span style="display:block; font-size:10px; color:var(--text-muted);">Tether USD (TEP-74)</span>
-                        </div>
-                      </div>
-                      <div style="text-align:right;">
-                        <span class="font-mono" style="font-weight:700; color:var(--text-primary); font-size:12px;" id="concUsdtUsd">$576,000</span>
-                        <span class="font-mono" style="display:block; font-size:10px; color:var(--text-secondary);">0.0%</span>
-                      </div>
-                    </div>
-                    <div class="depth-meter-bar">
-                      <div class="depth-meter-fill" style="background:var(--tertiary); width:25%;"></div>
-                    </div>
-                  </div>
-
-                  <!-- NOT Notcoin -->
-                  <div class="asset-token-row" onclick="filterByAsset('NOT')">
-                    <div class="asset-token-info">
-                      <div style="display:flex; align-items:center; gap:8px;">
-                        <div class="asset-icon-chip" style="background:var(--surface-container-highest);">N</div>
-                        <div>
-                          <span class="font-mono" style="font-weight:700; color:var(--text-primary); font-size:12px;">NOT</span>
-                          <span style="display:block; font-size:10px; color:var(--text-muted);">Notcoin Ecosystem</span>
-                        </div>
-                      </div>
-                      <div style="text-align:right;">
-                        <span class="font-mono" style="font-weight:700; color:var(--text-primary); font-size:12px;" id="concNotUsd">$118,500</span>
-                        <span class="font-mono" style="display:block; font-size:10px; color:var(--flow-positive);">+14.2%</span>
-                      </div>
-                    </div>
-                    <div class="depth-meter-bar">
-                      <div class="depth-meter-fill" style="background:var(--secondary-container); width:8%;"></div>
-                    </div>
+                  <div style="padding:16px; text-align:center; color:var(--text-muted); font-size:11px; font-family:var(--font-mono);">
+                    Esperando análisis de cuenta para listar concentración de activos on-chain...
                   </div>
                 </div>
               </div>
@@ -746,34 +670,12 @@
 
                 <!-- Multi-segment visual bar -->
                 <div style="width:100%; height:12px; background:var(--surface-canvas); border-radius:4px; display:flex; overflow:hidden; gap:1px;" id="counterpartyHeatmapBar">
-                  <div style="width:44%; background:var(--primary-container);" title="STON.fi DEX: 44%"></div>
-                  <div style="width:32%; background:var(--accent-electric);" title="Binance: 32%"></div>
-                  <div style="width:16%; background:var(--tertiary);" title="DeDust: 16%"></div>
-                  <div style="width:8%; background:var(--text-muted);" title="Otros: 8%"></div>
+                  <div style="width:100%; background:var(--surface-container-highest); text-align:center; font-size:9px; color:var(--text-muted); line-height:12px;">Esperando transacciones...</div>
                 </div>
 
                 <!-- Counterparty Percentage Breakdown -->
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-family:var(--font-mono); font-size:11px;" id="counterpartyBreakdownGrid">
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <span style="width:6px; height:6px; border-radius:50%; background:var(--primary-container);"></span>
-                    <span style="color:var(--text-secondary);">STON.fi DEX:</span>
-                    <span style="color:var(--text-primary); font-weight:600; margin-left:auto;">44%</span>
-                  </div>
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <span style="width:6px; height:6px; border-radius:50%; background:var(--accent-electric);"></span>
-                    <span style="color:var(--text-secondary);">Binance:</span>
-                    <span style="color:var(--text-primary); font-weight:600; margin-left:auto;">32%</span>
-                  </div>
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <span style="width:6px; height:6px; border-radius:50%; background:var(--tertiary);"></span>
-                    <span style="color:var(--text-secondary);">DeDust:</span>
-                    <span style="color:var(--text-primary); font-weight:600; margin-left:auto;">16%</span>
-                  </div>
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <span style="width:6px; height:6px; border-radius:50%; background:var(--text-muted);"></span>
-                    <span style="color:var(--text-secondary);">Otros:</span>
-                    <span style="color:var(--text-primary); font-weight:600; margin-left:auto;">8%</span>
-                  </div>
+                  <div style="grid-column:1 / -1; color:var(--text-muted); font-size:11px; text-align:center; padding:4px;">Sin contrapartes indexadas</div>
                 </div>
 
                 <!-- Hidden Donut Chart required by regression tests -->
@@ -861,62 +763,7 @@
                   </div>
 
                   <!-- Orbit Nodes (Rendered dynamically or initialized) -->
-                  <div id="hudOrbitNodesContainer">
-                    <!-- Orbit 1: Binance Hot (Top-Right) -->
-                    <div style="position:absolute; top:12%; right:14%; z-index:15; display:flex; flex-direction:column; align-items:center; cursor:pointer;" onclick="loadTargetAddress('EQDKHZ7e70CzqdvZCC83Z4WVR8POC_ZB0J1Y4zo88G-zCXmC')">
-                      <div style="width:48px; height:48px; border-radius:12px; background:var(--surface-elevated); border:1px solid rgba(244,63,94,0.6); display:flex; align-items:center; justify-content:center; box-shadow:0 0 16px rgba(244,63,94,0.25);">
-                        <span class="material-symbols-outlined" style="font-size:20px; color:var(--flow-negative);">swap_horiz</span>
-                      </div>
-                      <div style="margin-top:4px; padding:2px 8px; border-radius:4px; background:rgba(19,30,54,0.9); border:1px solid var(--border-subtle); text-align:center;">
-                        <span class="font-mono" style="font-size:10px; font-weight:600; color:#fff; display:block;" id="orbitNode1Name">Binance Hot 02</span>
-                        <span class="font-mono" style="font-size:10px; font-weight:700; color:var(--flow-negative);" id="orbitNode1Vol">-120,000 TON</span>
-                      </div>
-                    </div>
-
-                    <!-- Orbit 2: STON.fi Pool (Top-Left) -->
-                    <div style="position:absolute; top:14%; left:12%; z-index:15; display:flex; flex-direction:column; align-items:center; cursor:pointer;" onclick="loadTargetAddress('EQCSIMGBps_qzRG3uPYhON8bucyCtu0mYdL1-u4gSz77IBa3')">
-                      <div style="width:48px; height:48px; border-radius:12px; background:var(--surface-elevated); border:1px solid rgba(16,185,129,0.6); display:flex; align-items:center; justify-content:center; box-shadow:0 0 16px rgba(16,185,129,0.25);">
-                        <span class="material-symbols-outlined" style="font-size:20px; color:var(--flow-positive);">water_drop</span>
-                      </div>
-                      <div style="margin-top:4px; padding:2px 8px; border-radius:4px; background:rgba(19,30,54,0.9); border:1px solid var(--border-subtle); text-align:center;">
-                        <span class="font-mono" style="font-size:10px; font-weight:600; color:#fff; display:block;" id="orbitNode2Name">STON.fi Pool v2</span>
-                        <span class="font-mono" style="font-size:10px; font-weight:700; color:var(--flow-positive);" id="orbitNode2Vol">+50,000 TON</span>
-                      </div>
-                    </div>
-
-                    <!-- Orbit 3: DeDust Vault (Bottom-Right) -->
-                    <div style="position:absolute; bottom:14%; right:14%; z-index:15; display:flex; flex-direction:column; align-items:center; cursor:pointer;" onclick="loadTargetAddress('EQDZ4yPwODeNi22_Qjqx9HKkM5SvBX4qHBT0l19VPqBuzm0u')">
-                      <div style="width:46px; height:46px; border-radius:12px; background:var(--surface-elevated); border:1px solid rgba(56,189,248,0.6); display:flex; align-items:center; justify-content:center; box-shadow:0 0 14px rgba(56,189,248,0.2);">
-                        <span class="material-symbols-outlined" style="font-size:18px; color:var(--accent-electric);">layers</span>
-                      </div>
-                      <div style="margin-top:4px; padding:2px 8px; border-radius:4px; background:rgba(19,30,54,0.9); border:1px solid var(--border-subtle); text-align:center;">
-                        <span class="font-mono" style="font-size:10px; font-weight:600; color:#fff; display:block;" id="orbitNode3Name">DeDust Vault</span>
-                        <span class="font-mono" style="font-size:10px; font-weight:700; color:var(--flow-positive);" id="orbitNode3Vol">+18,450 TON</span>
-                      </div>
-                    </div>
-
-                    <!-- Orbit 4: Community Grants (Bottom-Left) -->
-                    <div style="position:absolute; bottom:12%; left:14%; z-index:15; display:flex; flex-direction:column; align-items:center; cursor:pointer;">
-                      <div style="width:46px; height:46px; border-radius:12px; background:var(--surface-elevated); border:1px solid rgba(244,63,94,0.5); display:flex; align-items:center; justify-content:center; box-shadow:0 0 14px rgba(244,63,94,0.15);">
-                        <span class="material-symbols-outlined" style="font-size:18px; color:var(--flow-negative);">volunteer_activism</span>
-                      </div>
-                      <div style="margin-top:4px; padding:2px 8px; border-radius:4px; background:rgba(19,30,54,0.9); border:1px solid var(--border-subtle); text-align:center;">
-                        <span class="font-mono" style="font-size:10px; font-weight:600; color:#fff; display:block;" id="orbitNode4Name">Dev Grants</span>
-                        <span class="font-mono" style="font-size:10px; font-weight:700; color:var(--flow-negative);" id="orbitNode4Vol">-25,000 TON</span>
-                      </div>
-                    </div>
-
-                    <!-- Orbit 5: GRAM Master Contract (Middle-Left) -->
-                    <div style="position:absolute; top:50%; transform:translateY(-50%); left:6%; z-index:15; display:flex; flex-direction:column; align-items:center; cursor:pointer;" onclick="loadTargetAddress('EQC47093oX5Xhb0xuk2lCr2RhS8rj-vul61u4W2UH5ORmG_O')" title="Inspeccionar Contrato Master GRAM">
-                      <div style="width:44px; height:44px; border-radius:10px; background:var(--surface-elevated); border:1px solid #f59e0b; display:flex; align-items:center; justify-content:center; box-shadow:0 0 14px rgba(245,158,11,0.25);">
-                        <span style="font-family:var(--font-mono); font-weight:700; font-size:12px; color:#f59e0b;">GRM</span>
-                      </div>
-                      <div style="margin-top:3px; padding:2px 6px; border-radius:4px; background:rgba(19,30,54,0.9); border:1px solid var(--border-subtle); text-align:center;">
-                        <span class="font-mono" style="font-size:10px; font-weight:600; color:var(--accent-electric); display:block;">Gram Jetton</span>
-                        <span class="font-mono" style="font-size:9px; color:var(--text-muted);">PoW Givers</span>
-                      </div>
-                    </div>
-                  </div>
+                  <div id="hudOrbitNodesContainer"></div>
 
                   <!-- Fallback Canvas Elements for Regression Suite -->
                   <div style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;">
@@ -958,7 +805,7 @@
                     <div>
                       <div style="display:flex; align-items:center; gap:8px;">
                         <h3 style="margin:0; font-size:14px; font-weight:700; color:var(--text-primary);">Registro Forense de Transacciones On-Chain</h3>
-                        <span class="kbd-badge" style="color:var(--accent-electric);" id="overviewTxCountBadge">1,842 TXs</span>
+                        <span class="kbd-badge" style="color:var(--accent-electric);" id="overviewTxCountBadge">0 TXs</span>
                       </div>
                       <p style="margin:2px 0 0 0; font-size:11px; color:var(--text-muted);">Auditoría granular de transferencias, swaps DEX, memecoins y contratos autorizados</p>
                     </div>
@@ -1083,37 +930,8 @@
 
                 <!-- Container populated by detectAnomalies() -->
                 <div style="display:flex; flex-direction:column; gap:10px;" id="anomaliesListContainer">
-                  <!-- Insight Cardlet 1 -->
-                  <div class="insight-alert-item" style="border-left-color:var(--accent-electric);">
-                    <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px;">
-                      <span style="font-weight:700; color:var(--text-primary);">Rebalanceo Ballena</span>
-                      <span style="color:var(--text-muted);">Observado</span>
-                    </div>
-                    <p style="margin:0; font-size:12px; color:var(--text-secondary); line-height:1.4;">
-                      Operaciones de alto volumen enrutadas por routers DEX (STON.fi / DeDust) con bajo impacto de deslizamiento (&lt;0.01% slippage).
-                    </p>
-                  </div>
-
-                  <!-- Insight Cardlet 2 -->
-                  <div class="insight-alert-item" style="border-left-color:var(--flow-positive);">
-                    <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px;">
-                      <span style="font-weight:700; color:var(--text-primary);">Distribución Predecible</span>
-                      <span style="color:var(--text-muted);">Patrón Detectado</span>
-                    </div>
-                    <p style="margin:0; font-size:12px; color:var(--text-secondary); line-height:1.4;">
-                      Ejecuciones recurrentes alineadas con contratos de tesorería, givers minables PoW de GRAM y nóminas automatizadas.
-                    </p>
-                  </div>
-
-                  <!-- Insight Cardlet 3 -->
-                  <div class="insight-alert-item" style="border-left-color:var(--tertiary);">
-                    <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px;">
-                      <span style="font-weight:700; color:var(--text-primary);">Libro Mayor Limpio</span>
-                      <span style="color:var(--text-muted);">100% Score</span>
-                    </div>
-                    <p style="margin:0; font-size:12px; color:var(--text-secondary); line-height:1.4;">
-                      Cero interacciones con contratos no auditados, esquemas maliciosos o listas de bloqueo TEP.
-                    </p>
+                  <div style="padding:16px; text-align:center; color:var(--text-muted); font-size:11px; font-family:var(--font-mono);">
+                    Esperando análisis de cuenta para evaluar señales e anomalías on-chain...
                   </div>
                 </div>
                 <div style="display:none;" id="anomaliesCountBadge">0 Señales</div>
@@ -1134,79 +952,8 @@
 
                 <!-- Streaming Records Feed -->
                 <div class="mempool-stream-tape" id="mempoolLiveTape">
-                  <!-- Stream Item 1 -->
-                  <div class="mempool-stream-item">
-                    <div style="display:flex; flex-direction:column; gap:2px;">
-                      <div style="display:flex; align-items:center; gap:6px;">
-                        <span class="kbd-badge" style="color:var(--accent-electric); border-color:rgba(0,152,234,0.3);">SWAP</span>
-                        <span style="font-size:11px; color:var(--text-secondary);">STON.fi Router</span>
-                      </div>
-                      <span style="font-size:10px; color:var(--text-muted);" id="mempoolItem1Time">14:28:02 UTC</span>
-                    </div>
-                    <div style="text-align:right;">
-                      <span style="font-size:12px; font-weight:700; color:var(--flow-positive);">+50,000 TON</span>
-                      <span style="display:block; font-size:9px; color:var(--text-muted);">3.2s confirmación</span>
-                    </div>
-                  </div>
-
-                  <!-- Stream Item 2 -->
-                  <div class="mempool-stream-item">
-                    <div style="display:flex; flex-direction:column; gap:2px;">
-                      <div style="display:flex; align-items:center; gap:6px;">
-                        <span class="kbd-badge" style="color:#f59e0b; border-color:rgba(245,158,11,0.3);">POW MINT</span>
-                        <span style="font-size:11px; color:var(--text-secondary);">GRAM Givers</span>
-                      </div>
-                      <span style="font-size:10px; color:var(--text-muted);" id="mempoolItem2Time">14:24:19 UTC</span>
-                    </div>
-                    <div style="text-align:right;">
-                      <span style="font-size:12px; font-weight:700; color:var(--accent-electric);">+100,000 GRM</span>
-                      <span style="display:block; font-size:9px; color:var(--text-muted);">Bloque Master #389</span>
-                    </div>
-                  </div>
-
-                  <!-- Stream Item 3 -->
-                  <div class="mempool-stream-item">
-                    <div style="display:flex; flex-direction:column; gap:2px;">
-                      <div style="display:flex; align-items:center; gap:6px;">
-                        <span class="kbd-badge" style="color:var(--flow-negative); border-color:rgba(244,63,94,0.3);">TRANSFER</span>
-                        <span style="font-size:11px; color:var(--text-secondary);">Binance Hot</span>
-                      </div>
-                      <span style="font-size:10px; color:var(--text-muted);" id="mempoolItem3Time">14:11:50 UTC</span>
-                    </div>
-                    <div style="text-align:right;">
-                      <span style="font-size:12px; font-weight:700; color:var(--flow-negative);">-120,000 TON</span>
-                      <span style="display:block; font-size:9px; color:var(--text-muted);">Bloque #382</span>
-                    </div>
-                  </div>
-
-                  <!-- Stream Item 4 -->
-                  <div class="mempool-stream-item">
-                    <div style="display:flex; flex-direction:column; gap:2px;">
-                      <div style="display:flex; align-items:center; gap:6px;">
-                        <span class="kbd-badge" style="color:var(--tertiary); border-color:rgba(78,222,163,0.3);">HARVEST</span>
-                        <span style="font-size:11px; color:var(--text-secondary);">DeDust Vault</span>
-                      </div>
-                      <span style="font-size:10px; color:var(--text-muted);" id="mempoolItem4Time">13:45:00 UTC</span>
-                    </div>
-                    <div style="text-align:right;">
-                      <span style="font-size:12px; font-weight:700; color:var(--flow-positive);">+18,450 TON</span>
-                      <span style="display:block; font-size:9px; color:var(--text-muted);">Staking Yield</span>
-                    </div>
-                  </div>
-
-                  <!-- Stream Item 5 -->
-                  <div class="mempool-stream-item">
-                    <div style="display:flex; flex-direction:column; gap:2px;">
-                      <div style="display:flex; align-items:center; gap:6px;">
-                        <span class="kbd-badge" style="color:var(--primary); border-color:rgba(0,152,234,0.3);">GRANT</span>
-                        <span style="font-size:11px; color:var(--text-secondary);">DAO Treasury</span>
-                      </div>
-                      <span style="font-size:10px; color:var(--text-muted);" id="mempoolItem5Time">12:59:11 UTC</span>
-                    </div>
-                    <div style="text-align:right;">
-                      <span style="font-size:12px; font-weight:700; color:var(--flow-negative);">-25,000 TON</span>
-                      <span style="display:block; font-size:9px; color:var(--text-muted);">Lote Q1 Devs</span>
-                    </div>
+                  <div style="padding:16px; text-align:center; color:var(--text-muted); font-size:11px; font-family:var(--font-mono);">
+                    Esperando consulta de cuenta para transmitir eventos en vivo...
                   </div>
                 </div>
               </div>
@@ -2516,7 +2263,21 @@ async function renderProfileHeader(acc) {
   // Audit Strip
   document.getElementById('auditStatus').textContent = acc.verified || isGram ? 'TonAPI Verificada' : 'Registro Público';
   document.getElementById('auditSource').textContent = acc.source || 'TonAPI v2 Live';
-  document.getElementById('auditReview').textContent = acc.lastReviewed || '2026-03';
+  
+  let ifaceLabel = 'Wallet TON';
+  if (acc.interfaces && acc.interfaces.length > 0) {
+    if (acc.interfaces.includes('multisig')) ifaceLabel = 'Contrato Multi-sig';
+    else if (acc.interfaces.includes('wallet_v4r2')) ifaceLabel = 'Wallet v4r2';
+    else if (acc.interfaces.includes('wallet_v5r1')) ifaceLabel = 'Wallet v5r1';
+    else if (acc.interfaces.includes('jetton_master')) ifaceLabel = 'Jetton Master';
+    else if (acc.interfaces.includes('jetton_wallet')) ifaceLabel = 'Jetton Wallet';
+    else if (acc.interfaces.includes('nft_item')) ifaceLabel = 'NFT Item';
+    else if (acc.interfaces.includes('nft_collection')) ifaceLabel = 'NFT Colección';
+    else ifaceLabel = acc.interfaces[0];
+  } else if (!acc.is_wallet) {
+    ifaceLabel = 'Contrato Smart';
+  }
+  document.getElementById('auditReview').textContent = `Tipo: ${ifaceLabel}`;
   document.getElementById('auditEvidence').textContent = acc.evidence || 'Verificación en Blockchain TON';
 
   // Balance & Price
@@ -2538,28 +2299,31 @@ async function renderProfileHeader(acc) {
   const tbPrice = document.getElementById('topbarTonPrice');
   if (tbPrice && tonPrice) tbPrice.textContent = `$${tonPrice.toFixed(2)}`;
 
-  // Radial Segmented Gauge calculation
-  const liquidPct = balNum > 0 ? 31.8 : 0;
-  const stakedPct = balNum > 0 ? 68.2 : 0;
+  // Radial Segmented Gauge calculation - Capital Real Verificado
   const radialStaked = document.getElementById('radialStakedSegment');
   const radialLiquid = document.getElementById('radialLiquidSegment');
   const radialCenter = document.getElementById('radialCenterPct');
-  if (radialStaked) radialStaked.setAttribute('stroke-dasharray', `${stakedPct}, 100`);
+  if (radialStaked) radialStaked.setAttribute('stroke-dasharray', '0, 100');
   if (radialLiquid) {
-    radialLiquid.setAttribute('stroke-dasharray', `${liquidPct}, 100`);
-    radialLiquid.setAttribute('stroke-dashoffset', `-${stakedPct}`);
+    radialLiquid.setAttribute('stroke-dasharray', balNum > 0 ? '100, 100' : '0, 100');
+    radialLiquid.setAttribute('stroke-dashoffset', '0');
   }
   if (radialCenter) radialCenter.textContent = balNum > 0 ? '100%' : '0%';
 
   const liquidStat = document.getElementById('liquidTopologyStat');
-  if (liquidStat && tonPrice) {
-    const liquidUsd = balNum * 0.318 * tonPrice;
-    liquidStat.textContent = `31.8% ($${(liquidUsd / 1000).toFixed(0)}K)`;
+  if (liquidStat) {
+    if (balNum > 0 && tonPrice && tonPrice > 0) {
+      const liquidUsd = balNum * tonPrice;
+      liquidStat.textContent = `100% TON ($${liquidUsd.toLocaleString('en-US', { maximumFractionDigits: 0 })})`;
+    } else if (balNum > 0) {
+      liquidStat.textContent = `${balNum.toFixed(2)} TON`;
+    } else {
+      liquidStat.textContent = '0 TON';
+    }
   }
   const stakedStat = document.getElementById('stakedTopologyStat');
-  if (stakedStat && tonPrice) {
-    const stakedUsd = balNum * 0.682 * tonPrice;
-    stakedStat.textContent = `68.2% ($${(stakedUsd / 1000000).toFixed(2)}M)`;
+  if (stakedStat) {
+    stakedStat.textContent = '0% (Sin staking)';
   }
 }
 
@@ -2577,6 +2341,7 @@ function renderHoldingsView(jettons, acc) {
 
   if (!jettons || jettons.length === 0) {
     if (tableBody) tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted); font-family:var(--font-mono);">Sin holdings de Jettons detectados en esta dirección.</td></tr>`;
+    renderAssetConcentration([], acc);
     return;
   }
 
@@ -2626,6 +2391,85 @@ function renderHoldingsView(jettons, acc) {
       `;
     }).join('');
   }
+  renderAssetConcentration(jettons, acc);
+}
+
+function renderAssetConcentration(jettons, acc) {
+  const container = document.getElementById('topAssetConcentrationList');
+  if (!container) return;
+
+  const assets = [];
+  const balTon = Number(acc?.balance || 0) / 1e9;
+  const currentTonPrice = window.lastTonPriceVal || 0;
+  const tonUsd = currentTonPrice > 0 ? (balTon * currentTonPrice) : 0;
+
+  if (balTon > 0 || tonUsd > 0) {
+    assets.push({
+      symbol: 'TON',
+      name: 'Toncoin Nativo',
+      amount: balTon,
+      usdVal: tonUsd,
+      hasUsd: tonUsd > 0,
+      color: 'var(--primary-container)',
+      address: null
+    });
+  }
+
+  if (jettons && jettons.length > 0) {
+    jettons.forEach(j => {
+      const meta = j.jetton || {};
+      const decimals = meta.decimals || 9;
+      const amt = Number(j.balance) / Math.pow(10, decimals);
+      const usdPrice = j.price?.prices?.USD || 0;
+      const usdVal = usdPrice > 0 ? (amt * usdPrice) : 0;
+      assets.push({
+        symbol: escapeHtml(meta.symbol || 'TOKEN'),
+        name: escapeHtml(meta.name || 'Jetton'),
+        amount: amt,
+        usdVal: usdVal,
+        hasUsd: usdVal > 0,
+        color: (meta.symbol === 'GRM' || meta.symbol === 'GRAM') ? '#f59e0b' : (meta.symbol === 'USDT' ? 'var(--tertiary)' : 'var(--accent-electric)'),
+        address: meta.address
+      });
+    });
+  }
+
+  if (assets.length === 0) {
+    container.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:11px; font-family:var(--font-mono);">Sin activos detectados en esta dirección.</div>';
+    return;
+  }
+
+  assets.sort((a, b) => b.usdVal - a.usdVal || b.amount - a.amount);
+  const totalUsd = assets.reduce((sum, a) => sum + a.usdVal, 0);
+
+  container.innerHTML = assets.slice(0, 5).map(a => {
+    const pct = totalUsd > 0 && a.hasUsd ? Math.round((a.usdVal / totalUsd) * 100) : 0;
+    const usdDisplay = a.hasUsd ? `$${a.usdVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${a.amount.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${a.symbol}`;
+    const pctDisplay = totalUsd > 0 && a.hasUsd ? `${pct}%` : '—';
+    const clickAttr = a.address ? `onclick="loadTargetAddress('${a.address}')"` : `onclick="filterByAsset('${a.symbol}')"`;
+
+    return `
+      <div class="asset-token-row" ${clickAttr} style="cursor:pointer;">
+        <div class="asset-token-info">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="asset-icon-chip" style="background:${a.color}; color:#fff;">${a.symbol.slice(0, 1)}</div>
+            <div>
+              <span class="font-mono" style="font-weight:700; color:var(--text-primary); font-size:12px;">${a.symbol}</span>
+              <span style="display:block; font-size:10px; color:var(--text-muted);">${a.name}</span>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <span class="font-mono" style="font-weight:700; color:var(--text-primary); font-size:12px;">${usdDisplay}</span>
+            <span class="font-mono" style="display:block; font-size:10px; color:var(--accent-electric);">${pctDisplay}</span>
+          </div>
+        </div>
+        <div class="depth-meter-bar">
+          <div class="depth-meter-fill" style="background:${a.color}; width:${Math.max(4, pct)}%;"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
 }
 
 function renderJettonMasterView(jm, holders) {
@@ -3047,6 +2891,40 @@ function renderFilteredEvents() {
     }
   }
 
+  // Render Live Mempool Stream Tape
+  const mempoolTape = document.getElementById('mempoolLiveTape');
+  if (mempoolTape) {
+    const recentEvents = classified.slice(0, 5);
+    if (recentEvents.length === 0) {
+      mempoolTape.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:11px; font-family:var(--font-mono);">Sin transacciones registradas.</div>';
+    } else {
+      mempoolTape.innerHTML = recentEvents.map(item => {
+        const timeStr = new Date(item.timestamp * 1000).toISOString().slice(11, 19) + ' UTC';
+        const isPositive = item.direction === 'inflow';
+        const color = isPositive ? 'var(--flow-positive)' : 'var(--flow-negative)';
+        const sign = isPositive ? '+' : '-';
+        const cpDisplay = escapeHtml(item.counterpartyName || shortenAddress(item.counterpartyAddr) || 'Protocolo TON');
+        const badgeColor = item.actionType.includes('Swap') ? 'var(--accent-electric)' : (isPositive ? 'var(--flow-positive)' : 'var(--flow-negative)');
+        
+        return `
+          <div class="mempool-stream-item" onclick="loadTargetAddress('${item.counterpartyAddr || ''}')" style="cursor:pointer;">
+            <div style="display:flex; flex-direction:column; gap:2px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span class="kbd-badge" style="color:${badgeColor};">${escapeHtml(item.actionType)}</span>
+                <span style="font-size:11px; color:var(--text-secondary);">${cpDisplay}</span>
+              </div>
+              <span style="font-size:10px; color:var(--text-muted);">${timeStr}</span>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-size:12px; font-weight:700; color:${color};">${sign}${item.amountTon.toLocaleString('en-US', { maximumFractionDigits: 2 })} TON</span>
+              <span style="display:block; font-size:9px; color:var(--text-muted);">${item.status === 'ok' ? 'Confirmada' : 'Fallida'}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
   // Render Full Transactions Table
   if (!tbody) return;
 
@@ -3197,6 +3075,30 @@ async function updateFinancialIntelligence(targetAddr) {
 
   // 6. Update Top Dashboard Cards
   updateFinancialDashboard(portfolioEval, accounting, scorecard);
+
+  // Update Transparent On-Chain Risk Score
+  try {
+    const riskResult = TonWalletIntelligence?.RiskEngine?.evaluate(
+      currentAccount,
+      currentJettonsList,
+      currentParsedEvents,
+      portfolioEval
+    );
+    if (riskResult) {
+      const elRisk = document.getElementById('riskIndexScore');
+      if (elRisk) {
+        if (riskResult.score !== null) {
+          elRisk.textContent = `${riskResult.score}/100 (${riskResult.level})`;
+          elRisk.style.color = riskResult.score > 60 ? 'var(--flow-negative)' : (riskResult.score > 30 ? '#f59e0b' : 'var(--flow-positive)');
+        } else {
+          elRisk.textContent = 'Datos insuficientes';
+          elRisk.style.color = 'var(--text-muted)';
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Risk evaluation error:', e);
+  }
 
   // 7. Populate Token filter in Compras y Ventas
   populateTradesTokenFilter(uniqueOps);
@@ -4143,6 +4045,7 @@ function updateHistoricalAnalytics() {
   renderCounterpartyChart(sortedCp.slice(0, 4));
   renderCounterpartyRankList(sortedCp.slice(0, 3));
   renderCounterpartiesFullTable(sortedCp);
+  renderCounterpartyHeatmap(sortedCp, totalCpVol);
   renderBalanceTrajectoryChart(classified);
   renderTopologyCanvas(sortedCp);
 
@@ -4151,32 +4054,84 @@ function updateHistoricalAnalytics() {
 }
 
 function updateHudOrbitNodes(sortedCp) {
-  if (!sortedCp || sortedCp.length === 0) return;
+  const container = document.getElementById('hudOrbitNodesContainer');
+  if (!container) return;
 
-  if (sortedCp[0]) {
-    const elName = document.getElementById('orbitNode1Name');
-    const elVol = document.getElementById('orbitNode1Vol');
-    if (elName) elName.textContent = sortedCp[0].name.slice(0, 15);
-    if (elVol) elVol.textContent = `${sortedCp[0].volTon.toFixed(0)} TON`;
+  if (!sortedCp || sortedCp.length === 0) {
+    container.innerHTML = '';
+    return;
   }
-  if (sortedCp[1]) {
-    const elName = document.getElementById('orbitNode2Name');
-    const elVol = document.getElementById('orbitNode2Vol');
-    if (elName) elName.textContent = sortedCp[1].name.slice(0, 15);
-    if (elVol) elVol.textContent = `${sortedCp[1].volTon.toFixed(0)} TON`;
+
+  const positions = [
+    { pos: 'top:12%; right:14%;', border: 'rgba(244,63,94,0.6)', shadow: 'rgba(244,63,94,0.25)', color: 'var(--flow-negative)', icon: 'swap_horiz' },
+    { pos: 'top:14%; left:12%;', border: 'rgba(16,185,129,0.6)', shadow: 'rgba(16,185,129,0.25)', color: 'var(--flow-positive)', icon: 'water_drop' },
+    { pos: 'bottom:14%; right:14%;', border: 'rgba(56,189,248,0.6)', shadow: 'rgba(56,189,248,0.2)', color: 'var(--accent-electric)', icon: 'layers' },
+    { pos: 'bottom:12%; left:14%;', border: 'rgba(245,158,11,0.6)', shadow: 'rgba(245,158,11,0.25)', color: '#f59e0b', icon: 'hub' }
+  ];
+
+  const nodes = sortedCp.slice(0, 4);
+  container.innerHTML = nodes.map((cp, idx) => {
+    const cfg = positions[idx];
+    const safeName = escapeHtml(cp.name ? cp.name.slice(0, 16) : shortenAddress(cp.address));
+    const volStr = `${cp.volTon.toLocaleString('en-US', { maximumFractionDigits: 1 })} TON`;
+
+    return `
+      <div style="position:absolute; ${cfg.pos} z-index:15; display:flex; flex-direction:column; align-items:center; cursor:pointer;" onclick="loadTargetAddress('${cp.address}')">
+        <div style="width:48px; height:48px; border-radius:12px; background:var(--surface-elevated); border:1px solid ${cfg.border}; display:flex; align-items:center; justify-content:center; box-shadow:0 0 16px ${cfg.shadow};">
+          <span class="material-symbols-outlined" style="font-size:20px; color:${cfg.color};">${cfg.icon}</span>
+        </div>
+        <div style="margin-top:4px; padding:2px 8px; border-radius:4px; background:rgba(19,30,54,0.9); border:1px solid var(--border-subtle); text-align:center;">
+          <span class="font-mono" style="font-size:10px; font-weight:600; color:#fff; display:block;" id="orbitNode${idx + 1}Name">${safeName}</span>
+          <span class="font-mono" style="font-size:10px; font-weight:700; color:${cfg.color};" id="orbitNode${idx + 1}Vol">${volStr}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderCounterpartyHeatmap(sortedCp, totalCpVol) {
+  const barEl = document.getElementById('counterpartyHeatmapBar');
+  const gridEl = document.getElementById('counterpartyBreakdownGrid');
+  if (!barEl || !gridEl) return;
+
+  if (!sortedCp || sortedCp.length === 0 || totalCpVol <= 0) {
+    barEl.innerHTML = '<div style="width:100%; background:var(--surface-container-highest); text-align:center; font-size:9px; color:var(--text-muted); line-height:12px;">Sin contrapartes observadas</div>';
+    gridEl.innerHTML = '<div style="grid-column:1 / -1; color:var(--text-muted); font-size:11px; text-align:center; padding:6px;">Sin volumen de contrapartes en transacciones indexadas</div>';
+    return;
   }
-  if (sortedCp[2]) {
-    const elName = document.getElementById('orbitNode3Name');
-    const elVol = document.getElementById('orbitNode3Vol');
-    if (elName) elName.textContent = sortedCp[2].name.slice(0, 15);
-    if (elVol) elVol.textContent = `${sortedCp[2].volTon.toFixed(0)} TON`;
+
+  const colors = ['var(--primary-container)', 'var(--accent-electric)', 'var(--tertiary)', '#f59e0b', 'var(--text-muted)'];
+  const top = sortedCp.slice(0, 4);
+  let topVol = 0;
+
+  const segments = top.map((cp, i) => {
+    const pct = Math.max(1, Math.round((cp.volTon / totalCpVol) * 100));
+    topVol += cp.volTon;
+    return {
+      name: cp.name ? cp.name.slice(0, 15) : shortenAddress(cp.address),
+      pct: pct,
+      color: colors[i % colors.length],
+      address: cp.address
+    };
+  });
+
+  const remainderVol = totalCpVol - topVol;
+  if (remainderVol > 0 && sortedCp.length > 4) {
+    const remPct = Math.max(1, 100 - segments.reduce((s, x) => s + x.pct, 0));
+    segments.push({ name: 'Otros', pct: remPct, color: 'var(--text-muted)', address: null });
   }
-  if (sortedCp[3]) {
-    const elName = document.getElementById('orbitNode4Name');
-    const elVol = document.getElementById('orbitNode4Vol');
-    if (elName) elName.textContent = sortedCp[3].name.slice(0, 15);
-    if (elVol) elVol.textContent = `${sortedCp[3].volTon.toFixed(0)} TON`;
-  }
+
+  barEl.innerHTML = segments.map(s => `
+    <div style="width:${s.pct}%; background:${s.color};" title="${escapeHtml(s.name)}: ${s.pct}%"></div>
+  `).join('');
+
+  gridEl.innerHTML = segments.map(s => `
+    <div style="display:flex; align-items:center; gap:6px; cursor:${s.address ? 'pointer' : 'default'};" ${s.address ? `onclick="loadTargetAddress('${s.address}')"` : ''}>
+      <span style="width:6px; height:6px; border-radius:50%; background:${s.color}; flex-shrink:0;"></span>
+      <span style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(s.name)}:</span>
+      <span style="color:var(--text-primary); font-weight:600; margin-left:auto;">${s.pct}%</span>
+    </div>
+  `).join('');
 }
 
 function renderCounterpartyRankList(topThree) {
