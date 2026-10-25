@@ -1,0 +1,816 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   ANLGRAM — Telegram Mini App (TMA) & Mobile-First Responsive Stylesheet
+   Version: 2026.51 (Second-Pass Refinement)
+   Purpose:
+     - Mobile-first layout for narrow phone viewports (360px, 390px, 430px)
+     - Zero horizontal overflow
+     - Telegram safe-area (notch + home bar) integration
+     - Ergonomic touch targets (min 42-44px)
+     - Clean reflow for headers, search bars, tabs, cards and tables
+     - Preserves all desktop styling on >= 769px
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. GLOBAL MOBILE HYGIENE & SAFE AREAS ─────────────────────────────────── */
+html {
+  box-sizing: border-box;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Telegram Mini App & Mobile Safe Areas */
+body.tma-active,
+html.device-phone body {
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0)) !important;
+  min-height: 100vh;
+  min-height: var(--tg-viewport-height, 100vh);
+  overscroll-behavior-y: none;
+}
+
+/* TMA Bottom Dock Safe Area Padding */
+#anlgram-tma-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0) !important;
+  height: calc(64px + env(safe-area-inset-bottom, 0)) !important;
+}
+
+/* ── 2. GENERAL TOUCH TARGETS & INTERACTION ────────────────────────────────── */
+@media (max-width: 768px) {
+  button, 
+  .btn, 
+  .nav-link,
+  .explorer-tab-btn,
+  .topbar-btn {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Table and data container wrappers must have momentum scroll */
+  .table-container,
+  .data-table-wrap,
+  .table-scroll,
+  .card-body.has-table,
+  .glass-card table,
+  .ent-table {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    display: block !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Grid containers must never stretch wider than viewport */
+  .grid-2,
+  .grid-3,
+  .grid-4,
+  .explorer-layout,
+  .dashboard-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .grid-2 > *,
+  .grid-3 > *,
+  .grid-4 > *,
+  .explorer-layout > *,
+  .dashboard-layout > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Modal cards must never exceed viewport height or overlap TMA bottom dock */
+  .modal-card,
+  .modal-box,
+  .modal-dialog {
+    max-width: 95vw !important;
+    width: 95vw !important;
+    max-height: calc(100vh - 130px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Global debug / device selector pill: compact on mobile, hidden on extra small */
+  #anlgramDevicePill {
+    font-size: 10px !important;
+    padding: 3px 6px !important;
+    height: 28px !important;
+    white-space: nowrap !important;
+  }
+}
+
+@media (max-width: 480px) {
+  #anlgramDevicePill {
+    display: none !important;
+  }
+}
+
+/* ── 3. LANDING PAGE (index.html) MOBILE OPTIMIZATIONS ─────────────────────── */
+@media (max-width: 768px) {
+  /* Navbar */
+  .navbar {
+    padding: 0 12px !important;
+    height: 58px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  .nav-logo-text {
+    font-size: 17px !important;
+  }
+
+  .nav-logo-icon {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .nav-links {
+    display: none !important;
+  }
+
+  .nav-cta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-left: auto !important;
+    max-width: calc(100% - 130px) !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  .nav-cta::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .nav-cta .btn-premium {
+    padding: 0 10px !important;
+    height: 36px !important;
+    font-size: 11.5px !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+
+  .nav-cta .btn-glass,
+  .nav-cta .connect-wallet-btn {
+    padding: 0 10px !important;
+    height: 36px !important;
+    font-size: 11.5px !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Hero Section */
+  .hero {
+    padding: 76px 14px 32px !important;
+    min-height: auto !important;
+  }
+
+  .hero-logo-large {
+    width: 68px !important;
+    height: 68px !important;
+    margin: 0 auto 16px !important;
+  }
+
+  .hero-eyebrow {
+    font-size: 11px !important;
+    padding: 4px 12px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .hero-title {
+    font-size: clamp(26px, 7vw, 38px) !important;
+    line-height: 1.15 !important;
+    margin-bottom: 14px !important;
+  }
+
+  .hero-subtitle {
+    font-size: 13.5px !important;
+    line-height: 1.45 !important;
+    margin-bottom: 22px !important;
+  }
+
+  .hero-actions {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 10px !important;
+  }
+
+  .hero-actions .btn-premium,
+  .hero-actions .btn-glass {
+    width: 100% !important;
+    justify-content: center !important;
+    height: 46px !important;
+    font-size: 13.5px !important;
+  }
+
+  /* Section Containers */
+  .section-container {
+    padding: 44px 14px !important;
+    max-width: 100% !important;
+  }
+
+  .section-header {
+    margin-bottom: 30px !important;
+  }
+
+  .section-header h2 {
+    font-size: 24px !important;
+  }
+
+  .section-header p {
+    font-size: 13.5px !important;
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .stat-card {
+    padding: 18px 14px !important;
+  }
+
+  .stat-val {
+    font-size: 26px !important;
+  }
+
+  /* Tokenomics Chart */
+  .tokenomics-wrap {
+    gap: 24px !important;
+  }
+
+  .token-chart {
+    width: 200px !important;
+    height: 200px !important;
+  }
+
+  .token-chart-inner {
+    width: 140px !important;
+    height: 140px !important;
+  }
+
+  /* Security Card & Contract Box */
+  .security-card {
+    padding: 20px 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .contract-box {
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 12px !important;
+    margin: 18px 0 !important;
+    text-align: center !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .contract-addr {
+    font-size: 11.5px !important;
+    word-break: break-all !important;
+  }
+
+  .audit-badge {
+    padding: 6px 12px !important;
+    font-size: 11px !important;
+  }
+
+  /* Buy steps & tools grid */
+  .buy-steps, .tools-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .buy-step {
+    padding: 20px 14px !important;
+  }
+
+  .calc-box {
+    padding: 18px 14px !important;
+  }
+
+  .calc-input {
+    font-size: 14px !important;
+    padding: 10px 12px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .nav-logo-text {
+    font-size: 15px !important;
+  }
+  .nav-cta {
+    gap: 4px !important;
+  }
+  .nav-cta .btn-premium {
+    padding: 0 8px !important;
+    font-size: 10.5px !important;
+    height: 32px !important;
+  }
+  .nav-cta .connect-wallet-btn {
+    padding: 0 8px !important;
+    font-size: 10.5px !important;
+    height: 32px !important;
+  }
+}
+
+/* ── 4. FLOW VISUALIZER / GRAM TERMINAL (visualizer.html) ─────────────────── */
+@media (max-width: 768px) {
+  .app-header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: auto !important;
+    min-height: 52px !important;
+    padding: 8px 10px !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    background: rgba(7, 22, 42, 0.96) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    z-index: 60 !important;
+  }
+
+  .header-left {
+    order: 1 !important;
+    gap: 6px !important;
+  }
+
+  .header-brand {
+    font-size: 14px !important;
+  }
+
+  .header-right {
+    order: 2 !important;
+    margin-left: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .header-right .btn-network,
+  .header-right .btn-map-control {
+    padding: 5px 8px !important;
+    font-size: 11px !important;
+    height: 32px !important;
+  }
+
+  .header-sync-badge {
+    padding: 4px 8px !important;
+    font-size: 10.5px !important;
+    white-space: nowrap !important;
+    max-width: 160px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    height: 32px !important;
+  }
+
+  .header-center {
+    order: 3 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .search-bar {
+    width: 100% !important;
+    height: 36px !important;
+  }
+
+  /* Floating Panels as mobile touch sheets */
+  .panel-left {
+    top: 104px !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-height: 38vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    z-index: 40 !important;
+    border-radius: 12px !important;
+    padding: 10px 12px !important;
+  }
+
+  .panel-right {
+    top: auto !important;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0)) !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-height: 40vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    z-index: 45 !important;
+    border-radius: 12px !important;
+    padding: 12px !important;
+  }
+
+  /* Elevated Zoom Controls above TMA Bottom Nav */
+  .zoom-controls {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0)) !important;
+    padding: 4px 8px !important;
+    gap: 4px !important;
+    z-index: 50 !important;
+  }
+
+  .zoom-controls button {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  /* Token Table Drawer */
+  .modal-content {
+    width: 95% !important;
+    max-height: 80vh !important;
+    border-radius: 14px !important;
+  }
+
+  .table-header, .table-row {
+    min-width: 620px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-sync-badge {
+    display: none !important;
+  }
+}
+
+/* ── 5. ENTITY EXPLORER (explorer.html) ────────────────────────────────────── */
+@media (max-width: 768px) {
+  .topbar {
+    padding: 8px 10px !important;
+    gap: 6px !important;
+    min-height: 50px !important;
+  }
+
+  .topbar-brand {
+    font-size: 14px !important;
+  }
+
+  .topbar-subtitle {
+    display: none !important;
+  }
+
+  .topbar-actions {
+    margin-left: auto !important;
+    gap: 5px !important;
+  }
+
+  /* Search Wrap on Mobile: Allow Wrap so Analyze Button fits cleanly */
+  .explorer-search-wrap {
+    width: 100% !important;
+    padding: 8px 10px !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+    height: auto !important;
+    border-radius: 12px !important;
+  }
+
+  .explorer-search {
+    flex: 1 1 180px !important;
+    min-width: 0 !important;
+    height: 38px !important;
+    font-size: 12.5px !important;
+  }
+
+  #searchTypeBadge {
+    display: none !important;
+  }
+
+  #analyzeBtn {
+    width: 100% !important;
+    height: 40px !important;
+    margin-top: 4px !important;
+    justify-content: center !important;
+    font-size: 13px !important;
+  }
+
+  /* Entity Card Banner */
+  .entity-card-banner {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+
+  .entity-title-row {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .entity-name {
+    font-size: 17px !important;
+  }
+
+  .entity-address-bar {
+    max-width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  #entityAddressDisplay {
+    max-width: calc(100% - 32px) !important;
+    word-break: break-all !important;
+    font-size: 11.5px !important;
+    line-height: 1.35 !important;
+  }
+
+  .entity-stats {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .entity-stat-val {
+    font-size: 14.5px !important;
+  }
+
+  .entity-stat-label {
+    font-size: 10px !important;
+  }
+
+  /* Action Buttons Grid */
+  .entity-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .entity-actions .btn,
+  .entity-actions > div,
+  .entity-actions > div > .btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    height: 38px !important;
+    font-size: 11.5px !important;
+    padding: 4px 6px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Tabs Bar with smooth horizontal momentum touch scroll */
+  .explorer-tabs-bar {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    gap: 5px !important;
+    padding-bottom: 5px !important;
+    margin-bottom: 12px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .explorer-tabs-bar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .explorer-tab-btn {
+    padding: 7px 10px !important;
+    font-size: 11.5px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    border-radius: 8px 8px 0 0 !important;
+  }
+
+  .tab-badge {
+    padding: 2px 5px !important;
+    font-size: 9.5px !important;
+  }
+
+  /* Quick Entity Pills */
+  .quick-entities-strip {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 4px !important;
+  }
+
+  .quick-entities-strip::-webkit-scrollbar {
+    display: none !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .entity-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── 6. INTEL EXCHANGE (intel-exchange.html) ───────────────────────────────── */
+@media (max-width: 768px) {
+  .main-container {
+    padding: 10px 10px 72px 10px !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+  }
+
+  /* Header Navbar Reflow */
+  .header-nav {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    height: auto !important;
+    padding: 8px 10px !important;
+    gap: 6px !important;
+  }
+
+  .header-nav .nav-left {
+    order: 1 !important;
+  }
+
+  .header-nav .nav-right {
+    order: 2 !important;
+    margin-left: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .header-nav .search-container {
+    order: 3 !important;
+    width: 100% !important;
+    margin-top: 4px !important;
+  }
+
+  .section-header-wrap {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .section-title {
+    font-size: 18px !important;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .metric-card {
+    padding: 12px !important;
+  }
+
+  /* Directory & Table Tabs Horizontal Touch Scroll */
+  .directory-tabs,
+  .table-filter-tabs {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    max-width: 100% !important;
+    gap: 6px !important;
+    padding-bottom: 6px !important;
+    white-space: nowrap !important;
+  }
+
+  .directory-tabs::-webkit-scrollbar,
+  .table-filter-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .directory-tabs .tab-btn,
+  .table-filter-tabs .table-filter-tab {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    font-size: 12px !important;
+    padding: 6px 10px !important;
+  }
+
+  .table-container {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    margin-bottom: 20px !important;
+  }
+
+  .market-table {
+    min-width: 580px !important;
+  }
+
+  .market-table th,
+  .market-table td {
+    padding: 8px 6px !important;
+    font-size: 11.5px !important;
+  }
+
+  .market-table th {
+    white-space: nowrap !important;
+  }
+}
+
+/* ── 7. DASHBOARDS, ALERTS & PROFIT LAB (Universal Subpages) ──────────────── */
+@media (max-width: 768px) {
+  .page-content,
+  .content-wrapper,
+  .container {
+    padding: 10px 10px 72px 10px !important;
+    max-width: 100vw !important;
+  }
+
+  /* Universal Topbar Reflow */
+  .topbar {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    height: auto !important;
+    min-height: 50px !important;
+    padding: 8px 10px !important;
+    gap: 6px !important;
+  }
+
+  .topbar-brand {
+    font-size: 14px !important;
+  }
+
+  .topbar-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 5px !important;
+    margin-left: auto !important;
+    order: 1 !important;
+    max-width: 100% !important;
+  }
+
+  .topbar-search {
+    width: 100% !important;
+    order: 2 !important;
+    margin: 4px 0 0 0 !important;
+  }
+
+  /* Verbose desktop pills hidden on mobile */
+  .topbar-mode-badge,
+  .topbar-actions .topbar-mode-badge {
+    display: none !important;
+  }
+
+  .topbar-rate-pill,
+  .topbar-actions .topbar-rate-pill {
+    padding: 2px 6px !important;
+    font-size: 10.5px !important;
+    height: 30px !important;
+  }
+
+  .card {
+    border-radius: 12px !important;
+    padding: 14px !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Two column forms / calculator inputs collapse on mobile */
+  .calc-grid,
+  .form-row,
+  .two-col-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar-rate-pill,
+  .topbar-actions .topbar-rate-pill {
+    display: none !important;
+  }
+}
+
+/* ── 8. MEMECOIN PLATFORM (memecoin-platform.html) ─────────────────────────── */
+@media (max-width: 768px) {
+  .platform-tabs {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    max-width: 100% !important;
+    white-space: nowrap !important;
+    gap: 6px !important;
+    padding-bottom: 6px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .platform-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .platform-tab {
+    flex-shrink: 0 !important;
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+  }
+}
