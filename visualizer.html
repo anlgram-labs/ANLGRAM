@@ -350,6 +350,12 @@
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               <span>Copiar</span>
             </button>
+            <span class="search-network-pill" style="margin-left: 4px; padding: 2px 7px; font-size: 10px;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style="vertical-align:middle; margin-right:3px;">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#00F0FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              TON Mainnet
+            </span>
           </div>
         </div>
       </div>
@@ -357,6 +363,14 @@
     </div>
 
     <div class="modal-body">
+      <!-- Sync Status & Retry Banner -->
+      <div id="dt-sync-banner" class="dt-sync-banner" style="display: none;">
+        <div style="display: flex; align-items: center;">
+          <span id="dt-sync-message">Cargando métricas on-chain en tiempo real...</span>
+        </div>
+        <button id="dt-btn-retry" class="btn-copy-pill" style="display: none;">Reintentar</button>
+      </div>
+
       <!-- Direct Exploration Action -->
       <button id="dt-btn-explore-cluster" class="btn-primary w-full" style="padding: 12px 18px; margin-bottom: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 0.95rem; border-radius: 8px; box-shadow: 0 0 20px rgba(0, 240, 255, 0.25); cursor: pointer;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="5" cy="18" r="2"/><path d="M10 10.5 6.5 7.5M14 10.5l3.5-3M10 13.5l-3.5 3M14 13.5l3.5 3"/></svg>
@@ -368,34 +382,42 @@
         <div class="dt-stat-card">
           <div class="dt-stat-label">Precio Actual (USD)</div>
           <div id="dt-token-price" class="dt-stat-val data-font">$0.00</div>
+          <div class="dt-stat-source">Fuente: TonAPI Rates / STON.fi</div>
         </div>
         <div class="dt-stat-card">
           <div class="dt-stat-label">Cambio 24h</div>
           <div id="dt-token-change24h" class="dt-stat-val data-font">0.00%</div>
+          <div class="dt-stat-source">Variación cotizada en USD</div>
         </div>
         <div class="dt-stat-card">
           <div class="dt-stat-label">Market Cap (USD)</div>
           <div id="dt-token-mcap" class="dt-stat-val data-font">N/A</div>
+          <div class="dt-stat-source">Calculado: Precio × Supply</div>
         </div>
         <div class="dt-stat-card">
           <div class="dt-stat-label">Volumen 24h (USD)</div>
           <div id="dt-token-vol" class="dt-stat-val data-font">N/A</div>
+          <div class="dt-stat-source">Fuente: STON.fi Pool Reportado</div>
         </div>
         <div class="dt-stat-card">
           <div class="dt-stat-label">Liquidez (Pool DEX)</div>
           <div id="dt-token-liquidity" class="dt-stat-val data-font">N/A</div>
+          <div class="dt-stat-source">TVL en STON.fi Pools</div>
         </div>
         <div class="dt-stat-card">
           <div class="dt-stat-label">Holders en Cadena</div>
           <div id="dt-token-holders" class="dt-stat-val data-font">0</div>
+          <div class="dt-stat-source">Fuente: TonAPI v2 Gateway</div>
         </div>
         <div class="dt-stat-card">
           <div class="dt-stat-label">Total Supply</div>
           <div id="dt-token-supply" class="dt-stat-val data-font" style="font-size:0.9rem;">--</div>
+          <div class="dt-stat-source">Contrato on-chain oficial</div>
         </div>
         <div class="dt-stat-card">
           <div class="dt-stat-label">Última Actualización</div>
           <div id="dt-token-last-sync" class="dt-stat-val data-font" style="font-size:0.85rem; color:var(--text-secondary);">--</div>
+          <div class="dt-stat-source">Timestamp de indexación</div>
         </div>
       </div>
 
@@ -420,91 +442,112 @@
       </div>
 
       <!-- Holder Concentration Metrics -->
-      <div style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
-        Holder Concentration & Governance Risk
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px; flex-wrap:wrap; gap:6px;">
+        <div style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px;">
+          Concentración y Gobernanza de Holders
+        </div>
+        <span id="dt-conc-badge" class="badge-ver badge-verified" style="font-size:10px; padding:2px 8px;">SNAPSHOT TONAPI</span>
       </div>
+
+      <!-- Denominator & Methodology Notice Banner -->
+      <div id="dt-conc-notice" class="dt-methodology-box">
+        <div id="dt-conc-denominator" style="font-weight:600; color:#fff;">Denominador: Calculando balances on-chain...</div>
+        <div id="dt-conc-warning" style="color:var(--text-muted); font-size:11px; margin-top:4px;">
+          ⚠️ El snapshot está limitado por el proveedor a la muestra paginada de mayores tenedores; la concentración real sobre el suministro total puede diferir.
+        </div>
+      </div>
+
       <div class="conc-grid">
         <div class="conc-card">
           <div style="font-size: 11px; color: var(--text-secondary);">Top 5 Share</div>
           <div id="dt-top5-share" class="val data-font">0.0%</div>
-          <div style="font-size: 10px; color: var(--text-muted);">of tracked supply</div>
+          <div id="dt-top5-sub" style="font-size: 10px; color: var(--text-muted);">del suministro rastreado</div>
         </div>
         <div class="conc-card">
           <div style="font-size: 11px; color: var(--text-secondary);">Top 10 Share</div>
           <div id="dt-top10-share" class="val data-font">0.0%</div>
-          <div style="font-size: 10px; color: var(--text-muted);">of tracked supply</div>
+          <div id="dt-top10-sub" style="font-size: 10px; color: var(--text-muted);">del suministro rastreado</div>
         </div>
         <div class="conc-card">
           <div style="font-size: 11px; color: var(--text-secondary);">Top 20 Share</div>
           <div id="dt-top20-share" class="val data-font">0.0%</div>
-          <div style="font-size: 10px; color: var(--text-muted);">of tracked supply</div>
+          <div id="dt-top20-sub" style="font-size: 10px; color: var(--text-muted);">del suministro rastreado</div>
         </div>
         <div class="conc-card">
           <div style="font-size: 11px; color: var(--text-secondary);">Concentration Tier</div>
-          <div id="dt-concentration-level" class="val" style="font-size: 0.95rem; line-height: 1.8;">MODERATE</div>
-          <div style="font-size: 10px; color: var(--text-muted);">calculated rating</div>
+          <div id="dt-concentration-level" class="val" style="font-size: 0.95rem; line-height: 1.6;">PENDIENTE DE DATOS</div>
+          <div id="dt-concentration-rule" style="font-size: 10px; color: var(--text-muted);">Top 10 ≥70% Alta | 40-70% Mod | &lt;40% Dist</div>
         </div>
       </div>
 
       <!-- Top Holders Table -->
-      <div style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px;">
-        Top Ranked Holders (On-Chain Snapshot)
+      <div style="display:flex; justify-content:space-between; align-items:center; margin: 20px 0 8px; flex-wrap:wrap; gap:6px;">
+        <div style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px;">
+          Top Ranked Holders (Snapshot On-Chain)
+        </div>
+        <span id="dt-holders-count-indicator" style="font-size: 11px; color: var(--color-cyan); font-family: var(--font-data);"></span>
       </div>
       <div style="overflow-x: auto; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
         <table class="dt-table">
           <thead>
             <tr>
-              <th>Rank</th>
-              <th>Holder Address</th>
-              <th>Category Evidence</th>
+              <th>Rango</th>
+              <th>Dirección de Billetera</th>
+              <th>Evidencia / Categoría</th>
               <th>Balance</th>
-              <th>% of Tracked</th>
+              <th>% del Supply Rastreado</th>
             </tr>
           </thead>
           <tbody id="dt-holders-tbody">
-            <!-- Populated by JS -->
+            <!-- Populated dynamically via JS -->
           </tbody>
         </table>
       </div>
 
       <!-- Recent Transfers (Peer-to-Peer) -->
-      <div style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin: 24px 0 8px;">
-        Observed Peer Transfers (Recent Events)
+      <div style="display:flex; justify-content:space-between; align-items:center; margin: 24px 0 8px; flex-wrap:wrap; gap:6px;">
+        <div style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px;">
+          Transferencias Observadas entre Billeteras (Peer-to-Peer)
+        </div>
+        <span id="dt-transfers-indicator" style="font-size: 11px; color: var(--text-secondary); font-family: var(--font-data);"></span>
       </div>
       <div style="overflow-x: auto; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
         <table class="dt-table">
           <thead>
             <tr>
-              <th>Time</th>
-              <th>Sender</th>
-              <th>Recipient</th>
-              <th>Amount</th>
-              <th>Transaction</th>
+              <th>Fecha/Hora</th>
+              <th>Billetera Emisora</th>
+              <th>Billetera Receptora</th>
+              <th>Cantidad</th>
+              <th>Transacción</th>
             </tr>
           </thead>
           <tbody id="dt-transfers-tbody">
-            <!-- Populated by JS -->
+            <!-- Populated dynamically via JS -->
           </tbody>
         </table>
       </div>
 
       <!-- DEX Swaps (Classified Trades) -->
-      <div style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; margin: 24px 0 8px;">
-        Verified DEX Trades (AMM Router Traces)
+      <div style="display:flex; justify-content:space-between; align-items:center; margin: 24px 0 8px; flex-wrap:wrap; gap:6px;">
+        <div style="font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px;">
+          Operaciones DEX Verificadas (Swaps en Enrutadores AMM)
+        </div>
+        <span id="dt-trades-indicator" style="font-size: 11px; color: var(--text-secondary); font-family: var(--font-data);"></span>
       </div>
       <div style="overflow-x: auto; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
         <table class="dt-table">
           <thead>
             <tr>
-              <th>Time</th>
-              <th>DEX Protocol</th>
-              <th>Trader Wallet</th>
-              <th>Estimated Volume</th>
-              <th>Trace</th>
+              <th>Fecha/Hora</th>
+              <th>Protocolo DEX</th>
+              <th>Billetera del Trader</th>
+              <th>Volumen Estimado</th>
+              <th>Trazabilidad On-Chain</th>
             </tr>
           </thead>
           <tbody id="dt-trades-tbody">
-            <!-- Populated by JS -->
+            <!-- Populated dynamically via JS -->
           </tbody>
         </table>
       </div>

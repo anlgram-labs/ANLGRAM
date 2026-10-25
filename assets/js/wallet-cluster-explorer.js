@@ -230,6 +230,26 @@
     "UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ": { name: "Standard TON Burn Address", category: "BURN", verified: true, color: "#64748B" }
   };
 
+  // --- Verified STON.fi DEX Pools Directory ---
+  const KNOWN_STONFI_POOLS = {
+    // USDT / TON
+    'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs': 'EQCGScrZe1xbyWqWDvdI6mzP-GAcAWFv6ZXuaJOuSqemxku4',
+    // NOT / TON
+    'EQAvlWFDxGF2lXm67y4yzC17wYKD9A0guwPkMs1gOsM__NOT': 'EQCaY8Ifl2S6lRBMBJeY35LIuMXPc8JfItWG4tl7lBGrSoR2',
+    // STON / TON
+    'EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO': 'EQBbsMjyLRj-xJE4eqMbtgABvPq34TF_hwiAGEAUGUb5sNGO',
+    // DOGS / TON
+    'EQCvxJy4eG8hyHBFsZ7eePxrRsUQSFE_jpptRAYBmcG_DOGS': 'EQD7AY9ov7urTou069yON36pH0Okd-bpd1hxYxA5-Sp54Cza',
+    // tsTON / TON
+    'EQDNhy-nxYFgUqzfUzImBEP67JqNYm9ZJIgnReAnilNU_n65': 'EQAFtMZmka_ki1em2CeWcYKZiia5IHeHzs2c9ll4cmSAePdX',
+    // REDO / TON
+    'EQBZ_cafPyDr5KUTs0aNxh0ZTDhkpEZONmLJA2SNGlLm4Cko': 'EQBCwe_IObXA4Mt3RbcHil2s4-v4YQS3wUDt1-DvZOceeMGO',
+    // DUST / TON
+    'EQBlqsm144Dq6SjbPI4jjZvA1hqTIP3CvHovbIfW_t-SCALE': 'EQAEQcxaAJNsp58SYTBJs9XkxXWZb-rFSoG9esDdCTz62kjm',
+    // MAJOR / TON
+    'EQCuPm01HldiduQ55xaBF_1kaW_WAUy5DHey8suqzU_MAJOR': 'EQCItmol3T2MxI476jbvQa01EDqmBRIZ3xP_FtGdQewuWVUk'
+  };
+
   // --- Refined Institutional Tiers & Palettes (from video) ---
   const PERCENTAGE_TIERS = [
     { min: 15, name: 'Mega Whale', color: '#FF2E93', glow: 'rgba(255, 46, 147, 0.4)', gradientId: 'grad-tier-megawhale', desc: '> 15% of supply' },
@@ -557,6 +577,54 @@
         }
       } catch (e) {}
       return [];
+    },
+
+    async fetchStonfiPool(poolAddress) {
+      const clean = safeTrim(poolAddress);
+      if (!clean) return null;
+      const cacheKey = 'stonfi_pool_' + clean;
+      const cached = CacheEngine.get(cacheKey);
+      if (cached) return cached;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(`https://api.ston.fi/v1/pools/${encodeURIComponent(clean)}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.pool) {
+            CacheEngine.set(cacheKey, data.pool, 120000); // 2 min
+            return data.pool;
+          }
+        }
+      } catch (e) {
+        logIndexingEvent('STON.fi Pool Fetch Failed', `${clean}: ${e.message}`, 'warn');
+      }
+      return null;
+    },
+
+    async fetchStonfiAsset(contractAddress) {
+      const clean = safeTrim(contractAddress);
+      if (!clean) return null;
+      const cacheKey = 'stonfi_asset_' + clean;
+      const cached = CacheEngine.get(cacheKey);
+      if (cached) return cached;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(`https://api.ston.fi/v1/assets/${encodeURIComponent(clean)}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.asset) {
+            CacheEngine.set(cacheKey, data.asset, 180000); // 3 min
+            return data.asset;
+          }
+        }
+      } catch (e) {
+        logIndexingEvent('STON.fi Asset Fetch Failed', `${clean}: ${e.message}`, 'warn');
+      }
+      return null;
     }
   };
 
@@ -911,8 +979,9 @@
         <div class="col-vol">${formatMoney(token.volume)}</div>
         <div class="col-holders data-font">${token.holders ? formatCompactNumber(token.holders) : '<span class="val-nodata">N/D</span>'}</div>
         <div class="col-last-indexed">${token.lastIndexed ? timeAgo(token.lastIndexed) : '<span class="val-nodata">N/D</span>'}</div>
-        <div class="col-action">
-          <button class="btn-map" data-token="${token.symbol}">Explore Clusters</button>
+        <div class="col-action" style="display:flex; gap:6px; align-items:center;">
+          <button class="btn-token-intel" data-contract="${token.contract}" title="Ver Ficha Técnica y Métricas">Ficha</button>
+          <button class="btn-map" data-token="${token.symbol}">Explorar</button>
         </div>
       `;
 
@@ -926,6 +995,25 @@
             copySnippet.innerHTML = '<span style="color:var(--cyan);">Copied!</span>';
             setTimeout(() => { copySnippet.innerHTML = original; }, 1500);
           });
+        };
+      }
+
+      // Ficha Details Handler
+      const btnIntel = row.querySelector('.btn-token-intel');
+      if (btnIntel) {
+        btnIntel.onclick = (e) => {
+          e.stopPropagation();
+          openTokenDetailsDrawer(token);
+        };
+      }
+
+      // Token Column Click (Opens Ficha)
+      const tokenCol = row.querySelector('.col-token');
+      if (tokenCol) {
+        tokenCol.onclick = (e) => {
+          if (e.target.closest('.row-addr-snippet')) return;
+          e.stopPropagation();
+          openTokenDetailsDrawer(token);
         };
       }
 
@@ -1912,9 +2000,20 @@
 
     modal.style.display = 'flex';
 
+    // 1. Render immediate basic data
+    renderInitialTokenDetails(token);
+
+    // 2. Automatically load & sync live on-chain data
+    loadTokenDetailsData(token);
+  }
+
+  function renderInitialTokenDetails(token) {
+    const modal = document.getElementById('modal-token-details');
+    if (!modal) return;
+
     // Header info
-    document.getElementById('dt-token-name').textContent = token.name;
-    document.getElementById('dt-token-symbol').textContent = token.symbol;
+    document.getElementById('dt-token-name').textContent = token.name || 'Token';
+    document.getElementById('dt-token-symbol').textContent = token.symbol || '---';
     const dtLogo = document.getElementById('dt-token-logo');
     if (dtLogo) {
       dtLogo.src = resolveLogoUrl(token);
@@ -1924,7 +2023,7 @@
     // Verification Badge
     const badgeEl = document.getElementById('dt-token-badge');
     if (badgeEl) {
-      badgeEl.textContent = token.verification === 'whitelist' ? 'VERIFIED ON-CHAIN' : 'COMMUNITY / UNVERIFIED';
+      badgeEl.textContent = token.verification === 'whitelist' ? 'VERIFICADO ON-CHAIN' : 'COMUNIDAD / NO VERIFICADO';
       badgeEl.className = token.verification === 'whitelist' ? 'badge-ver badge-verified' : 'badge-ver badge-unverified';
     }
 
@@ -1932,13 +2031,13 @@
     const logoSourceEl = document.getElementById('dt-logo-source');
     if (logoSourceEl) {
       if (token.metadata && token.metadata.image) {
-        logoSourceEl.textContent = 'Verified On-Chain Metadata Image URI';
+        logoSourceEl.textContent = 'URI de Imagen de Metadatos On-Chain Verificada';
       } else if (token.preview) {
-        logoSourceEl.textContent = 'Trusted Data Provider CDN Proxy (TonAPI)';
+        logoSourceEl.textContent = 'Proxy CDN de Proveedor de Confianza (TonAPI)';
       } else if (token.logo) {
-        logoSourceEl.textContent = 'Verified Project CDN Repository Asset';
+        logoSourceEl.textContent = 'Activo de Repositorio CDN Oficial';
       } else {
-        logoSourceEl.textContent = 'Neutral Fallback Glyph (Unverified external asset)';
+        logoSourceEl.textContent = 'Icono Genérico Neutral (Activo no verificado)';
       }
     }
 
@@ -1949,7 +2048,7 @@
       contractEl.onclick = () => {
         if (token.contract) {
           navigator.clipboard.writeText(token.contract);
-          alert('Copied Master Contract address!');
+          alert('Dirección Master Contract copiada al portapapeles');
         }
       };
     }
@@ -1975,9 +2074,33 @@
     if (linkTonscan && token.contract) linkTonscan.href = `https://tonscan.org/jetton/${token.contract}`;
     if (linkStonfi && token.contract) linkStonfi.href = `https://app.ston.fi/swap?chartVisible=true&ft=TON&tt=${encodeURIComponent(token.contract)}`;
 
-    // Key Statistics
-    document.getElementById('dt-token-price').innerHTML = formatPrice(token.price);
-    
+    // Initial stats rendering
+    renderStatsCards(token);
+
+    // Direct Cluster Exploration Action Button
+    const btnExplore = document.getElementById('dt-btn-explore-cluster');
+    if (btnExplore) {
+      btnExplore.onclick = async () => {
+        modal.style.display = 'none';
+        const dropdown = document.getElementById('search-results-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+        
+        let targetToken = state.tokens.find(t => t.contract.toLowerCase() === (token.contract || '').toLowerCase());
+        if (!targetToken) {
+          const res = await indexJettonMasterContract(token.contract);
+          targetToken = res.token || token;
+        }
+        openBubbleMap(targetToken);
+      };
+    }
+  }
+
+  function renderStatsCards(token) {
+    // 1. Price
+    const priceEl = document.getElementById('dt-token-price');
+    if (priceEl) priceEl.innerHTML = formatPrice(token.price);
+
+    // 2. Change 24h
     const changeEl = document.getElementById('dt-token-change24h');
     if (changeEl) {
       if (token.change24h != null) {
@@ -1988,179 +2111,478 @@
       }
     }
 
-    document.getElementById('dt-token-mcap').innerHTML = formatMoney(token.marketCap);
-    document.getElementById('dt-token-vol').innerHTML = formatMoney(token.volume);
-    
+    // 3. Market Cap
+    const mcapEl = document.getElementById('dt-token-mcap');
+    if (mcapEl) {
+      mcapEl.innerHTML = token.marketCap != null ? formatMoney(token.marketCap) : '<span class="val-nodata">N/D</span>';
+    }
+
+    // 4. 24h Volume
+    const volEl = document.getElementById('dt-token-vol');
+    if (volEl) {
+      volEl.innerHTML = token.volume != null ? formatMoney(token.volume) : '<span class="val-nodata">N/D</span>';
+    }
+
+    // 5. DEX Liquidity
     const liqEl = document.getElementById('dt-token-liquidity');
     if (liqEl) {
-      liqEl.innerHTML = token.liquidity != null ? formatMoney(token.liquidity) : '<span class="val-nodata">N/D (Sin datos de pool)</span>';
+      liqEl.innerHTML = token.liquidity != null ? formatMoney(token.liquidity) : '<span class="val-nodata">N/D</span>';
     }
 
-    document.getElementById('dt-token-holders').innerHTML = token.holders ? Number(token.holders).toLocaleString() : '<span class="val-nodata">N/D</span>';
-    
-    // Total supply
+    // 6. Holders Count
+    const holdersEl = document.getElementById('dt-token-holders');
+    if (holdersEl) {
+      holdersEl.innerHTML = token.holders != null ? Number(token.holders).toLocaleString() : '<span class="val-nodata">N/D</span>';
+    }
+
+    // 7. Total Supply
     const supplyEl = document.getElementById('dt-token-supply');
     if (supplyEl) {
-      supplyEl.innerHTML = token.totalSupply && token.decimals ? formatTokenUnits(token.totalSupply, token.decimals) + ' ' + token.symbol : '<span class="val-nodata">N/D</span>';
+      supplyEl.innerHTML = (token.totalSupply && token.decimals) ? `${formatTokenUnits(token.totalSupply, token.decimals)} ${token.symbol}` : '<span class="val-nodata">N/D</span>';
     }
 
+    // 8. Last Sync
     const syncEl = document.getElementById('dt-token-last-sync');
     if (syncEl) {
       if (token.lastIndexed) {
         const d = new Date(token.lastIndexed);
-        syncEl.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' · ' + d.toLocaleDateString();
+        syncEl.textContent = `${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} · ${d.toLocaleDateString()}`;
       } else {
         syncEl.innerHTML = '<span class="val-nodata">N/D</span>';
       }
     }
+  }
 
-    // Direct Cluster Exploration Action Button
-    const btnExplore = document.getElementById('dt-btn-explore-cluster');
-    if (btnExplore) {
-      btnExplore.onclick = async () => {
-        modal.style.display = 'none';
-        const dropdown = document.getElementById('search-results-dropdown');
-        if (dropdown) dropdown.style.display = 'none';
-        
-        let targetToken = state.tokens.find(t => t.contract.toLowerCase() === token.contract.toLowerCase());
-        if (!targetToken) {
-          const res = await indexJettonMasterContract(token.contract);
-          targetToken = res.token || token;
-        }
-        openBubbleMap(targetToken);
-      };
+  // --- Live On-Chain Data Fetcher for Token Details Modal ---
+  async function loadTokenDetailsData(token) {
+    const modal = document.getElementById('modal-token-details');
+    if (!modal || modal.style.display !== 'flex') return;
+
+    const banner = document.getElementById('dt-sync-banner');
+    const msgEl = document.getElementById('dt-sync-message');
+    const retryBtn = document.getElementById('dt-btn-retry');
+
+    if (banner) {
+      banner.style.display = 'flex';
+      banner.className = 'dt-sync-banner loading';
+      if (msgEl) msgEl.innerHTML = '<span class="mini-spinner"></span> Sincronizando métricas on-chain en tiempo real con TonAPI v2 y STON.fi...';
+      if (retryBtn) retryBtn.style.display = 'none';
     }
 
-    // Asynchronously enrich metadata if token was selected from search results without full state
-    if (token.contract && (token.holders == null || token.totalSupply == null)) {
-      ApiService.fetchJettonDetails(token.contract).then(jettonData => {
-        if (jettonData && modal.style.display === 'flex') {
-          if (jettonData.metadata) {
-            if (!token.decimals && jettonData.metadata.decimals) token.decimals = Number(jettonData.metadata.decimals);
-            if (jettonData.metadata.description && !token.description) token.description = jettonData.metadata.description;
-          }
-          if (jettonData.holders_count != null) {
-            token.holders = jettonData.holders_count;
-            const hEl = document.getElementById('dt-token-holders');
-            if (hEl) hEl.textContent = Number(token.holders).toLocaleString();
-          }
-          if (jettonData.total_supply != null) {
-            token.totalSupply = jettonData.total_supply;
-            const sEl = document.getElementById('dt-token-supply');
-            if (sEl) sEl.innerHTML = formatTokenUnits(token.totalSupply, token.decimals || 9) + ' ' + token.symbol;
-          }
-          if (token.price && token.totalSupply && token.decimals && !token.marketCap) {
-            try {
-              const dec = token.decimals || 9;
-              const baseSupply = Number(BigInt(token.totalSupply) / BigInt(10 ** Math.min(dec, 18)));
-              token.marketCap = baseSupply * token.price;
-              const mcEl = document.getElementById('dt-token-mcap');
-              if (mcEl) mcEl.innerHTML = formatMoney(token.marketCap);
-            } catch (e) {}
-          }
-        }
-      });
+    // Set initial loading placeholders in tables
+    const holdersTbody = document.getElementById('dt-holders-tbody');
+    const transfersTbody = document.getElementById('dt-transfers-tbody');
+    const tradesTbody = document.getElementById('dt-trades-tbody');
+
+    if (holdersTbody) {
+      holdersTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:18px; color:var(--color-cyan);"><div class="mini-spinner"></div> Consultando snapshot on-chain de top holders en TonAPI v2...</td></tr>`;
+    }
+    if (transfersTbody) {
+      transfersTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:18px; color:var(--text-secondary);"><div class="mini-spinner"></div> Buscando transferencias directas P2P recientes...</td></tr>`;
+    }
+    if (tradesTbody) {
+      tradesTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:18px; color:var(--text-secondary);"><div class="mini-spinner"></div> Buscando swaps recientes en routers AMM (STON.fi / DeDust)...</td></tr>`;
     }
 
-    // Holder Concentration calculation & Tables
-    const hasActiveGraph = state.graphData && state.graphData.nodes && state.activeToken && state.activeToken.contract === token.contract;
+    try {
+      const contract = token.contract;
+      const stonfiPoolAddr = KNOWN_STONFI_POOLS[contract];
 
-    if (hasActiveGraph) {
-      const sorted = [...state.graphData.nodes].sort((a, b) => b.balance - a.balance);
-      const top5Pct = sorted.slice(0, 5).reduce((s, n) => s + n.percentOfTracked, 0);
-      const top10Pct = sorted.slice(0, 10).reduce((s, n) => s + n.percentOfTracked, 0);
-      const top20Pct = sorted.slice(0, 20).reduce((s, n) => s + n.percentOfTracked, 0);
+      // Query TonAPI details, rates, STON.fi pools/assets, holders, and events in parallel
+      const [jettonDetails, ratesData, stonfiPoolData, stonfiAssetData, holdersData, eventsData] = await Promise.all([
+        contract ? ApiService.fetchJettonDetails(contract) : Promise.resolve(null),
+        contract ? ApiService.fetchJettonRates([contract]) : Promise.resolve({}),
+        stonfiPoolAddr ? ApiService.fetchStonfiPool(stonfiPoolAddr) : Promise.resolve(null),
+        (!stonfiPoolAddr && contract) ? ApiService.fetchStonfiAsset(contract) : Promise.resolve(null),
+        contract ? ApiService.fetchJettonHolders(contract, 50) : Promise.resolve({ total: 0, addresses: [] }),
+        contract ? ApiService.fetchAccountEvents(contract, 50) : Promise.resolve({ events: [] })
+      ]);
 
-      document.getElementById('dt-top5-share').textContent = top5Pct.toFixed(1) + '%';
-      document.getElementById('dt-top10-share').textContent = top10Pct.toFixed(1) + '%';
-      document.getElementById('dt-top20-share').textContent = top20Pct.toFixed(1) + '%';
+      // If user closed modal while awaiting, abort
+      if (!modal || modal.style.display !== 'flex') return;
 
-      const concRating = document.getElementById('dt-concentration-level');
+      // 1. Update Token Metadata & Metrics
+      if (jettonDetails) {
+        if (jettonDetails.metadata) {
+          if (jettonDetails.metadata.decimals != null && !token.decimals) {
+            token.decimals = Number(jettonDetails.metadata.decimals);
+          }
+          if (jettonDetails.metadata.description && !token.description) {
+            token.description = jettonDetails.metadata.description;
+          }
+          if (jettonDetails.metadata.image && !token.logo) {
+            token.logo = jettonDetails.metadata.image;
+          }
+        }
+        if (jettonDetails.holders_count != null) {
+          token.holders = jettonDetails.holders_count;
+        }
+        if (jettonDetails.total_supply != null) {
+          token.totalSupply = jettonDetails.total_supply;
+        }
+        if (jettonDetails.verification) {
+          token.verification = jettonDetails.verification;
+        }
+      }
+
+      // Update Rate / Price
+      if (ratesData && ratesData[contract] && ratesData[contract].prices && ratesData[contract].prices.USD != null) {
+        token.price = ratesData[contract].prices.USD;
+        if (ratesData[contract].diff_24h && ratesData[contract].diff_24h.USD) {
+          const diffStr = ratesData[contract].diff_24h.USD;
+          token.change24h = parseFloat(diffStr.replace('%', ''));
+        }
+      } else if (stonfiAssetData && stonfiAssetData.dex_usd_price) {
+        token.price = parseFloat(stonfiAssetData.dex_usd_price);
+      }
+
+      // Update STON.fi Pool Metrics (Liquidity TVL & 24h Volume)
+      if (stonfiPoolData) {
+        if (stonfiPoolData.lp_total_supply_usd != null) {
+          token.liquidity = parseFloat(stonfiPoolData.lp_total_supply_usd);
+        }
+        if (stonfiPoolData.volume_24h_usd != null) {
+          token.volume = parseFloat(stonfiPoolData.volume_24h_usd);
+        }
+      }
+
+      // Calculate Market Cap = price * totalSupply (with real decimals)
+      if (token.price && token.totalSupply) {
+        try {
+          const dec = Number(token.decimals) || 9;
+          const str = String(token.totalSupply).split('.')[0];
+          const divisor = BigInt(10 ** Math.min(dec, 18));
+          const wholeUnits = Number(BigInt(str) / divisor);
+          token.marketCap = wholeUnits * token.price;
+        } catch (e) {}
+      }
+
+      token.lastIndexed = new Date().toISOString();
+
+      // 2. Render Updated Stats Cards
+      renderStatsCards(token);
+
+      // 3. Render Concentration & Top Holders
+      renderHoldersAndConcentration(token, holdersData);
+
+      // 4. Render Peer Transfers & DEX Trades
+      renderTransfersAndTrades(token, eventsData);
+
+      // 5. Update Banner to Success
+      if (banner) {
+        banner.className = 'dt-sync-banner success';
+        if (msgEl) {
+          msgEl.innerHTML = `✓ Métricas y snapshot on-chain sincronizados en vivo (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`;
+        }
+        if (retryBtn) retryBtn.style.display = 'none';
+      }
+
+    } catch (err) {
+      console.error('Error loading token details:', err);
+      if (banner) {
+        banner.className = 'dt-sync-banner error';
+        if (msgEl) {
+          msgEl.innerHTML = `⚠️ Error al obtener datos on-chain (${err.message || 'Límite de tasa en API'}). Se muestran datos base disponibles.`;
+        }
+        if (retryBtn) {
+          retryBtn.style.display = 'inline-block';
+          retryBtn.onclick = () => loadTokenDetailsData(token);
+        }
+      }
+    }
+  }
+
+  // --- Concentration & Top Holders Renderer ---
+  function renderHoldersAndConcentration(token, holdersData) {
+    const top5El = document.getElementById('dt-top5-share');
+    const top10El = document.getElementById('dt-top10-share');
+    const top20El = document.getElementById('dt-top20-share');
+    const concRating = document.getElementById('dt-concentration-level');
+    const concRule = document.getElementById('dt-concentration-rule');
+    const denominatorEl = document.getElementById('dt-conc-denominator');
+    const warningEl = document.getElementById('dt-conc-warning');
+    const noticeBox = document.getElementById('dt-conc-notice');
+    const countIndicator = document.getElementById('dt-holders-count-indicator');
+    const holdersTbody = document.getElementById('dt-holders-tbody');
+
+    const holders = (holdersData && Array.isArray(holdersData.addresses)) ? holdersData.addresses : [];
+
+    if (holders.length === 0) {
+      if (top5El) top5El.innerHTML = '<span class="val-nodata">N/D</span>';
+      if (top10El) top10El.innerHTML = '<span class="val-nodata">N/D</span>';
+      if (top20El) top20El.innerHTML = '<span class="val-nodata">N/D</span>';
       if (concRating) {
-        if (top10Pct > 70) {
-          concRating.textContent = 'HIGH CONCENTRATION';
-          concRating.style.color = 'var(--red)';
-        } else if (top10Pct > 40) {
-          concRating.textContent = 'MODERATE CONCENTRATION';
-          concRating.style.color = '#ff9800';
-        } else {
-          concRating.textContent = 'DISTRIBUTED HOLDINGS';
-          concRating.style.color = 'var(--green)';
-        }
-      }
-
-      // Top Holders Table
-      const holdersTbody = document.getElementById('dt-holders-tbody');
-      if (holdersTbody) {
-        holdersTbody.innerHTML = sorted.slice(0, 15).map((n, i) => `
-          <tr>
-            <td class="data-font">#${i + 1}</td>
-            <td class="data-font" style="color:var(--cyan); cursor:pointer;" onclick="window.open('https://tonviewer.com/${n.friendlyAddress}','_blank')">${shortenAddress(n.friendlyAddress, 5)}</td>
-            <td>${n.isVerified ? `<span style="color:${n.color}; font-size:11px; font-weight:600;">${n.category}</span>` : '<span style="color:var(--text-muted); font-size:11px;">Unlabeled</span>'}</td>
-            <td class="data-font">${formatTokenUnits(n.rawBalance, token.decimals)}</td>
-            <td class="data-font" style="color:var(--cyan);">${n.percentOfTracked.toFixed(2)}%</td>
-          </tr>
-        `).join('');
-      }
-
-      // Recent Transfers & DEX Trades
-      const transfersTbody = document.getElementById('dt-transfers-tbody');
-      const tradesTbody = document.getElementById('dt-trades-tbody');
-      
-      if (transfersTbody) {
-        const transfers = state.graphData.transfers.filter(t => !t.isTrade);
-        if (transfers.length > 0) {
-          transfersTbody.innerHTML = transfers.slice(0, 10).map(t => `
-            <tr>
-              <td class="data-font" style="font-size:11px;">${timeAgo(t.timestamp)}</td>
-              <td class="data-font">${shortenAddress(t.sourceAddr, 4)}</td>
-              <td class="data-font">${shortenAddress(t.targetAddr, 4)}</td>
-              <td class="data-font" style="color:#fff;">${t.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${token.symbol}</td>
-              <td>${t.txHash ? `<a href="https://tonviewer.com/transaction/${t.txHash}" target="_blank" style="color:var(--cyan); font-size:11px;">View</a>` : '--'}</td>
-            </tr>
-          `).join('');
-        } else {
-          transfersTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No peer transfers observed in sampled window</td></tr>`;
-        }
-      }
-
-      if (tradesTbody) {
-        const trades = state.graphData.transfers.filter(t => t.isTrade);
-        if (trades.length > 0) {
-          tradesTbody.innerHTML = trades.slice(0, 10).map(t => `
-            <tr>
-              <td class="data-font" style="font-size:11px;">${timeAgo(t.timestamp)}</td>
-              <td><span style="color:var(--cyan); font-weight:600;">${t.dex}</span></td>
-              <td class="data-font">${shortenAddress(t.sourceAddr, 4)}</td>
-              <td class="data-font">${t.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${token.symbol}</td>
-              <td>${t.txHash ? `<a href="https://tonviewer.com/transaction/${t.txHash}" target="_blank" style="color:var(--cyan); font-size:11px;">Trace</a>` : '--'}</td>
-            </tr>
-          `).join('');
-        } else {
-          tradesTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No direct DEX pool swaps in sampled events window</td></tr>`;
-        }
-      }
-    } else {
-      // Graph not currently loaded for this specific token
-      document.getElementById('dt-top5-share').innerHTML = '<span class="val-nodata">--</span>';
-      document.getElementById('dt-top10-share').innerHTML = '<span class="val-nodata">--</span>';
-      document.getElementById('dt-top20-share').innerHTML = '<span class="val-nodata">--</span>';
-      const concRating = document.getElementById('dt-concentration-level');
-      if (concRating) {
-        concRating.textContent = 'PENDIENTE DE GRAFO';
+        concRating.textContent = 'PENDIENTE DE DATOS';
         concRating.style.color = 'var(--text-muted)';
       }
-      const holdersTbody = document.getElementById('dt-holders-tbody');
+      if (concRule) concRule.textContent = 'Sin datos de holders provistos por el indexador';
+      if (noticeBox) noticeBox.style.display = 'none';
+      if (countIndicator) countIndicator.textContent = '0 rastreados';
       if (holdersTbody) {
-        holdersTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:16px;">Haz clic arriba en <strong>Explorar Clusters de Wallets</strong> para mapear los holders y calcular la concentración en tiempo real.</td></tr>`;
+        holdersTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:18px; color:var(--text-muted);">No se pudieron obtener holders on-chain (Límite de solicitudes o datos no indexados por TonAPI).</td></tr>`;
       }
-      const transfersTbody = document.getElementById('dt-transfers-tbody');
-      if (transfersTbody) {
-        transfersTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:16px;">Inicia la exploración de clusters para trazar transferencias directas entre billeteras.</td></tr>`;
+      return;
+    }
+
+    // Sort descending by raw balance using BigInt
+    const sorted = [...holders].sort((a, b) => {
+      try {
+        const balA = BigInt(a.balance || 0);
+        const balB = BigInt(b.balance || 0);
+        if (balA > balB) return -1;
+        if (balA < balB) return 1;
+        return 0;
+      } catch (e) {
+        return (Number(b.balance) || 0) - (Number(a.balance) || 0);
       }
-      const tradesTbody = document.getElementById('dt-trades-tbody');
-      if (tradesTbody) {
-        tradesTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:16px;">Inicia la exploración de clusters para clasificar swaps y operaciones DEX.</td></tr>`;
+    });
+
+    // Calculate sum of tracked snapshot supply
+    let totalTrackedBigInt = 0n;
+    for (const h of sorted) {
+      try {
+        totalTrackedBigInt += BigInt(h.balance || 0);
+      } catch (e) {}
+    }
+
+    // Calculate Top 5, 10, 20 share
+    const top5Sum = sorted.slice(0, 5).reduce((s, h) => {
+      try { return s + BigInt(h.balance || 0); } catch (e) { return s; }
+    }, 0n);
+    const top10Sum = sorted.slice(0, 10).reduce((s, h) => {
+      try { return s + BigInt(h.balance || 0); } catch (e) { return s; }
+    }, 0n);
+    const top20Sum = sorted.slice(0, 20).reduce((s, h) => {
+      try { return s + BigInt(h.balance || 0); } catch (e) { return s; }
+    }, 0n);
+
+    const top5Pct = totalTrackedBigInt > 0n ? Number((top5Sum * 1000000n) / totalTrackedBigInt) / 10000 : 0;
+    const top10Pct = totalTrackedBigInt > 0n ? Number((top10Sum * 1000000n) / totalTrackedBigInt) / 10000 : 0;
+    const top20Pct = totalTrackedBigInt > 0n ? Number((top20Sum * 1000000n) / totalTrackedBigInt) / 10000 : 0;
+
+    if (top5El) top5El.textContent = `${top5Pct.toFixed(1)}%`;
+    if (top10El) top10El.textContent = `${top10Pct.toFixed(1)}%`;
+    if (top20El) top20El.textContent = `${top20Pct.toFixed(1)}%`;
+
+    // Denominator & Warning Notice
+    if (noticeBox) noticeBox.style.display = 'block';
+    if (denominatorEl) {
+      const denomTokens = formatTokenUnits(totalTrackedBigInt.toString(), token.decimals || 9);
+      denominatorEl.innerHTML = `<strong>Denominador:</strong> Suma de balances en snapshot de los ${sorted.length} holders rastreados on-chain (${denomTokens} ${token.symbol}).`;
+    }
+    if (warningEl) {
+      warningEl.innerHTML = `<strong>Advertencia metodológica:</strong> Este snapshot refleja la muestra paginada provista por TonAPI v2 (primeros ${sorted.length} holders). La concentración se calcula estrictamente sobre el supply rastreado y no sobre el 100% del supply emitido total.`;
+    }
+
+    // Concentration Tier Assessment
+    if (concRating) {
+      if (sorted.length < 10) {
+        concRating.textContent = 'PENDIENTE DE DATOS';
+        concRating.style.color = 'var(--text-muted)';
+        if (concRule) concRule.textContent = 'Muestra insuficiente (<10 holders rastreados para clasificar)';
+      } else if (top10Pct >= 70) {
+        concRating.textContent = 'ALTA CONCENTRACIÓN';
+        concRating.style.color = 'var(--color-pink)';
+        if (concRule) concRule.textContent = 'Top 10 acapara ≥70% del supply rastreado (Riesgo institucional elevado)';
+      } else if (top10Pct >= 40) {
+        concRating.textContent = 'CONCENTRACIÓN MODERADA';
+        concRating.style.color = '#fbbf24';
+        if (concRule) concRule.textContent = 'Top 10 acapara entre 40% y 70% del supply rastreado';
+      } else {
+        concRating.textContent = 'DISTRIBUCIÓN AMPLIA';
+        concRating.style.color = 'var(--color-green)';
+        if (concRule) concRule.textContent = 'Top 10 acapara <40% del supply rastreado (Gobernanza saludable)';
+      }
+    }
+
+    // Populate Top Ranked Holders Table
+    if (countIndicator) {
+      countIndicator.textContent = `${Math.min(15, sorted.length)} de ${sorted.length} rastreados`;
+    }
+
+    if (holdersTbody) {
+      holdersTbody.innerHTML = sorted.slice(0, 15).map((h, i) => {
+        const ownerAddr = (h.owner && h.owner.address) ? h.owner.address : h.address;
+        const friendlyAddr = window.rawToFriendly ? window.rawToFriendly(ownerAddr) : ownerAddr;
+        const shortAddr = shortenAddress(friendlyAddr, 4);
+
+        // Category & Evidence verification
+        const known = KNOWN_ENTITIES[ownerAddr] || KNOWN_ENTITIES[h.address];
+        let categoryHtml = '';
+
+        if (known) {
+          categoryHtml = `<span class="badge-ver badge-verified" style="color:${known.color}; border-color:${known.color}; font-size:11px;">${known.name}</span>`;
+        } else if (h.owner && h.owner.name) {
+          categoryHtml = `<span class="badge-ver badge-verified" style="font-size:11px;">${h.owner.name}</span>`;
+        } else if (ownerAddr.toLowerCase() === (token.contract || '').toLowerCase() || h.address.toLowerCase() === (token.contract || '').toLowerCase()) {
+          categoryHtml = `<span class="badge-ver badge-verified" style="color:var(--color-cyan); font-size:11px;">Contrato Master Jetton</span>`;
+        } else if (ownerAddr.startsWith('0:0000000000') || ownerAddr === 'UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ') {
+          categoryHtml = `<span class="badge-ver" style="color:#64748B; font-size:11px;">Billetera de Quema</span>`;
+        } else {
+          categoryHtml = `<span style="color:var(--text-muted); font-size:11px;">Desconocida</span>`;
+        }
+
+        // Percentage of tracked snapshot
+        let pct = 0;
+        try {
+          const balBigInt = BigInt(h.balance || 0);
+          pct = totalTrackedBigInt > 0n ? Number((balBigInt * 1000000n) / totalTrackedBigInt) / 10000 : 0;
+        } catch (e) {}
+
+        const balFormatted = formatTokenUnits(h.balance, token.decimals || 9);
+
+        return `
+          <tr>
+            <td class="data-font" style="font-weight:700; color:var(--text-secondary);">#${i + 1}</td>
+            <td class="data-font">
+              <span style="color:var(--color-cyan); cursor:pointer;" title="${friendlyAddr} (Clic para copiar)" onclick="navigator.clipboard.writeText('${friendlyAddr}'); alert('Dirección copiada: ${friendlyAddr}');">${shortAddr}</span>
+              <a href="https://tonviewer.com/${friendlyAddr}" target="_blank" rel="noopener noreferrer" title="Ver en Tonviewer" style="margin-left:6px; color:var(--text-secondary); text-decoration:none; vertical-align:middle;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </a>
+            </td>
+            <td>${categoryHtml}</td>
+            <td class="data-font">${balFormatted} <span style="font-size:10px; color:var(--text-muted);">${token.symbol}</span></td>
+            <td class="data-font" style="color:var(--color-cyan); font-weight:700;">${pct.toFixed(2)}%</td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+
+  // --- Observed Peer Transfers & Verified DEX Trades Renderer ---
+  function renderTransfersAndTrades(token, eventsData) {
+    const transfersTbody = document.getElementById('dt-transfers-tbody');
+    const tradesTbody = document.getElementById('dt-trades-tbody');
+    const transfersIndicator = document.getElementById('dt-transfers-indicator');
+    const tradesIndicator = document.getElementById('dt-trades-indicator');
+
+    const events = (eventsData && Array.isArray(eventsData.events)) ? eventsData.events : [];
+
+    const transfersList = [];
+    const tradesList = [];
+
+    for (const evt of events) {
+      const timeMs = evt.timestamp ? evt.timestamp * 1000 : Date.now();
+      const actions = Array.isArray(evt.actions) ? evt.actions : [];
+
+      for (const act of actions) {
+        if (act.type === 'JettonTransfer' && act.JettonTransfer) {
+          const jt = act.JettonTransfer;
+          const jettonAddr = (jt.jetton && jt.jetton.address) ? jt.jetton.address.toLowerCase() : '';
+          const tokenRaw = (token.raw_address || '').toLowerCase();
+          const tokenMaster = (token.contract || '').toLowerCase();
+          const tokenSym = (token.symbol || '').toLowerCase();
+          const jtSym = (jt.jetton && jt.jetton.symbol) ? jt.jetton.symbol.toLowerCase() : '';
+
+          const isMatch = (tokenRaw && jettonAddr === tokenRaw) || 
+                          (tokenMaster && jettonAddr === tokenMaster) || 
+                          (tokenSym && jtSym === tokenSym);
+
+          if (!isMatch && jettonAddr) continue; // Skip unrelated tokens/airdrops
+
+          const senderRaw = jt.sender ? jt.sender.address : '';
+          const recipRaw = jt.recipient ? jt.recipient.address : '';
+          const amountStr = jt.amount ? formatTokenUnits(jt.amount, jt.jetton?.decimals || token.decimals || 9) : '0';
+          const txHash = (act.base_transactions && act.base_transactions[0]) || evt.event_id || '';
+
+          // Check if sender or recipient is DEX router / AMM pool
+          const senderKnown = KNOWN_ENTITIES[senderRaw];
+          const recipKnown = KNOWN_ENTITIES[recipRaw];
+          const isDexSender = senderKnown && senderKnown.category === 'DEX';
+          const isDexRecip = recipKnown && recipKnown.category === 'DEX';
+          const isDex = isDexSender || isDexRecip;
+
+          if (isDex) {
+            const dexName = isDexSender ? senderKnown.name : recipKnown.name;
+            const trader = isDexSender ? recipRaw : senderRaw;
+            tradesList.push({
+              time: timeMs,
+              dex: dexName.replace(': DEX AMM Router', '').replace(': Router v1', ''),
+              trader,
+              amount: `${amountStr} ${token.symbol}`,
+              txHash
+            });
+          } else {
+            transfersList.push({
+              time: timeMs,
+              sender: senderRaw,
+              recipient: recipRaw,
+              amount: `${amountStr} ${token.symbol}`,
+              txHash
+            });
+          }
+        } else if (act.type === 'JettonSwap' && act.JettonSwap) {
+          const js = act.JettonSwap;
+          const txHash = (act.base_transactions && act.base_transactions[0]) || evt.event_id || '';
+          const trader = js.user ? js.user.address : '';
+          const amountStr = js.amount_in ? formatTokenUnits(js.amount_in, token.decimals || 9) : '0';
+          tradesList.push({
+            time: timeMs,
+            dex: js.dex || 'STON.fi DEX',
+            trader,
+            amount: `${amountStr} ${token.symbol}`,
+            txHash
+          });
+        }
+      }
+    }
+
+    // Populate Observed Peer Transfers
+    if (transfersIndicator) {
+      transfersIndicator.textContent = `${Math.min(10, transfersList.length)} eventos observados`;
+    }
+
+    if (transfersTbody) {
+      if (transfersList.length > 0) {
+        transfersTbody.innerHTML = transfersList.slice(0, 10).map(t => {
+          const sFriendly = window.rawToFriendly ? window.rawToFriendly(t.sender) : t.sender;
+          const rFriendly = window.rawToFriendly ? window.rawToFriendly(t.recipient) : t.recipient;
+          return `
+            <tr>
+              <td class="data-font" style="font-size:11px; color:var(--text-secondary);">${timeAgo(t.time)}</td>
+              <td class="data-font">
+                <a href="https://tonviewer.com/${sFriendly}" target="_blank" rel="noopener noreferrer" style="color:var(--color-cyan); text-decoration:none;" title="${sFriendly}">${shortenAddress(sFriendly, 4)}</a>
+              </td>
+              <td class="data-font">
+                <a href="https://tonviewer.com/${rFriendly}" target="_blank" rel="noopener noreferrer" style="color:var(--color-cyan); text-decoration:none;" title="${rFriendly}">${shortenAddress(rFriendly, 4)}</a>
+              </td>
+              <td class="data-font" style="color:#fff; font-weight:600;">${t.amount}</td>
+              <td>
+                ${t.txHash ? `<a href="https://tonviewer.com/transaction/${t.txHash}" target="_blank" rel="noopener noreferrer" class="btn-copy-pill" style="padding:2px 8px; font-size:10px;">Ver Tx</a>` : '<span style="color:var(--text-muted);">--</span>'}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        transfersTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:16px; color:var(--text-secondary);">No se observaron transferencias directas entre billeteras en la ventana reciente analizada (50 eventos). La mayoría de interacciones corresponden a operaciones de contrato o swaps.</td></tr>`;
+      }
+    }
+
+    // Populate Verified DEX Trades
+    if (tradesIndicator) {
+      tradesIndicator.textContent = `${Math.min(10, tradesList.length)} swaps verificados`;
+    }
+
+    if (tradesTbody) {
+      if (tradesList.length > 0) {
+        tradesTbody.innerHTML = tradesList.slice(0, 10).map(t => {
+          const traderFriendly = window.rawToFriendly ? window.rawToFriendly(t.trader) : t.trader;
+          return `
+            <tr>
+              <td class="data-font" style="font-size:11px; color:var(--text-secondary);">${timeAgo(t.time)}</td>
+              <td><span class="badge-ver badge-verified" style="font-size:10px; padding:2px 7px;">${t.dex}</span></td>
+              <td class="data-font">
+                <a href="https://tonviewer.com/${traderFriendly}" target="_blank" rel="noopener noreferrer" style="color:var(--color-cyan); text-decoration:none;" title="${traderFriendly}">${shortenAddress(traderFriendly, 4)}</a>
+              </td>
+              <td class="data-font" style="color:#fff; font-weight:600;">${t.amount}</td>
+              <td>
+                ${t.txHash ? `<a href="https://tonviewer.com/transaction/${t.txHash}" target="_blank" rel="noopener noreferrer" class="btn-copy-pill" style="padding:2px 8px; font-size:10px;">Trazar</a>` : '<span style="color:var(--text-muted);">--</span>'}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        tradesTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:16px; color:var(--text-secondary);">No se observaron swaps en pools DEX reconocidos en la ventana reciente analizada (50 eventos). Si este token se negocia en pools privados o DeDust v2, requiere suscripción a eventos de routers dedicados.</td></tr>`;
       }
     }
   }
