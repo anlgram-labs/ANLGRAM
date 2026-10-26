@@ -3,13 +3,35 @@
    Pixel-faithful reproduction of ANL Labs (The Complete Flow)
    ═══════════════════════════════════════════════════════════════════ */
 
+/* ── Unrestricted Natural Vertical Scrolling (Window, Body & Shell) ── */
+html {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scroll-behavior: smooth;
+}
+
+body {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: auto !important;
+}
+
 /* Full-width standalone layout override matching reference visual */
 body:has(.labs-container) .app-shell,
-.app-shell:has(.labs-container) {
+.app-shell:has(.labs-container),
+.app-shell {
   display: block !important;
   grid-template-columns: 1fr !important;
   width: 100% !important;
-  min-height: 100vh;
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
 }
 
 body:has(.labs-container) .sidebar,
@@ -18,11 +40,17 @@ body:has(.labs-container) .sidebar,
 }
 
 body:has(.labs-container) .main-content,
-.app-shell:has(.labs-container) .main-content {
+.app-shell:has(.labs-container) .main-content,
+.main-content {
   margin-left: 0 !important;
   width: 100% !important;
   max-width: 100% !important;
+  height: auto !important;
+  min-height: 100% !important;
   padding: 0 !important;
+  overflow: visible !important;
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
 }
 
 :root {
@@ -46,7 +74,7 @@ body:has(.labs-container) .main-content,
   width: 100%;
   max-width: 1520px;
   margin: 0 auto;
-  padding: 18px 24px 48px;
+  padding: 18px 24px 100px;
   box-sizing: border-box;
 }
 
@@ -998,7 +1026,7 @@ body:has(.labs-container) .main-content,
 
 @media (max-width: 640px) {
   .labs-container {
-    padding: 12px 14px 36px;
+    padding: 12px 14px 130px !important;
   }
   .labs-flow-wrapper {
     grid-template-columns: 1fr;

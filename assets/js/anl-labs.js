@@ -631,6 +631,22 @@
 
     // Render initial sparkline
     setTimeout(labsRenderSparkline, 800);
+
+    // Natural keyboard scroll navigation (PageDown, PageUp, Home, End)
+    window.addEventListener('keydown', (e) => {
+      const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || document.activeElement?.isContentEditable) return;
+
+      if (e.key === 'PageDown') {
+        window.scrollBy({ top: window.innerHeight * 0.85, behavior: 'smooth' });
+      } else if (e.key === 'PageUp') {
+        window.scrollBy({ top: -window.innerHeight * 0.85, behavior: 'smooth' });
+      } else if (e.key === 'Home') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (e.key === 'End') {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+      }
+    });
   });
 
 })();
