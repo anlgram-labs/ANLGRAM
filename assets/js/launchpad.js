@@ -603,8 +603,8 @@
         if (urlInput) urlInput.value = finalUrl;
         if (statusText) {
           statusText.innerHTML = uploadedUrl 
-            ? '✅ Logo uploaded to CDN successfully!' 
-            : '✅ Logo optimized & attached successfully!';
+            ? '✅ Public CDN Logo active (Ready for DEXs & Wallets)' 
+            : '✅ Logo optimized & attached locally';
           statusText.style.color = 'var(--green)';
         }
         if (uploadBtn) {
@@ -616,6 +616,18 @@
         if (urlContainer && !uploadedUrl) {
           urlContainer.style.display = 'block';
         }
+
+        // Deep synchronization with ANL Labs Wizard State
+        if (window.wizardState && window.wizardState.tokenDraft) {
+          window.wizardState.tokenDraft.logoUrl = finalUrl;
+          window.wizardState.tokenDraft.logoDataUrl = finalUrl;
+        }
+        if (typeof window.labsSetWizardDraftField === 'function') {
+          window.labsSetWizardDraftField('logoUrl', finalUrl);
+        }
+        try {
+          localStorage.setItem('anlgram_last_uploaded_logo', finalUrl);
+        } catch (e) {}
       } else {
         if (statusText) {
           statusText.innerHTML = '⚠️ Please select a valid PNG, JPG, or SVG image.';
@@ -627,10 +639,11 @@
         }
       }
 
-      // Final synchronization of Card 1 avatar in ANL Labs
-      const card1Preview = document.querySelector('.labs-avatar-preview');
-      if (card1Preview && finalUrl) {
-        card1Preview.innerHTML = `<img src="${finalUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+      // Universal synchronization of ALL avatar elements in ANL Labs
+      if (finalUrl) {
+        document.querySelectorAll('.labs-avatar-preview, #labs-avatar-preview-box, #labs-review-avatar, #labs-tm-token-avatar, .wizard-dex-preview-avatar, #logo-preview-container').forEach((el) => {
+          el.innerHTML = `<img src="${finalUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+        });
       }
     });
   }
@@ -641,7 +654,6 @@
     const previewImg = document.getElementById('logo-preview-img');
     const previewPlaceholder = document.getElementById('logo-preview-placeholder');
     const statusText = document.getElementById('logo-upload-status');
-    const card1Preview = document.querySelector('.labs-avatar-preview');
     const uploadBtn = document.getElementById('lp-upload-btn');
 
     if (urlInput) urlInput.value = url;
@@ -658,9 +670,23 @@
       uploadBtn.disabled = false;
       uploadBtn.textContent = '📂 Change Image';
     }
-    if (card1Preview) {
-      card1Preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+
+    // Sync with wizard state
+    if (window.wizardState && window.wizardState.tokenDraft) {
+      window.wizardState.tokenDraft.logoUrl = url;
+      window.wizardState.tokenDraft.logoDataUrl = url;
     }
+    if (typeof window.labsSetWizardDraftField === 'function') {
+      window.labsSetWizardDraftField('logoUrl', url);
+    }
+    try {
+      localStorage.setItem('anlgram_last_uploaded_logo', url);
+    } catch (e) {}
+
+    // Update all avatar boxes
+    document.querySelectorAll('.labs-avatar-preview, #labs-avatar-preview-box, #labs-review-avatar, #labs-tm-token-avatar, .wizard-dex-preview-avatar, #logo-preview-container').forEach((el) => {
+      el.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+    });
   };
 
   // ══════════════════════════════════════════════════════════

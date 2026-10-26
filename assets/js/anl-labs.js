@@ -323,9 +323,17 @@
       name: 'Custom Jetton',
       symbol: 'TKN',
       decimals: 9,
+      image: '',
       isAdmin: true,
       isRenounced: false
     };
+    if (!tokenInfo.image) {
+      try {
+        const cached = JSON.parse(localStorage.getItem('anlgram_token_' + tokenAddr) || '{}');
+        if (cached.image) tokenInfo.image = cached.image;
+        else if (localStorage.getItem('anlgram_last_uploaded_logo')) tokenInfo.image = localStorage.getItem('anlgram_last_uploaded_logo');
+      } catch (e) {}
+    }
 
     wizardState.mode = 'manage';
     wizardState.activeToken = tokenInfo;
@@ -581,14 +589,19 @@
       wizardState.deployment.status = 'confirmed';
       wizardState.deployment.minterAddress = foundMinter;
       wizardState.deployment.minterFriendly = friendlyMinter;
+      const deployedImg = wizardState.tokenDraft.logoUrl || wizardState.tokenDraft.logoDataUrl || localStorage.getItem('anlgram_last_uploaded_logo') || '';
       wizardState.activeToken = {
         address: foundMinter,
         name: wizardState.tokenDraft.name,
         symbol: wizardState.tokenDraft.symbol,
         decimals: 9,
+        image: deployedImg,
         isAdmin: true,
         isRenounced: false
       };
+      try {
+        localStorage.setItem('anlgram_token_' + foundMinter, JSON.stringify(wizardState.activeToken));
+      } catch (e) {}
 
       if (statusText) {
         statusText.innerHTML = '✅ <strong style="color:var(--labs-green);">Jetton Contract Verified On-Chain!</strong>';
@@ -1207,12 +1220,45 @@
     const tmSymbol = document.getElementById('labs-tm-token-symbol');
     const tmName = document.getElementById('labs-tm-token-name');
     const tmAddr = document.getElementById('labs-tm-token-addr');
+    const tmAvatar = document.getElementById('labs-tm-token-avatar');
     const renAddr = document.getElementById('renounce-minter-addr');
 
     if (tmSymbol) tmSymbol.textContent = token.symbol || 'TKN';
     if (tmName) tmName.textContent = token.name || 'Token';
     if (tmAddr) tmAddr.textContent = shortAddr(friendlyMinterAddress(friendlyAddr));
     if (renAddr) renAddr.value = friendlyAddr;
+
+    // Render Token Avatar in Step 5 Header
+    let tokenImage = token.image || wizardState.tokenDraft?.logoUrl || wizardState.tokenDraft?.logoDataUrl || '';
+    if (!tokenImage) {
+      try {
+        const cached = JSON.parse(localStorage.getItem('anlgram_token_' + token.address) || '{}');
+        tokenImage = cached.image || localStorage.getItem('anlgram_last_uploaded_logo') || '';
+      } catch (e) {}
+    }
+
+    if (tmAvatar) {
+      if (tokenImage) {
+        tmAvatar.innerHTML = `<img src="${tokenImage}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+      } else {
+        tmAvatar.innerHTML = `<span style="font-size:22px;">🪙</span>`;
+      }
+    }
+
+    // Query on-chain Jetton metadata from TonAPI to reflect live status
+    if (token.address) {
+      fetch(`https://tonapi.io/v2/jettons/${encodeURIComponent(token.address)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data && data.metadata && data.metadata.image) {
+            token.image = data.metadata.image;
+            if (tmAvatar) {
+              tmAvatar.innerHTML = `<img src="${data.metadata.image}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+            }
+          }
+        })
+        .catch(() => {});
+    }
 
     // Check if renounced in localStorage or on-chain
     const renKey = 'anlgram_renounced_' + token.address.replace(/[^a-zA-Z0-9]/g, '_');
@@ -1433,6 +1479,7 @@
           name: b.jetton.name || 'Token',
           symbol: b.jetton.symbol || 'TKN',
           decimals: b.jetton.decimals || 9,
+          image: b.jetton.image || '',
           balance: b.balance
         }));
 
