@@ -7,4 +7,5 @@ thumbs.db
 desktop.ini
 backup_*/
 audit-real-wallet.js
+*.bak
 

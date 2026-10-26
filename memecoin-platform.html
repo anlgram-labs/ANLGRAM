@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>Memecoin Platform (Enterprise) — ANLGRAM</title>
+  <title>ANL Labs — The Complete Meme Coin Flow — ANLGRAM</title>
   <meta name="description" content="Enterprise-grade TON/GRAM Memecoin Platform"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io https://telegram.org; object-src 'none'; base-uri 'self';"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://tonapi.io https://api.ston.fi https://*.ston.fi https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io https://telegram.org; object-src 'none'; base-uri 'self';"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="assets/css/layout.css?v=2026.3"/>
   <link rel="stylesheet" href="assets/css/tma-mobile.css?v=2026.50"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
+  <link rel="stylesheet" href="assets/css/anl-labs.css?v=2026.1"/>
   <!-- Telegram Mini App (TMA) Native SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="assets/js/telegram-mini-app.js"></script>
@@ -220,7 +221,8 @@
       <div class="sidebar-section-label" style="margin-top:var(--space-3);">Enterprise</div>
       <a href="memecoin-platform.html" class="nav-item active">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>
-        Memecoin Platform
+        ANL Labs
+        <span class="nav-badge" style="background:rgba(0,210,255,0.15);color:var(--cyan);border:1px solid rgba(0,210,255,0.25);">FLOW</span>
       </a>
       <a href="staking.html" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
@@ -256,47 +258,637 @@
   <!-- Main -->
   <main class="main-content" style="padding:0; overflow-y:auto; overflow-x:hidden;">
     
-    <div class="platform-header">
-      <div class="platform-title-row">
-        <div>
-          <h1 class="platform-title">Memecoin Platform</h1>
-          <p class="platform-subtitle">
-            <span class="status-dot"></span>
-            Enterprise Edition · Real-time TON Token Infrastructure
-          </p>
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ANL LABS TOPBAR & THE COMPLETE FLOW                               -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="labs-container">
+      <header class="labs-topbar">
+        <div class="labs-brand">
+          <div class="labs-logo-mark">
+            <img src="assets/img/anlgram-icon.svg" alt="ANLGRAM"/>
+          </div>
+          <div class="labs-brand-info">
+            <div class="labs-brand-title-row">
+              <span class="labs-brand-name">ANLGRAM</span>
+              <span class="labs-brand-section">Meme Lab</span>
+            </div>
+            <div class="labs-brand-desc">Create • Distribute • Lock • Analyze</div>
+            <div class="labs-brand-desc" style="font-size:10px; color:var(--labs-text-muted);">Your all-in-one platform for meme coins on TON</div>
+          </div>
         </div>
-        <div style="display:flex; gap:12px;">
-          <button class="btn-solid" onclick="switchTab('launchpad')">Launch Jetton</button>
-          <button id="topbarWalletBtn" class="btn-ent connect-wallet-btn" data-wallet-btn="true">Connect Wallet</button>
+
+        <nav class="labs-nav-pills">
+          <button class="labs-pill active" data-section="labs" onclick="labsSwitchSection('labs')">
+            <span style="font-size:14px;">🧪</span> Meme Lab
+          </button>
+          <button class="labs-pill" data-section="launchpad" onclick="labsSwitchSection('launchpad')">
+            <span style="font-size:14px;">🚀</span> Launchpad
+          </button>
+          <button class="labs-pill" data-section="token-manager" onclick="labsSwitchSection('token-manager')">
+            <span style="font-size:14px;">🪙</span> Token Manager
+          </button>
+          <button class="labs-pill" data-section="distribution" onclick="labsSwitchSection('distribution')">
+            <span style="font-size:14px;">✈️</span> Distribution
+          </button>
+          <button class="labs-pill" data-section="vesting" onclick="labsSwitchSection('vesting')">
+            <span style="font-size:14px;">🔒</span> Vesting & Lock
+          </button>
+          <button class="labs-pill" data-section="liquidity" onclick="labsSwitchSection('liquidity')">
+            <span style="font-size:14px;">💧</span> Liquidity
+          </button>
+          <button class="labs-pill" data-section="analytics" onclick="labsSwitchSection('analytics')">
+            <span style="font-size:14px;">📊</span> Analytics
+          </button>
+          <button class="labs-pill" data-section="projects" onclick="labsSwitchSection('projects')">
+            <span style="font-size:14px;">📁</span> My Projects
+          </button>
+        </nav>
+
+        <div class="labs-top-actions">
+          <button id="labsTopbarWalletBtn" class="labs-wallet-btn connect-wallet-btn" data-wallet-btn="true" onclick="if(window.tonConnectUI){window.tonConnectUI.openModal();}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            Connect Wallet
+          </button>
+          <div class="labs-ton-badge">
+            <span style="font-size:13px;">💎</span> TON
+          </div>
+        </div>
+      </header>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- THE COMPLETE FLOW (5 Connected Cards)                           -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <section id="labs-flow-section">
+        <div class="labs-flow-hero">
+          <h2 class="labs-flow-title">The Complete Flow</h2>
+          <p class="labs-flow-subtitle">From idea to a fully managed token — all on ANLGRAM.</p>
+        </div>
+
+        <div class="labs-flow-wrapper">
+          
+          <!-- STEP 1: CREATE TOKEN -->
+          <div class="labs-step-column">
+            <div class="labs-step-card">
+              <div class="labs-step-header">
+                <div class="labs-step-num">1</div>
+                <div class="labs-step-titles">
+                  <h3 class="labs-step-name">Create Token</h3>
+                  <p class="labs-step-desc">Launch your meme coin (Jetton) on TON.</p>
+                </div>
+              </div>
+
+              <div class="labs-inner-box">
+                <div class="labs-inner-title">Create New Token</div>
+                <div class="labs-avatar-preview">
+                  <span id="labs-avatar-emoji">🐶</span>
+                </div>
+                <div class="labs-field">
+                  <label class="labs-label">Token Name</label>
+                  <input type="text" id="labs-card1-name" class="labs-input" value="MoonDog" oninput="labsSyncTokenCard()"/>
+                </div>
+                <div class="labs-field">
+                  <label class="labs-label">Symbol</label>
+                  <input type="text" id="labs-card1-symbol" class="labs-input" value="MOON" oninput="labsSyncTokenCard()"/>
+                </div>
+                <div class="labs-field">
+                  <label class="labs-label">Total Supply</label>
+                  <input type="text" id="labs-card1-supply" class="labs-input" value="1,000,000,000" readonly/>
+                </div>
+                <div class="labs-field">
+                  <label class="labs-label">Decimals</label>
+                  <input type="text" class="labs-input" value="9" readonly/>
+                </div>
+                <button class="labs-btn-primary" onclick="labsTriggerCreateToken()">Next →</button>
+              </div>
+
+              <ul class="labs-checklist">
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Set token details</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Configure features</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Preview & confirm</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Deploy on TON (Jetton)</li>
+              </ul>
+            </div>
+            <div class="labs-flow-arrow">→</div>
+          </div>
+
+          <!-- STEP 2: DISTRIBUTE TOKENS -->
+          <div class="labs-step-column">
+            <div class="labs-step-card">
+              <div class="labs-step-header">
+                <div class="labs-step-num">2</div>
+                <div class="labs-step-titles">
+                  <h3 class="labs-step-name">Distribute Tokens</h3>
+                  <p class="labs-step-desc">Send tokens to multiple wallets in just a few clicks.</p>
+                </div>
+              </div>
+
+              <div class="labs-inner-box">
+                <div class="labs-inner-title">Multi-Wallet Distributor</div>
+                <div class="labs-subtabs">
+                  <button id="labs-dist-tab-csv" class="labs-subtab active" onclick="labsSetDistributorMode('csv')">Upload CSV</button>
+                  <button id="labs-dist-tab-manual" class="labs-subtab" onclick="labsSetDistributorMode('manual')">Manual Entry</button>
+                </div>
+
+                <div id="labs-dist-dropzone" class="labs-dropzone">
+                  <input type="file" id="labs-dist-file-input" accept=".csv,.txt" style="display:none;"/>
+                  <div class="labs-dropzone-icon">☁️</div>
+                  <div class="labs-dropzone-text">Drag & drop file or click to upload</div>
+                  <div class="labs-dropzone-hint">CSV, TXT (max 10,000 addresses)</div>
+                </div>
+
+                <div id="labs-dist-manual-area" style="display:none;">
+                  <textarea id="labs-dist-manual-text" class="labs-input" style="height:70px; resize:none; font-family:monospace; font-size:11px;" placeholder="EQ..., 1000&#10;UQ..., 500" oninput="labsParseDistributionText(this.value)"></textarea>
+                </div>
+
+                <div class="labs-field">
+                  <label class="labs-label">Token Amount</label>
+                  <div style="display:flex; gap:6px;">
+                    <input type="number" id="labs-dist-amount" class="labs-input" value="1000" oninput="labsParseDistributionText(document.getElementById('labs-dist-manual-text')?.value || '')"/>
+                    <select class="labs-input" style="width:85px; padding:6px;">
+                      <option value="MOON">MOON</option>
+                      <option value="GRAM">GRAM</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="labs-field">
+                  <label class="labs-label">Distribution Type</label>
+                  <div class="labs-radio-group">
+                    <label class="labs-radio-label">
+                      <input type="radio" name="dist-type" value="equal" checked onchange="state.distributor.distributionType = 'equal'; labsParseDistributionText(document.getElementById('labs-dist-manual-text')?.value || '')"/>
+                      Equal
+                    </label>
+                    <label class="labs-radio-label">
+                      <input type="radio" name="dist-type" value="custom" onchange="state.distributor.distributionType = 'custom'; labsParseDistributionText(document.getElementById('labs-dist-manual-text')?.value || '')"/>
+                      Custom
+                    </label>
+                  </div>
+                </div>
+
+                <div id="labs-dist-status-text" style="font-size:10px; color:var(--labs-cyan); min-height:14px;"></div>
+
+                <button class="labs-btn-primary" onclick="labsReviewAndSendDistribution()">Review & Send</button>
+              </div>
+
+              <ul class="labs-checklist">
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Bulk distribution</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> CSV import</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Validate addresses</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Track transaction status</li>
+              </ul>
+            </div>
+            <div class="labs-flow-arrow">→</div>
+          </div>
+
+          <!-- STEP 3: LOCK TOKENS (VESTING) -->
+          <div class="labs-step-column">
+            <div class="labs-step-card">
+              <div class="labs-step-header">
+                <div class="labs-step-num">3</div>
+                <div class="labs-step-titles">
+                  <h3 class="labs-step-name">Lock Tokens (Vesting)</h3>
+                  <p class="labs-step-desc">Secure your tokens with smart contracts and schedules.</p>
+                </div>
+              </div>
+
+              <div class="labs-inner-box">
+                <div class="labs-inner-title">Create Vesting Schedule</div>
+                
+                <div class="labs-field">
+                  <label class="labs-label">Beneficiary Wallet</label>
+                  <input type="text" id="labs-vesting-beneficiary" class="labs-input" placeholder="UQ8s4...9f3k" style="font-family:monospace;"/>
+                </div>
+
+                <div class="labs-field">
+                  <label class="labs-label">Amount</label>
+                  <div style="display:flex; gap:6px;">
+                    <input type="number" id="labs-vesting-amount" class="labs-input" value="100000000"/>
+                    <select class="labs-input" style="width:85px; padding:6px;">
+                      <option value="MOON">MOON</option>
+                      <option value="GRAM">GRAM</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+                  <div class="labs-field">
+                    <label class="labs-label">Cliff</label>
+                    <select id="labs-vesting-cliff" class="labs-input" style="padding:6px 8px;">
+                      <option value="1 month">1 month</option>
+                      <option value="3 months" selected>3 months</option>
+                      <option value="6 months">6 months</option>
+                    </select>
+                  </div>
+                  <div class="labs-field">
+                    <label class="labs-label">Vesting Period</label>
+                    <select id="labs-vesting-period" class="labs-input" style="padding:6px 8px;">
+                      <option value="6 months">6 months</option>
+                      <option value="12 months" selected>12 months</option>
+                      <option value="24 months">24 months</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="labs-field">
+                  <label class="labs-label">Release Type</label>
+                  <div class="labs-radio-group">
+                    <label class="labs-radio-label">
+                      <input type="radio" name="vesting-type" value="linear" checked/>
+                      Linear
+                    </label>
+                    <label class="labs-radio-label">
+                      <input type="radio" name="vesting-type" value="interval"/>
+                      Interval
+                    </label>
+                  </div>
+                </div>
+
+                <div class="labs-field">
+                  <label class="labs-label">Start Date</label>
+                  <input type="date" id="labs-vesting-date" class="labs-input" value="2026-11-01"/>
+                </div>
+
+                <button class="labs-btn-primary" onclick="labsSubmitVesting()">Create Lock</button>
+              </div>
+
+              <ul class="labs-checklist">
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Set amount & recipient</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Define schedule</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Deploy vesting contract</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> View unlock calendar</li>
+              </ul>
+            </div>
+            <div class="labs-flow-arrow">→</div>
+          </div>
+
+          <!-- STEP 4: MANAGE & MONITOR -->
+          <div class="labs-step-column">
+            <div class="labs-step-card">
+              <div class="labs-step-header">
+                <div class="labs-step-num">4</div>
+                <div class="labs-step-titles">
+                  <h3 class="labs-step-name">Manage & Monitor</h3>
+                  <p class="labs-step-desc">Track everything in real time from your dashboard.</p>
+                </div>
+              </div>
+
+              <div class="labs-inner-box">
+                <div class="labs-inner-title">Token Manager</div>
+                
+                <div class="labs-token-head-row">
+                  <div class="labs-token-avatar">🐕</div>
+                  <div style="flex:1;">
+                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                      <strong id="labs-tm-token-symbol" style="color:#fff; font-size:13px;">MOON</strong>
+                      <span class="labs-token-badge-verified">✓ Verified on TON</span>
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:1px;">
+                      <span id="labs-tm-token-name" style="font-size:11px; color:var(--labs-text-sub);">MoonDog</span>
+                      <span id="labs-tm-token-addr" style="font-size:10px; font-family:monospace; color:var(--labs-text-muted);">EQD...7a2b</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="labs-subtabs" style="margin-top:2px;">
+                  <button class="labs-subtab active">Overview</button>
+                  <button class="labs-subtab" onclick="labsSwitchSection('liquidity')">Transactions</button>
+                  <button class="labs-subtab" onclick="labsOpenModal('analytics-modal')">Holders</button>
+                  <button class="labs-subtab" onclick="labsSwitchSection('liquidity')">Liquidity</button>
+                </div>
+
+                <div class="labs-stats-grid-2x2">
+                  <div class="labs-stat-cell">
+                    <span class="labs-stat-label">Total Supply</span>
+                    <span id="labs-tm-total-supply" class="labs-stat-val">1,000,000,000</span>
+                  </div>
+                  <div class="labs-stat-cell">
+                    <span class="labs-stat-label">Circulating Supply</span>
+                    <span id="labs-tm-circ-supply" class="labs-stat-val">650,000,000</span>
+                  </div>
+                  <div class="labs-stat-cell">
+                    <span class="labs-stat-label">Holders</span>
+                    <span id="labs-tm-holders-count" class="labs-stat-val">2,438</span>
+                  </div>
+                  <div class="labs-stat-cell">
+                    <span class="labs-stat-label">Market Cap</span>
+                    <span id="labs-tm-mcap" class="labs-stat-val">$1,250,000</span>
+                  </div>
+                </div>
+
+                <button class="labs-btn-secondary" onclick="labsSwitchSection('liquidity')">⚙️ Manage Admin & Liquidity</button>
+              </div>
+
+              <ul class="labs-checklist">
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> View transactions</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Check holders & distribution</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Monitor liquidity</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Audit on-chain activity</li>
+              </ul>
+            </div>
+            <div class="labs-flow-arrow">→</div>
+          </div>
+
+          <!-- STEP 5: ANALYZE & GROW -->
+          <div class="labs-step-column">
+            <div class="labs-step-card">
+              <div class="labs-step-header">
+                <div class="labs-step-num">5</div>
+                <div class="labs-step-titles">
+                  <h3 class="labs-step-name">Analyze & Grow</h3>
+                  <p class="labs-step-desc">Get insights, track performance and take your project further.</p>
+                </div>
+              </div>
+
+              <div class="labs-inner-box">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <div class="labs-inner-title" style="margin:0;">Analytics</div>
+                  <div class="labs-subtabs" style="width:auto; padding:1px;">
+                    <button class="labs-subtab active" style="padding:2px 6px; font-size:9.5px;">24h</button>
+                    <button class="labs-subtab" style="padding:2px 6px; font-size:9.5px;">7d</button>
+                    <button class="labs-subtab" style="padding:2px 6px; font-size:9.5px;">30d</button>
+                    <button class="labs-subtab" style="padding:2px 6px; font-size:9.5px;">All</button>
+                  </div>
+                </div>
+
+                <div style="height:50px; position:relative; width:100%; margin:4px 0;">
+                  <canvas id="labs-ana-sparkline"></canvas>
+                </div>
+
+                <div class="labs-analytics-kpis">
+                  <div class="labs-kpi-cell">
+                    <span class="labs-kpi-label">Volume</span>
+                    <span id="labs-ana-volume" class="labs-kpi-val">$245,680</span>
+                    <span class="labs-kpi-change">+12.4%</span>
+                  </div>
+                  <div class="labs-kpi-cell">
+                    <span class="labs-kpi-label">Holders</span>
+                    <span id="labs-ana-holders" class="labs-kpi-val">2,438</span>
+                    <span class="labs-kpi-change">+8.7%</span>
+                  </div>
+                  <div class="labs-kpi-cell">
+                    <span class="labs-kpi-label">Liquidity</span>
+                    <span id="labs-ana-liquidity" class="labs-kpi-val">$180,000</span>
+                    <span class="labs-kpi-change">+5.2%</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div style="font-size:10px; font-weight:700; color:var(--labs-text-sub); margin-bottom:4px;">Top Holders</div>
+                  <div id="labs-ana-holders-list" class="labs-holders-list">
+                    <div class="labs-holder-row">
+                      <span class="labs-holder-name">1. UQ8s4...9f3k</span>
+                      <div class="labs-holder-bar-bg"><div class="labs-holder-bar-fill" style="width:12.5%;"></div></div>
+                      <span class="labs-holder-pct">12.5%</span>
+                    </div>
+                    <div class="labs-holder-row">
+                      <span class="labs-holder-name">2. UQ2a1...7e6d</span>
+                      <div class="labs-holder-bar-bg"><div class="labs-holder-bar-fill" style="width:8.3%;"></div></div>
+                      <span class="labs-holder-pct">8.3%</span>
+                    </div>
+                    <div class="labs-holder-row">
+                      <span class="labs-holder-name">3. UQ7f2...4c1b</span>
+                      <div class="labs-holder-bar-bg"><div class="labs-holder-bar-fill" style="width:6.7%;"></div></div>
+                      <span class="labs-holder-pct">6.7%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <ul class="labs-checklist">
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Live charts & stats</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Holders and top wallets</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Liquidity overview</li>
+                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Export reports</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ═════════════════════════════════════════════════════════════════ -->
+        <!-- BOTTOM 4 BLOCKS                                                  -->
+        <!-- ═════════════════════════════════════════════════════════════════ -->
+        <div class="labs-bottom-grid">
+          
+          <!-- Key Features (6 clickable tiles) -->
+          <div class="labs-feature-card">
+            <div class="labs-feature-head">
+              <h4 class="labs-feature-title">Key Features</h4>
+            </div>
+            <div class="labs-badge-grid-6">
+              <div class="labs-icon-tile" onclick="labsSwitchSection('launchpad')">
+                <span class="labs-icon-tile-glyph">🪙</span>
+                <span class="labs-icon-tile-name">Token Creator</span>
+                <span class="labs-icon-tile-sub">(Jetton on TON)</span>
+              </div>
+              <div class="labs-icon-tile" onclick="labsSwitchSection('distribution')">
+                <span class="labs-icon-tile-glyph">✈️</span>
+                <span class="labs-icon-tile-name">Multi-Wallet</span>
+                <span class="labs-icon-tile-sub">Distributor</span>
+              </div>
+              <div class="labs-icon-tile" onclick="labsSwitchSection('vesting')">
+                <span class="labs-icon-tile-glyph">🔒</span>
+                <span class="labs-icon-tile-name">Vesting & Lock</span>
+              </div>
+              <div class="labs-icon-tile" onclick="labsSwitchSection('liquidity')">
+                <span class="labs-icon-tile-glyph">💧</span>
+                <span class="labs-icon-tile-name">Liquidity</span>
+                <span class="labs-icon-tile-sub">Manager</span>
+              </div>
+              <div class="labs-icon-tile" onclick="labsSwitchSection('analytics')">
+                <span class="labs-icon-tile-glyph">📊</span>
+                <span class="labs-icon-tile-name">Analytics</span>
+              </div>
+              <div class="labs-icon-tile" onclick="labsSwitchSection('projects')">
+                <span class="labs-icon-tile-glyph">📁</span>
+                <span class="labs-icon-tile-name">My Projects</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Built for TON -->
+          <div class="labs-feature-card">
+            <div class="labs-feature-head">
+              <div class="labs-feature-icon-badge">💎</div>
+              <h4 class="labs-feature-title">Built for TON</h4>
+            </div>
+            <ul class="labs-bullet-list">
+              <li class="labs-bullet-item"><span class="labs-bullet-check">✔</span> Jetton standard (TEP-74)</li>
+              <li class="labs-bullet-item"><span class="labs-bullet-check">✔</span> Real on-chain transactions</li>
+              <li class="labs-bullet-item"><span class="labs-bullet-check">✔</span> Secure smart contracts</li>
+              <li class="labs-bullet-item"><span class="labs-bullet-check">✔</span> TON Connect integration</li>
+            </ul>
+          </div>
+
+          <!-- Security First -->
+          <div class="labs-feature-card">
+            <div class="labs-feature-head">
+              <div class="labs-feature-icon-badge">🛡️</div>
+              <h4 class="labs-feature-title">Security First</h4>
+            </div>
+            <ul class="labs-bullet-list">
+              <li class="labs-bullet-item"><span class="labs-bullet-check">✔</span> Verified contract addresses</li>
+              <li class="labs-bullet-item"><span class="labs-bullet-check">✔</span> Transaction validation</li>
+              <li class="labs-bullet-item"><span class="labs-bullet-check">✔</span> No duplicate transfers</li>
+              <li class="labs-bullet-item"><span class="labs-bullet-check">✔</span> Permission controls</li>
+              <li class="labs-bullet-item"><span class="labs-bullet-check">✔</span> Audit & monitoring</li>
+            </ul>
+          </div>
+
+          <!-- Our Goal -->
+          <div class="labs-feature-card">
+            <div class="labs-feature-head">
+              <div class="labs-feature-icon-badge">🎯</div>
+              <h4 class="labs-feature-title">Our Goal</h4>
+            </div>
+            <div class="labs-goal-content">
+              <p class="labs-goal-desc">
+                Make it simple for anyone to create, manage and grow their meme coins — with full transparency, security and real on-chain control.
+              </p>
+              <div class="labs-goal-brand">
+                <img src="assets/img/anlgram-icon.svg" class="labs-goal-logo" alt="ANLGRAM"/>
+                <span class="labs-goal-name">ANLGRAM</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer Bar -->
+        <footer class="labs-footer-bar">
+          <div class="labs-footer-left">
+            <img src="assets/img/anlgram-icon.svg" width="16" height="16" alt="ANL"/>
+            <span>ANLGRAM.COM</span>
+          </div>
+          <div class="labs-footer-right">
+            Build the next meme.
+          </div>
+        </footer>
+
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- MODAL: MULTI-WALLET DISTRIBUTOR REVIEW                            -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <div id="distributor-modal" class="labs-modal-backdrop">
+        <div class="labs-modal-card">
+          <div class="labs-modal-head">
+            <h3 class="labs-modal-title">✈️ Multi-Wallet Distribution Review</h3>
+            <button class="labs-modal-close" onclick="labsCloseModal('distributor-modal')">×</button>
+          </div>
+          <div style="margin-bottom:16px;">
+            <p style="font-size:13px; color:var(--labs-text-sub); margin-top:0;">
+              Verify each recipient address, token amount, and gas estimate before signing with your connected TON wallet.
+            </p>
+          </div>
+          <div style="max-height:260px; overflow-y:auto; border:1px solid rgba(40,90,170,0.3); border-radius:10px; margin-bottom:16px;">
+            <table class="ent-table" style="font-size:12px;">
+              <thead>
+                <tr><th>#</th><th>Recipient Address</th><th>Amount</th><th>Status</th></tr>
+              </thead>
+              <tbody id="labs-dist-modal-tbody">
+                <tr><td colspan="4" style="text-align:center; color:var(--labs-text-muted); padding:20px;">No addresses uploaded yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <button class="labs-btn-secondary" style="width:auto; padding:10px 18px;" onclick="labsCloseModal('distributor-modal')">Cancel</button>
+            <button id="labs-dist-modal-submit" class="labs-btn-primary" style="width:auto; padding:10px 24px;" onclick="labsExecuteDistributionBatch()">Confirm & Send Distribution</button>
+          </div>
         </div>
       </div>
 
-      <div class="platform-tabs">
-        <div class="platform-tab active" onclick="switchTab('explorer')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Token Explorer
-        </div>
-        <div class="platform-tab" onclick="switchTab('launchpad')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          Launchpad
-        </div>
-        <div class="platform-tab" onclick="switchTab('wallet')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          Wallet Manager
-        </div>
-        <div class="platform-tab" onclick="switchTab('liquidity')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
-          Manage Liquidity
-        </div>
-        <div class="platform-tab" onclick="switchTab('analytics')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          Advanced Analytics
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- MODAL: VESTING SCHEDULE DETAILS                                   -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <div id="vesting-modal" class="labs-modal-backdrop">
+        <div class="labs-modal-card">
+          <div class="labs-modal-head">
+            <h3 class="labs-modal-title">🔒 Vesting & Smart Lock Schedule</h3>
+            <button class="labs-modal-close" onclick="labsCloseModal('vesting-modal')">×</button>
+          </div>
+          <p style="font-size:13px; color:var(--labs-text-sub); line-height:1.6;">
+            On-chain vesting guarantees locked token reserves for teams, advisors, and community incentives.
+            Smart contracts enforce that tokens cannot be transferred or dumped until the cliff and duration elapsed.
+          </p>
+          <div style="background:rgba(0,140,255,0.08); border:1px solid rgba(0,210,255,0.3); border-radius:12px; padding:16px; margin:16px 0;">
+            <div style="font-weight:700; color:#fff; font-size:13px; margin-bottom:6px;">Current Configuration:</div>
+            <div style="font-size:12px; color:var(--labs-text-sub); display:flex; flex-direction:column; gap:4px;">
+              <div>• Beneficiary: <span id="labs-vest-modal-beneficiary" style="font-family:monospace; color:#fff;">Connect wallet</span></div>
+              <div>• Cliff: 3 months (Zero release during cliff)</div>
+              <div>• Duration: 12 months (Continuous linear streaming)</div>
+              <div>• Smart Contract Enforcement: TEP-74 Jetton Lock</div>
+            </div>
+          </div>
+          <button class="labs-btn-primary" onclick="labsCloseModal('vesting-modal')">Close</button>
         </div>
       </div>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- MODAL: TOKEN MANAGER                                              -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <div id="token-manager-modal" class="labs-modal-backdrop">
+        <div class="labs-modal-card">
+          <div class="labs-modal-head">
+            <h3 class="labs-modal-title">🪙 Token Manager</h3>
+            <button class="labs-modal-close" onclick="labsCloseModal('token-manager-modal')">×</button>
+          </div>
+          <p style="font-size:13px; color:var(--labs-text-sub); line-height:1.6;">
+            Manage your created Jetton parameters, initialize DEX liquidity pools on STON.fi or DeDust, mint additional supply, or renounce admin keys.
+          </p>
+          <div style="display:flex; flex-direction:column; gap:12px; margin:16px 0;">
+            <button class="labs-btn-primary" onclick="labsCloseModal('token-manager-modal'); labsSwitchSection('liquidity');">Go to Full Token & Liquidity Console →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- MODAL: ANALYTICS                                                  -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <div id="analytics-modal" class="labs-modal-backdrop">
+        <div class="labs-modal-card">
+          <div class="labs-modal-head">
+            <h3 class="labs-modal-title">📊 Advanced Analytics & Holders</h3>
+            <button class="labs-modal-close" onclick="labsCloseModal('analytics-modal')">×</button>
+          </div>
+          <p style="font-size:13px; color:var(--labs-text-sub);">
+            Real-time on-chain analytics powered by TonAPI v2 and verified DEX contracts.
+          </p>
+          <div style="background:rgba(0,140,255,0.06); border:1px solid rgba(0,210,255,0.25); border-radius:12px; padding:16px; margin:16px 0;">
+            <div style="font-weight:700; color:#fff; margin-bottom:8px;">Blockchain Verified Distribution:</div>
+            <div id="labs-analytics-modal-holders" style="font-size:12px; color:var(--labs-text-sub);">
+              Connect your wallet and select a token from the Token Manager to inspect real-time holder concentration and on-chain metrics.
+            </div>
+          </div>
+          <button class="labs-btn-primary" onclick="labsCloseModal('analytics-modal')">Close</button>
+        </div>
+      </div>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- MODAL: MY PROJECTS                                                -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <div id="my-projects-modal" class="labs-modal-backdrop">
+        <div class="labs-modal-card">
+          <div class="labs-modal-head">
+            <h3 class="labs-modal-title">📁 My Projects</h3>
+            <button class="labs-modal-close" onclick="labsCloseModal('my-projects-modal')">×</button>
+          </div>
+          <p style="font-size:13px; color:var(--labs-text-sub);">
+            Jettons created and owned by your connected wallet:
+          </p>
+          <div id="labs-my-projects-list" style="margin:16px 0;">
+            <div style="padding:20px; text-align:center; color:var(--labs-text-muted); font-size:13px;">
+              Connect your wallet to list your deployed tokens.
+            </div>
+          </div>
+          <button class="labs-btn-primary" onclick="labsCloseModal('my-projects-modal'); labsSwitchSection('launchpad');">+ Create New Token</button>
+        </div>
+      </div>
+
     </div>
 
     <!-- Token Explorer Tab -->
-    <div id="tab-explorer" class="tab-content active">
+    <div id="tab-explorer" class="tab-content">
       
       <div class="token-search-wrap">
         <svg class="token-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -692,15 +1284,21 @@
 
 <script>
   function switchTab(tabId) {
-    // Update tabs
+    const flowSection = document.getElementById('labs-flow-section');
+    if (tabId === 'labs') {
+      if (flowSection) flowSection.style.display = 'block';
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.labs-pill').forEach(p => p.classList.toggle('active', p.dataset.section === 'labs'));
+      return;
+    }
+    if (flowSection) flowSection.style.display = 'none';
     document.querySelectorAll('.platform-tab').forEach(t => t.classList.remove('active'));
-    // Find tab by ID or fall back to finding via event
     const tabEl = document.querySelector(`.platform-tab[onclick="switchTab('${tabId}')"]`);
     if(tabEl) tabEl.classList.add('active');
     
-    // Update content
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.getElementById('tab-' + tabId).classList.add('active');
+    const target = document.getElementById('tab-' + tabId);
+    if (target) target.classList.add('active');
   }
 
   // Render dummy chart for Token Growth
@@ -1511,5 +2109,6 @@
 <script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
 <script src="assets/js/wallet-connect.js?v=2026.35"></script>
 <script src="assets/js/launchpad.js?v=1.0.0"></script>
+<script src="assets/js/anl-labs.js?v=2026.1"></script>
 </body>
 </html>
