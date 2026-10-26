@@ -321,345 +321,551 @@
       <section id="labs-flow-section">
         <div class="labs-flow-hero">
           <h2 class="labs-flow-title">The Complete Flow</h2>
-          <p class="labs-flow-subtitle">From idea to a fully managed token — all on ANLGRAM.</p>
+          <p class="labs-flow-subtitle">Guided step-by-step token creation, deployment, distribution, management, and analytics on TON.</p>
         </div>
 
-        <div class="labs-flow-wrapper">
-          
+        <!-- Token Lifecycle & Context Switcher Bar -->
+        <div class="labs-lifecycle-bar">
+          <div class="labs-lifecycle-info">
+            <span id="labs-lifecycle-badge" class="labs-lifecycle-badge draft">DRAFT</span>
+            <div style="display:flex; flex-direction:column;">
+              <span style="font-size:11px; color:var(--labs-text-muted); text-transform:uppercase; letter-spacing:0.5px;">Active Workflow Context</span>
+              <strong id="labs-lifecycle-current-token" style="color:#fff; font-size:14px;">New Jetton Draft</strong>
+            </div>
+          </div>
+          <div class="labs-lifecycle-selector-wrap">
+            <span style="font-size:12px; color:var(--labs-text-muted);">Switch Context:</span>
+            <select id="labs-lifecycle-select" class="labs-lifecycle-select" onchange="labsSelectLifecycleToken(this.value)">
+              <option value="new">+ Create New Jetton (Wizard)</option>
+              <optgroup id="labs-lifecycle-wallet-tokens" label="Tokens in Connected Wallet"></optgroup>
+            </select>
+          </div>
+        </div>
+
+        <!-- Desktop Stepper -->
+        <div class="labs-wizard-stepper" id="labs-desktop-stepper">
+          <div class="labs-step-node active" data-step="1" onclick="labsGoToStep(1)">
+            <div class="labs-step-circle">1</div>
+            <div class="labs-step-label-group">
+              <span class="labs-step-label-num">Step 1</span>
+              <span class="labs-step-label-title">Create Token</span>
+            </div>
+          </div>
+          <div class="labs-step-divider"></div>
+
+          <div class="labs-step-node" data-step="2" onclick="labsGoToStep(2)">
+            <div class="labs-step-circle">2</div>
+            <div class="labs-step-label-group">
+              <span class="labs-step-label-num">Step 2</span>
+              <span class="labs-step-label-title">Review & Deploy</span>
+            </div>
+          </div>
+          <div class="labs-step-divider"></div>
+
+          <div class="labs-step-node locked" data-step="3" onclick="labsGoToStep(3)">
+            <div class="labs-step-circle">3</div>
+            <div class="labs-step-label-group">
+              <span class="labs-step-label-num">Step 3</span>
+              <span class="labs-step-label-title">Distribute Tokens</span>
+            </div>
+          </div>
+          <div class="labs-step-divider"></div>
+
+          <div class="labs-step-node locked" data-step="4" onclick="labsGoToStep(4)">
+            <div class="labs-step-circle">4</div>
+            <div class="labs-step-label-group">
+              <span class="labs-step-label-num">Step 4</span>
+              <span class="labs-step-label-title">Lock Tokens (Vesting)</span>
+            </div>
+          </div>
+          <div class="labs-step-divider"></div>
+
+          <div class="labs-step-node locked" data-step="5" onclick="labsGoToStep(5)">
+            <div class="labs-step-circle">5</div>
+            <div class="labs-step-label-group">
+              <span class="labs-step-label-num">Step 5</span>
+              <span class="labs-step-label-title">Manage & Monitor</span>
+            </div>
+          </div>
+          <div class="labs-step-divider"></div>
+
+          <div class="labs-step-node locked" data-step="6" onclick="labsGoToStep(6)">
+            <div class="labs-step-circle">6</div>
+            <div class="labs-step-label-group">
+              <span class="labs-step-label-num">Step 6</span>
+              <span class="labs-step-label-title">Analyze & Grow</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Stepper Bar -->
+        <div class="labs-wizard-mobile" id="labs-mobile-stepper">
+          <div class="labs-wizard-mobile-header">
+            <span id="labs-mobile-step-title">Step 1 of 6: Create Token</span>
+            <span id="labs-mobile-step-pct">16%</span>
+          </div>
+          <div class="labs-wizard-mobile-bar-bg">
+            <div id="labs-mobile-bar-fill" class="labs-wizard-mobile-bar-fill" style="width: 16.6%;"></div>
+          </div>
+        </div>
+
+        <!-- Flow Wrapper housing active step panels -->
+        <div class="labs-flow-wrapper wizard-flow-wrapper">
+
           <!-- STEP 1: CREATE TOKEN -->
-          <div class="labs-step-column">
-            <div class="labs-step-card">
-              <div class="labs-step-header">
-                <div class="labs-step-num">1</div>
-                <div class="labs-step-titles">
-                  <h3 class="labs-step-name">Create Token</h3>
-                  <p class="labs-step-desc">Launch your meme coin (Jetton) on TON.</p>
-                </div>
+          <div id="wizard-step-1" class="labs-wizard-panel active" style="width:100%; max-width:820px; margin:0 auto 32px;">
+            <div class="labs-wizard-panel-head">
+              <div>
+                <h3 class="labs-wizard-panel-title">🪙 Step 1 — Create Token</h3>
+                <p class="labs-wizard-panel-sub">Configure your new Jetton parameters on TON blockchain.</p>
               </div>
-
-              <div class="labs-inner-box">
-                <div class="labs-inner-title">Create New Token</div>
-                <div class="labs-avatar-preview">
-                  <span id="labs-avatar-emoji">🐶</span>
-                </div>
-                <div class="labs-field">
-                  <label class="labs-label">Token Name</label>
-                  <input type="text" id="labs-card1-name" class="labs-input" value="MoonDog" oninput="labsSyncTokenCard()"/>
-                </div>
-                <div class="labs-field">
-                  <label class="labs-label">Symbol</label>
-                  <input type="text" id="labs-card1-symbol" class="labs-input" value="MOON" oninput="labsSyncTokenCard()"/>
-                </div>
-                <div class="labs-field">
-                  <label class="labs-label">Total Supply</label>
-                  <input type="text" id="labs-card1-supply" class="labs-input" value="1,000,000,000" readonly/>
-                </div>
-                <div class="labs-field">
-                  <label class="labs-label">Decimals</label>
-                  <input type="text" class="labs-input" value="9" readonly/>
-                </div>
-                <button class="labs-btn-primary" onclick="labsTriggerCreateToken()">Next →</button>
-              </div>
-
-              <ul class="labs-checklist">
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Set token details</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Configure features</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Preview & confirm</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Deploy on TON (Jetton)</li>
-              </ul>
+              <span class="labs-badge-subtle">Step 1 of 6</span>
             </div>
-            <div class="labs-flow-arrow">→</div>
-          </div>
 
-          <!-- STEP 2: DISTRIBUTE TOKENS -->
-          <div class="labs-step-column">
-            <div class="labs-step-card">
-              <div class="labs-step-header">
-                <div class="labs-step-num">2</div>
-                <div class="labs-step-titles">
-                  <h3 class="labs-step-name">Distribute Tokens</h3>
-                  <p class="labs-step-desc">Send tokens to multiple wallets in just a few clicks.</p>
+            <div style="display:grid; grid-template-columns: 120px 1fr; gap:24px; align-items:start; margin-bottom:24px;">
+              <!-- Logo Preview & Upload -->
+              <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                <div class="labs-avatar-preview" style="width:96px; height:96px; border-radius:50%; border:2px dashed rgba(0,210,255,0.4); background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                  <span id="labs-avatar-emoji" style="font-size:36px;">🐶</span>
                 </div>
+                <div style="position:relative; width:100%;">
+                  <input type="file" id="lp-logo-file" accept="image/*" style="position:absolute; width:100%; height:100%; opacity:0; cursor:pointer; left:0; top:0; z-index:10;"/>
+                  <button type="button" class="btn-ent" id="lp-upload-btn" style="width:100%; padding:6px; font-size:11px; text-align:center; border:1px solid var(--labs-cyan); color:var(--labs-cyan); border-radius:8px;">
+                    📂 Upload Logo
+                  </button>
+                </div>
+                <button type="button" onclick="const c = document.getElementById('logo-url-container'); c.style.display = c.style.display === 'none' ? 'block' : 'none';" style="background:none; border:none; color:var(--labs-text-sub); font-size:10px; cursor:pointer; padding:0; text-decoration:underline;">
+                  Paste URL
+                </button>
               </div>
 
-              <div class="labs-inner-box">
-                <div class="labs-inner-title">Multi-Wallet Distributor</div>
-                <div class="labs-subtabs">
-                  <button id="labs-dist-tab-csv" class="labs-subtab active" onclick="labsSetDistributorMode('csv')">Upload CSV</button>
-                  <button id="labs-dist-tab-manual" class="labs-subtab" onclick="labsSetDistributorMode('manual')">Manual Entry</button>
+              <!-- Form Fields -->
+              <div style="display:grid; gap:16px;">
+                <div id="logo-url-container" style="display:none;">
+                  <label class="labs-label">Logo URL (IPFS or HTTPS)</label>
+                  <input type="text" id="lp-logo" class="labs-input" placeholder="https://example.com/logo.png" oninput="labsSetWizardDraftField('logoUrl', this.value)"/>
                 </div>
 
-                <div id="labs-dist-dropzone" class="labs-dropzone">
-                  <input type="file" id="labs-dist-file-input" accept=".csv,.txt" style="display:none;"/>
-                  <div class="labs-dropzone-icon">☁️</div>
-                  <div class="labs-dropzone-text">Drag & drop file or click to upload</div>
-                  <div class="labs-dropzone-hint">CSV, TXT (max 10,000 addresses)</div>
-                </div>
-
-                <div id="labs-dist-manual-area" style="display:none;">
-                  <textarea id="labs-dist-manual-text" class="labs-input" style="height:70px; resize:none; font-family:monospace; font-size:11px;" placeholder="EQ..., 1000&#10;UQ..., 500" oninput="labsParseDistributionText(this.value)"></textarea>
-                </div>
-
-                <div class="labs-field">
-                  <label class="labs-label">Token Amount</label>
-                  <div style="display:flex; gap:6px;">
-                    <input type="number" id="labs-dist-amount" class="labs-input" value="1000" oninput="labsParseDistributionText(document.getElementById('labs-dist-manual-text')?.value || '')"/>
-                    <select class="labs-input" style="width:85px; padding:6px;">
-                      <option value="MOON">MOON</option>
-                      <option value="GRAM">GRAM</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="labs-field">
-                  <label class="labs-label">Distribution Type</label>
-                  <div class="labs-radio-group">
-                    <label class="labs-radio-label">
-                      <input type="radio" name="dist-type" value="equal" checked onchange="state.distributor.distributionType = 'equal'; labsParseDistributionText(document.getElementById('labs-dist-manual-text')?.value || '')"/>
-                      Equal
-                    </label>
-                    <label class="labs-radio-label">
-                      <input type="radio" name="dist-type" value="custom" onchange="state.distributor.distributionType = 'custom'; labsParseDistributionText(document.getElementById('labs-dist-manual-text')?.value || '')"/>
-                      Custom
-                    </label>
-                  </div>
-                </div>
-
-                <div id="labs-dist-status-text" style="font-size:10px; color:var(--labs-cyan); min-height:14px;"></div>
-
-                <button class="labs-btn-primary" onclick="labsReviewAndSendDistribution()">Review & Send</button>
-              </div>
-
-              <ul class="labs-checklist">
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Bulk distribution</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> CSV import</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Validate addresses</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Track transaction status</li>
-              </ul>
-            </div>
-            <div class="labs-flow-arrow">→</div>
-          </div>
-
-          <!-- STEP 3: LOCK TOKENS (VESTING) -->
-          <div class="labs-step-column">
-            <div class="labs-step-card">
-              <div class="labs-step-header">
-                <div class="labs-step-num">3</div>
-                <div class="labs-step-titles">
-                  <h3 class="labs-step-name">Lock Tokens (Vesting)</h3>
-                  <p class="labs-step-desc">Secure your tokens with smart contracts and schedules.</p>
-                </div>
-              </div>
-
-              <div class="labs-inner-box">
-                <div class="labs-inner-title">Create Vesting Schedule</div>
-                
-                <div class="labs-field">
-                  <label class="labs-label">Beneficiary Wallet</label>
-                  <input type="text" id="labs-vesting-beneficiary" class="labs-input" placeholder="UQ8s4...9f3k" style="font-family:monospace;"/>
-                </div>
-
-                <div class="labs-field">
-                  <label class="labs-label">Amount</label>
-                  <div style="display:flex; gap:6px;">
-                    <input type="number" id="labs-vesting-amount" class="labs-input" value="100000000"/>
-                    <select class="labs-input" style="width:85px; padding:6px;">
-                      <option value="MOON">MOON</option>
-                      <option value="GRAM">GRAM</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                   <div class="labs-field">
-                    <label class="labs-label">Cliff</label>
-                    <select id="labs-vesting-cliff" class="labs-input" style="padding:6px 8px;">
-                      <option value="1 month">1 month</option>
-                      <option value="3 months" selected>3 months</option>
-                      <option value="6 months">6 months</option>
-                    </select>
+                    <label class="labs-label">Token Name *</label>
+                    <input type="text" id="labs-card1-name" class="labs-input" value="MoonDog" placeholder="e.g. MoonDog" oninput="labsSetWizardDraftField('name', this.value)"/>
                   </div>
                   <div class="labs-field">
-                    <label class="labs-label">Vesting Period</label>
-                    <select id="labs-vesting-period" class="labs-input" style="padding:6px 8px;">
-                      <option value="6 months">6 months</option>
-                      <option value="12 months" selected>12 months</option>
-                      <option value="24 months">24 months</option>
-                    </select>
+                    <label class="labs-label">Token Symbol (Ticker) *</label>
+                    <input type="text" id="labs-card1-symbol" class="labs-input" value="MOON" placeholder="e.g. MOON" oninput="labsSetWizardDraftField('symbol', this.value.toUpperCase())"/>
+                  </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                  <div class="labs-field">
+                    <label class="labs-label">Total Initial Supply</label>
+                    <input type="text" id="labs-card1-supply" class="labs-input" value="1,000,000,000" readonly/>
+                    <span style="font-size:10px; color:var(--labs-text-muted); margin-top:2px;">Standard 1 Billion supply (minted directly to creator)</span>
+                  </div>
+                  <div class="labs-field">
+                    <label class="labs-label">Decimals</label>
+                    <input type="text" class="labs-input" value="9" readonly/>
+                    <span style="font-size:10px; color:var(--labs-text-muted); margin-top:2px;">Standard Jetton TEP-74 precision</span>
                   </div>
                 </div>
 
                 <div class="labs-field">
-                  <label class="labs-label">Release Type</label>
-                  <div class="labs-radio-group">
-                    <label class="labs-radio-label">
-                      <input type="radio" name="vesting-type" value="linear" checked/>
-                      Linear
-                    </label>
-                    <label class="labs-radio-label">
-                      <input type="radio" name="vesting-type" value="interval"/>
-                      Interval
-                    </label>
-                  </div>
+                  <label class="labs-label">Description (Optional)</label>
+                  <textarea id="lp-desc" class="labs-input" style="height:60px; resize:none;" placeholder="A community-driven meme coin on TON." oninput="labsSetWizardDraftField('description', this.value)"></textarea>
                 </div>
-
-                <div class="labs-field">
-                  <label class="labs-label">Start Date</label>
-                  <input type="date" id="labs-vesting-date" class="labs-input" value="2026-11-01"/>
-                </div>
-
-                <button class="labs-btn-primary" onclick="labsSubmitVesting()">Create Lock</button>
               </div>
-
-              <ul class="labs-checklist">
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Set amount & recipient</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Define schedule</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Deploy vesting contract</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> View unlock calendar</li>
-              </ul>
             </div>
-            <div class="labs-flow-arrow">→</div>
+
+            <div class="labs-wizard-actions">
+              <span style="font-size:12px; color:var(--labs-text-muted);">* Required fields for Jetton deployment</span>
+              <button class="labs-btn-primary" style="width:auto; padding:12px 28px;" onclick="labsGoToStep(2)">Continue to Review & Deploy →</button>
+            </div>
           </div>
 
-          <!-- STEP 4: MANAGE & MONITOR -->
-          <div class="labs-step-column">
-            <div class="labs-step-card">
-              <div class="labs-step-header">
-                <div class="labs-step-num">4</div>
-                <div class="labs-step-titles">
-                  <h3 class="labs-step-name">Manage & Monitor</h3>
-                  <p class="labs-step-desc">Track everything in real time from your dashboard.</p>
-                </div>
+          <!-- STEP 2: REVIEW & DEPLOY -->
+          <div id="wizard-step-2" class="labs-wizard-panel" style="width:100%; max-width:820px; margin:0 auto 32px;">
+            <div class="labs-wizard-panel-head">
+              <div>
+                <h3 class="labs-wizard-panel-title">🚀 Step 2 — Review & Deploy</h3>
+                <p class="labs-wizard-panel-sub">Verify your token parameters and estimated fees before broadcasting to TON.</p>
               </div>
-
-              <div class="labs-inner-box">
-                <div class="labs-inner-title">Token Manager</div>
-                
-                <div class="labs-token-head-row">
-                  <div class="labs-token-avatar">🐕</div>
-                  <div style="flex:1;">
-                    <div style="display:flex; align-items:center; justify-content:space-between;">
-                      <strong id="labs-tm-token-symbol" style="color:#fff; font-size:13px;">MOON</strong>
-                      <span class="labs-token-badge-verified">✓ Verified on TON</span>
-                    </div>
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:1px;">
-                      <span id="labs-tm-token-name" style="font-size:11px; color:var(--labs-text-sub);">MoonDog</span>
-                      <span id="labs-tm-token-addr" style="font-size:10px; font-family:monospace; color:var(--labs-text-muted);">EQD...7a2b</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="labs-subtabs" style="margin-top:2px;">
-                  <button class="labs-subtab active">Overview</button>
-                  <button class="labs-subtab" onclick="labsSwitchSection('liquidity')">Transactions</button>
-                  <button class="labs-subtab" onclick="labsOpenModal('analytics-modal')">Holders</button>
-                  <button class="labs-subtab" onclick="labsSwitchSection('liquidity')">Liquidity</button>
-                </div>
-
-                <div class="labs-stats-grid-2x2">
-                  <div class="labs-stat-cell">
-                    <span class="labs-stat-label">Total Supply</span>
-                    <span id="labs-tm-total-supply" class="labs-stat-val">1,000,000,000</span>
-                  </div>
-                  <div class="labs-stat-cell">
-                    <span class="labs-stat-label">Circulating Supply</span>
-                    <span id="labs-tm-circ-supply" class="labs-stat-val">650,000,000</span>
-                  </div>
-                  <div class="labs-stat-cell">
-                    <span class="labs-stat-label">Holders</span>
-                    <span id="labs-tm-holders-count" class="labs-stat-val">2,438</span>
-                  </div>
-                  <div class="labs-stat-cell">
-                    <span class="labs-stat-label">Market Cap</span>
-                    <span id="labs-tm-mcap" class="labs-stat-val">$1,250,000</span>
-                  </div>
-                </div>
-
-                <button class="labs-btn-secondary" onclick="labsSwitchSection('liquidity')">⚙️ Manage Admin & Liquidity</button>
-              </div>
-
-              <ul class="labs-checklist">
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> View transactions</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Check holders & distribution</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Monitor liquidity</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Audit on-chain activity</li>
-              </ul>
+              <span class="labs-badge-subtle">Step 2 of 6</span>
             </div>
-            <div class="labs-flow-arrow">→</div>
-          </div>
 
-          <!-- STEP 5: ANALYZE & GROW -->
-          <div class="labs-step-column">
-            <div class="labs-step-card">
-              <div class="labs-step-header">
-                <div class="labs-step-num">5</div>
-                <div class="labs-step-titles">
-                  <h3 class="labs-step-name">Analyze & Grow</h3>
-                  <p class="labs-step-desc">Get insights, track performance and take your project further.</p>
+            <!-- Review Summary Grid -->
+            <div class="wizard-review-grid">
+              <div class="wizard-review-box" style="display:flex; align-items:center; gap:16px;">
+                <div id="labs-review-avatar" style="width:54px; height:54px; border-radius:50%; background:rgba(0,0,0,0.4); border:1px solid rgba(0,210,255,0.4); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                  <span style="font-size:24px;">🪙</span>
                 </div>
-              </div>
-
-              <div class="labs-inner-box">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                  <div class="labs-inner-title" style="margin:0;">Analytics</div>
-                  <div class="labs-subtabs" style="width:auto; padding:1px;">
-                    <button class="labs-subtab active" style="padding:2px 6px; font-size:9.5px;">24h</button>
-                    <button class="labs-subtab" style="padding:2px 6px; font-size:9.5px;">7d</button>
-                    <button class="labs-subtab" style="padding:2px 6px; font-size:9.5px;">30d</button>
-                    <button class="labs-subtab" style="padding:2px 6px; font-size:9.5px;">All</button>
-                  </div>
-                </div>
-
-                <div style="height:50px; position:relative; width:100%; margin:4px 0;">
-                  <canvas id="labs-ana-sparkline"></canvas>
-                </div>
-
-                <div class="labs-analytics-kpis">
-                  <div class="labs-kpi-cell">
-                    <span class="labs-kpi-label">Volume</span>
-                    <span id="labs-ana-volume" class="labs-kpi-val">$245,680</span>
-                    <span class="labs-kpi-change">+12.4%</span>
-                  </div>
-                  <div class="labs-kpi-cell">
-                    <span class="labs-kpi-label">Holders</span>
-                    <span id="labs-ana-holders" class="labs-kpi-val">2,438</span>
-                    <span class="labs-kpi-change">+8.7%</span>
-                  </div>
-                  <div class="labs-kpi-cell">
-                    <span class="labs-kpi-label">Liquidity</span>
-                    <span id="labs-ana-liquidity" class="labs-kpi-val">$180,000</span>
-                    <span class="labs-kpi-change">+5.2%</span>
-                  </div>
-                </div>
-
                 <div>
-                  <div style="font-size:10px; font-weight:700; color:var(--labs-text-sub); margin-bottom:4px;">Top Holders</div>
-                  <div id="labs-ana-holders-list" class="labs-holders-list">
-                    <div class="labs-holder-row">
-                      <span class="labs-holder-name">1. UQ8s4...9f3k</span>
-                      <div class="labs-holder-bar-bg"><div class="labs-holder-bar-fill" style="width:12.5%;"></div></div>
-                      <span class="labs-holder-pct">12.5%</span>
-                    </div>
-                    <div class="labs-holder-row">
-                      <span class="labs-holder-name">2. UQ2a1...7e6d</span>
-                      <div class="labs-holder-bar-bg"><div class="labs-holder-bar-fill" style="width:8.3%;"></div></div>
-                      <span class="labs-holder-pct">8.3%</span>
-                    </div>
-                    <div class="labs-holder-row">
-                      <span class="labs-holder-name">3. UQ7f2...4c1b</span>
-                      <div class="labs-holder-bar-bg"><div class="labs-holder-bar-fill" style="width:6.7%;"></div></div>
-                      <span class="labs-holder-pct">6.7%</span>
-                    </div>
+                  <div class="wizard-review-label">Token Identity</div>
+                  <div style="font-size:18px; font-weight:700; color:#fff;">
+                    <span id="labs-review-name">MoonDog</span> <span id="labs-review-symbol" style="color:var(--labs-cyan);">($MOON)</span>
                   </div>
                 </div>
               </div>
 
-              <ul class="labs-checklist">
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Live charts & stats</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Holders and top wallets</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Liquidity overview</li>
-                <li class="labs-check-item"><span class="labs-check-icon">✓</span> Export reports</li>
-              </ul>
+              <div class="wizard-review-box">
+                <div class="wizard-review-label">Target Network</div>
+                <div class="wizard-review-val" style="display:flex; align-items:center; gap:8px;">
+                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--labs-green);"></span>
+                  <span id="labs-review-network">TON Mainnet</span>
+                </div>
+              </div>
+
+              <div class="wizard-review-box">
+                <div class="wizard-review-label">Initial Supply & Decimals</div>
+                <div class="wizard-review-val">
+                  <span id="labs-review-supply">1,000,000,000</span> <span style="font-size:12px; color:var(--labs-text-sub);">(9 Decimals)</span>
+                </div>
+              </div>
+
+              <div class="wizard-review-box">
+                <div class="wizard-review-label">Deployer & Admin Wallet</div>
+                <div class="wizard-review-val" id="labs-review-wallet" style="font-family:var(--font-mono); font-size:13px;">
+                  Connect Wallet
+                </div>
+              </div>
+            </div>
+
+            <!-- Fee Breakdown Card -->
+            <div class="wizard-review-box" style="margin-bottom:20px; background:rgba(0,210,255,0.04); border-color:rgba(0,210,255,0.2);">
+              <div style="font-size:12px; font-weight:700; color:var(--labs-cyan); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
+                Estimated Blockchain Deployment Fees
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; color:var(--labs-text-sub);">
+                <span>Minter StateInit & Contract Storage</span>
+                <span style="font-family:var(--font-mono); color:#fff;">~0.05 TON</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; color:var(--labs-text-sub);">
+                <span>Initial Supply Minting & Jetton Wallet Creation</span>
+                <span style="font-family:var(--font-mono); color:#fff;">~0.15 TON</span>
+              </div>
+              <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px; display:flex; justify-content:space-between; font-weight:700;">
+                <span style="color:#fff;">Total Estimated Cost:</span>
+                <span style="color:var(--labs-cyan); font-family:var(--font-mono); font-size:15px;">~0.20 TON</span>
+              </div>
+            </div>
+
+            <!-- Status Banner (Hidden until deployment started) -->
+            <div id="wizard-deploy-status-banner" style="display:none; margin-bottom:20px; background:rgba(0,140,255,0.08); border:1px solid rgba(0,210,255,0.3); border-radius:12px; padding:16px;">
+              <div id="wizard-deploy-status-text" style="font-size:13px; color:#fff;">
+                <span class="status-dot"></span> Ready to deploy...
+              </div>
+              <div id="wizard-deploy-success-area" style="display:none; margin-top:14px; padding-top:12px; border-top:1px solid rgba(0,229,153,0.25);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                  <span style="font-size:13px; color:var(--labs-green);">Verified Contract Address:</span>
+                  <a id="wizard-deploy-contract-link" href="#" target="_blank" class="btn-ent" style="text-decoration:none; padding:6px 14px; font-size:12px;">View on TonScan ↗</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="labs-wizard-actions">
+              <button class="labs-btn-secondary" style="width:auto; padding:12px 24px;" onclick="labsGoToStep(1)">← Back to Edit Details</button>
+              <div style="display:flex; gap:12px; align-items:center;">
+                <button id="wizard-step2-deploy-btn" class="labs-btn-primary" style="width:auto; padding:12px 32px;" onclick="labsOpenDeployConfirmModal()">
+                  🚀 Deploy Jetton on TON
+                </button>
+                <button id="wizard-step2-continue-btn" class="labs-btn-primary" style="width:auto; padding:12px 32px; display:none; background:linear-gradient(135deg, var(--labs-green), var(--labs-cyan)); color:#000;" onclick="labsGoToStep(3)">
+                  Continue to Distribution →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 3: DISTRIBUTE TOKENS -->
+          <div id="wizard-step-3" class="labs-wizard-panel" style="width:100%; max-width:820px; margin:0 auto 32px;">
+            <div class="labs-wizard-panel-head">
+              <div>
+                <h3 class="labs-wizard-panel-title">✈️ Step 3 — Distribute Tokens</h3>
+                <p class="labs-wizard-panel-sub">Safely distribute tokens to team, community, or airdrop recipients.</p>
+              </div>
+              <span class="labs-badge-subtle">Step 3 of 6</span>
+            </div>
+
+            <div class="labs-inner-box" style="margin-bottom:20px;">
+              <div class="labs-subtabs" style="margin-bottom:16px;">
+                <button id="labs-dist-tab-csv" class="labs-subtab active" onclick="labsSetDistributorMode('csv')">📂 Upload CSV File</button>
+                <button id="labs-dist-tab-manual" class="labs-subtab" onclick="labsSetDistributorMode('manual')">✍️ Manual Entry</button>
+              </div>
+
+              <div id="labs-dist-dropzone" class="labs-dropzone" style="margin-bottom:16px;">
+                <input type="file" id="labs-dist-file-input" accept=".csv,.txt" style="display:none;"/>
+                <div class="labs-dropzone-icon">☁️</div>
+                <div class="labs-dropzone-text">Drag & drop CSV file or click to browse</div>
+                <div class="labs-dropzone-hint">Format: Address, Amount (or Address alone with default amount)</div>
+              </div>
+
+              <div id="labs-dist-manual-area" style="display:none; margin-bottom:16px;">
+                <textarea id="labs-dist-manual-text" class="labs-input" style="height:90px; resize:none; font-family:var(--font-mono); font-size:12px;" placeholder="EQD...abc, 1000&#10;UQ8...xyz, 500" oninput="labsParseDistributionText(this.value)"></textarea>
+              </div>
+
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+                <div class="labs-field">
+                  <label class="labs-label">Default Amount per Wallet</label>
+                  <input type="number" id="labs-dist-amount" class="labs-input" value="1000" oninput="labsParseDistributionText(document.getElementById('labs-dist-manual-text')?.value || '')"/>
+                </div>
+                <div class="labs-field">
+                  <label class="labs-label">Distribution Mode</label>
+                  <div class="labs-radio-group" style="padding:10px 0;">
+                    <label class="labs-radio-label">
+                      <input type="radio" name="dist-type" value="equal" checked onchange="wizardState.distributor.distributionType = 'equal'; labsParseDistributionText(document.getElementById('labs-dist-manual-text')?.value || '')"/>
+                      Equal Amount
+                    </label>
+                    <label class="labs-radio-label">
+                      <input type="radio" name="dist-type" value="custom" onchange="wizardState.distributor.distributionType = 'custom'; labsParseDistributionText(document.getElementById('labs-dist-manual-text')?.value || '')"/>
+                      Custom Amounts
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div id="labs-dist-status-text" style="font-size:12px; color:var(--labs-cyan); min-height:18px; margin-bottom:12px;"></div>
+
+              <div style="background:rgba(0,140,255,0.06); border:1px solid rgba(0,210,255,0.2); border-radius:10px; padding:12px; font-size:12px; color:var(--labs-text-sub); line-height:1.5;">
+                💡 <strong>TEP-74 Safe Batching:</strong> Transact in batches of up to 4 recipients per transaction. You will review and confirm all addresses before signing in your wallet.
+              </div>
+            </div>
+
+            <div class="labs-wizard-actions">
+              <button class="labs-btn-secondary" style="width:auto; padding:12px 24px;" onclick="labsGoToStep(2)">← Back to Deploy</button>
+              <div style="display:flex; gap:12px;">
+                <button class="labs-btn-primary" style="width:auto; padding:12px 24px;" onclick="labsReviewAndSendDistribution()">Review & Send Distribution</button>
+                <button class="labs-btn-secondary" style="width:auto; padding:12px 20px;" onclick="labsGoToStep(4)">Skip to Vesting →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 4: LOCK TOKENS (VESTING) -->
+          <div id="wizard-step-4" class="labs-wizard-panel" style="width:100%; max-width:820px; margin:0 auto 32px;">
+            <div class="labs-wizard-panel-head">
+              <div>
+                <h3 class="labs-wizard-panel-title">🔒 Step 4 — Lock Tokens (Vesting)</h3>
+                <p class="labs-wizard-panel-sub">Configure vesting schedule and view contract security status.</p>
+              </div>
+              <span class="labs-badge-subtle">Step 4 of 6</span>
+            </div>
+
+            <!-- Honest Development Notice Banner -->
+            <div class="wizard-notice-box" style="border-left: 4px solid #ffa500; margin-bottom:24px;">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+                <span style="font-size:20px;">🛡️</span>
+                <strong style="color:#fff; font-size:14px;">Smart Contract Security & Development Status</strong>
+              </div>
+              <p style="font-size:13px; color:var(--labs-text-sub); line-height:1.6; margin:0 0 8px;">
+                Non-custodial on-chain vesting contracts require rigorous formal audits before handling mainnet token reserves. ANL Labs is preparing an audited, standard TEP-74 linear vesting contract.
+              </p>
+              <div style="font-size:12px; color:#ffa500; font-weight:600;">
+                Status: Contract in specification & security audit. Mainnet token locking is currently disabled to prevent simulated or insecure locks.
+              </div>
+            </div>
+
+            <!-- Schedule Simulator -->
+            <div class="labs-inner-box" style="margin-bottom:20px;">
+              <div class="labs-inner-title">Vesting Schedule Configuration (Simulation & Preview)</div>
+              
+              <div class="labs-field" style="margin-bottom:12px;">
+                <label class="labs-label">Beneficiary Wallet Address</label>
+                <input type="text" id="labs-vesting-beneficiary" class="labs-input" placeholder="UQ8s4...9f3k" style="font-family:var(--font-mono);"/>
+              </div>
+
+              <div class="labs-field" style="margin-bottom:12px;">
+                <label class="labs-label">Token Amount to Lock</label>
+                <input type="number" id="labs-vesting-amount" class="labs-input" value="100000000"/>
+              </div>
+
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div class="labs-field">
+                  <label class="labs-label">Cliff Period</label>
+                  <select id="labs-vesting-cliff" class="labs-input">
+                    <option value="1 month">1 month</option>
+                    <option value="3 months" selected>3 months</option>
+                    <option value="6 months">6 months</option>
+                  </select>
+                </div>
+                <div class="labs-field">
+                  <label class="labs-label">Vesting Duration</label>
+                  <select id="labs-vesting-period" class="labs-input">
+                    <option value="6 months">6 months</option>
+                    <option value="12 months" selected>12 months</option>
+                    <option value="24 months">24 months</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="labs-field" style="margin-bottom:16px;">
+                <label class="labs-label">Unlock Start Date</label>
+                <input type="date" id="labs-vesting-date" class="labs-input" value="2026-11-01"/>
+              </div>
+
+              <button class="labs-btn-secondary" style="width:100%; opacity:0.6; cursor:not-allowed;" disabled onclick="labsSubmitVesting()">
+                🔒 Mainnet Contract Locked (Pending Security Verification)
+              </button>
+            </div>
+
+            <div class="labs-wizard-actions">
+              <button class="labs-btn-secondary" style="width:auto; padding:12px 24px;" onclick="labsGoToStep(3)">← Back to Distribute</button>
+              <button class="labs-btn-primary" style="width:auto; padding:12px 28px;" onclick="labsGoToStep(5)">Continue to Token Management →</button>
+            </div>
+          </div>
+
+          <!-- STEP 5: MANAGE & MONITOR -->
+          <div id="wizard-step-5" class="labs-wizard-panel" style="width:100%; max-width:820px; margin:0 auto 32px;">
+            <div class="labs-wizard-panel-head">
+              <div>
+                <h3 class="labs-wizard-panel-title">⚙️ Step 5 — Manage Token & Liquidity</h3>
+                <p class="labs-wizard-panel-sub">Create DEX liquidity pools on STON.fi or DeDust, mint supply, or renounce admin keys.</p>
+              </div>
+              <span class="labs-badge-subtle">Step 5 of 6</span>
+            </div>
+
+            <!-- Token Details Header Card -->
+            <div class="wizard-review-box" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div style="width:48px; height:48px; border-radius:50%; background:rgba(0,210,255,0.15); border:1px solid var(--labs-cyan); display:flex; align-items:center; justify-content:center; font-size:22px;">🪙</div>
+                <div>
+                  <div style="font-size:18px; font-weight:700; color:#fff;">
+                    <span id="labs-tm-token-name">MoonDog</span> <span id="labs-tm-token-symbol" style="color:var(--labs-cyan);">($MOON)</span>
+                  </div>
+                  <div style="font-size:12px; font-family:var(--font-mono); color:var(--labs-text-muted);">
+                    Minter: <span id="labs-tm-token-addr">EQ...</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <span class="labs-token-badge-verified">✓ Standard TEP-74 Jetton</span>
+              </div>
+            </div>
+
+            <!-- Liquidity Pool Initialization on STON.fi / DeDust -->
+            <div class="labs-inner-box" style="margin-bottom:20px;">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+                <span style="font-size:20px;">💧</span>
+                <strong style="color:#fff; font-size:15px;">DEX Liquidity Pool Initialization</strong>
+              </div>
+              <p style="font-size:12px; color:var(--labs-text-sub); margin-top:0;">
+                Pair your tokens with TON on major DEXs so anyone can swap and buy.
+              </p>
+
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
+                <button id="dex-btn-stonfi" class="labs-btn-secondary" style="border-color:var(--labs-cyan); color:var(--labs-cyan);" onclick="selectDex('stonfi')">🔵 STON.fi</button>
+                <button id="dex-btn-dedust" class="labs-btn-secondary" onclick="selectDex('dedust')">🌀 DeDust.io</button>
+              </div>
+
+              <button id="init-pool-btn" class="labs-btn-primary" style="width:100%; padding:12px;" onclick="provideLiquidityWeb3(event)">
+                🚀 Initialize Liquidity Pool on STON.fi ↗
+              </button>
+            </div>
+
+            <!-- Additional Minting Card -->
+            <div id="mint-card" class="labs-inner-box" style="margin-bottom:20px; border-color:rgba(168,85,247,0.3);">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                <span style="font-size:20px;">⚗️</span>
+                <strong style="color:#fff; font-size:15px;">Mint Additional Tokens</strong>
+              </div>
+              <div id="mint-renounced-banner" style="display:none; background:rgba(255,68,68,0.1); border:1px solid rgba(255,68,68,0.3); border-radius:10px; padding:12px; margin-bottom:12px; font-size:12px; color:#ff8888;">
+                🔒 <strong>Admin Renounced On-Chain:</strong> Contract supply is permanently fixed. Additional minting is impossible.
+              </div>
+              <div style="display:grid; grid-template-columns: 1fr auto; gap:12px;">
+                <input type="number" id="mint-amount" class="labs-input" value="1000000" placeholder="Amount to mint"/>
+                <button id="mint-btn" class="btn-solid" style="background:rgba(168,85,247,0.2); border:1px solid #a855f7; color:#a855f7; padding:10px 18px; border-radius:10px; cursor:pointer;" onclick="mintMoreTokensWeb3(event)">
+                  Mint to Wallet
+                </button>
+              </div>
+            </div>
+
+            <!-- Renounce Admin Safeguard Card -->
+            <div id="renounce-card" class="labs-inner-box" style="border-color:rgba(255,68,68,0.3); background:rgba(255,0,0,0.02);">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                <span style="font-size:20px;">🔒</span>
+                <strong style="color:#ff6b6b; font-size:15px;">Irreversible Action: Renounce Admin Rights</strong>
+              </div>
+              <p style="font-size:12px; color:var(--labs-text-sub); margin-top:0; line-height:1.5;">
+                Permanently burn the creator admin key on the TON blockchain. After renouncing, no one can ever mint more tokens or modify contract parameters.
+              </p>
+              <input type="hidden" id="renounce-minter-addr" value=""/>
+              <button id="renounce-btn" class="btn-solid" style="width:100%; background:rgba(255,68,68,0.12); border:1px solid #ff4444; color:#ff4444; padding:12px; border-radius:10px; cursor:pointer; font-weight:700;" onclick="labsOpenRenounceConfirmModal()">
+                🔒 Renounce Admin Rights (Burn Key)
+              </button>
+            </div>
+
+            <div class="labs-wizard-actions">
+              <button class="labs-btn-secondary" style="width:auto; padding:12px 24px;" onclick="labsGoToStep(4)">← Back to Vesting</button>
+              <button class="labs-btn-primary" style="width:auto; padding:12px 28px;" onclick="labsGoToStep(6)">Continue to Analytics →</button>
+            </div>
+          </div>
+
+          <!-- STEP 6: ANALYZE & GROW -->
+          <div id="wizard-step-6" class="labs-wizard-panel" style="width:100%; max-width:820px; margin:0 auto 32px;">
+            <div class="labs-wizard-panel-head">
+              <div>
+                <h3 class="labs-wizard-panel-title">📊 Step 6 — Real-Time Analytics</h3>
+                <p class="labs-wizard-panel-sub">Verified on-chain data sourced directly from TonAPI v2.</p>
+              </div>
+              <span class="labs-badge-subtle">Step 6 of 6</span>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="labs-stats-grid-2x2" style="margin-bottom:20px;">
+              <div class="labs-stat-cell">
+                <span class="labs-stat-label">Total On-Chain Supply</span>
+                <span id="labs-ana-total-supply" class="labs-stat-val">---</span>
+              </div>
+              <div class="labs-stat-cell">
+                <span class="labs-stat-label">Circulating Supply</span>
+                <span id="labs-ana-circ-supply" class="labs-stat-val">---</span>
+              </div>
+              <div class="labs-stat-cell">
+                <span class="labs-stat-label">Verified Holders</span>
+                <span id="labs-ana-holders" class="labs-stat-val">---</span>
+              </div>
+              <div class="labs-stat-cell">
+                <span class="labs-stat-label">Blockchain Network</span>
+                <span class="labs-stat-val" style="color:var(--labs-green);">TON Mainnet</span>
+              </div>
+            </div>
+
+            <!-- Market / DEX Status Box -->
+            <div id="labs-ana-pool-status" class="wizard-review-box" style="margin-bottom:20px;">
+              <div style="font-size:12px; color:var(--labs-text-muted);">
+                Select an active token or deploy a Jetton in Step 2 to inspect real-time metrics.
+              </div>
+            </div>
+
+            <!-- Top Holders Breakdown -->
+            <div class="labs-inner-box" style="margin-bottom:20px;">
+              <div style="font-size:13px; font-weight:700; color:#fff; margin-bottom:12px;">Top On-Chain Token Holders</div>
+              <div id="labs-ana-holders-list" class="labs-holders-list">
+                <div style="padding:12px; text-align:center; color:var(--labs-text-muted); font-size:12px;">
+                  Connect wallet and select your token to load holders.
+                </div>
+              </div>
+            </div>
+
+            <!-- Hidden Sparkline Canvas & compatibility tags -->
+            <div style="display:none;">
+              <canvas id="labs-ana-sparkline"></canvas>
+              <span id="labs-tm-total-supply"></span>
+              <span id="labs-tm-circ-supply"></span>
+              <span id="labs-tm-holders-count"></span>
+              <span id="labs-tm-mcap"></span>
+              <span id="labs-ana-volume"></span>
+              <span id="labs-ana-liquidity"></span>
+            </div>
+
+            <div class="labs-wizard-actions">
+              <button class="labs-btn-secondary" style="width:auto; padding:12px 24px;" onclick="labsGoToStep(5)">← Back to Management</button>
+              <div style="display:flex; gap:12px;">
+                <a id="labs-ana-tonscan-link" href="https://tonscan.org" target="_blank" class="btn-ent" style="text-decoration:none; padding:12px 20px; font-size:13px; border-radius:10px;">
+                  Inspect on TonScan ↗
+                </a>
+                <button class="labs-btn-primary" style="width:auto; padding:12px 24px;" onclick="labsGoToStep(1)">
+                  + Create Another Token
+                </button>
+              </div>
             </div>
           </div>
 
@@ -770,6 +976,70 @@
       <!-- ═════════════════════════════════════════════════════════════════ -->
       <!-- MODAL: MULTI-WALLET DISTRIBUTOR REVIEW                            -->
       <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- MODAL: DEPLOY CONFIRMATION (STEP 2 SAFEGUARD)                      -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <div id="deploy-confirm-modal" class="labs-modal-backdrop">
+        <div class="labs-modal-card" style="max-width:480px;">
+          <div class="labs-modal-head">
+            <h3 class="labs-modal-title">🚀 Confirm Jetton Deployment</h3>
+            <button class="labs-modal-close" onclick="labsCloseModal('deploy-confirm-modal')">×</button>
+          </div>
+          <p style="font-size:13px; color:var(--labs-text-sub); line-height:1.5;">
+            You are about to deploy a new Jetton minter contract on the TON blockchain.
+          </p>
+          <div style="background:rgba(0,140,255,0.08); border:1px solid rgba(0,210,255,0.3); border-radius:12px; padding:16px; margin:16px 0;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px;">
+              <span style="color:var(--labs-text-muted);">Token:</span>
+              <strong style="color:#fff;"><span id="deploy-confirm-token-name">MoonDog</span> (<span id="deploy-confirm-token-symbol">$MOON</span>)</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px;">
+              <span style="color:var(--labs-text-muted);">Initial Mint:</span>
+              <strong style="color:#fff;" id="deploy-confirm-token-supply">1,000,000,000</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:13px;">
+              <span style="color:var(--labs-text-muted);">Estimated Network Fee:</span>
+              <strong style="color:var(--labs-cyan);">~0.20 TON</strong>
+            </div>
+          </div>
+          <p style="font-size:12px; color:var(--labs-text-muted); line-height:1.4;">
+            Your connected TON wallet (Tonkeeper / Telegram Wallet) will prompt you to review and sign the transaction.
+          </p>
+          <div style="display:flex; justify-content:space-between; gap:12px; margin-top:20px;">
+            <button class="labs-btn-secondary" style="width:auto; padding:10px 18px;" onclick="labsCloseModal('deploy-confirm-modal')">Cancel</button>
+            <button class="labs-btn-primary" style="width:auto; padding:10px 24px;" onclick="labsExecuteDeployFromWizard()">Confirm & Sign in Wallet</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- MODAL: RENOUNCE CONFIRMATION (STEP 5 IRREVERSIBLE SAFEGUARD)       -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <div id="renounce-confirm-modal" class="labs-modal-backdrop">
+        <div class="labs-modal-card" style="max-width:500px; border-color:rgba(255,68,68,0.4);">
+          <div class="labs-modal-head">
+            <h3 class="labs-modal-title" style="color:#ff6b6b;">⚠️ Irreversible: Renounce Admin Rights</h3>
+            <button class="labs-modal-close" onclick="labsCloseModal('renounce-confirm-modal')">×</button>
+          </div>
+          <div style="background:rgba(255,68,68,0.08); border:1px solid rgba(255,68,68,0.3); border-radius:10px; padding:14px; margin:14px 0;">
+            <p style="color:#ff8888; font-size:13px; line-height:1.6; margin:0;">
+              <strong>CRITICAL WARNING:</strong> Renouncing admin burns your creator key permanently on the TON blockchain.
+              Once confirmed, <strong>no one (including you)</strong> will ever be able to mint more tokens or alter contract metadata.
+            </p>
+          </div>
+          <label style="display:flex; align-items:flex-start; gap:10px; font-size:12px; color:#fff; cursor:pointer; margin-bottom:20px;">
+            <input type="checkbox" id="renounce-confirm-checkbox" style="margin-top:2px; accent-color:#ff4444;"/>
+            <span>I understand that this action is 100% irreversible and that token minting privileges will be permanently destroyed.</span>
+          </label>
+          <div style="display:flex; justify-content:space-between; gap:12px;">
+            <button class="labs-btn-secondary" style="width:auto; padding:10px 18px;" onclick="labsCloseModal('renounce-confirm-modal')">Cancel</button>
+            <button class="labs-btn-primary" style="width:auto; padding:10px 24px; background:rgba(255,68,68,0.2); border:1px solid #ff4444; color:#ff4444;" onclick="labsConfirmRenounceExecution(event)">
+              Permanently Renounce Admin
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div id="distributor-modal" class="labs-modal-backdrop">
         <div class="labs-modal-card">
           <div class="labs-modal-head">
@@ -1069,6 +1339,12 @@
                 </button>
                 <div id="logo-url-container" style="display:none; margin-top:8px;">
                   <input id="lp-logo" type="text" class="token-search-input" placeholder="Logo URL (IPFS/HTTPS)"/>
+                  <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px;">
+                    <span style="font-size:11px; color:var(--text-muted);">Public Presets:</span>
+                    <button type="button" onclick="setLogoPreset('https://i.imgur.com/wTRp9LD.png')" style="background:rgba(0,240,255,0.08); border:1px solid rgba(0,240,255,0.25); color:var(--accent-cyan); font-size:11px; padding:3px 8px; border-radius:6px; cursor:pointer;">💎 Cyan Gem</button>
+                    <button type="button" onclick="setLogoPreset('https://i.imgur.com/ZmigChS.png')" style="background:rgba(255,200,0,0.08); border:1px solid rgba(255,200,0,0.25); color:#ffd700; font-size:11px; padding:3px 8px; border-radius:6px; cursor:pointer;">🐕 Doge Meme</button>
+                    <button type="button" onclick="setLogoPreset('https://anlgram.com/assets/img/favicon.svg')" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:11px; padding:3px 8px; border-radius:6px; cursor:pointer;">⚡ ANL Logo</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1364,11 +1640,31 @@
          return;
       }
   
-      const name = document.getElementById('lp-name').value || 'Memecoin';
-      const symbol = document.getElementById('lp-symbol').value || 'MEME';
-      const desc = document.getElementById('lp-desc').value || 'A new Jetton on TON.';
-      const rawLogo = document.getElementById('lp-logo').value || 'https://anlgram.io/logo.png';
-    const logo = typeof sanitizeUrl === 'function' ? sanitizeUrl(rawLogo, 'https://anlgram.io/logo.png') : rawLogo;
+      const name = document.getElementById('lp-name')?.value || document.getElementById('labs-card1-name')?.value || 'Memecoin';
+      const symbol = document.getElementById('lp-symbol')?.value || document.getElementById('labs-card1-symbol')?.value || 'MEME';
+      const desc = document.getElementById('lp-desc')?.value || 'A new Jetton on TON.';
+      const rawLogo = document.getElementById('lp-logo')?.value || (window.wizardState?.tokenDraft?.logoUrl) || (window.wizardState?.tokenDraft?.logoDataUrl) || 'https://anlgram.io/logo.png';
+    let logo = typeof sanitizeUrl === 'function' ? sanitizeUrl(rawLogo, 'https://anlgram.io/logo.png') : rawLogo;
+
+    // 🛡️ DEX & Wallet Compatibility Check (TEP-64 standard for STON.fi, DeDust, Tonkeeper, TonViewer)
+    if (logo.startsWith('data:') || (!logo.startsWith('http://') && !logo.startsWith('https://') && !logo.startsWith('ipfs://'))) {
+      const userConfirm = confirm(
+        '\u26a0\ufe0f AVISO DE COMPATIBILIDAD DEX Y WALLETS (TEP-64):\n\n' +
+        'La imagen seleccionada est\u00e1 en formato local (data:URI).\n' +
+        'Para que el logo aparezca correctamente indexado en Tonkeeper, STON.fi, DeDust, MyTonWallet y Exploradores, se requiere una URL p\u00fablica (HTTPS o IPFS).\n\n' +
+        '\u2022 Presiona \'Aceptar\' para continuar usando el logo oficial p\u00fablico (https://anlgram.io/logo.png).\n' +
+        '\u2022 Presiona \'Cancelar\' para ingresar o subir una URL p\u00fablica HTTPS.'
+      );
+      if (!userConfirm) {
+        btn.innerHTML = origHTML;
+        btn.style.pointerEvents = 'auto';
+        const urlContainer = document.getElementById('logo-url-container');
+        if (urlContainer) urlContainer.style.display = 'block';
+        document.getElementById('lp-logo')?.focus();
+        return;
+      }
+      logo = 'https://anlgram.io/logo.png';
+    }
   
       const origHTML = btn.innerHTML;
       btn.innerHTML = '<span class="status-dot"></span> Construyendo Metadatos (TEP-64)...';
@@ -1478,6 +1774,10 @@
         };
   
         await tc.sendTransaction(transaction);
+        
+        window.dispatchEvent(new CustomEvent('anlgramJettonDeployed', {
+          detail: { destAddress, destAddressMint, name, symbol }
+        }));
         
         btn.innerHTML = '✅ Jetton Desplegado con Éxito (On-Chain)!';
         btn.style.background = 'rgba(0,255,100,0.2)';

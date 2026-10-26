@@ -635,6 +635,34 @@
     });
   }
 
+  // Global helper for one-click Public CDN logo presets
+  window.setLogoPreset = function(url) {
+    const urlInput = document.getElementById('lp-logo');
+    const previewImg = document.getElementById('logo-preview-img');
+    const previewPlaceholder = document.getElementById('logo-preview-placeholder');
+    const statusText = document.getElementById('logo-upload-status');
+    const card1Preview = document.querySelector('.labs-avatar-preview');
+    const uploadBtn = document.getElementById('lp-upload-btn');
+
+    if (urlInput) urlInput.value = url;
+    if (previewImg) {
+      previewImg.src = url;
+      previewImg.style.display = 'block';
+    }
+    if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+    if (statusText) {
+      statusText.innerHTML = '✅ Public CDN Logo active (Ready for DEXs & Wallets)';
+      statusText.style.color = 'var(--green)';
+    }
+    if (uploadBtn) {
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = '📂 Change Image';
+    }
+    if (card1Preview) {
+      card1Preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+    }
+  };
+
   // ══════════════════════════════════════════════════════════
   // FEE BREAKDOWN UI
   // ══════════════════════════════════════════════════════════

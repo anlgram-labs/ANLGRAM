@@ -104,6 +104,30 @@ const server = http.createServer((req, res) => {
             return;
           }
 
+          let publicCdnUrl = null;
+          const imgurClientIds = ['546c25a59c58ad7', 'c06eb6f6b5b5ba3'];
+          for (const cId of imgurClientIds) {
+            try {
+              const fd = new FormData();
+              fd.append('image', base64);
+              fd.append('type', 'base64');
+              const imgurRes = await fetch('https://api.imgur.com/3/image', {
+                method: 'POST',
+                headers: { 'Authorization': `Client-ID ${cId}` },
+                body: fd
+              });
+              if (imgurRes.ok) {
+                const imgurJson = await imgurRes.json();
+                if (imgurJson.data && imgurJson.data.link) {
+                  publicCdnUrl = imgurJson.data.link.replace('http://', 'https://');
+                  break;
+                }
+              }
+            } catch (err) {
+              // fallback to next
+            }
+          }
+
           const buffer = Buffer.from(base64, 'base64');
           const uploadsDir = path.join(__dirname, 'assets', 'uploads');
           if (!fs.existsSync(uploadsDir)) {
@@ -113,13 +137,20 @@ const server = http.createServer((req, res) => {
           const filePath = path.join(uploadsDir, filename);
           fs.writeFileSync(filePath, buffer);
 
-          const localUrl = `/assets/uploads/${filename}`;
+          // Use public global CDN URL if available, otherwise absolute production URL
+          const finalUrl = publicCdnUrl || `https://anlgram.com/assets/uploads/${filename}`;
+
           res.writeHead(200, {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
             ...SECURITY_HEADERS
           });
-          res.end(JSON.stringify({ success: true, url: localUrl, filename }));
+          res.end(JSON.stringify({ 
+            success: true, 
+            url: finalUrl, 
+            isGlobalCdn: !!publicCdnUrl,
+            filename 
+          }));
         } catch (uploadErr) {
           res.writeHead(500, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
           res.end(JSON.stringify({ error: uploadErr.message }));
