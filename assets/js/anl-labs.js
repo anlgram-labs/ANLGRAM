@@ -181,11 +181,26 @@
 
     // Prerequisite checks
     if (stepNum > 1 && wizardState.mode === 'create') {
-      const name = wizardState.tokenDraft.name.trim();
-      const symbol = wizardState.tokenDraft.symbol.trim();
+      const name = (wizardState.tokenDraft.name || '').trim();
+      const symbol = (wizardState.tokenDraft.symbol || '').trim();
       if (!name || !symbol) {
-        alert('⚠️ Please enter both a Token Name and Symbol in Step 1 before proceeding.');
+        const errBox = document.getElementById('wizard-step1-error');
+        if (errBox) {
+          errBox.style.display = 'flex';
+          const desc = document.getElementById('wizard-step1-error-desc');
+          if (desc) {
+            if (!name && !symbol) desc.textContent = 'Please provide both a Token Name and Symbol (ticker) to continue.';
+            else if (!name) desc.textContent = 'Please provide a Token Name to continue.';
+            else desc.textContent = 'Please provide a Token Symbol (ticker) to continue.';
+          }
+        }
+        const inputToFocus = !name ? document.getElementById('labs-card1-name') : document.getElementById('labs-card1-symbol');
+        if (inputToFocus) inputToFocus.focus();
         stepNum = 1;
+        return;
+      } else {
+        const errBox = document.getElementById('wizard-step1-error');
+        if (errBox) errBox.style.display = 'none';
       }
     }
 
@@ -219,11 +234,17 @@
       }
     });
 
+    // Desktop continuous progress track fill
+    const pct = Math.round((stepNum / 6) * 100);
+    const desktopBarFill = document.getElementById('labs-wizard-progress-bar-fill');
+    if (desktopBarFill) {
+      desktopBarFill.style.width = `${pct}%`;
+    }
+
     // 2. Update Mobile Stepper
     const mobileTitle = document.getElementById('labs-mobile-step-title');
     const mobilePct = document.getElementById('labs-mobile-step-pct');
     const mobileBarFill = document.getElementById('labs-mobile-bar-fill');
-    const pct = Math.round((stepNum / 6) * 100);
 
     if (mobileTitle) mobileTitle.textContent = `Step ${stepNum} of 6: ${STEP_TITLES[stepNum - 1]}`;
     if (mobilePct) mobilePct.textContent = `${pct}%`;
@@ -256,6 +277,16 @@
     if (wizardTop) {
       wizardTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+
+    // Auto-focus next interactive element
+    setTimeout(() => {
+      if (targetPanel) {
+        const focusable = targetPanel.querySelector('input:not([readonly]):not([type="file"]), textarea, button.labs-btn-primary');
+        if (focusable && typeof focusable.focus === 'function') {
+          focusable.focus({ preventScroll: true });
+        }
+      }
+    }, 60);
   };
 
   // ═══════════════════════════════════════════════════════════════════
@@ -340,32 +371,37 @@
       if (lp && lp.value !== value) lp.value = value;
       labsUpdateAvatarPreviews(value);
     }
+
+    // Clear step 1 inline error if required fields filled
+    if (wizardState.tokenDraft.name && wizardState.tokenDraft.symbol) {
+      const errBox = document.getElementById('wizard-step1-error');
+      if (errBox) errBox.style.display = 'none';
+    }
+
+    if (window.labsUpdateStep1DexPreview) window.labsUpdateStep1DexPreview();
+  };
+
+  window.labsUpdateStep1DexPreview = function () {
+    const nameEl = document.getElementById('labs-card1-name');
+    const symEl = document.getElementById('labs-card1-symbol');
+    const dexName = document.getElementById('dex-preview-name');
+    const dexSym = document.getElementById('dex-preview-symbol');
+    const dexEmoji = document.getElementById('dex-preview-emoji');
+    const avatarEmoji = document.getElementById('labs-avatar-emoji');
+
+    if (dexName && nameEl) dexName.textContent = nameEl.value.trim() || 'My Token';
+    if (dexSym && symEl) dexSym.textContent = symEl.value.trim() ? ('$' + symEl.value.trim().toUpperCase()) : '$TOKEN';
+    if (dexEmoji && avatarEmoji && !dexEmoji.querySelector('img')) {
+      dexEmoji.textContent = avatarEmoji.textContent || '🪙';
+    }
   };
 
   function labsUpdateAvatarPreviews(url) {
     if (!url) return;
-    document.querySelectorAll('.labs-avatar-preview, #logo-preview-container').forEach((el) => {
-      el.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+    document.querySelectorAll('.labs-avatar-preview, #logo-preview-container, .wizard-dex-preview-avatar').forEach((el) => {
+      el.innerHTML = `<img src="${url}" alt="Token Logo" style="width:100%; height:100%; object-fit:cover; border-radius:50%;"/>`;
     });
   }
-
-  // Preserved handler: Card 1 legacy sync
-  window.labsSyncTokenCard = function () {
-    const cardName = document.getElementById('labs-card1-name');
-    const cardSymbol = document.getElementById('labs-card1-symbol');
-    if (cardName) window.labsSetWizardDraftField('name', cardName.value);
-    if (cardSymbol) window.labsSetWizardDraftField('symbol', cardSymbol.value);
-  };
-
-  // Preserved handler: Trigger Create Token
-  window.labsTriggerCreateToken = function () {
-    window.labsSyncTokenCard();
-    window.labsGoToStep(2);
-  };
-
-  // ═══════════════════════════════════════════════════════════════════
-  // 4. STEP 2: REVIEW & DEPLOY CONFIRMATION
-  // ═══════════════════════════════════════════════════════════════════
 
   function labsUpdateReviewScreen() {
     const tc = window.tonConnectUI;

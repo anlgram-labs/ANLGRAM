@@ -344,6 +344,9 @@
 
         <!-- Desktop Stepper -->
         <div class="labs-wizard-stepper" id="labs-desktop-stepper">
+          <div class="labs-wizard-progress-track">
+            <div id="labs-wizard-progress-bar-fill" class="labs-wizard-progress-bar-fill" style="width: 16.6%;"></div>
+          </div>
           <div class="labs-step-node active" data-step="1" onclick="labsGoToStep(1)">
             <div class="labs-step-circle">1</div>
             <div class="labs-step-label-group">
@@ -413,78 +416,126 @@
         <div class="labs-flow-wrapper wizard-flow-wrapper">
 
           <!-- STEP 1: CREATE TOKEN -->
-          <div id="wizard-step-1" class="labs-wizard-panel active" style="width:100%; max-width:820px; margin:0 auto 32px;">
+          <div id="wizard-step-1" class="labs-wizard-panel active">
             <div class="labs-wizard-panel-head">
               <div>
                 <h3 class="labs-wizard-panel-title">🪙 Step 1 — Create Token</h3>
-                <p class="labs-wizard-panel-sub">Configure your new Jetton parameters on TON blockchain.</p>
+                <p class="labs-wizard-panel-sub">Configure your new Jetton parameters on the TON blockchain with live preview.</p>
               </div>
               <span class="labs-badge-subtle">Step 1 of 6</span>
             </div>
 
-            <div style="display:grid; grid-template-columns: 120px 1fr; gap:24px; align-items:start; margin-bottom:24px;">
-              <!-- Logo Preview & Upload -->
-              <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-                <div class="labs-avatar-preview" style="width:96px; height:96px; border-radius:50%; border:2px dashed rgba(0,210,255,0.4); background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                  <span id="labs-avatar-emoji" style="font-size:36px;">🐶</span>
+            <!-- Balanced 2-Column Responsive Layout -->
+            <div class="wizard-step1-grid">
+              <!-- Left Column: Branding, Upload & Live DEX Preview -->
+              <div class="wizard-step1-brand-col">
+                <div class="wizard-brand-card">
+                  <div class="wizard-logo-preview-wrap">
+                    <div class="labs-avatar-preview" id="labs-avatar-preview-box">
+                      <span id="labs-avatar-emoji" style="font-size:42px;">🐶</span>
+                    </div>
+                    <div class="wizard-logo-actions">
+                      <div style="position:relative; width:100%;">
+                        <input type="file" id="lp-logo-file" accept="image/*" style="position:absolute; width:100%; height:100%; opacity:0; cursor:pointer; left:0; top:0; z-index:10;"/>
+                        <button type="button" class="btn-ent" id="lp-upload-btn" style="width:100%; padding:8px 12px; font-size:12px; font-weight:600; text-align:center; border:1px solid var(--labs-cyan); color:var(--labs-cyan); border-radius:10px; background:rgba(0,210,255,0.08); cursor:pointer;">
+                          📂 Upload Logo Image
+                        </button>
+                      </div>
+                      <button type="button" onclick="const c = document.getElementById('logo-url-container'); c.style.display = c.style.display === 'none' ? 'block' : 'none';" style="background:none; border:none; color:var(--labs-cyan); font-size:11px; cursor:pointer; padding:4px 0; text-decoration:underline;">
+                        🔗 Or paste image URL
+                      </button>
+                      <div id="logo-url-container" style="display:none; width:100%; margin-top:6px;">
+                        <label class="labs-label" style="font-size:11px;">Image URL (HTTPS or IPFS)</label>
+                        <input type="text" id="lp-logo" class="labs-input" placeholder="https://example.com/logo.png" oninput="labsSetWizardDraftField('logoUrl', this.value); if(window.labsUpdateStep1DexPreview) window.labsUpdateStep1DexPreview();"/>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Live DEX Mini Preview Card -->
+                  <div class="wizard-dex-preview-card">
+                    <div class="wizard-dex-preview-header">
+                      <span class="wizard-dex-live-tag">● LIVE DEX PREVIEW</span>
+                      <span class="wizard-dex-net-tag">TON MAINNET</span>
+                    </div>
+                    <div class="wizard-dex-preview-body">
+                      <div class="wizard-dex-preview-avatar">
+                        <span id="dex-preview-emoji">🐶</span>
+                      </div>
+                      <div class="wizard-dex-preview-meta">
+                        <div class="wizard-dex-preview-name" id="dex-preview-name">MoonDog</div>
+                        <div class="wizard-dex-preview-sub">
+                          <span class="wizard-dex-symbol-pill" id="dex-preview-symbol">$MOON</span>
+                          <span class="wizard-dex-std-pill">TEP-74 Jetton</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="wizard-dex-preview-footer">
+                      <div class="wizard-dex-stat">
+                        <span class="wizard-dex-stat-lbl">Initial Supply</span>
+                        <span class="wizard-dex-stat-val" id="dex-preview-supply">1,000,000,000</span>
+                      </div>
+                      <div class="wizard-dex-stat">
+                        <span class="wizard-dex-stat-lbl">Decimals</span>
+                        <span class="wizard-dex-stat-val">9</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div style="position:relative; width:100%;">
-                  <input type="file" id="lp-logo-file" accept="image/*" style="position:absolute; width:100%; height:100%; opacity:0; cursor:pointer; left:0; top:0; z-index:10;"/>
-                  <button type="button" class="btn-ent" id="lp-upload-btn" style="width:100%; padding:6px; font-size:11px; text-align:center; border:1px solid var(--labs-cyan); color:var(--labs-cyan); border-radius:8px;">
-                    📂 Upload Logo
-                  </button>
-                </div>
-                <button type="button" onclick="const c = document.getElementById('logo-url-container'); c.style.display = c.style.display === 'none' ? 'block' : 'none';" style="background:none; border:none; color:var(--labs-text-sub); font-size:10px; cursor:pointer; padding:0; text-decoration:underline;">
-                  Paste URL
-                </button>
               </div>
 
-              <!-- Form Fields -->
-              <div style="display:grid; gap:16px;">
-                <div id="logo-url-container" style="display:none;">
-                  <label class="labs-label">Logo URL (IPFS or HTTPS)</label>
-                  <input type="text" id="lp-logo" class="labs-input" placeholder="https://example.com/logo.png" oninput="labsSetWizardDraftField('logoUrl', this.value)"/>
-                </div>
-
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                  <div class="labs-field">
-                    <label class="labs-label">Token Name *</label>
-                    <input type="text" id="labs-card1-name" class="labs-input" value="MoonDog" placeholder="e.g. MoonDog" oninput="labsSetWizardDraftField('name', this.value)"/>
-                  </div>
-                  <div class="labs-field">
-                    <label class="labs-label">Token Symbol (Ticker) *</label>
-                    <input type="text" id="labs-card1-symbol" class="labs-input" value="MOON" placeholder="e.g. MOON" oninput="labsSetWizardDraftField('symbol', this.value.toUpperCase())"/>
+              <!-- Right Column: Form Inputs & Validations -->
+              <div class="wizard-step1-fields-col">
+                <!-- Inline validation alert container -->
+                <div id="wizard-step1-error" class="labs-banner error" style="display:none; margin-bottom:16px;">
+                  <span class="labs-banner-icon">⚠️</span>
+                  <div class="labs-banner-content">
+                    <strong id="wizard-step1-error-title">Missing Required Fields</strong>
+                    <p id="wizard-step1-error-desc" style="font-size:12px; margin-top:2px;">Please provide a valid Token Name and Symbol (ticker) to continue.</p>
                   </div>
                 </div>
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <div class="wizard-fields-grid-2">
                   <div class="labs-field">
-                    <label class="labs-label">Total Initial Supply</label>
+                    <label class="labs-label" for="labs-card1-name">Token Name *</label>
+                    <input type="text" id="labs-card1-name" class="labs-input" value="MoonDog" placeholder="e.g. MoonDog" oninput="labsSetWizardDraftField('name', this.value); if(window.labsUpdateStep1DexPreview) window.labsUpdateStep1DexPreview();"/>
+                    <span class="labs-helper-text">The full display name of your token (e.g. MoonDog, Telegram Doge).</span>
+                  </div>
+                  <div class="labs-field">
+                    <label class="labs-label" for="labs-card1-symbol">Token Symbol (Ticker) *</label>
+                    <input type="text" id="labs-card1-symbol" class="labs-input" value="MOON" placeholder="e.g. MOON" maxlength="10" oninput="labsSetWizardDraftField('symbol', this.value.toUpperCase()); if(window.labsUpdateStep1DexPreview) window.labsUpdateStep1DexPreview();"/>
+                    <span class="labs-helper-text">Short 2-10 letter trading ticker (e.g. MOON, ANL).</span>
+                  </div>
+                </div>
+
+                <div class="wizard-fields-grid-2" style="margin-top:16px;">
+                  <div class="labs-field">
+                    <label class="labs-label" for="labs-card1-supply">Total Initial Supply</label>
                     <input type="text" id="labs-card1-supply" class="labs-input" value="1,000,000,000" readonly/>
-                    <span style="font-size:10px; color:var(--labs-text-muted); margin-top:2px;">Standard 1 Billion supply (minted directly to creator)</span>
+                    <span class="labs-helper-text">Standard 1 Billion supply, minted 100% directly to your connected creator wallet upon deployment.</span>
                   </div>
                   <div class="labs-field">
                     <label class="labs-label">Decimals</label>
                     <input type="text" class="labs-input" value="9" readonly/>
-                    <span style="font-size:10px; color:var(--labs-text-muted); margin-top:2px;">Standard Jetton TEP-74 precision</span>
+                    <span class="labs-helper-text">Standard Jetton TEP-74 precision (1 nanoTON = 10⁻⁹).</span>
                   </div>
                 </div>
 
-                <div class="labs-field">
-                  <label class="labs-label">Description (Optional)</label>
-                  <textarea id="lp-desc" class="labs-input" style="height:60px; resize:none;" placeholder="A community-driven meme coin on TON." oninput="labsSetWizardDraftField('description', this.value)"></textarea>
+                <div class="labs-field" style="margin-top:16px;">
+                  <label class="labs-label" for="lp-desc">Token Description (Optional)</label>
+                  <textarea id="lp-desc" class="labs-input" style="height:76px; resize:none;" placeholder="A community-driven meme coin powered by ANLGRAM on the TON blockchain." oninput="labsSetWizardDraftField('description', this.value)"></textarea>
+                  <span class="labs-helper-text">Visible in on-chain metadata and TonScan / Tonviewer explorer listings.</span>
                 </div>
               </div>
             </div>
 
             <div class="labs-wizard-actions">
               <span style="font-size:12px; color:var(--labs-text-muted);">* Required fields for Jetton deployment</span>
-              <button class="labs-btn-primary" style="width:auto; padding:12px 28px;" onclick="labsGoToStep(2)">Continue to Review & Deploy →</button>
+              <button class="labs-btn-primary" style="width:auto; padding:12px 32px;" onclick="labsGoToStep(2)">Continue to Review & Deploy →</button>
             </div>
           </div>
 
           <!-- STEP 2: REVIEW & DEPLOY -->
-          <div id="wizard-step-2" class="labs-wizard-panel" style="width:100%; max-width:820px; margin:0 auto 32px;">
+          <div id="wizard-step-2" class="labs-wizard-panel">
             <div class="labs-wizard-panel-head">
               <div>
                 <h3 class="labs-wizard-panel-title">🚀 Step 2 — Review & Deploy</h3>
@@ -577,7 +628,7 @@
           </div>
 
           <!-- STEP 3: DISTRIBUTE TOKENS -->
-          <div id="wizard-step-3" class="labs-wizard-panel" style="width:100%; max-width:820px; margin:0 auto 32px;">
+          <div id="wizard-step-3" class="labs-wizard-panel">
             <div class="labs-wizard-panel-head">
               <div>
                 <h3 class="labs-wizard-panel-title">✈️ Step 3 — Distribute Tokens</h3>
@@ -640,7 +691,7 @@
           </div>
 
           <!-- STEP 4: LOCK TOKENS (VESTING) -->
-          <div id="wizard-step-4" class="labs-wizard-panel" style="width:100%; max-width:820px; margin:0 auto 32px;">
+          <div id="wizard-step-4" class="labs-wizard-panel">
             <div class="labs-wizard-panel-head">
               <div>
                 <h3 class="labs-wizard-panel-title">🔒 Step 4 — Lock Tokens (Vesting)</h3>
@@ -713,7 +764,7 @@
           </div>
 
           <!-- STEP 5: MANAGE & MONITOR -->
-          <div id="wizard-step-5" class="labs-wizard-panel" style="width:100%; max-width:820px; margin:0 auto 32px;">
+          <div id="wizard-step-5" class="labs-wizard-panel">
             <div class="labs-wizard-panel-head">
               <div>
                 <h3 class="labs-wizard-panel-title">⚙️ Step 5 — Manage Token & Liquidity</h3>
@@ -799,7 +850,7 @@
           </div>
 
           <!-- STEP 6: ANALYZE & GROW -->
-          <div id="wizard-step-6" class="labs-wizard-panel" style="width:100%; max-width:820px; margin:0 auto 32px;">
+          <div id="wizard-step-6" class="labs-wizard-panel">
             <div class="labs-wizard-panel-head">
               <div>
                 <h3 class="labs-wizard-panel-title">📊 Step 6 — Real-Time Analytics</h3>
