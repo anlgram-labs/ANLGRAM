@@ -789,7 +789,10 @@
             <!-- Token Details Header Card -->
             <div class="wizard-review-box" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
               <div style="display:flex; align-items:center; gap:14px;">
-                <div id="labs-tm-token-avatar" style="width:48px; height:48px; border-radius:50%; background:rgba(0,210,255,0.15); border:1px solid var(--labs-cyan); display:flex; align-items:center; justify-content:center; font-size:22px; overflow:hidden; flex-shrink:0;">🪙</div>
+                <div style="position:relative; width:48px; height:48px; flex-shrink:0;">
+                  <div id="labs-tm-token-avatar" style="width:48px; height:48px; border-radius:50%; background:rgba(0,210,255,0.15); border:1px solid var(--labs-cyan); display:flex; align-items:center; justify-content:center; font-size:22px; overflow:hidden; cursor:pointer;" onclick="document.getElementById('step5-logo-file')?.click();" title="Click to upload custom logo">🪙</div>
+                  <input type="file" id="step5-logo-file" accept="image/*" style="display:none;" onchange="if(window.labsChangeStep5Logo) window.labsChangeStep5Logo(this.files[0])"/>
+                </div>
                 <div>
                   <div style="font-size:18px; font-weight:700; color:#fff;">
                     <span id="labs-tm-token-name">MoonDog</span> <span id="labs-tm-token-symbol" style="color:var(--labs-cyan);">($MOON)</span>
@@ -799,7 +802,8 @@
                   </div>
                 </div>
               </div>
-              <div>
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <button type="button" class="btn-ent" style="padding:6px 14px; font-size:11px; cursor:pointer; border-radius:8px; border:1px solid var(--labs-cyan); color:var(--labs-cyan); background:rgba(0,210,255,0.06);" onclick="document.getElementById('step5-logo-file')?.click();">📷 Change Token Logo</button>
                 <span class="labs-token-badge-verified">✓ Standard TEP-74 Jetton</span>
               </div>
             </div>
@@ -1702,8 +1706,8 @@
       const name = (document.getElementById('labs-card1-name')?.value || document.getElementById('lp-name')?.value || window.wizardState?.tokenDraft?.name || 'Memecoin').trim();
       const symbol = (document.getElementById('labs-card1-symbol')?.value || document.getElementById('lp-symbol')?.value || window.wizardState?.tokenDraft?.symbol || 'MEME').trim().toUpperCase();
       const desc = (document.getElementById('lp-desc')?.value || window.wizardState?.tokenDraft?.description || 'A new Jetton on TON.').trim();
-      const rawLogo = (document.getElementById('lp-logo')?.value || window.wizardState?.tokenDraft?.logoUrl || window.wizardState?.tokenDraft?.logoDataUrl || localStorage.getItem('anlgram_last_uploaded_logo') || 'https://anlgram.io/logo.png').trim();
-      let logo = typeof sanitizeUrl === 'function' ? sanitizeUrl(rawLogo, 'https://anlgram.io/logo.png') : rawLogo;
+      const rawLogo = (document.getElementById('lp-logo')?.value || window.wizardState?.tokenDraft?.logoUrl || window.wizardState?.tokenDraft?.logoDataUrl || localStorage.getItem('anlgram_last_uploaded_logo') || 'https://anlgram.com/assets/images/icon-192.png').trim();
+      let logo = typeof sanitizeUrl === 'function' ? sanitizeUrl(rawLogo, 'https://anlgram.com/assets/images/icon-192.png') : rawLogo;
 
     // 🛡️ DEX & Wallet Compatibility Check (TEP-64 standard for STON.fi, DeDust, Tonkeeper, TonViewer)
     if (logo.startsWith('data:') || (!logo.startsWith('http://') && !logo.startsWith('https://') && !logo.startsWith('ipfs://'))) {
@@ -1711,7 +1715,7 @@
         '\u26a0\ufe0f AVISO DE COMPATIBILIDAD DEX Y WALLETS (TEP-64):\n\n' +
         'La imagen seleccionada est\u00e1 en formato local (data:URI).\n' +
         'Para que el logo aparezca correctamente indexado en Tonkeeper, STON.fi, DeDust, MyTonWallet y Exploradores, se requiere una URL p\u00fablica (HTTPS o IPFS).\n\n' +
-        '\u2022 Presiona \'Aceptar\' para continuar usando el logo oficial p\u00fablico (https://anlgram.io/logo.png).\n' +
+        '\u2022 Presiona \'Aceptar\' para continuar usando el logo oficial p\u00fablico (https://anlgram.com/assets/images/icon-192.png).\n' +
         '\u2022 Presiona \'Cancelar\' para ingresar o subir una URL p\u00fablica HTTPS.'
       );
       if (!userConfirm) {
@@ -1722,7 +1726,7 @@
         document.getElementById('lp-logo')?.focus();
         return;
       }
-      logo = 'https://anlgram.io/logo.png';
+      logo = 'https://anlgram.com/assets/images/icon-192.png';
     }
   
       const origHTML = btn.innerHTML;

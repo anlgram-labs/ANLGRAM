@@ -72,7 +72,7 @@
     }
 
     try {
-      const parsed = new URL(trimmed, window?.location?.href || 'https://anlgram.io');
+      const parsed = new URL(trimmed, window?.location?.href || 'https://anlgram.com');
       const allowedProtocols = ['https:', 'http:', 'ton:', 'tg:'];
       if (allowedProtocols.includes(parsed.protocol)) {
         return trimmed;
@@ -196,7 +196,7 @@
     }
 
     const payload = {
-      domain: domain || (typeof window !== 'undefined' ? window.location.host : 'anlgram.io'),
+      domain: domain || (typeof window !== 'undefined' ? window.location.host : 'anlgram.com'),
       timestamp: Date.now(),
       nonce: randomBytes,
       expiresAt: Date.now() + (15 * 60 * 1000) // 15 minutes TTL

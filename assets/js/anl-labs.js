@@ -410,8 +410,9 @@
 
   function labsUpdateAvatarPreviews(url) {
     if (!url) return;
+    const safeUrl = url.includes('anlgram.io') ? 'https://anlgram.com/assets/images/icon-192.png' : url;
     document.querySelectorAll('.labs-avatar-preview, #logo-preview-container, .wizard-dex-preview-avatar').forEach((el) => {
-      el.innerHTML = `<img src="${url}" alt="Token Logo" style="width:100%; height:100%; object-fit:cover; border-radius:50%;"/>`;
+      el.innerHTML = `<img src="${safeUrl}" onerror="this.onerror=null; this.src='https://anlgram.com/assets/images/icon-192.png';" alt="Token Logo" style="width:100%; height:100%; object-fit:cover; border-radius:50%;"/>`;
     });
   }
 
@@ -444,9 +445,10 @@
     }
 
     if (rAvatar) {
-      const logo = draft.logoUrl || draft.logoDataUrl;
+      let logo = draft.logoUrl || draft.logoDataUrl;
+      if (logo && logo.includes('anlgram.io')) logo = 'https://anlgram.com/assets/images/icon-192.png';
       if (logo) {
-        rAvatar.innerHTML = `<img src="${logo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+        rAvatar.innerHTML = `<img src="${logo}" onerror="this.onerror=null; this.src='https://anlgram.com/assets/images/icon-192.png';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
       } else {
         rAvatar.innerHTML = `<span style="font-size:24px;">🪙</span>`;
       }
@@ -1229,20 +1231,20 @@
     if (renAddr) renAddr.value = friendlyAddr;
 
     // Render Token Avatar in Step 5 Header
+    const defaultLogo = 'https://anlgram.com/assets/images/icon-192.png';
     let tokenImage = token.image || wizardState.tokenDraft?.logoUrl || wizardState.tokenDraft?.logoDataUrl || '';
-    if (!tokenImage) {
+    if (!tokenImage || tokenImage.includes('anlgram.io')) {
       try {
         const cached = JSON.parse(localStorage.getItem('anlgram_token_' + token.address) || '{}');
         tokenImage = cached.image || localStorage.getItem('anlgram_last_uploaded_logo') || '';
       } catch (e) {}
     }
+    if (!tokenImage || tokenImage.includes('anlgram.io')) {
+      tokenImage = defaultLogo;
+    }
 
     if (tmAvatar) {
-      if (tokenImage) {
-        tmAvatar.innerHTML = `<img src="${tokenImage}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
-      } else {
-        tmAvatar.innerHTML = `<span style="font-size:22px;">🪙</span>`;
-      }
+      tmAvatar.innerHTML = `<img src="${tokenImage}" onerror="this.onerror=null; this.src='${defaultLogo}';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
     }
 
     // Query on-chain Jetton metadata from TonAPI to reflect live status
@@ -1251,9 +1253,13 @@
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (data && data.metadata && data.metadata.image) {
-            token.image = data.metadata.image;
+            let fetchedImg = data.metadata.image;
+            if (fetchedImg.includes('anlgram.io')) {
+              fetchedImg = defaultLogo;
+            }
+            token.image = fetchedImg;
             if (tmAvatar) {
-              tmAvatar.innerHTML = `<img src="${data.metadata.image}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+              tmAvatar.innerHTML = `<img src="${fetchedImg}" onerror="this.onerror=null; this.src='${defaultLogo}';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
             }
           }
         })
@@ -1297,6 +1303,100 @@
   function friendlyMinterAddress(addr) {
     return addr || '';
   }
+
+  // Dynamic token logo changer for Step 5
+  window.labsChangeStep5Logo = async function (file) {
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) {
+      alert('Please select a valid image file (PNG, JPG, WEBP, or SVG).');
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      alert('File size exceeds 15MB limit.');
+      return;
+    }
+
+    const tmAvatar = document.getElementById('labs-tm-token-avatar');
+    if (tmAvatar) {
+      tmAvatar.style.opacity = '0.5';
+    }
+
+    try {
+      const reader = new FileReader();
+      const dataUrl = await new Promise((resolve, reject) => {
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      let finalUrl = dataUrl;
+      try {
+        const img = new Image();
+        img.src = dataUrl;
+        await new Promise((res) => { img.onload = res; img.onerror = res; });
+        if (img.width && img.height) {
+          const maxDim = 512;
+          let w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+            else { w = Math.round((w * maxDim) / h); h = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          finalUrl = canvas.toDataURL('image/png', 0.9);
+        }
+      } catch (cvErr) {}
+
+      // Try server upload endpoint if available
+      try {
+        const base64Data = finalUrl.split(',')[1] || '';
+        if (base64Data) {
+          const res = await fetch('/api/upload-logo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64Data })
+          });
+          if (res.ok) {
+            const j = await res.json();
+            if (j.url) finalUrl = j.url;
+          }
+        }
+      } catch (netErr) {}
+
+      const activeToken = wizardState.activeToken;
+      if (activeToken) {
+        activeToken.image = finalUrl;
+        if (activeToken.address) {
+          try {
+            const existing = JSON.parse(localStorage.getItem('anlgram_token_' + activeToken.address) || '{}');
+            localStorage.setItem('anlgram_token_' + activeToken.address, JSON.stringify({ ...existing, ...activeToken, image: finalUrl }));
+          } catch (e) {}
+        }
+      }
+      try {
+        localStorage.setItem('anlgram_last_uploaded_logo', finalUrl);
+      } catch (e) {}
+
+      // Update avatar element in Step 5
+      if (tmAvatar) {
+        tmAvatar.style.opacity = '1';
+        tmAvatar.innerHTML = `<img src="${finalUrl}" onerror="this.onerror=null; this.src='https://anlgram.com/assets/images/icon-192.png';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+      }
+
+      // Also update any other avatar containers across the wizard
+      document.querySelectorAll('.labs-avatar-preview, #labs-avatar-preview-box, #labs-review-avatar, .wizard-dex-preview-avatar, #logo-preview-container').forEach((el) => {
+        el.innerHTML = `<img src="${finalUrl}" onerror="this.onerror=null; this.src='https://anlgram.com/assets/images/icon-192.png';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+      });
+
+      console.log('Step 5 Token Logo updated successfully:', finalUrl.substring(0, 60) + '...');
+    } catch (err) {
+      console.error('Error changing Step 5 token logo:', err);
+      if (tmAvatar) tmAvatar.style.opacity = '1';
+      alert('Error updating logo. Please try another image.');
+    }
+  };
 
   window.labsOpenRenounceConfirmModal = function () {
     labsOpenModal('renounce-confirm-modal');

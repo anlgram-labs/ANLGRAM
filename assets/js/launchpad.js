@@ -566,7 +566,7 @@
         // Update Card 1 avatar in ANL Labs immediately
         const card1Preview = document.querySelector('.labs-avatar-preview');
         if (card1Preview && optimized.dataUrl) {
-          card1Preview.innerHTML = `<img src="${optimized.dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+          card1Preview.innerHTML = `<img src="${optimized.dataUrl}" onerror="this.onerror=null; this.src='https://anlgram.com/assets/images/icon-192.png';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
         }
       } catch (optErr) {
         console.warn('Image optimization fallback:', optErr);
@@ -642,7 +642,7 @@
       // Universal synchronization of ALL avatar elements in ANL Labs
       if (finalUrl) {
         document.querySelectorAll('.labs-avatar-preview, #labs-avatar-preview-box, #labs-review-avatar, #labs-tm-token-avatar, .wizard-dex-preview-avatar, #logo-preview-container').forEach((el) => {
-          el.innerHTML = `<img src="${finalUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+          el.innerHTML = `<img src="${finalUrl}" onerror="this.onerror=null; this.src='https://anlgram.com/assets/images/icon-192.png';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
         });
       }
     });
@@ -685,7 +685,7 @@
 
     // Update all avatar boxes
     document.querySelectorAll('.labs-avatar-preview, #labs-avatar-preview-box, #labs-review-avatar, #labs-tm-token-avatar, .wizard-dex-preview-avatar, #logo-preview-container').forEach((el) => {
-      el.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+      el.innerHTML = `<img src="${url}" onerror="this.onerror=null; this.src='https://anlgram.com/assets/images/icon-192.png';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
     });
   };
 
