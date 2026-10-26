@@ -1412,7 +1412,7 @@ function sanitizeUrl(url, fallback = '#') {
   if (!url || typeof url !== 'string') return fallback;
   const trimmed = url.trim();
   const lower = trimmed.toLowerCase();
-  if (lower.startsWith('javascript:') || lower.startsWith('data:') || lower.startsWith('vbscript:')) {
+  if (lower.startsWith('javascript:') || (lower.startsWith('data:') && !lower.startsWith('data:image/')) || lower.startsWith('vbscript:')) {
     return fallback;
   }
   return trimmed;

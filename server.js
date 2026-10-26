@@ -17,7 +17,7 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://*.workers.dev https://raw.githubusercontent.com https://tonapi.io https://api.ston.fi https://*.ston.fi https://testnet.tonapi.io https://*.tonapi.io https://toncenter.com https://testnet.toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io https://telegram.org; frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://telegram.org; object-src 'none'; base-uri 'self';"
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://api.imgur.com https://*.imgur.com https://i.imgur.com https://freeimage.host https://litterbox.catbox.moe https://catbox.moe https://*.workers.dev https://raw.githubusercontent.com https://tonapi.io https://api.ston.fi https://*.ston.fi https://testnet.tonapi.io https://*.tonapi.io https://toncenter.com https://testnet.toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io https://telegram.org; frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://telegram.org; object-src 'none'; base-uri 'self';"
 };
 
 // In-memory cache for TonAPI proxy responses
@@ -62,6 +62,71 @@ const server = http.createServer((req, res) => {
     res.writeHead(400, { 'Content-Type': 'text/plain', ...SECURITY_HEADERS });
     res.end('Bad Request');
     return;
+  }
+
+  // Handle /api/upload-logo endpoint
+  if (cleanUrl === '/api/upload-logo') {
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Accept',
+        'Access-Control-Max-Age': '86400',
+        ...SECURITY_HEADERS
+      });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk;
+        if (body.length > 10 * 1024 * 1024) {
+          res.writeHead(413, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+          res.end(JSON.stringify({ error: 'Payload too large' }));
+          req.destroy();
+        }
+      });
+      req.on('end', async () => {
+        try {
+          let base64 = '';
+          if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+            const parsed = JSON.parse(body);
+            base64 = (parsed.image || parsed.data || '').replace(/^data:image\/[a-zA-Z0-9\+\-\.]+;base64,/, '');
+          } else {
+            base64 = body.replace(/^data:image\/[a-zA-Z0-9\+\-\.]+;base64,/, '');
+          }
+
+          if (!base64) {
+            res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+            res.end(JSON.stringify({ error: 'No image data provided' }));
+            return;
+          }
+
+          const buffer = Buffer.from(base64, 'base64');
+          const uploadsDir = path.join(__dirname, 'assets', 'uploads');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          const filename = `token-logo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}.png`;
+          const filePath = path.join(uploadsDir, filename);
+          fs.writeFileSync(filePath, buffer);
+
+          const localUrl = `/assets/uploads/${filename}`;
+          res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            ...SECURITY_HEADERS
+          });
+          res.end(JSON.stringify({ success: true, url: localUrl, filename }));
+        } catch (uploadErr) {
+          res.writeHead(500, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+          res.end(JSON.stringify({ error: uploadErr.message }));
+        }
+      });
+      return;
+    }
   }
 
   // Handle secure TonAPI proxy endpoint to keep API keys server-side
