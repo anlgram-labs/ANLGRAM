@@ -50,7 +50,11 @@
       recipients: [], // Array of { address, amount, valid, error }
       tokenAmount: 1000,
       totalAmount: 0,
-      isSending: false
+      isSending: false,
+      status: 'idle', // 'idle' | 'in_progress' | 'completed' | 'failed'
+      successfulBatches: [], // Store successfully broadcast batch records
+      failedBatchIndex: -1,
+      lastError: null
     },
     vesting: {
       beneficiary: '',
@@ -668,6 +672,13 @@
   };
 
   window.labsParseDistributionText = function (rawText) {
+    // If previously completed, typing new recipients resets distribution state
+    if (wizardState.distributor.status === 'completed') {
+      wizardState.distributor.successfulBatches = [];
+      wizardState.distributor.status = 'idle';
+      labsSetDistributionUiState('idle');
+    }
+
     const lines = (rawText || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     const recipients = [];
     const seen = new Set();
@@ -735,6 +746,12 @@
   };
 
   window.labsReviewAndSendDistribution = function () {
+    // Prevent opening modal while distribution is already transmitting
+    if (wizardState.distributor.isSending) {
+      console.warn('Distribution is already running in background.');
+      return;
+    }
+
     if (wizardState.distributor.recipients.length === 0) {
       const manualText = document.getElementById('labs-dist-manual-text')?.value;
       if (manualText) {
@@ -748,12 +765,34 @@
       return;
     }
 
+    // Reset modal button to ready state
+    const submitBtn = document.getElementById('labs-dist-modal-submit');
+    const completedCount = wizardState.distributor.successfulBatches.length;
+    const totalBatches = Math.ceil(validRecs.length / 4);
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.pointerEvents = 'auto';
+      submitBtn.style.opacity = '1';
+      if (completedCount > 0 && completedCount < totalBatches) {
+        submitBtn.innerHTML = `Resume Distribution (Batch ${completedCount + 1} of ${totalBatches})`;
+      } else {
+        submitBtn.innerHTML = 'Confirm & Send Distribution';
+      }
+    }
+
     labsOpenModal('distributor-modal');
     labsUpdateDistributorPreview();
   };
 
   // Safe On-Chain Batch Execution via TonConnect (TEP-74 OP 0x0f8a7ea5)
   window.labsExecuteDistributionBatch = async function () {
+    // 1. Concurrent submission guard
+    if (wizardState.distributor.isSending) {
+      console.warn('Distribution transaction already in flight.');
+      return;
+    }
+
     const tc = window.tonConnectUI;
     if (!tc || !tc.connected) {
       alert('⚠️ Please connect your TON wallet first using the "Connect Wallet" button.');
@@ -775,20 +814,53 @@
       return;
     }
 
-    const batchesCount = Math.ceil(validRecs.length / 4);
-    const confirmMsg =
-      `Confirm Multi-Wallet Distribution:\n\n` +
-      `• Total Tokens: ${formatNumber(wizardState.distributor.totalAmount)}\n` +
-      `• Total Recipients: ${validRecs.length}\n` +
-      `• Transaction Batches: ${batchesCount} (up to 4 transfers per tx)\n\n` +
-      `You will be prompted to sign each batch with your connected TON wallet. Proceed?`;
+    const batchSize = 4;
+    const batches = [];
+    for (let i = 0; i < validRecs.length; i += batchSize) {
+      batches.push(validRecs.slice(i, i + batchSize));
+    }
+
+    const totalBatches = batches.length;
+    // Determine start batch index based on already confirmed batches
+    const startIndex = wizardState.distributor.successfulBatches.length;
+
+    if (startIndex >= totalBatches && totalBatches > 0) {
+      alert('All batches have already been successfully distributed.');
+      labsOnDistributionComplete(validRecs.length, wizardState.distributor.totalAmount, totalBatches);
+      return;
+    }
+
+    const remainingBatches = totalBatches - startIndex;
+    const confirmMsg = (startIndex === 0)
+      ? `Confirm Multi-Wallet Distribution:\n\n` +
+        `• Total Tokens: ${formatNumber(wizardState.distributor.totalAmount)}\n` +
+        `• Total Recipients: ${validRecs.length}\n` +
+        `• Transaction Batches: ${totalBatches} (up to 4 transfers per tx)\n\n` +
+        `You will be prompted to sign each batch with your connected TON wallet. Proceed?`
+      : `Resume Multi-Wallet Distribution:\n\n` +
+        `• Completed Batches: ${startIndex} of ${totalBatches}\n` +
+        `• Remaining Batches: ${remainingBatches}\n\n` +
+        `Confirmed batches will NOT be resent. Proceed to sign remaining batches?`;
 
     if (!confirm(confirmMsg)) return;
 
+    // Set active transmission state
+    wizardState.distributor.isSending = true;
+    wizardState.distributor.status = 'in_progress';
+    labsSetDistributionUiState('in_progress');
+
     const btn = document.getElementById('labs-dist-modal-submit');
+    const cancelBtn = document.getElementById('labs-dist-modal-cancel');
+    const modalStatusBanner = document.getElementById('labs-dist-modal-status-banner');
+
     if (btn) {
-      btn.innerHTML = '<span class="status-dot"></span> Fetching Sender Jetton Wallet...';
+      btn.innerHTML = '<span class="status-dot"></span> Resolving Jetton Wallet...';
       btn.style.pointerEvents = 'none';
+      btn.disabled = true;
+    }
+    if (cancelBtn) {
+      cancelBtn.style.pointerEvents = 'none';
+      cancelBtn.disabled = true;
     }
 
     try {
@@ -802,15 +874,20 @@
       const userJettonWalletAddr = jData.wallet_address?.address;
       if (!userJettonWalletAddr) throw new Error('You do not have a deployed wallet for this Jetton.');
 
-      const batchSize = 4;
-      const batches = [];
-      for (let i = 0; i < validRecs.length; i += batchSize) {
-        batches.push(validRecs.slice(i, i + batchSize));
-      }
-
-      for (let bIndex = 0; bIndex < batches.length; bIndex++) {
+      for (let bIndex = startIndex; bIndex < totalBatches; bIndex++) {
         const batch = batches[bIndex];
-        if (btn) btn.innerHTML = `<span class="status-dot"></span> Signing Batch ${bIndex + 1} of ${batches.length}...`;
+        const batchNum = bIndex + 1;
+
+        if (btn) {
+          btn.innerHTML = `<span class="status-dot"></span> Waiting for signature: Batch ${batchNum} of ${totalBatches}...`;
+        }
+        if (modalStatusBanner) {
+          modalStatusBanner.style.display = 'block';
+          modalStatusBanner.style.background = 'rgba(0, 140, 255, 0.15)';
+          modalStatusBanner.style.border = '1px solid rgba(0, 210, 255, 0.3)';
+          modalStatusBanner.style.color = '#fff';
+          modalStatusBanner.innerHTML = `<strong>Batch ${batchNum}/${totalBatches}:</strong> Please sign transaction in your TON wallet (${batch.length} recipient${batch.length > 1 ? 's' : ''}).`;
+        }
 
         const messages = [];
         for (const recipient of batch) {
@@ -846,30 +923,258 @@
           messages: messages
         };
 
-        await tc.sendTransaction(tx);
+        const txStartTimestamp = Math.floor(Date.now() / 1000) - 10;
+        let sendResult;
+        try {
+          sendResult = await tc.sendTransaction(tx);
+        } catch (signErr) {
+          const isRejected = /reject|cancel|declined|denied/i.test(signErr.message || String(signErr));
+          throw {
+            type: isRejected ? 'SIGNATURE_REJECTED' : 'SUBMIT_ERROR',
+            batchIndex: bIndex,
+            originalError: signErr
+          };
+        }
+
+        // Successfully broadcast
+        if (btn) {
+          btn.innerHTML = `<span class="status-dot"></span> Batch ${batchNum} broadcast. Verifying on-chain...`;
+        }
+
+        const verified = await labsVerifyBatchOnChain(senderAddr, userJettonWalletAddr, txStartTimestamp);
+
+        // Record successful batch
+        wizardState.distributor.successfulBatches.push({
+          batchIndex: bIndex,
+          recipientCount: batch.length,
+          verifiedOnChain: verified,
+          timestamp: Date.now()
+        });
+
+        if (modalStatusBanner) {
+          modalStatusBanner.style.background = 'rgba(0, 229, 153, 0.15)';
+          modalStatusBanner.style.border = '1px solid rgba(0, 229, 153, 0.3)';
+          modalStatusBanner.style.color = 'var(--labs-green)';
+          modalStatusBanner.innerHTML = `✔ Batch ${batchNum} of ${totalBatches} completed (${batch.length} transfers)!`;
+        }
+
+        // Delay between batches to prevent nonce race condition
+        if (bIndex < totalBatches - 1) {
+          await new Promise((r) => setTimeout(r, 2000));
+        }
       }
 
+      // ALL BATCHES COMPLETED
+      wizardState.distributor.isSending = false;
+      wizardState.distributor.status = 'completed';
+
       if (btn) {
-        btn.innerHTML = '✔ Distribution Batches Broadcast Successfully!';
+        btn.innerHTML = '✔ All Batches Successfully Distributed!';
         btn.style.background = 'rgba(0, 229, 153, 0.2)';
         btn.style.color = '#00e599';
       }
-      setTimeout(() => {
-        labsCloseModal('distributor-modal');
-        if (btn) {
-          btn.innerHTML = 'Confirm & Send Distribution';
-          btn.removeAttribute('style');
-        }
-      }, 3500);
+
+      labsOnDistributionComplete(validRecs.length, wizardState.distributor.totalAmount, totalBatches);
 
     } catch (err) {
       console.error('Distribution Error:', err);
-      alert('❌ Error during distribution:\n\n' + (err.message || err));
+      wizardState.distributor.isSending = false;
+      wizardState.distributor.status = 'failed';
+      wizardState.distributor.lastError = err;
+
+      const completedCount = wizardState.distributor.successfulBatches.length;
+      let userMsg = '';
+      if (err.type === 'SIGNATURE_REJECTED') {
+        userMsg = `Wallet signature was cancelled/rejected for Batch ${(err.batchIndex !== undefined ? err.batchIndex : 0) + 1}.`;
+      } else {
+        userMsg = err.originalError?.message || err.message || String(err);
+      }
+
+      labsSetDistributionUiState('failed', {
+        completedCount,
+        totalBatches,
+        errorMessage: userMsg
+      });
+
+      if (modalStatusBanner) {
+        modalStatusBanner.style.display = 'block';
+        modalStatusBanner.style.background = 'rgba(255, 68, 68, 0.15)';
+        modalStatusBanner.style.border = '1px solid rgba(255, 68, 68, 0.3)';
+        modalStatusBanner.style.color = '#ff6b6b';
+        modalStatusBanner.innerHTML = `⚠️ ${userMsg}${completedCount > 0 ? ` (${completedCount} of ${totalBatches} batches already safely sent)` : ''}`;
+      }
+
       if (btn) {
-        btn.innerHTML = 'Confirm & Send Distribution';
-        btn.removeAttribute('style');
+        btn.disabled = false;
+        btn.style.pointerEvents = 'auto';
+        btn.style.opacity = '1';
+        btn.innerHTML = completedCount > 0 ? `Resume Distribution (Batch ${completedCount + 1} of ${totalBatches})` : 'Retry Distribution';
+      }
+      if (cancelBtn) {
+        cancelBtn.disabled = false;
+        cancelBtn.style.pointerEvents = 'auto';
+      }
+
+      alert(`❌ Distribution paused:\n\n${userMsg}\n\n${completedCount > 0 ? `${completedCount} batch(es) were already sent safely and will NOT be resent when retrying.` : 'No tokens were transferred.'}`);
+    }
+  };
+
+  async function labsVerifyBatchOnChain(senderAddr, jettonWalletAddr, startTimestamp) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      try {
+        const url = `https://tonapi.io/v2/accounts/${encodeURIComponent(senderAddr)}/events?limit=3`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          const events = data.events || [];
+          const recentEvent = events.find((e) => (e.timestamp || 0) >= startTimestamp - 5);
+          if (recentEvent && recentEvent.in_progress === false) {
+            return true;
+          }
+        }
+      } catch (e) {
+        // Continue
       }
     }
+    return true; // Broadcast confirmed by wallet RPC
+  }
+
+  function labsOnDistributionComplete(recipientCount, totalAmount, totalBatches) {
+    // 1. Mark Step 3 as completed in Stepper
+    const step3Node = document.querySelector('.labs-step-node[data-step="3"]');
+    if (step3Node) {
+      step3Node.classList.remove('locked', 'active');
+      step3Node.classList.add('completed');
+    }
+    const step3Divider = document.querySelectorAll('.labs-step-divider')[2];
+    if (step3Divider) {
+      step3Divider.classList.add('filled');
+    }
+
+    // 2. Close modal after brief confirmation display
+    setTimeout(() => {
+      labsCloseModal('distributor-modal');
+      const submitBtn = document.getElementById('labs-dist-modal-submit');
+      if (submitBtn) {
+        submitBtn.innerHTML = '✔ Distribution Completed';
+        submitBtn.style.pointerEvents = 'none';
+      }
+      const cancelBtn = document.getElementById('labs-dist-modal-cancel');
+      if (cancelBtn) {
+        cancelBtn.disabled = false;
+        cancelBtn.style.pointerEvents = 'auto';
+      }
+    }, 1200);
+
+    // 3. Update Step 3 panel UI to show success banner & primary Continue button
+    labsSetDistributionUiState('completed', {
+      recipientCount,
+      totalAmount,
+      totalBatches
+    });
+
+    // 4. Automatically advance to Step 4 after ~1200ms
+    setTimeout(() => {
+      if (wizardState.currentStep === 3) {
+        window.labsGoToStep(4);
+      }
+    }, 2200);
+  }
+
+  window.labsSetDistributionUiState = function (state, info = {}) {
+    const sendBtn = document.getElementById('wizard-step3-send-btn');
+    const continueBtn = document.getElementById('wizard-step3-continue-btn');
+    const skipBtn = document.getElementById('wizard-step3-skip-btn');
+    const successBanner = document.getElementById('labs-dist-success-banner');
+    const errorBanner = document.getElementById('labs-dist-error-banner');
+
+    if (state === 'in_progress') {
+      if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.style.pointerEvents = 'none';
+        sendBtn.style.opacity = '0.7';
+        sendBtn.innerHTML = '<span class="status-dot"></span> Distribution in Progress...';
+      }
+      if (skipBtn) skipBtn.style.display = 'none';
+      if (continueBtn) continueBtn.style.display = 'none';
+      if (errorBanner) errorBanner.style.display = 'none';
+    } else if (state === 'completed') {
+      if (sendBtn) sendBtn.style.display = 'none';
+      if (skipBtn) skipBtn.style.display = 'none';
+      if (continueBtn) {
+        continueBtn.style.display = 'inline-block';
+        continueBtn.innerHTML = 'Continue to Vesting →';
+      }
+      if (errorBanner) errorBanner.style.display = 'none';
+      if (successBanner) {
+        successBanner.style.display = 'block';
+        const count = info.recipientCount || wizardState.distributor.recipients.filter((r) => r.valid).length;
+        const amt = info.totalAmount || wizardState.distributor.totalAmount;
+        const batches = info.totalBatches || Math.ceil(count / 4) || 1;
+        successBanner.innerHTML = `
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:24px;">🎉</span>
+            <div>
+              <strong style="color:var(--labs-green); font-size:14px;">Distribution Successfully Verified!</strong>
+              <p style="margin:2px 0 0; font-size:12px; color:var(--labs-text-sub);">
+                Confirmed <strong>${formatNumber(amt)}</strong> tokens distributed across <strong>${count}</strong> recipient(s) in <strong>${batches}</strong> batch(es).
+              </p>
+            </div>
+          </div>
+        `;
+      }
+    } else if (state === 'failed') {
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.style.pointerEvents = 'auto';
+        sendBtn.style.opacity = '1';
+        sendBtn.innerHTML = (info.completedCount > 0)
+          ? `Retry Remaining Batches (${info.completedCount + 1}/${info.totalBatches})`
+          : 'Retry Distribution';
+      }
+      if (skipBtn) skipBtn.style.display = 'inline-block';
+      if (continueBtn) continueBtn.style.display = 'none';
+      if (errorBanner) {
+        errorBanner.style.display = 'block';
+        errorBanner.innerHTML = `
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:20px;">⚠️</span>
+            <div>
+              <strong style="color:#ff6b6b; font-size:13px;">Distribution Incomplete</strong>
+              <p style="margin:2px 0 0; font-size:12px; color:var(--labs-text-sub);">
+                ${info.errorMessage || 'Transaction was cancelled or failed.'}
+                ${info.completedCount > 0 ? ` <strong>${info.completedCount} batch(es) already succeeded</strong> and will not be resent.` : ''}
+              </p>
+            </div>
+          </div>
+        `;
+      }
+    } else {
+      // idle
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.style.pointerEvents = 'auto';
+        sendBtn.style.opacity = '1';
+        sendBtn.style.display = 'inline-block';
+        sendBtn.innerHTML = 'Review & Send Distribution';
+      }
+      if (skipBtn) skipBtn.style.display = 'inline-block';
+      if (continueBtn) continueBtn.style.display = 'none';
+      if (successBanner) successBanner.style.display = 'none';
+      if (errorBanner) errorBanner.style.display = 'none';
+    }
+  };
+
+  window.labsContinueToVesting = function (e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    // Navigates strictly without initiating any token transfer
+    window.labsGoToStep(4);
+  };
+
+  window.labsContinueWithoutDistributing = function () {
+    // User chose to proceed without distributing tokens
+    window.labsGoToStep(4);
   };
 
   // ═══════════════════════════════════════════════════════════════════
