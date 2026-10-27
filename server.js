@@ -37,6 +37,8 @@ const ALLOWED_PROXY_ROUTES = [
   /^\/jettons\/[a-zA-Z0-9_\-\:]+$/,
   /^\/jettons\/[a-zA-Z0-9_\-\:]+\/holders$/,
   /^\/blockchain\/transactions\/[a-fA-F0-9]+$/,
+  /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+$/,
+  /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/methods\/[a-zA-Z0-9_]+$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/transactions$/,
   /^\/blockchain\/masterchain-head$/
 ];
@@ -61,6 +63,88 @@ const server = http.createServer((req, res) => {
   } catch (e) {
     res.writeHead(400, { 'Content-Type': 'text/plain', ...SECURITY_HEADERS });
     res.end('Bad Request');
+    return;
+  }
+
+  // Handle /api/verify-token endpoint (Institutional On-Chain Verification Engine)
+  if (cleanUrl === '/api/verify-token') {
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Accept',
+        'Access-Control-Max-Age': '86400',
+        ...SECURITY_HEADERS
+      });
+      res.end();
+      return;
+    }
+
+    const clientIp = req.socket.remoteAddress || 'local';
+    if (!checkClientRateLimit(clientIp)) {
+      res.writeHead(429, {
+        'Content-Type': 'application/json',
+        'Retry-After': '10',
+        ...SECURITY_HEADERS
+      });
+      res.end(JSON.stringify({ error: 'Client rate limit reached. Retrying in 10s...' }));
+      return;
+    }
+
+    const executeVerification = async (targetAddress, forceFresh) => {
+      if (!targetAddress || typeof targetAddress !== 'string') {
+        res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+        res.end(JSON.stringify({ error: 'Missing or invalid token address parameter' }));
+        return;
+      }
+      try {
+        const verifier = require('./assets/js/token-verification-engine.js');
+        const report = await verifier.verifyToken(targetAddress.trim(), { forceFresh });
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, max-age=15',
+          ...SECURITY_HEADERS
+        });
+        res.end(JSON.stringify(report));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+        res.end(JSON.stringify({ error: err.message || 'Verification failed' }));
+      }
+    };
+
+    if (req.method === 'GET') {
+      const urlObj = new URL(req.url, 'http://localhost');
+      const address = urlObj.searchParams.get('address') || urlObj.searchParams.get('token');
+      const forceFresh = urlObj.searchParams.get('fresh') === 'true' || urlObj.searchParams.get('fresh') === '1';
+      executeVerification(address, forceFresh);
+      return;
+    }
+
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk;
+        if (body.length > 64 * 1024) {
+          res.writeHead(413, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+          res.end(JSON.stringify({ error: 'Payload too large' }));
+          req.destroy();
+        }
+      });
+      req.on('end', () => {
+        try {
+          const parsed = JSON.parse(body || '{}');
+          executeVerification(parsed.address || parsed.token, parsed.forceFresh === true);
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+          res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
+        }
+      });
+      return;
+    }
+
+    res.writeHead(405, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+    res.end(JSON.stringify({ error: 'Method Not Allowed' }));
     return;
   }
 

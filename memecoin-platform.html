@@ -196,11 +196,11 @@
 <body>
 <div class="app-shell">
 
-  <!-- Sidebar -->
-  <aside class="sidebar">
+  <!-- Main ANLGRAM Sidebar Navigation (Brand Theme) -->
+  <aside class="sidebar" id="appSidebar" style="position:fixed; left:0; top:0; bottom:0; width:var(--sidebar-width, 240px); z-index:50; overflow-y:auto; background:var(--surface-base, #040918); border-right:1px solid var(--border-subtle, #1E293B);">
     <a href="index.html" class="sidebar-logo">
       <div class="sidebar-logo-icon"><img src="assets/img/anlgram-icon.svg" alt="ANLGRAM Crystal"/></div>
-      <span class="sidebar-logo-text">ANLGRAM</span>
+      <span class="sidebar-logo-text" style="color:var(--cyan, #00cfff); font-weight:700;">ANLGRAM</span>
     </a>
 
     <nav class="sidebar-nav">
@@ -221,14 +221,14 @@
       <div class="sidebar-section-label" style="margin-top:var(--space-3);">Enterprise</div>
       <a href="memecoin-platform.html" class="nav-item active">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>
-        ANL Labs
-        <span class="nav-badge" style="background:rgba(0,210,255,0.15);color:var(--cyan);border:1px solid rgba(0,210,255,0.25);">FLOW</span>
+        Memecoin Platform
       </a>
       <a href="staking.html" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         Staking Center
         <span class="nav-badge" style="background:rgba(0,136,204,0.15);color:var(--cyan);border:1px solid rgba(0,136,204,0.25);">NEW</span>
       </a>
+
       <div class="sidebar-section-label" style="margin-top:var(--space-3);">Intelligence</div>
       <a href="intel-exchange.html" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
@@ -249,8 +249,8 @@
 
     <div class="sidebar-footer">
       <div class="sidebar-network-badge">
-        <span class="dot-live"></span>
-        Enterprise Node · Active
+        <span class="dot-live" id="sidebarDot"></span>
+        <span id="sidebarNetworkText">TON Mainnet · Connected</span>
       </div>
     </div>
   </aside>
