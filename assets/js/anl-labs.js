@@ -135,13 +135,41 @@
     }
 
     const isTestnet = chainId === '-3' || chainId === -3;
+    const configuredProxy = (!isTestnet && typeof window !== 'undefined' && window.ANLGRAM_TON_PROXY_URL)
+      ? String(window.ANLGRAM_TON_PROXY_URL).replace(/\/+$/, '')
+      : ((!isTestnet && typeof window !== 'undefined' && window.ANLGRAM_CONFIG && window.ANLGRAM_CONFIG.TON_PROXY_URL)
+          ? String(window.ANLGRAM_CONFIG.TON_PROXY_URL).replace(/\/+$/, '')
+          : null);
     return {
       isTestnet,
       chainId: isTestnet ? '-3' : '-239',
-      tonApiBase: isTestnet ? 'https://testnet.tonapi.io/v2' : 'https://tonapi.io/v2',
+      tonApiBase: isTestnet ? 'https://testnet.tonapi.io/v2' : (configuredProxy || 'https://tonapi.io/v2'),
+      tonApiDirectBase: isTestnet ? 'https://testnet.tonapi.io/v2' : 'https://tonapi.io/v2',
       tonscanBase: isTestnet ? 'https://testnet.tonscan.org' : 'https://tonscan.org',
       tonviewerBase: isTestnet ? 'https://testnet.tonviewer.com' : 'https://tonviewer.com'
     };
+  }
+
+  /**
+   * Resilient TonAPI v2 fetcher for ANL Labs:
+   * Routes Mainnet requests through the configured Cloudflare Worker proxy
+   * (window.ANLGRAM_TON_PROXY_URL) with automatic fallback to direct TonAPI v2.
+   */
+  async function labsFetchTonApi(endpoint) {
+    const net = getNetworkContext();
+    const primaryUrl = `${net.tonApiBase}${endpoint}`;
+    try {
+      const res = await fetch(primaryUrl);
+      if (res.ok || res.status === 404) {
+        return res;
+      }
+    } catch (e) {
+      // Fallback to direct TonAPI if proxy is unreachable
+    }
+    if (net.tonApiBase !== net.tonApiDirectBase) {
+      return fetch(`${net.tonApiDirectBase}${endpoint}`);
+    }
+    return fetch(primaryUrl);
   }
 
   function rawToFriendly(raw, bounceable = true) {
@@ -629,7 +657,7 @@
 
       try {
         if (!foundMinter && sender) {
-          const res = await fetch(`${getNetworkContext().tonApiBase}/accounts/${encodeURIComponent(sender)}/jettons`);
+          const res = await labsFetchTonApi(`/accounts/${encodeURIComponent(sender)}/jettons`);
           if (res.ok) {
             const jData = await res.json();
             const balances = jData.balances || [];
@@ -955,7 +983,7 @@
       if (!beginCell) throw new Error('TON Core library not loaded.');
 
       const senderAddr = tc.account.address;
-      const jRes = await fetch(`${getNetworkContext().tonApiBase}/accounts/${encodeURIComponent(senderAddr)}/jettons/${encodeURIComponent(jettonMinter)}`);
+      const jRes = await labsFetchTonApi(`/accounts/${encodeURIComponent(senderAddr)}/jettons/${encodeURIComponent(jettonMinter)}`);
       if (!jRes.ok) throw new Error('Could not find a Jetton wallet for this token in your connected account. Ensure you have balance.');
       const jData = await jRes.json();
       const userJettonWalletAddr = jData.wallet_address?.address;
@@ -1110,8 +1138,7 @@
     for (let attempt = 1; attempt <= 3; attempt++) {
       await new Promise((r) => setTimeout(r, 2000));
       try {
-        const url = `${getNetworkContext().tonApiBase}/accounts/${encodeURIComponent(senderAddr)}/events?limit=3`;
-        const res = await fetch(url);
+        const res = await labsFetchTonApi(`/accounts/${encodeURIComponent(senderAddr)}/events?limit=3`);
         if (res.ok) {
           const data = await res.json();
           const events = data.events || [];
@@ -1468,7 +1495,7 @@
 
       // 2. Fetch standard wallet code from minter
       const netCtx = getNetworkContext();
-      const minterRes = await fetch(`${netCtx.tonApiBase}/blockchain/accounts/${encodeURIComponent(activeToken.address)}`);
+      const minterRes = await labsFetchTonApi(`/blockchain/accounts/${encodeURIComponent(activeToken.address)}`);
       const minterDataJson = await minterRes.json();
       if (!minterDataJson.data) throw new Error('Could not load minter contract data from blockchain.');
 
@@ -1514,7 +1541,7 @@
       }
 
       // 5. Fetch Creator's Jetton Wallet
-      const jRes = await fetch(`${netCtx.tonApiBase}/accounts/${encodeURIComponent(creator.toRawString())}/jettons/${encodeURIComponent(activeToken.address)}`);
+      const jRes = await labsFetchTonApi(`/accounts/${encodeURIComponent(creator.toRawString())}/jettons/${encodeURIComponent(activeToken.address)}`);
       const jData = await jRes.json();
       const creatorJWallet = jData.wallet_address?.address;
       if (!creatorJWallet) {
@@ -1566,7 +1593,7 @@
       for (let i = 0; i < 20; i++) {
         await new Promise(r => setTimeout(r, 3000));
         try {
-          const vRes = await fetch(`${netCtx.tonApiBase}/accounts/${encodeURIComponent(vestingAddress.toRawString())}`);
+          const vRes = await labsFetchTonApi(`/accounts/${encodeURIComponent(vestingAddress.toRawString())}`);
           if (vRes.ok) {
             const vData = await vRes.json();
             if (vData.status === 'active') {
@@ -1646,7 +1673,7 @@
 
     // Query on-chain Jetton metadata from TonAPI to reflect live status
     if (token.address) {
-      fetch(`${getNetworkContext().tonApiBase}/jettons/${encodeURIComponent(token.address)}`)
+      labsFetchTonApi(`/jettons/${encodeURIComponent(token.address)}`)
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (data && data.metadata && data.metadata.image) {
@@ -1887,7 +1914,7 @@
 
     try {
       // 1. Query TON blockchain get_jetton_data method
-      const res = await fetch(`${getNetworkContext().tonApiBase}/blockchain/accounts/${encodeURIComponent(friendlyAddr)}/methods/get_jetton_data`);
+      const res = await labsFetchTonApi(`/blockchain/accounts/${encodeURIComponent(friendlyAddr)}/methods/get_jetton_data`);
       if (!res.ok) {
         throw new Error(`TonAPI returned HTTP ${res.status}`);
       }
@@ -1906,7 +1933,7 @@
 
       // Jetton metadata for decimals
       try {
-        const metaRes = await fetch(`${getNetworkContext().tonApiBase}/jettons/${encodeURIComponent(friendlyAddr)}`);
+        const metaRes = await labsFetchTonApi(`/jettons/${encodeURIComponent(friendlyAddr)}`);
         if (metaRes.ok) {
           const meta = await metaRes.json();
           if (meta.metadata && meta.metadata.decimals !== undefined) {
@@ -2188,7 +2215,7 @@
 
     if (userWallet && minterAddr) {
       try {
-        const jRes = await fetch(`${getNetworkContext().tonApiBase}/accounts/${encodeURIComponent(userWallet)}/jettons/${encodeURIComponent(minterAddr)}`);
+        const jRes = await labsFetchTonApi(`/accounts/${encodeURIComponent(userWallet)}/jettons/${encodeURIComponent(minterAddr)}`);
         if (jRes.ok) {
           const jData = await jRes.json();
           const rawBal = BigInt(jData.balance || '0');
@@ -2349,7 +2376,7 @@
       let decimals = 9;
 
       try {
-        const jRes = await fetch(`${getNetworkContext().tonApiBase}/accounts/${encodeURIComponent(userAddress)}/jettons/${encodeURIComponent(minterAddress)}`);
+        const jRes = await labsFetchTonApi(`/accounts/${encodeURIComponent(userAddress)}/jettons/${encodeURIComponent(minterAddress)}`);
         if (jRes.ok) {
           const jData = await jRes.json();
           if (jData && jData.wallet_address && jData.wallet_address.address) {
@@ -2366,7 +2393,7 @@
 
       // Fallback: query minter contract get_wallet_address getter if not found above
       if (!jettonWalletAddress) {
-        const gwRes = await fetch(`${getNetworkContext().tonApiBase}/blockchain/accounts/${encodeURIComponent(minterAddress)}/methods/get_wallet_address?args=${encodeURIComponent(userAddress)}`);
+        const gwRes = await labsFetchTonApi(`/blockchain/accounts/${encodeURIComponent(minterAddress)}/methods/get_wallet_address?args=${encodeURIComponent(userAddress)}`);
         if (gwRes.ok) {
           const gwData = await gwRes.json();
           if (gwData.decoded && gwData.decoded.jetton_wallet_address) {
@@ -2398,7 +2425,7 @@
       // Capture initial total supply before burning for dual verification
       let initialSupply = 0n;
       try {
-        const supRes = await fetch(`${getNetworkContext().tonApiBase}/blockchain/accounts/${encodeURIComponent(minterAddress)}/methods/get_jetton_data`);
+        const supRes = await labsFetchTonApi(`/blockchain/accounts/${encodeURIComponent(minterAddress)}/methods/get_jetton_data`);
         if (supRes.ok) {
           const supData = await supRes.json();
           initialSupply = BigInt(supData.decoded?.total_supply || '0');
@@ -2451,7 +2478,7 @@
         await new Promise(r => setTimeout(r, 3000));
         try {
           // Poll user balance
-          const pollRes = await fetch(`${getNetworkContext().tonApiBase}/accounts/${encodeURIComponent(userAddress)}/jettons/${encodeURIComponent(minterAddress)}`);
+          const pollRes = await labsFetchTonApi(`/accounts/${encodeURIComponent(userAddress)}/jettons/${encodeURIComponent(minterAddress)}`);
           if (pollRes.ok) {
             const pollData = await pollRes.json();
             const currentBal = BigInt(pollData.balance || '0');
@@ -2461,7 +2488,7 @@
           }
           // Poll minter total supply
           if (initialSupply > 0n) {
-            const sRes = await fetch(`${getNetworkContext().tonApiBase}/blockchain/accounts/${encodeURIComponent(minterAddress)}/methods/get_jetton_data`);
+            const sRes = await labsFetchTonApi(`/blockchain/accounts/${encodeURIComponent(minterAddress)}/methods/get_jetton_data`);
             if (sRes.ok) {
               const sData = await sRes.json();
               const curSup = BigInt(sData.decoded?.total_supply || '0');
@@ -2541,7 +2568,7 @@
 
     try {
       // 1. Fetch live Jetton info
-      const res = await fetch(`${getNetworkContext().tonApiBase}/jettons/${encodeURIComponent(minterAddress)}`);
+      const res = await labsFetchTonApi(`/jettons/${encodeURIComponent(minterAddress)}`);
       if (res.ok) {
         const jData = await res.json();
         const meta = jData.metadata || {};
@@ -2563,7 +2590,7 @@
       }
 
       // 2. Fetch live Top Holders
-      const hRes = await fetch(`${getNetworkContext().tonApiBase}/jettons/${encodeURIComponent(minterAddress)}/holders?limit=5`);
+      const hRes = await labsFetchTonApi(`/jettons/${encodeURIComponent(minterAddress)}/holders?limit=5`);
       if (hRes.ok) {
         const hData = await hRes.json();
         const addresses = hData.addresses || [];
@@ -2673,7 +2700,7 @@
 
     // Populate Lifecycle Selector with user's on-chain tokens
     try {
-      const res = await fetch(`${getNetworkContext().tonApiBase}/accounts/${encodeURIComponent(address)}/jettons`);
+      const res = await labsFetchTonApi(`/accounts/${encodeURIComponent(address)}/jettons`);
       if (res.ok) {
         const data = await res.json();
         const balances = data.balances || [];

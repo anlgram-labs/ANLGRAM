@@ -19,6 +19,19 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="assets/js/telegram-mini-app.js"></script>
   <script src="assets/js/security.js"></script>
+  <script>
+    window.ANLGRAM_TON_PROXY_URL = 'https://anlgram-ton-proxy.anlgram.workers.dev';
+    window.anlgramFetchTonApi = async function(endpoint) {
+      const proxyBase = (window.ANLGRAM_TON_PROXY_URL || '').replace(/\/+$/, '');
+      if (proxyBase) {
+        try {
+          const r = await fetch(proxyBase + endpoint);
+          if (r.ok || r.status === 404) return r;
+        } catch (e) {}
+      }
+      return fetch('https://tonapi.io/v2' + endpoint);
+    };
+  </script>
   <script src="assets/js/token-verification-engine.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1949,7 +1962,7 @@
         // Fallback: fetch from cloneSource but strictly verify code hash
         if (!minterCode || !walletCodeCell) {
           const cloneSource = "0:30eb766a2e69f0440efb3d6d3b0962049e0c20f9e222cac6aa67c216a542f49c";
-          const res = await fetch(`https://tonapi.io/v2/blockchain/accounts/${cloneSource}`);
+          const res = await window.anlgramFetchTonApi(`/blockchain/accounts/${encodeURIComponent(cloneSource)}`);
           const data = await res.json();
           if(!data.code || !data.data) throw new Error("Could not fetch Code from Mainnet");
           
@@ -2369,7 +2382,7 @@
     
     // Load Main Account Data (TON Balance)
     try {
-      const accRes = await fetch(`https://tonapi.io/v2/accounts/${address}`);
+      const accRes = await window.anlgramFetchTonApi(`/accounts/${encodeURIComponent(address)}`);
       if(accRes.ok) {
         const accData = await accRes.json();
         if(walletsTbody) {
@@ -2483,7 +2496,7 @@
     try {
       if(selectEl) selectEl.innerHTML = '<option value="">🔍 Scanning your created tokens...</option>';
 
-      const response = await fetch(`https://tonapi.io/v2/accounts/${address}/jettons?supported_extensions=custom_payload`);
+      const response = await window.anlgramFetchTonApi(`/accounts/${encodeURIComponent(address)}/jettons?supported_extensions=custom_payload`);
       if (!response.ok) throw new Error('API Error');
       const data = await response.json();
       const balances = data.balances || [];
@@ -2520,7 +2533,7 @@
         try {
           const jetAddr = b.jetton.address;
           // Use the v2/jettons endpoint which returns admin_address from get_jetton_data
-          const jetRes = await fetch(`https://tonapi.io/v2/blockchain/accounts/${jetAddr}/methods/get_jetton_data`);
+          const jetRes = await window.anlgramFetchTonApi(`/blockchain/accounts/${encodeURIComponent(jetAddr)}/methods/get_jetton_data`);
           if (jetRes.ok) {
             const jetData = await jetRes.json();
             const adminAddr = jetData?.decoded?.admin_address;

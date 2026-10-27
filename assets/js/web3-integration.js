@@ -62,7 +62,18 @@
       if(!tbody) return;
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--accent-cyan); padding: 40px;"><div class="status-dot" style="display:inline-block; margin-right:10px;"></div> Scanning wallet on TON Mainnet...</td></tr>';
       
-      const res = await fetch(`https://tonapi.io/v2/accounts/${address}/jettons`);
+      const proxyBase = (typeof window !== 'undefined' && window.ANLGRAM_TON_PROXY_URL)
+        ? String(window.ANLGRAM_TON_PROXY_URL).replace(/\/+$/, '')
+        : 'https://tonapi.io/v2';
+      let res;
+      try {
+        res = await fetch(`${proxyBase}/accounts/${encodeURIComponent(address)}/jettons`);
+        if (!res.ok && proxyBase !== 'https://tonapi.io/v2') {
+          res = await fetch(`https://tonapi.io/v2/accounts/${encodeURIComponent(address)}/jettons`);
+        }
+      } catch (e) {
+        res = await fetch(`https://tonapi.io/v2/accounts/${encodeURIComponent(address)}/jettons`);
+      }
       const data = await res.json();
       
       if(data && data.balances) {

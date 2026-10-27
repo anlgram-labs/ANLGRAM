@@ -298,11 +298,18 @@
   }
 
   /**
-   * Query TonAPI v2 (via local institutional proxy or direct fallback)
+   * Query TonAPI v2 (via Cloudflare Worker / institutional proxy or direct fallback)
    */
-  async function queryTonApi(endpoint, proxyBase = '/api/ton') {
+  async function queryTonApi(endpoint, proxyBase = null) {
     const isBrowser = typeof window !== 'undefined';
-    const primaryUrl = isBrowser ? `${proxyBase}${endpoint}` : `https://tonapi.io/v2${endpoint}`;
+    const resolvedProxy = proxyBase || (
+      isBrowser && window.ANLGRAM_TON_PROXY_URL
+        ? String(window.ANLGRAM_TON_PROXY_URL).replace(/\/+$/, '')
+        : (isBrowser && window.ANLGRAM_CONFIG && window.ANLGRAM_CONFIG.TON_PROXY_URL
+            ? String(window.ANLGRAM_CONFIG.TON_PROXY_URL).replace(/\/+$/, '')
+            : '/api/ton')
+    );
+    const primaryUrl = isBrowser ? `${resolvedProxy}${endpoint}` : `https://tonapi.io/v2${endpoint}`;
 
     try {
       let res = await fetchWithTimeout(primaryUrl, {
