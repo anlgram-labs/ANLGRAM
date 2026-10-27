@@ -781,7 +781,7 @@
             <div class="labs-wizard-panel-head">
               <div>
                 <h3 class="labs-wizard-panel-title">⚙️ Step 5 — Manage Token & Liquidity</h3>
-                <p class="labs-wizard-panel-sub">Create DEX liquidity pools on STON.fi or DeDust, mint supply, or renounce admin keys.</p>
+                <p class="labs-wizard-panel-sub">Verified on-chain authority control, DEX liquidity pool initialization, additional minting, and burning.</p>
               </div>
               <span class="labs-badge-subtle">Step 5 of 6</span>
             </div>
@@ -805,6 +805,68 @@
               <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <button type="button" class="btn-ent" style="padding:6px 14px; font-size:11px; cursor:pointer; border-radius:8px; border:1px solid var(--labs-cyan); color:var(--labs-cyan); background:rgba(0,210,255,0.06);" onclick="document.getElementById('step5-logo-file')?.click();">📷 Change Token Logo</button>
                 <span class="labs-token-badge-verified">✓ Standard TEP-74 Jetton</span>
+              </div>
+            </div>
+
+            <!-- On-Chain Token Security & Authority Analysis Card -->
+            <div id="token-security-analysis-card" class="labs-inner-box" style="margin-bottom:20px; border-color:rgba(0,210,255,0.3); background:rgba(4,12,30,0.75);">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="font-size:20px;">🛡️</span>
+                  <strong style="color:#fff; font-size:15px;">On-Chain Token Security & Authority Analysis</strong>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span id="security-source-badge" style="font-size:11px; padding:2px 8px; border-radius:10px; background:rgba(0,210,255,0.12); color:var(--labs-cyan); font-family:var(--font-mono);">Source: Blockchain get_jetton_data</span>
+                  <button type="button" class="btn-ent" style="padding:3px 10px; font-size:11px; border-radius:6px; cursor:pointer;" onclick="labsRefreshSecurityAnalysis()">🔄 Refresh</button>
+                </div>
+              </div>
+
+              <div class="wizard-review-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:12px;">
+                <div class="wizard-review-box">
+                  <div class="wizard-review-label">Contract Address</div>
+                  <div id="sec-contract-addr" class="wizard-review-val" style="font-size:12px; font-family:var(--font-mono);">
+                    Loading...
+                  </div>
+                </div>
+                <div class="wizard-review-box">
+                  <div class="wizard-review-label">Admin / Creator Authority</div>
+                  <div id="sec-admin-addr" class="wizard-review-val" style="font-size:12px; font-family:var(--font-mono);">
+                    Checking on-chain...
+                  </div>
+                </div>
+                <div class="wizard-review-box">
+                  <div class="wizard-review-label">Total Supply (On-Chain)</div>
+                  <div id="sec-total-supply" class="wizard-review-val" style="font-size:13px; font-family:var(--font-mono);">
+                    Loading...
+                  </div>
+                </div>
+                <div class="wizard-review-box">
+                  <div class="wizard-review-label">Mint Authority</div>
+                  <div id="sec-mint-authority" class="wizard-review-val">
+                    <span class="status-dot"></span> Checking...
+                  </div>
+                </div>
+                <div class="wizard-review-box">
+                  <div class="wizard-review-label">Additional Minting</div>
+                  <div id="sec-minting-status" class="wizard-review-val">
+                    <span class="status-dot"></span> Checking...
+                  </div>
+                </div>
+                <div class="wizard-review-box">
+                  <div class="wizard-review-label">Renounce Status</div>
+                  <div id="sec-renounce-status" class="wizard-review-val">
+                    <span class="status-dot"></span> Verifying...
+                  </div>
+                </div>
+                <div class="wizard-review-box">
+                  <div class="wizard-review-label">Token Burn Capability</div>
+                  <div id="sec-burn-status" class="wizard-review-val" style="color:var(--labs-green); font-size:12px;">
+                    ✔ AVAILABLE (TEP-74 Standard)
+                  </div>
+                </div>
+              </div>
+              <div id="sec-verification-note" style="font-size:11px; color:var(--labs-text-muted); line-height:1.4;">
+                🔒 All security and authority properties are queried directly from the TON blockchain smart contract via get_jetton_data. ANLGRAM never simulates security properties.
               </div>
             </div>
 
@@ -845,15 +907,53 @@
               </div>
             </div>
 
-            <!-- Renounce Admin Safeguard Card -->
-            <div id="renounce-card" class="labs-inner-box" style="border-color:rgba(255,68,68,0.3); background:rgba(255,0,0,0.02);">
-              <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-                <span style="font-size:20px;">🔒</span>
-                <strong style="color:#ff6b6b; font-size:15px;">Irreversible Action: Renounce Admin Rights</strong>
+            <!-- Real On-Chain Token Burn Card (TEP-74 op::burn 0x595f07bc) -->
+            <div id="burn-card" class="labs-inner-box" style="margin-bottom:20px; border-color:rgba(255,107,0,0.3); background:rgba(255,107,0,0.02);">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="font-size:20px;">🔥</span>
+                  <strong style="color:#ff8a00; font-size:15px;">Burn Tokens (Permanent Supply Reduction)</strong>
+                </div>
+                <div style="font-size:12px; color:var(--labs-text-sub);">
+                  Wallet Balance: <strong id="labs-burn-balance" style="color:#fff; font-family:var(--font-mono);">0</strong> <span id="labs-burn-symbol" style="color:var(--labs-cyan);">TKN</span>
+                </div>
               </div>
               <p style="font-size:12px; color:var(--labs-text-sub); margin-top:0; line-height:1.5;">
-                Permanently burn the creator admin key on the TON blockchain. After renouncing, no one can ever mint more tokens or modify contract parameters.
+                Permanently burn and destroy tokens from your wallet on the TON blockchain. This reduces total supply on-chain via TEP-74 standard. <em>Note: Burning tokens does not renounce admin rights.</em>
               </p>
+
+              <!-- Burn Outcome Status Banner -->
+              <div id="labs-burn-status-banner" style="display:none; margin-bottom:14px; padding:12px; border-radius:10px; font-size:12px;"></div>
+
+              <div style="display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center; margin-bottom:10px;">
+                <input type="number" id="labs-burn-amount" class="labs-input" placeholder="Amount of tokens to burn" min="0" step="any"/>
+                <button id="labs-burn-btn" class="btn-solid" style="background:rgba(255,107,0,0.18); border:1px solid #ff8a00; color:#ff8a00; padding:10px 22px; border-radius:10px; cursor:pointer; font-weight:700;" onclick="labsOpenBurnConfirmModal()">
+                  🔥 Burn Tokens
+                </button>
+              </div>
+
+              <!-- Quick Presets -->
+              <div style="display:flex; gap:8px; align-items:center;">
+                <span style="font-size:11px; color:var(--labs-text-muted);">Quick Presets:</span>
+                <button type="button" class="btn-ent" style="padding:2px 8px; font-size:11px; border-radius:6px; cursor:pointer;" onclick="labsSetBurnPercent(25)">25%</button>
+                <button type="button" class="btn-ent" style="padding:2px 8px; font-size:11px; border-radius:6px; cursor:pointer;" onclick="labsSetBurnPercent(50)">50%</button>
+                <button type="button" class="btn-ent" style="padding:2px 8px; font-size:11px; border-radius:6px; cursor:pointer;" onclick="labsSetBurnPercent(100)">100% (MAX)</button>
+              </div>
+            </div>
+
+            <!-- Renounce Admin Safeguard Card -->
+            <div id="renounce-card" class="labs-inner-box" style="border-color:rgba(255,68,68,0.3); background:rgba(255,0,0,0.02); margin-bottom:20px;">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                <span style="font-size:20px;">🔒</span>
+                <strong style="color:#ff6b6b; font-size:15px;">Irreversible Action: Renounce Admin Rights (Burn Key)</strong>
+              </div>
+              <p style="font-size:12px; color:var(--labs-text-sub); margin-top:0; line-height:1.5;">
+                Permanently burn the creator admin key on the TON blockchain by setting contract admin to null (<code>addr_none</code>). After renouncing, no one (including you) can ever mint more tokens or modify contract parameters.
+              </p>
+
+              <!-- Renounce Status Banner -->
+              <div id="labs-renounce-status-banner" style="display:none; margin-bottom:14px; padding:12px; border-radius:10px; font-size:12px;"></div>
+
               <input type="hidden" id="renounce-minter-addr" value=""/>
               <button id="renounce-btn" class="btn-solid" style="width:100%; background:rgba(255,68,68,0.12); border:1px solid #ff4444; color:#ff4444; padding:12px; border-radius:10px; cursor:pointer; font-weight:700;" onclick="labsOpenRenounceConfirmModal()">
                 🔒 Renounce Admin Rights (Burn Key)
@@ -1103,6 +1203,48 @@
             <button class="labs-btn-secondary" style="width:auto; padding:10px 18px;" onclick="labsCloseModal('renounce-confirm-modal')">Cancel</button>
             <button class="labs-btn-primary" style="width:auto; padding:10px 24px; background:rgba(255,68,68,0.2); border:1px solid #ff4444; color:#ff4444;" onclick="labsConfirmRenounceExecution(event)">
               Permanently Renounce Admin
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- MODAL: BURN TOKENS CONFIRMATION (STEP 5 TEP-74 IRREVERSIBLE)      -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <div id="burn-confirm-modal" class="labs-modal-backdrop">
+        <div class="labs-modal-card" style="max-width:520px; border-color:rgba(255,107,0,0.4);">
+          <div class="labs-modal-head">
+            <h3 class="labs-modal-title" style="color:#ff8a00;">🔥 Irreversible Action: Burn Tokens</h3>
+            <button class="labs-modal-close" onclick="labsCloseModal('burn-confirm-modal')">×</button>
+          </div>
+          <div style="background:rgba(255,107,0,0.08); border:1px solid rgba(255,107,0,0.3); border-radius:10px; padding:14px; margin:14px 0;">
+            <p style="color:#ffaa44; font-size:13px; line-height:1.6; margin:0;">
+              <strong>PERMANENT DESTRUCTION:</strong> Burning tokens permanently removes them from circulation and destroys them on the TON blockchain.
+              Total supply will be reduced. <strong>This does not renounce admin rights.</strong>
+            </p>
+          </div>
+          <div class="wizard-review-box" style="margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:12px; color:var(--labs-text-sub);">
+              <span>Token:</span>
+              <strong id="modal-burn-token-label" style="color:#fff;">MoonDog ($MOON)</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:12px; color:var(--labs-text-sub);">
+              <span>Amount to Burn:</span>
+              <strong id="modal-burn-amount-label" style="color:#ff8a00; font-family:var(--font-mono); font-size:14px;">0 MOON</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--labs-text-sub);">
+              <span>Estimated Network Fee:</span>
+              <span style="color:#fff; font-family:var(--font-mono);">~0.05 TON</span>
+            </div>
+          </div>
+          <label style="display:flex; align-items:flex-start; gap:10px; font-size:12px; color:#fff; cursor:pointer; margin-bottom:20px;">
+            <input type="checkbox" id="burn-confirm-checkbox" style="margin-top:2px; accent-color:#ff8a00;"/>
+            <span>I understand that burning tokens is irreversible and destroyed tokens cannot be recovered under any circumstances.</span>
+          </label>
+          <div style="display:flex; justify-content:space-between; gap:12px;">
+            <button class="labs-btn-secondary" style="width:auto; padding:10px 20px;" onclick="labsCloseModal('burn-confirm-modal')">Cancel</button>
+            <button id="modal-burn-confirm-btn" class="btn-solid" style="background:#ff6b00; color:#fff; border:none; padding:10px 22px; border-radius:10px; cursor:pointer; font-weight:700;" onclick="labsExecuteBurnFromModal()">
+              🔥 Confirm & Burn Tokens
             </button>
           </div>
         </div>
@@ -2008,40 +2150,52 @@
 
     async function renounceAdminWeb3(event) {
       const btn = event.currentTarget;
-      const tc = window.tonConnectUI;
+      const tc = window.tonConnectUI || window.TonConnectUIInstance;
 
-      // Get address from manual input OR from dropdown
-      const manualInput = document.getElementById('renounce-minter-addr');
+      // Get address from scoped container OR hidden input OR dropdown
+      const localInput = btn.closest('#renounce-card, .glass-card, .labs-inner-box')?.querySelector('#renounce-minter-addr, input[type="text"], input[type="hidden"]');
+      const manualInput = localInput || document.getElementById('renounce-minter-addr');
       const selectEl = document.getElementById('user-jetton-select');
       const minterRawAddr = (manualInput && manualInput.value.trim()) || (selectEl ? selectEl.value : '');
 
       if (!minterRawAddr) {
-        alert("Por favor pega la dirección del contrato Minter en el campo de texto.\n\nPuedes encontrarla en TonScan buscando tu wallet:\nhttps://tonscan.org/address/" + (tc && tc.account ? tc.account.address : 'TU_WALLET'));
-        if(manualInput) manualInput.focus();
+        alert("Por favor selecciona o especifica la dirección del contrato Minter.");
         return;
       }
 
       if (!tc || !tc.connected) {
-        alert("⚠️ Wallet no conectada.\n\nPara enviar esta transacción necesitas conectar Tonkeeper.\n\nAbre esta página en tu navegador:\nhttps://anlgram.com/memecoin-platform.html\n\nY conecta tu wallet con el botón 'Connect Wallet'.");
-        if(tc) tc.openModal();
+        alert("⚠️ Wallet no conectada.\n\nPara enviar esta transacción necesitas conectar Tonkeeper.");
+        if(tc && tc.openModal) tc.openModal();
         return;
       }
 
-      const confirmed = confirm(
-        "⚠️ ACCIÓN IRREVERSIBLE ⚠️\n\n" +
-        "Contrato: " + minterRawAddr.substring(0, 20) + "...\n\n" +
-        "Al renunciar como admin, NADIE podrá mintear más tokens jamás, ni siquiera tú.\n\n" +
-        "El suministro quedará fijo para siempre.\n\n" +
-        "¿Estás seguro de querer continuar?"
-      );
-      if (!confirmed) return;
+      if (!window.__renounceModalConfirmed) {
+        const confirmed = confirm(
+          "⚠️ ACCIÓN IRREVERSIBLE ⚠️\n\n" +
+          "Contrato: " + minterRawAddr.substring(0, 20) + "...\n\n" +
+          "Al renunciar como admin, NADIE podrá mintear más tokens jamás, ni siquiera tú.\n\n" +
+          "El suministro quedará fijo para siempre.\n\n" +
+          "¿Estás seguro de querer continuar?"
+        );
+        if (!confirmed) return;
+      }
+      window.__renounceModalConfirmed = false;
 
       const { beginCell, Address } = window.TON_CORE || {};
-      if (!beginCell) { alert("TON Core aún está cargando. Espera unos segundos."); return; }
+      if (!beginCell || !Address) { alert("TON Core aún está cargando. Espera unos segundos."); return; }
 
       const origHTML = btn.innerHTML;
       btn.innerHTML = '<span class="status-dot"></span> Enviando a Tonkeeper...';
       btn.style.pointerEvents = 'none';
+
+      const renounceBanner = document.getElementById('labs-renounce-status-banner');
+      if (renounceBanner) {
+        renounceBanner.style.display = 'block';
+        renounceBanner.style.background = 'rgba(0,210,255,0.08)';
+        renounceBanner.style.border = '1px solid var(--labs-cyan)';
+        renounceBanner.style.color = 'var(--labs-cyan)';
+        renounceBanner.innerHTML = '⏳ <strong>Awaiting Wallet Signature:</strong> Please approve the renounce transaction in Tonkeeper...';
+      }
 
       try {
         const minterAddress = Address.parse(minterRawAddr);
@@ -2051,7 +2205,7 @@
         const renouncePayload = beginCell()
             .storeUint(3, 32)   // change_admin op code
             .storeUint(0n, 64)  // query_id
-            .storeAddress(null) // new_admin = null = nobody
+            .storeAddress(null) // new_admin = null = nobody (addr_none)
             .endCell();
 
         const transaction = {
@@ -2065,29 +2219,75 @@
 
         await tc.sendTransaction(transaction);
 
-        // ✅ Persist renounce state to localStorage so it survives page refresh
-        const renouncedKey = 'anlgram_renounced_' + minterRawAddr.replace(/[^a-zA-Z0-9]/g, '_');
-        localStorage.setItem(renouncedKey, JSON.stringify({
-          address: minterRawAddr,
-          renouncedAt: Date.now(),
-          wallet: tc.account.address
-        }));
+        if (renounceBanner) {
+          renounceBanner.style.background = 'rgba(255,165,0,0.1)';
+          renounceBanner.style.border = '1px solid orange';
+          renounceBanner.style.color = '#ffaa44';
+          renounceBanner.innerHTML = '⏳ <strong>Transaction Broadcast:</strong> Polling TON blockchain to verify on-chain admin renounce... <span class="status-dot"></span>';
+        }
+        btn.innerHTML = '<span class="status-dot"></span> Verifying On-Chain...';
 
-        btn.innerHTML = '🔒 ¡Admin Renunciado! Contrato Permanentemente Bloqueado';
-        btn.style.background = 'rgba(255,68,68,0.3)';
-        btn.style.borderColor = '#ff4444';
-        if(manualInput) manualInput.style.borderColor = '#ff4444';
+        // Poll on-chain get_jetton_data until admin_address is addr_none (null / empty)
+        let verifiedOnChain = false;
+        if (typeof window.labsVerifyOnChainTokenSecurity === 'function') {
+          for (let i = 0; i < 20; i++) {
+            await new Promise(r => setTimeout(r, 3000));
+            try {
+              const sec = await window.labsVerifyOnChainTokenSecurity(minterFriendly);
+              if (sec && sec.isRenounced) {
+                verifiedOnChain = true;
+                break;
+              }
+            } catch(pollErr) {
+              console.warn('Polling get_jetton_data attempt', i, pollErr);
+            }
+          }
+        }
 
-        // Refresh the selector to show renounced badge
+        if (verifiedOnChain) {
+          btn.innerHTML = '🔒 Admin Renounced — Permanently Verified On-Chain';
+          btn.style.background = 'rgba(0,255,136,0.15)';
+          btn.style.borderColor = 'var(--labs-green)';
+          btn.style.color = 'var(--labs-green)';
+          btn.disabled = true;
+
+          if (renounceBanner) {
+            renounceBanner.style.display = 'block';
+            renounceBanner.style.background = 'rgba(0,255,136,0.08)';
+            renounceBanner.style.border = '1px solid var(--labs-green)';
+            renounceBanner.style.color = '#fff';
+            renounceBanner.innerHTML = '✔ <strong>Verified On-Chain:</strong> Contract admin has been permanently renounced. <code>admin_address</code> is null (<code>addr_none</code>). Supply is permanently fixed.';
+          }
+
+          if (typeof window.labsRefreshSecurityAnalysis === 'function') {
+            await window.labsRefreshSecurityAnalysis();
+          }
+        } else {
+          btn.innerHTML = '⚠️ Renounce Broadcast (Pending Verification)';
+          btn.style.background = 'rgba(255,165,0,0.15)';
+          btn.style.borderColor = 'orange';
+          btn.disabled = false;
+          btn.style.pointerEvents = 'auto';
+
+          if (renounceBanner) {
+            renounceBanner.style.display = 'block';
+            renounceBanner.style.background = 'rgba(255,165,0,0.08)';
+            renounceBanner.style.border = '1px solid orange';
+            renounceBanner.style.color = '#ffb040';
+            renounceBanner.innerHTML = '⚠️ <strong>Transaction Broadcast:</strong> State change could not be confirmed on-chain yet. Please click "Refresh" on the Security card in a few moments to verify.';
+          }
+        }
+
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: tc.account.address } }));
-        }, 3000);
+        }, 1000);
 
       } catch(e) {
         console.error("Renounce Error:", e);
         alert("❌ Error al renunciar admin:\n\n" + (e.message || String(e)));
         btn.innerHTML = origHTML;
         btn.removeAttribute('style');
+        if (renounceBanner) renounceBanner.style.display = 'none';
       }
     }
 
@@ -2311,9 +2511,8 @@
         const minterAddr = b._friendlyMinterAddr || b._minterAddress || b.jetton.address;
 
 
-        // Check if previously renounced (persisted in localStorage)
-        const renouncedKey = 'anlgram_renounced_' + minterAddr.replace(/[^a-zA-Z0-9]/g, '_');
-        const isRenounced = !!localStorage.getItem(renouncedKey);
+        // Blockchain get_jetton_data is the source of truth (no localStorage override)
+        const isRenounced = false;
 
         const renouncedLabel = isRenounced ? ' 🔒 [RENOUNCED]' : '';
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(name) : name;
@@ -2375,72 +2574,45 @@
             // Show checking state
             if(renounceBtn) { renounceBtn.innerHTML = '⏳ Checking admin status on blockchain...'; renounceBtn.disabled = true; }
 
-            // ── Live blockchain admin check ──────────────────────────────
-            let isAdminRenounced = false;
-            try {
-              const checkRes = await fetch(`https://tonapi.io/v2/blockchain/accounts/${encodeURIComponent(selectedAddr)}/methods/get_jetton_data`);
-              if (checkRes.ok) {
-                const checkData = await checkRes.json();
-                const adminAddr = checkData?.decoded?.admin_address;
-                // admin_address is empty string or 'null' when renounced
-                if (!adminAddr || adminAddr.trim() === '' || adminAddr === 'null' || adminAddr === '0:0000000000000000000000000000000000000000000000000000000000000000') {
-                  isAdminRenounced = true;
+            // ── Live blockchain admin check (ZERO localStorage override) ──
+            if (typeof window.labsVerifyOnChainTokenSecurity === 'function') {
+              const sec = await window.labsVerifyOnChainTokenSecurity(selectedAddr);
+              if (sec) {
+                if (sec.isRenounced) {
+                  if (mintBtn) {
+                    mintBtn.disabled = true;
+                    mintBtn.style.opacity = '0.45';
+                    mintBtn.style.cursor = 'not-allowed';
+                    mintBtn.innerHTML = '🔒 Minting Disabled — Admin Renounced On-Chain';
+                  }
+                  if (mintBanner) mintBanner.style.display = 'block';
+
+                  if (renounceBtn) {
+                    renounceBtn.innerHTML = '🔒 Admin Renounced — Permanently Verified On-Chain';
+                    renounceBtn.disabled = true;
+                    renounceBtn.style.opacity = '0.5';
+                    renounceBtn.style.cursor = 'not-allowed';
+                  }
+                } else {
+                  if (mintBtn) {
+                    mintBtn.disabled = !sec.isUserAdmin;
+                    mintBtn.style.opacity = sec.isUserAdmin ? '1' : '0.5';
+                    mintBtn.style.cursor = sec.isUserAdmin ? 'pointer' : 'not-allowed';
+                    mintBtn.innerHTML = sec.isUserAdmin ? '⚗️ Mint Tokens to My Wallet' : '🔒 Only Creator Can Mint';
+                  }
+                  if (mintBanner) mintBanner.style.display = 'none';
+
+                  if (renounceBtn) {
+                    renounceBtn.innerHTML = '🔒 Renounce Admin (Burn Key)';
+                    renounceBtn.disabled = !sec.isUserAdmin;
+                    renounceBtn.style.opacity = sec.isUserAdmin ? '1' : '0.5';
+                    renounceBtn.style.cursor = sec.isUserAdmin ? 'pointer' : 'not-allowed';
+                  }
                 }
-              }
-            } catch(e) {
-              console.warn('Could not check admin status:', e);
-            }
 
-            // ── Also check localStorage (instant, persisted) ─────────────
-            const renouncedKey = 'anlgram_renounced_' + selectedAddr.replace(/[^a-zA-Z0-9]/g, '_');
-            const localRenouncedData = localStorage.getItem(renouncedKey);
-            if (localRenouncedData) isAdminRenounced = true;
-
-            // ── Update UI based on admin status ──────────────────────────
-            if (isAdminRenounced) {
-              // Persist to localStorage in case not already there
-              if (!localRenouncedData) {
-                localStorage.setItem(renouncedKey, JSON.stringify({
-                  address: selectedAddr,
-                  renouncedAt: Date.now(),
-                  source: 'blockchain_verification'
-                }));
-              }
-
-              // Disable Mint button
-              if(mintBtn) {
-                mintBtn.disabled = true;
-                mintBtn.style.opacity = '0.45';
-                mintBtn.style.cursor = 'not-allowed';
-                mintBtn.innerHTML = '🔒 Minting Disabled — Admin Renounced On-Chain';
-              }
-              if(mintBanner) mintBanner.style.display = 'block';
-
-              // Disable Renounce button (already done)
-              if(renounceBtn) {
-                const info = localRenouncedData ? JSON.parse(localRenouncedData) : null;
-                const dateStr = info?.renouncedAt ? new Date(info.renouncedAt).toLocaleDateString() : 'verified on-chain';
-                renounceBtn.innerHTML = `🔒 Admin Already Renounced (${dateStr})`;
-                renounceBtn.disabled = true;
-                renounceBtn.style.opacity = '0.5';
-                renounceBtn.style.cursor = 'not-allowed';
-              }
-
-            } else {
-              // Admin is ACTIVE — enable Mint and Renounce
-              if(mintBtn) {
-                mintBtn.disabled = false;
-                mintBtn.style.opacity = '1';
-                mintBtn.style.cursor = 'pointer';
-                mintBtn.innerHTML = '⚗️ Mint Tokens to My Wallet';
-              }
-              if(mintBanner) mintBanner.style.display = 'none';
-
-              if(renounceBtn) {
-                renounceBtn.innerHTML = '🔒 Renounce Admin (Burn Key)';
-                renounceBtn.disabled = false;
-                renounceBtn.style.opacity = '1';
-                renounceBtn.style.cursor = 'pointer';
+                if (typeof window.labsRefreshSecurityAnalysis === 'function') {
+                  window.labsRefreshSecurityAnalysis();
+                }
               }
             }
 

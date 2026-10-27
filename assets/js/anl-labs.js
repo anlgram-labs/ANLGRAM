@@ -1266,37 +1266,9 @@
         .catch(() => {});
     }
 
-    // Check if renounced in localStorage or on-chain
-    const renKey = 'anlgram_renounced_' + token.address.replace(/[^a-zA-Z0-9]/g, '_');
-    const isRen = !!localStorage.getItem(renKey);
-    const renBanner = document.getElementById('mint-renounced-banner');
-    const mintBtn = document.getElementById('mint-btn');
-    const renBtn = document.getElementById('renounce-btn');
-
-    if (isRen) {
-      if (renBanner) renBanner.style.display = 'block';
-      if (mintBtn) {
-        mintBtn.disabled = true;
-        mintBtn.style.opacity = '0.45';
-        mintBtn.innerHTML = '🔒 Minting Permanently Disabled (Admin Renounced)';
-      }
-      if (renBtn) {
-        renBtn.disabled = true;
-        renBtn.style.opacity = '0.45';
-        renBtn.textContent = '🔒 Admin Already Renounced On-Chain';
-      }
-    } else {
-      if (renBanner) renBanner.style.display = 'none';
-      if (mintBtn) {
-        mintBtn.disabled = false;
-        mintBtn.style.opacity = '1';
-        mintBtn.innerHTML = '⚗️ Mint Tokens to My Wallet';
-      }
-      if (renBtn) {
-        renBtn.disabled = false;
-        renBtn.style.opacity = '1';
-        renBtn.textContent = '🔒 Renounce Admin (Burn Key)';
-      }
+    // Refresh on-chain security analysis and live balances (Source of Truth: TON Blockchain)
+    if (typeof window.labsRefreshSecurityAnalysis === 'function') {
+      window.labsRefreshSecurityAnalysis();
     }
   }
 
@@ -1408,11 +1380,601 @@
       alert('⚠️ You must check the confirmation box acknowledging that this action is 100% irreversible.');
       return;
     }
+    window.__renounceModalConfirmed = true;
     labsCloseModal('renounce-confirm-modal');
 
     // Call existing renounceAdminWeb3
     if (typeof window.renounceAdminWeb3 === 'function') {
       window.renounceAdminWeb3(e);
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STEP 5: REAL ON-CHAIN TOKEN SECURITY VERIFICATION & TEP-74 BURN
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * On-chain token security and authority verifier.
+   * Smart contract get_jetton_data is the EXCLUSIVE source of truth.
+   * No localStorage, zero simulated security scores.
+   */
+  window.labsVerifyOnChainTokenSecurity = async function (minterAddress) {
+    if (!minterAddress) return null;
+
+    let rawAddr = minterAddress;
+    let friendlyAddr = minterAddress;
+    const { Address } = window.TON_CORE || {};
+    if (Address) {
+      try {
+        const parsed = Address.parse(minterAddress);
+        rawAddr = parsed.toRawString();
+        friendlyAddr = parsed.toString({ bounceable: true, urlSafe: true });
+      } catch (e) {}
+    }
+
+    const result = {
+      minterAddress: friendlyAddr,
+      minterRawAddress: rawAddr,
+      adminAddress: null,
+      isRenounced: false,
+      isUserAdmin: false,
+      mintAuthority: 'UNKNOWN',
+      additionalMinting: 'UNKNOWN',
+      renounceStatus: 'UNVERIFIED',
+      burnCapability: 'AVAILABLE (TEP-74 Standard)',
+      totalSupplyRaw: '0',
+      totalSupplyFormatted: '0',
+      decimals: 9,
+      verificationSource: 'TON Blockchain get_jetton_data',
+      verifiedAt: Date.now(),
+      error: null
+    };
+
+    try {
+      // 1. Query TON blockchain get_jetton_data method
+      const res = await fetch(`https://tonapi.io/v2/blockchain/accounts/${encodeURIComponent(friendlyAddr)}/methods/get_jetton_data`);
+      if (!res.ok) {
+        throw new Error(`TonAPI returned HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      if (!data.success && data.error) {
+        throw new Error(data.error);
+      }
+
+      const decoded = data.decoded || {};
+      const admin = decoded.admin_address;
+      const totalSupply = decoded.total_supply || '0';
+
+      result.totalSupplyRaw = totalSupply.toString();
+
+      // Jetton metadata for decimals
+      try {
+        const metaRes = await fetch(`https://tonapi.io/v2/jettons/${encodeURIComponent(friendlyAddr)}`);
+        if (metaRes.ok) {
+          const meta = await metaRes.json();
+          if (meta.metadata && meta.metadata.decimals) {
+            result.decimals = parseInt(meta.metadata.decimals, 10);
+          }
+        }
+      } catch (e) {}
+
+      const dec = result.decimals;
+      try {
+        const tsBig = BigInt(result.totalSupplyRaw);
+        const div = BigInt(10 ** dec);
+        const whole = tsBig / div;
+        const frac = tsBig % div;
+        result.totalSupplyFormatted = Number(whole).toLocaleString() + (frac > 0n ? '.' + frac.toString().padStart(dec, '0').slice(0, 4) : '');
+      } catch (e) {
+        result.totalSupplyFormatted = (Number(result.totalSupplyRaw) / (10 ** dec)).toLocaleString();
+      }
+
+      // Check admin status on TON: addr_none decodes to empty string "" or "null" or all-zeroes
+      if (!admin || admin.trim() === '' || admin === 'null' || admin === '0:0000000000000000000000000000000000000000000000000000000000000000') {
+        result.adminAddress = null;
+        result.isRenounced = true;
+        result.isUserAdmin = false;
+        result.mintAuthority = 'DISABLED';
+        result.additionalMinting = 'PERMANENTLY BLOCKED';
+        result.renounceStatus = 'VERIFIED ON-CHAIN (PERMANENTLY RENOUNCED)';
+      } else {
+        result.adminAddress = admin;
+        result.isRenounced = false;
+
+        // Check if user is the admin
+        const tc = window.tonConnectUI || window.TonConnectUIInstance;
+        const userWallet = tc?.account?.address;
+        if (userWallet) {
+          let userRaw = userWallet;
+          let adminRaw = admin;
+          if (Address) {
+            try { userRaw = Address.parse(userWallet).toRawString(); } catch (e) {}
+            try { adminRaw = Address.parse(admin).toRawString(); } catch (e) {}
+          }
+          result.isUserAdmin = (userRaw.toLowerCase() === adminRaw.toLowerCase());
+        }
+
+        result.mintAuthority = result.isUserAdmin ? 'ACTIVE (CREATOR WALLET)' : 'ACTIVE (OTHER CREATOR)';
+        result.additionalMinting = 'POSSIBLE BY ADMIN';
+        result.renounceStatus = 'NOT RENOUNCED (ADMIN ACTIVE)';
+      }
+
+      return result;
+    } catch (err) {
+      result.error = err.message;
+      result.verificationSource = 'FAILED TO REACH ON-CHAIN DATA';
+      return result;
+    }
+  };
+
+  /**
+   * Refreshes the Token Security & Authority Analysis Card and Burn balances
+   */
+  window.labsRefreshSecurityAnalysis = async function () {
+    const secContract = document.getElementById('sec-contract-addr');
+    const secAdmin = document.getElementById('sec-admin-addr');
+    const secSupply = document.getElementById('sec-total-supply');
+    const secMintAuth = document.getElementById('sec-mint-authority');
+    const secMintStatus = document.getElementById('sec-minting-status');
+    const secRenStatus = document.getElementById('sec-renounce-status');
+    const secBurnStatus = document.getElementById('sec-burn-status');
+    const burnBalEl = document.getElementById('labs-burn-balance');
+    const burnSymEl = document.getElementById('labs-burn-symbol');
+
+    const token = wizardState.activeToken || wizardState.deployedToken || {};
+    const renAddr = document.getElementById('renounce-minter-addr');
+    const selectEl = document.getElementById('user-jetton-select');
+    const minterAddr = (renAddr && renAddr.value) || token.address || (selectEl && selectEl.value);
+
+    if (!minterAddr) return;
+
+    if (secContract) {
+      const shortMinter = shortAddr(rawToFriendly(minterAddr));
+      secContract.innerHTML = `<a href="https://tonscan.org/address/${encodeURIComponent(rawToFriendly(minterAddr))}" target="_blank" style="color:var(--labs-cyan); text-decoration:none;">${shortMinter} ↗</a>`;
+    }
+
+    if (secAdmin) secAdmin.innerHTML = '<span class="status-dot"></span> Checking on-chain...';
+    if (secMintAuth) secMintAuth.innerHTML = '<span class="status-dot"></span> Checking...';
+    if (secMintStatus) secMintStatus.innerHTML = '<span class="status-dot"></span> Checking...';
+    if (secRenStatus) secRenStatus.innerHTML = '<span class="status-dot"></span> Verifying...';
+
+    const sec = await window.labsVerifyOnChainTokenSecurity(minterAddr);
+    if (!sec) return;
+
+    // Explicit UNVERIFIED state on network/API failure
+    if (sec.error) {
+      if (secAdmin) secAdmin.innerHTML = `<span style="color:#ffaa00; font-weight:600;">⚠️ UNVERIFIED (${escapeHtml(sec.error)})</span>`;
+      if (secSupply) secSupply.innerHTML = '<span style="color:#ffaa00;">UNVERIFIED</span>';
+      if (secMintAuth) secMintAuth.innerHTML = '<span style="color:#ffaa00;">UNVERIFIED</span>';
+      if (secMintStatus) secMintStatus.innerHTML = '<span style="color:#ffaa00;">UNVERIFIED</span>';
+      if (secRenStatus) secRenStatus.innerHTML = '<span style="color:#ffaa00;">UNVERIFIED</span>';
+      const note = document.getElementById('sec-verification-note');
+      if (note) note.innerHTML = `<span style="color:#ffaa00;">⚠️ Blockchain query could not be completed: ${escapeHtml(sec.error)}. Click "Refresh" to retry.</span>`;
+      return;
+    }
+
+    // Update Security Card with verified on-chain data
+    if (secSupply) secSupply.textContent = sec.totalSupplyFormatted;
+
+    if (secAdmin) {
+      if (sec.isRenounced) {
+        secAdmin.innerHTML = '<span style="color:var(--labs-green); font-weight:700;">🔒 None (Permanently Renounced)</span>';
+      } else {
+        const shortAdmin = shortAddr(rawToFriendly(sec.adminAddress));
+        secAdmin.innerHTML = `<a href="https://tonscan.org/address/${encodeURIComponent(rawToFriendly(sec.adminAddress))}" target="_blank" style="color:var(--labs-cyan); text-decoration:none;">${shortAdmin} ↗</a> ${sec.isUserAdmin ? '<span style="color:var(--labs-green); font-size:11px;">(You)</span>' : ''}`;
+      }
+    }
+
+    if (secMintAuth) {
+      if (sec.isRenounced) {
+        secMintAuth.innerHTML = '<span style="color:var(--labs-red); font-weight:700;">DISABLED (No Admin)</span>';
+      } else if (sec.isUserAdmin) {
+        secMintAuth.innerHTML = '<span style="color:var(--labs-green); font-weight:700;">ACTIVE (Creator Wallet)</span>';
+      } else {
+        secMintAuth.innerHTML = '<span style="color:#ffaa00; font-weight:700;">ACTIVE (External Address)</span>';
+      }
+    }
+
+    if (secMintStatus) {
+      if (sec.isRenounced) {
+        secMintStatus.innerHTML = '<span style="color:var(--labs-red); font-weight:700;">PERMANENTLY BLOCKED</span>';
+      } else {
+        secMintStatus.innerHTML = '<span style="color:var(--labs-green); font-weight:700;">POSSIBLE (Admin Controlled)</span>';
+      }
+    }
+
+    if (secRenStatus) {
+      if (sec.isRenounced) {
+        secRenStatus.innerHTML = '<span style="color:var(--labs-green); font-weight:700;">✔ VERIFIED ON-CHAIN (PERMANENT)</span>';
+      } else {
+        secRenStatus.innerHTML = '<span style="color:#ffaa00; font-weight:700;">NOT RENOUNCED (ADMIN ACTIVE)</span>';
+      }
+    }
+
+    if (secBurnStatus) {
+      secBurnStatus.innerHTML = '<span style="color:var(--labs-green); font-weight:700;">✔ AVAILABLE (TEP-74 Standard)</span>';
+    }
+
+    // Update Action Buttons & Banners based on verified state
+    const renBanner = document.getElementById('mint-renounced-banner');
+    const renStatusBanner = document.getElementById('labs-renounce-status-banner');
+    const mintBtn = document.getElementById('mint-btn');
+    const renBtn = document.getElementById('renounce-btn');
+
+    if (sec.isRenounced) {
+      if (renBanner) renBanner.style.display = 'block';
+      if (renStatusBanner) {
+        renStatusBanner.style.display = 'block';
+        renStatusBanner.style.background = 'rgba(0,255,136,0.08)';
+        renStatusBanner.style.border = '1px solid var(--labs-green)';
+        renStatusBanner.style.color = '#fff';
+        renStatusBanner.innerHTML = '✔ <strong>Verified On-Chain:</strong> Contract admin has been permanently renounced. <code>admin_address</code> is null (<code>addr_none</code>). Supply is permanently fixed.';
+      }
+      if (mintBtn) {
+        mintBtn.disabled = true;
+        mintBtn.style.opacity = '0.45';
+        mintBtn.style.cursor = 'not-allowed';
+        mintBtn.innerHTML = '🔒 Minting Permanently Disabled (Admin Renounced)';
+      }
+      if (renBtn) {
+        renBtn.disabled = true;
+        renBtn.style.opacity = '0.45';
+        renBtn.style.cursor = 'not-allowed';
+        renBtn.textContent = '🔒 Admin Already Renounced On-Chain';
+      }
+    } else {
+      if (renBanner) renBanner.style.display = 'none';
+      if (renStatusBanner) renStatusBanner.style.display = 'none';
+      if (mintBtn) {
+        mintBtn.disabled = !sec.isUserAdmin;
+        mintBtn.style.opacity = sec.isUserAdmin ? '1' : '0.5';
+        mintBtn.style.cursor = sec.isUserAdmin ? 'pointer' : 'not-allowed';
+        mintBtn.innerHTML = sec.isUserAdmin ? '⚗️ Mint Tokens to My Wallet' : '🔒 Only Creator Can Mint';
+      }
+      if (renBtn) {
+        renBtn.disabled = !sec.isUserAdmin;
+        renBtn.style.opacity = sec.isUserAdmin ? '1' : '0.5';
+        renBtn.style.cursor = sec.isUserAdmin ? 'pointer' : 'not-allowed';
+        renBtn.textContent = '🔒 Renounce Admin Rights (Burn Key)';
+      }
+    }
+
+    // Update Burn Card Balance from TonAPI
+    const tc = window.tonConnectUI || window.TonConnectUIInstance;
+    const userWallet = tc?.account?.address;
+    const symbol = token.symbol || document.getElementById('labs-tm-token-symbol')?.textContent?.replace(/[()$]/g, '') || 'TOK';
+    if (burnSymEl) burnSymEl.textContent = symbol;
+
+    if (userWallet && minterAddr) {
+      try {
+        const jRes = await fetch(`https://tonapi.io/v2/accounts/${encodeURIComponent(userWallet)}/jettons/${encodeURIComponent(minterAddr)}`);
+        if (jRes.ok) {
+          const jData = await jRes.json();
+          const rawBal = BigInt(jData.balance || '0');
+          const dec = jData.jetton?.decimals ? parseInt(jData.jetton.decimals, 10) : 9;
+          const numBal = Number(rawBal) / (10 ** dec);
+          wizardState.userJettonBalanceNumeric = numBal;
+          wizardState.userJettonWalletAddress = jData.wallet_address?.address || null;
+          if (burnBalEl) burnBalEl.textContent = numBal.toLocaleString(undefined, { maximumFractionDigits: 4 });
+        } else {
+          if (burnBalEl) burnBalEl.textContent = '0';
+          wizardState.userJettonBalanceNumeric = 0;
+        }
+      } catch (e) {
+        if (burnBalEl) burnBalEl.textContent = '0';
+      }
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STEP 5: TOKEN BURN MODAL & REAL TEP-74 BURN DISPATCH
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Mathematically exact lossless token amount parser.
+   * Prevents IEEE 754 float precision loss on large memecoin supplies.
+   */
+  function parseTokenUnits(amountInput, decimals = 9) {
+    if (amountInput === null || amountInput === undefined) return 0n;
+    let str = String(amountInput).trim().replace(/,/g, '');
+    if (!str || str.startsWith('-')) return 0n;
+
+    if (str.includes('e') || str.includes('E')) {
+      const num = Number(str);
+      if (isNaN(num) || num <= 0) return 0n;
+      str = num.toFixed(decimals);
+    }
+
+    const parts = str.split('.');
+    const whole = parts[0] || '0';
+    const frac = (parts[1] || '').slice(0, decimals).padEnd(decimals, '0');
+
+    if (!/^\d+$/.test(whole) || !/^\d+$/.test(frac)) return 0n;
+
+    return BigInt(whole) * (10n ** BigInt(decimals)) + BigInt(frac);
+  }
+
+  window.labsOpenBurnConfirmModal = function () {
+    const tc = window.tonConnectUI || window.TonConnectUIInstance;
+    if (!tc || !tc.connected || !tc.account?.address) {
+      alert('⚠️ Wallet not connected.\n\nPlease connect your TON wallet to burn tokens.');
+      if (tc && tc.openModal) tc.openModal();
+      return;
+    }
+
+    const input = document.getElementById('labs-burn-amount');
+    const amount = Number(input ? input.value : 0);
+    if (!amount || isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid token amount greater than 0 to burn.');
+      if (input) input.focus();
+      return;
+    }
+
+    const token = wizardState.activeToken || wizardState.deployedToken || {};
+    const symbol = token.symbol || document.getElementById('labs-tm-token-symbol')?.textContent?.replace(/[()$]/g, '') || 'TOK';
+    const name = token.name || document.getElementById('labs-tm-token-name')?.textContent || 'Token';
+
+    const modalTokenLabel = document.getElementById('modal-burn-token-label');
+    const modalAmountLabel = document.getElementById('modal-burn-amount-label');
+    const checkbox = document.getElementById('burn-confirm-checkbox');
+
+    if (modalTokenLabel) modalTokenLabel.textContent = `${name} (${symbol})`;
+    if (modalAmountLabel) modalAmountLabel.textContent = `${amount.toLocaleString()} ${symbol}`;
+    if (checkbox) checkbox.checked = false;
+
+    labsOpenModal('burn-confirm-modal');
+  };
+
+  window.labsSetBurnPercent = function (pct) {
+    const bal = wizardState.userJettonBalanceNumeric || 0;
+    if (!bal || bal <= 0) {
+      alert('No token balance found in your connected wallet for this Jetton.');
+      return;
+    }
+    const input = document.getElementById('labs-burn-amount');
+    if (input) {
+      const val = bal * (pct / 100);
+      input.value = (pct === 100) ? val : Number(val.toFixed(4));
+    }
+  };
+
+  window.labsExecuteBurnFromModal = function () {
+    const checkbox = document.getElementById('burn-confirm-checkbox');
+    if (checkbox && !checkbox.checked) {
+      alert('⚠️ Please check the confirmation box acknowledging that token burning is irreversible.');
+      return;
+    }
+
+    const input = document.getElementById('labs-burn-amount');
+    const amount = input ? input.value : '';
+    const token = wizardState.activeToken || wizardState.deployedToken || {};
+    const renAddr = document.getElementById('renounce-minter-addr');
+    const selectEl = document.getElementById('user-jetton-select');
+    const minterAddr = (renAddr && renAddr.value) || token.address || (selectEl && selectEl.value);
+
+    labsCloseModal('burn-confirm-modal');
+
+    if (typeof window.burnTokensWeb3 === 'function') {
+      window.burnTokensWeb3(minterAddr, amount);
+    }
+  };
+
+  /**
+   * Real on-chain burn transaction via TEP-74 op::burn (0x595f07bc)
+   * Dispatched to the user's Jetton Wallet with on-chain verification
+   */
+  window.burnTokensWeb3 = async function (minterAddress, amount) {
+    const tc = window.tonConnectUI || window.TonConnectUIInstance;
+    const statusBanner = document.getElementById('labs-burn-status-banner');
+    const burnBtn = document.getElementById('labs-burn-btn');
+    const origBtnText = burnBtn ? burnBtn.innerHTML : '🔥 Burn Tokens';
+
+    if (!tc || !tc.connected || !tc.account?.address) {
+      alert('Please connect your TON wallet first.');
+      if (tc && tc.openModal) tc.openModal();
+      return;
+    }
+
+    const numAmount = Number(amount);
+    if (!numAmount || isNaN(numAmount) || numAmount <= 0) {
+      alert('Please enter a valid token amount greater than 0 to burn.');
+      return;
+    }
+
+    const userAddress = tc.account.address;
+    const { beginCell, Address } = window.TON_CORE || {};
+    if (!beginCell || !Address) {
+      alert('TON Core libraries are still loading. Please wait a moment.');
+      return;
+    }
+
+    try {
+      if (burnBtn) {
+        burnBtn.disabled = true;
+        burnBtn.innerHTML = '<span class="status-dot"></span> Resolving Jetton Wallet...';
+      }
+
+      if (statusBanner) {
+        statusBanner.style.display = 'block';
+        statusBanner.style.background = 'rgba(0,210,255,0.08)';
+        statusBanner.style.border = '1px solid var(--labs-cyan)';
+        statusBanner.style.color = 'var(--labs-cyan)';
+        statusBanner.innerHTML = '⏳ <strong>Verifying Jetton Wallet:</strong> Querying TON blockchain for your token account...';
+      }
+
+      // 1. Fetch user Jetton wallet and current balance from TonAPI
+      let jettonWalletAddress = wizardState.userJettonWalletAddress || null;
+      let userBalanceRaw = 0n;
+      let decimals = 9;
+
+      try {
+        const jRes = await fetch(`https://tonapi.io/v2/accounts/${encodeURIComponent(userAddress)}/jettons/${encodeURIComponent(minterAddress)}`);
+        if (jRes.ok) {
+          const jData = await jRes.json();
+          if (jData && jData.wallet_address && jData.wallet_address.address) {
+            jettonWalletAddress = jData.wallet_address.address;
+            userBalanceRaw = BigInt(jData.balance || '0');
+            if (jData.jetton && jData.jetton.decimals) {
+              decimals = parseInt(jData.jetton.decimals, 10);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('TonAPI account jetton lookup:', err);
+      }
+
+      // Fallback: query minter contract get_wallet_address getter if not found above
+      if (!jettonWalletAddress) {
+        const gwRes = await fetch(`https://tonapi.io/v2/blockchain/accounts/${encodeURIComponent(minterAddress)}/methods/get_wallet_address?args=${encodeURIComponent(userAddress)}`);
+        if (gwRes.ok) {
+          const gwData = await gwRes.json();
+          if (gwData.decoded && gwData.decoded.jetton_wallet_address) {
+            jettonWalletAddress = gwData.decoded.jetton_wallet_address;
+          }
+        }
+      }
+
+      if (!jettonWalletAddress) {
+        throw new Error('Could not resolve your Jetton Wallet address on-chain. Make sure you hold tokens of this Jetton in your connected wallet.');
+      }
+
+      // Lossless base units conversion
+      let burnUnits = parseTokenUnits(amount, decimals);
+      if (burnUnits <= 0n) {
+        throw new Error('Invalid burn amount specified.');
+      }
+
+      // If user selected 100% MAX, burn exact raw balance
+      if (userBalanceRaw > 0n && (burnUnits === userBalanceRaw || (burnUnits > userBalanceRaw && burnUnits - userBalanceRaw <= 10n))) {
+        burnUnits = userBalanceRaw;
+      }
+
+      if (userBalanceRaw > 0n && burnUnits > userBalanceRaw) {
+        const availFormatted = (Number(userBalanceRaw) / (10 ** decimals)).toLocaleString();
+        throw new Error(`Insufficient token balance. You have ${availFormatted} tokens available, but attempted to burn ${numAmount.toLocaleString()}.`);
+      }
+
+      // Capture initial total supply before burning for dual verification
+      let initialSupply = 0n;
+      try {
+        const supRes = await fetch(`https://tonapi.io/v2/blockchain/accounts/${encodeURIComponent(minterAddress)}/methods/get_jetton_data`);
+        if (supRes.ok) {
+          const supData = await supRes.json();
+          initialSupply = BigInt(supData.decoded?.total_supply || '0');
+        }
+      } catch (e) {}
+
+      if (statusBanner) {
+        statusBanner.innerHTML = '⏳ <strong>Awaiting Wallet Signature:</strong> Please approve the burn transaction in your TON wallet...';
+      }
+      if (burnBtn) burnBtn.innerHTML = '<span class="status-dot"></span> Awaiting Signature...';
+
+      // 2. Build TEP-74 op::burn (0x595f07bc) message
+      // body: op (uint32 = 0x595f07bc), query_id (uint64), jetton_amount (Coins), response_address (MsgAddress), custom_payload (Maybe Cell)
+      const userParsedAddr = Address.parse(userAddress);
+      const burnPayload = beginCell()
+        .storeUint(0x595f07bc, 32)
+        .storeUint(BigInt(Date.now()), 64)
+        .storeCoins(burnUnits)
+        .storeAddress(userParsedAddr)
+        .storeBit(0) // null custom_payload
+        .endCell();
+
+      const targetFriendly = Address.parse(jettonWalletAddress).toString({ bounceable: true, urlSafe: true });
+
+      const tx = {
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [{
+          address: targetFriendly,
+          amount: '50000000', // 0.05 TON for gas
+          payload: burnPayload.toBoc().toString('base64')
+        }]
+      };
+
+      // 3. Send transaction via TonConnect
+      await tc.sendTransaction(tx);
+
+      if (statusBanner) {
+        statusBanner.style.background = 'rgba(255,107,0,0.1)';
+        statusBanner.style.border = '1px solid #ff8a00';
+        statusBanner.style.color = '#ffaa44';
+        statusBanner.innerHTML = '🔥 <strong>Transaction Broadcast:</strong> Burn transaction submitted to TON network. Polling blockchain to verify on-chain supply and balance reduction... <span class="status-dot"></span>';
+      }
+      if (burnBtn) burnBtn.innerHTML = '<span class="status-dot"></span> Verifying On-Chain...';
+
+      // 4. Poll blockchain for verified balance and supply reduction
+      let verifiedBalance = false;
+      let verifiedSupply = false;
+      const initialBalance = userBalanceRaw;
+      for (let i = 0; i < 20; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        try {
+          // Poll user balance
+          const pollRes = await fetch(`https://tonapi.io/v2/accounts/${encodeURIComponent(userAddress)}/jettons/${encodeURIComponent(minterAddress)}`);
+          if (pollRes.ok) {
+            const pollData = await pollRes.json();
+            const currentBal = BigInt(pollData.balance || '0');
+            if (currentBal < initialBalance) {
+              verifiedBalance = true;
+            }
+          }
+          // Poll minter total supply
+          if (initialSupply > 0n) {
+            const sRes = await fetch(`https://tonapi.io/v2/blockchain/accounts/${encodeURIComponent(minterAddress)}/methods/get_jetton_data`);
+            if (sRes.ok) {
+              const sData = await sRes.json();
+              const curSup = BigInt(sData.decoded?.total_supply || '0');
+              if (curSup < initialSupply) {
+                verifiedSupply = true;
+              }
+            }
+          }
+          if (verifiedBalance || verifiedSupply) {
+            break;
+          }
+        } catch (e) {}
+      }
+      const verified = verifiedBalance || verifiedSupply;
+
+      if (verified) {
+        if (statusBanner) {
+          statusBanner.style.background = 'rgba(0,255,136,0.1)';
+          statusBanner.style.border = '1px solid var(--labs-green)';
+          statusBanner.style.color = '#fff';
+          statusBanner.innerHTML = `✔ <strong>Burn Verified On-Chain:</strong> Successfully burned <strong>${numAmount.toLocaleString()}</strong> tokens permanently. On-chain total supply and wallet balance updated.`;
+        }
+      } else {
+        if (statusBanner) {
+          statusBanner.style.background = 'rgba(255,165,0,0.1)';
+          statusBanner.style.border = '1px solid orange';
+          statusBanner.style.color = '#ffb040';
+          statusBanner.innerHTML = '⚠️ <strong>Transaction Broadcast:</strong> Burn submitted. TON indexers may take 30-60 seconds to update. Please refresh the page to view updated balances.';
+        }
+      }
+
+      // Refresh UI
+      if (typeof window.labsRefreshSecurityAnalysis === 'function') {
+        await window.labsRefreshSecurityAnalysis();
+      }
+
+      const burnInput = document.getElementById('labs-burn-amount');
+      if (burnInput) burnInput.value = '';
+
+    } catch (err) {
+      console.error('Burn error:', err);
+      if (statusBanner) {
+        statusBanner.style.display = 'block';
+        statusBanner.style.background = 'rgba(255,68,68,0.1)';
+        statusBanner.style.border = '1px solid #ff4444';
+        statusBanner.style.color = '#ff8888';
+        statusBanner.innerHTML = `❌ <strong>Burn Failed:</strong> ${err.message || String(err)}`;
+      }
+      alert(`Burn Failed: ${err.message || String(err)}`);
+    } finally {
+      if (burnBtn) {
+        burnBtn.disabled = false;
+        burnBtn.innerHTML = origBtnText;
+      }
     }
   };
 
