@@ -300,17 +300,400 @@ async function runMasterAuditTests() {
     global.fetch = origFetch;
   }
 
-  // Verify server.js HTTP 400 Bad Request on adversarial inputs
+  // ─────────────────────────────────────────────────────────────────────────
+  // TEST GROUP 7: MEDIO-01 Registry Immutability (deep Object.freeze)
+  // ─────────────────────────────────────────────────────────────────────────
+  console.log('\n--- TEST GROUP 7: Registry & Export Immutability (MEDIO-01) ---');
+  assert(
+    Object.isFrozen(verifier) &&
+    Object.isFrozen(verifier.AUDITED_BYTECODE_REGISTRY) &&
+    Object.isFrozen(verifier.AUDITED_BYTECODE_REGISTRY.STANDARD_JETTON_MINTER) &&
+    Object.isFrozen(verifier.AUDITED_BYTECODE_REGISTRY.STANDARD_JETTON_WALLET) &&
+    Object.isFrozen(verifier.AUDITED_BYTECODE_REGISTRY.ANLGRAM_VESTING_WALLET) &&
+    Object.isFrozen(verifier.STATUS),
+    'MEDIO-01: AUDITED_BYTECODE_REGISTRY, nested descriptors, STATUS, and exported verifier are deeply frozen'
+  );
+
+  const origMinterHash = verifier.AUDITED_BYTECODE_REGISTRY.STANDARD_JETTON_MINTER.hashHex;
+  try { verifier.AUDITED_BYTECODE_REGISTRY.STANDARD_JETTON_MINTER.hashHex = '00'.repeat(32); } catch (_) {}
+  try { verifier.AUDITED_BYTECODE_REGISTRY.MALICIOUS_CONTRACT = { hashHex: 'ff'.repeat(32) }; } catch (_) {}
+  try { verifier.STATUS.VERIFIED = 'COMPROMISED'; } catch (_) {}
+  assert(
+    verifier.AUDITED_BYTECODE_REGISTRY.STANDARD_JETTON_MINTER.hashHex === origMinterHash &&
+    verifier.AUDITED_BYTECODE_REGISTRY.MALICIOUS_CONTRACT === undefined &&
+    verifier.STATUS.VERIFIED === 'VERIFIED',
+    'MEDIO-01: Mutation attempts on AUDITED_BYTECODE_REGISTRY and STATUS fail to alter canonical hashes'
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TEST GROUP 8: MEDIO-02 Getter vs Indexer Isolation & Direct BOC Decoding
+  // ─────────────────────────────────────────────────────────────────────────
+  console.log('\n--- TEST GROUP 8: Getter vs Indexer Isolation & Direct BOC Decoding (MEDIO-02) ---');
   try {
-    const srvRes = await fetch('http://localhost:8080/api/verify-token?address=http://169.254.169.254/');
+    // Scenario A: Getter fails (HTTP 502), but Indexer (/jettons/:id) returns total_supply and zero admin
+    global.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes('/blockchain/accounts/') && !u.includes('/methods/')) {
+        return {
+          ok: true,
+          json: async () => ({
+            address: '0:2222222222222222222222222222222222222222222222222222222222222222',
+            status: 'active',
+            balance: 100000000,
+            code: pinned.standardMinterCodeHex
+          })
+        };
+      }
+      if (u.includes('/methods/get_jetton_data')) {
+        return { ok: false, status: 502 };
+      }
+      if (u.includes('/holders')) {
+        return { ok: true, json: async () => ({ addresses: [{ balance: '1000000000000' }] }) };
+      }
+      if (u.includes('/jettons/')) {
+        return {
+          ok: true,
+          json: async () => ({
+            total_supply: '1000000000000',
+            admin: { address: '0:0000000000000000000000000000000000000000000000000000000000000000' },
+            metadata: { name: 'IndexerOnly', symbol: 'IDX', decimals: '9' }
+          })
+        };
+      }
+      return { ok: false, status: 404 };
+    };
+
+    const indexerOnlyRep = await verifier.verifyToken(
+      '0:2222222222222222222222222222222222222222222222222222222222222222',
+      { forceFresh: true }
+    );
+    assert(
+      indexerOnlyRep.claims.total_supply?.status === verifier.STATUS.NOT_VERIFIED &&
+      indexerOnlyRep.claims.admin_status?.status === verifier.STATUS.NOT_VERIFIED &&
+      indexerOnlyRep.claims.minting_permissions?.status === verifier.STATUS.NOT_VERIFIED &&
+      indexerOnlyRep.claims.renunciation_immutability?.status === verifier.STATUS.NOT_VERIFIED &&
+      indexerOnlyRep.summary.permanentRenounced === false,
+      'MEDIO-02: When get_jetton_data fails, indexer (/jettons/:id) cannot mark supply, admin, or renunciation as VERIFIED'
+    );
+
+    // Scenario B: get_jetton_data returns ONLY stack (no decoded field) with a valid active admin BOC in stack[2].cell
+    const activeAdminBocHex = 'b5ee9c72010101010024000043801adf9f64733c7020fefdf99c2cd854b775bce88e5cf9484044d956a2379ddbadb0';
+    global.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes('/blockchain/accounts/') && !u.includes('/methods/')) {
+        return {
+          ok: true,
+          json: async () => ({
+            address: '0:3333333333333333333333333333333333333333333333333333333333333333',
+            status: 'active',
+            balance: 100000000,
+            code: pinned.standardMinterCodeHex
+          })
+        };
+      }
+      if (u.includes('/methods/get_jetton_data')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            exit_code: 0,
+            stack: [
+              { type: 'num', num: '0x3b9aca00' },
+              { type: 'num', num: '-0x1' },
+              { type: 'cell', cell: activeAdminBocHex }
+            ]
+            // Notice: NO decoded field!
+          })
+        };
+      }
+      if (u.includes('/holders')) {
+        return { ok: true, json: async () => ({ addresses: [{ balance: '1000000000' }] }) };
+      }
+      if (u.includes('/jettons/')) {
+        return {
+          ok: true,
+          json: async () => ({ metadata: { name: 'StackOnly', symbol: 'STK', decimals: '9' } })
+        };
+      }
+      return { ok: false, status: 404 };
+    };
+
+    const stackOnlyRep = await verifier.verifyToken(
+      '0:3333333333333333333333333333333333333333333333333333333333333333',
+      { forceFresh: true }
+    );
+    assert(
+      stackOnlyRep.claims.admin_status?.status === verifier.STATUS.VERIFIED &&
+      stackOnlyRep.claims.admin_status?.evidence?.adminAddress === '0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d' &&
+      stackOnlyRep.claims.renunciation_immutability?.status === verifier.STATUS.FAILED &&
+      stackOnlyRep.summary.permanentRenounced === false,
+      'MEDIO-02: Engine decodes active admin_address directly from stack[2].cell BOC when decoded is absent'
+    );
+
+    // Scenario C: stack[2].cell has corrupted/unparseable BOC and decoded is absent -> NOT VERIFIED (never addr_none)
+    global.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes('/blockchain/accounts/') && !u.includes('/methods/')) {
+        return {
+          ok: true,
+          json: async () => ({
+            address: '0:4444444444444444444444444444444444444444444444444444444444444444',
+            status: 'active',
+            balance: 100000000,
+            code: pinned.standardMinterCodeHex
+          })
+        };
+      }
+      if (u.includes('/methods/get_jetton_data')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            exit_code: 0,
+            stack: [
+              { type: 'num', num: '0x3b9aca00' },
+              { type: 'num', num: '-0x1' },
+              { type: 'cell', cell: 'deadbeef' }
+            ]
+          })
+        };
+      }
+      return { ok: false, status: 404 };
+    };
+
+    const corruptCellRep = await verifier.verifyToken(
+      '0:4444444444444444444444444444444444444444444444444444444444444444',
+      { forceFresh: true }
+    );
+    assert(
+      corruptCellRep.claims.admin_status?.status === verifier.STATUS.NOT_VERIFIED &&
+      corruptCellRep.summary.permanentRenounced === false,
+      'MEDIO-02: Unparseable stack[2].cell BOC without decoded returns NOT VERIFIED (never assumed addr_none)'
+    );
+  } finally {
+    global.fetch = origFetch;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TEST GROUP 9: MEDIO-03 Exact BigInt Formatting & Decimals Validation
+  // ─────────────────────────────────────────────────────────────────────────
+  console.log('\n--- TEST GROUP 9: BigInt Precision & Decimals Validation (MEDIO-03) ---');
+  assert(
+    verifier.formatUnits('1500', 0) === '1,500',
+    'MEDIO-03: formatUnits respects decimals = 0 without falling back to 9',
+    `Got: ${verifier.formatUnits('1500', 0)}`
+  );
+  assert(
+    verifier.formatUnits('125', 1) === '12.5',
+    'MEDIO-03: formatUnits formats decimals = 1 accurately',
+    `Got: ${verifier.formatUnits('125', 1)}`
+  );
+  assert(
+    verifier.formatUnits('1000004000000000000', 9) === '1,000,004,000',
+    'MEDIO-03: formatUnits formats decimals = 9 accurately',
+    `Got: ${verifier.formatUnits('1000004000000000000', 9)}`
+  );
+  // BigInt > Number.MAX_SAFE_INTEGER (9,007,199,254,740,991)
+  const hugeSupply = '9007199254740993123456789';
+  assert(
+    verifier.formatUnits(hugeSupply, 9) === '9,007,199,254,740,993.123456789',
+    'MEDIO-03: formatUnits preserves exact integer and 9-decimal precision above Number.MAX_SAFE_INTEGER',
+    `Got: ${verifier.formatUnits(hugeSupply, 9)}`
+  );
+  assert(
+    verifier.formatUnits('1000', -1) === 'INVALID' &&
+    verifier.formatUnits('1000', 999) === 'INVALID' &&
+    verifier.formatUnits('1000', 'abc') === 'INVALID' &&
+    verifier.formatUnits('12.34', 9) === 'INVALID' &&
+    verifier.formatUnits('not_a_number', 9) === 'INVALID',
+    'MEDIO-03: formatUnits rejects invalid decimals and non-integer amount strings with INVALID'
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TEST GROUP 10: BAJO-01 CRC16-CCITT Checksum & Cache Isolation/Immutability
+  // ─────────────────────────────────────────────────────────────────────────
+  console.log('\n--- TEST GROUP 10: CRC16-CCITT Checksum & Cache Isolation (BAJO-01) ---');
+  assert(
+    verifier.isValidTonAddress('EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOe') === true &&
+    verifier.isValidTonAddress('EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOf') === false &&
+    verifier.isValidTonAddress('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c') === true &&
+    verifier.isValidTonAddress('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9d') === false,
+    'BAJO-01: Friendly TON address validator verifies TEP-2 CRC16-CCITT checksum and rejects 1-char corruption'
+  );
+
+  try {
+    const adminRaw = '0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d';
+    const otherRaw = '0:1111111111111111111111111111111111111111111111111111111111111111';
+    const activeAdminBocHex = 'b5ee9c72010101010024000043801adf9f64733c7020fefdf99c2cd854b775bce88e5cf9484044d956a2379ddbadb0';
+    global.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes('/blockchain/accounts/') && !u.includes('/methods/')) {
+        return {
+          ok: true,
+          json: async () => ({
+            address: '0:5555555555555555555555555555555555555555555555555555555555555555',
+            status: 'active',
+            balance: 100000000,
+            code: pinned.standardMinterCodeHex
+          })
+        };
+      }
+      if (u.includes('/methods/get_jetton_data')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            exit_code: 0,
+            stack: [
+              { type: 'num', num: '0x3b9aca00' },
+              { type: 'num', num: '-0x1' },
+              { type: 'cell', cell: activeAdminBocHex }
+            ],
+            decoded: { total_supply: '1000000000', mintable: true, admin_address: adminRaw }
+          })
+        };
+      }
+      if (u.includes('/holders')) {
+        return { ok: true, json: async () => ({ addresses: [{ balance: '1000000000' }] }) };
+      }
+      if (u.includes('/jettons/')) {
+        return { ok: true, json: async () => ({ metadata: { name: 'CacheTest', symbol: 'CT', decimals: '9' } }) };
+      }
+      return { ok: false, status: 404 };
+    };
+
+    const repCreator = await verifier.verifyToken(
+      '0:5555555555555555555555555555555555555555555555555555555555555555',
+      { viewerWallet: adminRaw }
+    );
+    const repStranger = await verifier.verifyToken(
+      '0:5555555555555555555555555555555555555555555555555555555555555555',
+      { viewerWallet: otherRaw }
+    );
+    assert(
+      repCreator.claims.admin_status.evidence.isUserAdmin === true &&
+      repStranger.claims.admin_status.evidence.isUserAdmin === false,
+      'BAJO-01: Cache key isolates viewerWallet so creator vs non-creator isUserAdmin never collides'
+    );
+  } finally {
+    global.fetch = origFetch;
+  }
+
+  // Test cached report deep-clone immutability on MoonDog (where all checks are VERIFIED)
+  const cachedRep1 = await verifier.verifyToken(moonDogMinter);
+  cachedRep1.summary.permanentRenounced = false;
+  cachedRep1.claims.admin_status.status = 'MUTATED';
+  const cachedRep2 = await verifier.verifyToken(moonDogMinter);
+  assert(
+    cachedRep2.summary.permanentRenounced === true &&
+    cachedRep2.claims.admin_status.status === verifier.STATUS.VERIFIED,
+    'BAJO-01: Cached verification report returns deep clone immune to external caller mutation'
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TEST GROUP 11: BAJO-02 Vesting Master Address Association & Dynamic Params
+  // ─────────────────────────────────────────────────────────────────────────
+  console.log('\n--- TEST GROUP 11: Vesting Master Association & Dynamic Params (BAJO-02) ---');
+  try {
+    const moonDogMasterBocHex = 'b5ee9c72010101010024000043801fc7a6ad08165a145336515a42f0f178cafe077223eb94ff1fa8167bfa46e30630';
+    const beneficiaryBocHex = 'b5ee9c72010101010024000043801adf9f64733c7020fefdf99c2cd854b775bce88e5cf9484044d956a2379ddbadb0';
+    const vestingCodeHex = Buffer.from(vestingArtifact.codeBocBase64, 'base64').toString('hex');
+
+    global.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes('/blockchain/accounts/') && !u.includes('/methods/')) {
+        return {
+          ok: true,
+          json: async () => ({ status: 'active', code: vestingCodeHex })
+        };
+      }
+      if (u.includes('/methods/get_vesting_data')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            exit_code: 0,
+            stack: [
+              { type: 'num', num: '5000000000000' },     // [0] total_locked: 5,000 tokens (9 decimals)
+              { type: 'num', num: '0' },                 // [1] claimed
+              { type: 'num', num: '0' },                 // [2] vested
+              { type: 'num', num: '0x6ae1bc80' },        // [3] start_time
+              { type: 'num', num: String(45 * 86400) },  // [4] cliff_duration: 45d
+              { type: 'num', num: String(360 * 86400) }, // [5] total_duration: 360d
+              { type: 'cell', cell: beneficiaryBocHex },
+              { type: 'cell', cell: beneficiaryBocHex },
+              { type: 'cell', cell: moonDogMasterBocHex },
+              { type: 'num', num: '0x1' }
+            ]
+          })
+        };
+      }
+      return { ok: false, status: 404 };
+    };
+
+    const matchVest = await verifier.auditVestingContract(
+      'EQDqrJul6YUuOWmTery57ukjdNbHZ5uA1KfZOmrvQJVAqikS',
+      moonDogMinter,
+      { decimals: 9, symbol: 'TESTMEME' }
+    );
+    assert(
+      matchVest.claim.status === verifier.STATUS.VERIFIED &&
+      matchVest.claim.detail.includes('5,000 TESTMEME') &&
+      matchVest.claim.detail.includes('45d cliff, 360d duration'),
+      'BAJO-02: auditVestingContract verifies matching jetton_master_address and formats dynamic symbol/cliff/duration',
+      matchVest.claim.detail
+    );
+
+    const mismatchVest = await verifier.auditVestingContract(
+      'EQDqrJul6YUuOWmTery57ukjdNbHZ5uA1KfZOmrvQJVAqikS',
+      '0:1111111111111111111111111111111111111111111111111111111111111111',
+      { decimals: 9, symbol: 'OTHER' }
+    );
+    assert(
+      mismatchVest.claim.status === verifier.STATUS.FAILED &&
+      mismatchVest.claim.detail.includes('Vesting Jetton Master mismatch'),
+      'BAJO-02: auditVestingContract returns FAILED when vesting contract belongs to a different Jetton Master',
+      mismatchVest.claim.detail
+    );
+  } finally {
+    global.fetch = origFetch;
+  }
+
+  // Verify server.js HTTP endpoints on ephemeral local port (zero skips)
+  const { server } = require('./server.js');
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const srvPort = server.address().port;
+  try {
+    const srvRes = await fetch(`http://127.0.0.1:${srvPort}/api/verify-token?address=http://169.254.169.254/`);
     const srvJson = await srvRes.json();
     assert(
       srvRes.status === 400 && srvJson.status === 400,
       'server.js /api/verify-token immediately responds with HTTP 400 Bad Request on invalid address',
       `HTTP ${srvRes.status}: ${srvJson.error}`
     );
-  } catch (err) {
-    console.warn('Local server check skipped (server not reachable on 8080):', err.message);
+
+    const badCrcRes = await fetch(`http://127.0.0.1:${srvPort}/api/verify-token?address=EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOf`);
+    assert(
+      badCrcRes.status === 400,
+      'server.js /api/verify-token rejects friendly TON address with invalid CRC16 checksum with HTTP 400',
+      `HTTP ${badCrcRes.status}`
+    );
+
+    const badMethodRes = await fetch(`http://127.0.0.1:${srvPort}/api/ton/blockchain/accounts/EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOe/methods/evil_method`);
+    assert(
+      badMethodRes.status === 403,
+      'server.js /api/ton rejects unpermitted TVM method with HTTP 403',
+      `HTTP ${badMethodRes.status}`
+    );
+
+    const badParamRes = await fetch(`http://127.0.0.1:${srvPort}/api/ton/rates?evil=1`);
+    assert(
+      badParamRes.status === 400,
+      'server.js /api/ton rejects unpermitted query parameter with HTTP 400',
+      `HTTP ${badParamRes.status}`
+    );
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
   }
 
   console.log('\n═══════════════════════════════════════════════════════════════════');

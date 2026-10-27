@@ -70,6 +70,20 @@
   window.wizardState = wizardState;
   const state = wizardState; // Alias for backward compatibility
 
+  // Helper: Safe HTML Escaping (prevents XSS and ReferenceError in standalone DOM environments)
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+  if (typeof window !== 'undefined' && typeof window.escapeHtml !== 'function') {
+    window.escapeHtml = escapeHtml;
+  }
+
   // Helper: Format Big Numbers
   function formatNumber(num) {
     if (num === null || num === undefined || isNaN(num)) return '0';
@@ -1807,25 +1821,38 @@
         const cSupply = rep.claims.total_supply || {};
         const cMint = rep.claims.minting_permissions || {};
         const cCode = rep.claims.bytecode_integrity || {};
+        const cUpgrade = rep.claims.no_upgrade_hooks || {};
 
-        const isUnverified = (cMint.status === 'NOT VERIFIED' || cAdmin.status === 'NOT VERIFIED');
+        const isUnverified = (
+          cMint.status === 'NOT VERIFIED' ||
+          cAdmin.status === 'NOT VERIFIED' ||
+          cSupply.status === 'NOT VERIFIED' ||
+          cCode.status === 'NOT VERIFIED' ||
+          cUpgrade.status === 'NOT VERIFIED' ||
+          rep.summary.totalChecksUnverified > 0
+        );
+        const isStandardTEP74 = Boolean(cCode.status === 'VERIFIED' && cCode.evidence?.isStandardTEP74);
+        const supplyVerified = Boolean(cSupply.status === 'VERIFIED' && cSupply.evidence?.rawSupply !== undefined && cSupply.evidence?.rawSupply !== null);
         return {
           minterAddress: friendlyAddr,
           minterRawAddress: rep.target.rawAddress || rawAddr,
           adminAddress: cAdmin.evidence?.adminAddress || null,
-          isRenounced: rep.summary.permanentRenounced,
-          isUserAdmin: cAdmin.evidence?.isUserAdmin || false,
-          mintAuthority: rep.summary.permanentRenounced ? 'DISABLED' : (isUnverified ? 'UNKNOWN (NOT VERIFIED)' : (cAdmin.evidence?.isUserAdmin ? 'ACTIVE (CREATOR WALLET)' : 'ACTIVE (OTHER CREATOR)')),
+          isRenounced: Boolean(rep.summary.permanentRenounced && !isUnverified),
+          isUnverified,
+          adminVerified: cAdmin.status === 'VERIFIED',
+          supplyVerified,
+          isUserAdmin: Boolean(!isUnverified && cAdmin.evidence?.isUserAdmin),
+          mintAuthority: rep.summary.permanentRenounced ? 'DISABLED' : (isUnverified ? 'NOT VERIFIED' : (cAdmin.evidence?.isUserAdmin ? 'ACTIVE (CREATOR WALLET)' : 'ACTIVE (OTHER CREATOR)')),
           additionalMinting: rep.summary.permanentRenounced ? 'PERMANENTLY BLOCKED' : (isUnverified ? 'NOT VERIFIED' : 'POSSIBLE BY ADMIN'),
           renounceStatus: rep.summary.permanentRenounced ? 'VERIFIED ON-CHAIN (PERMANENTLY RENOUNCED)' : (isUnverified ? 'NOT VERIFIED (BYTECODE / RPC AUDIT REQUIRED)' : 'NOT RENOUNCED (ADMIN ACTIVE)'),
-          burnCapability: 'AVAILABLE (TEP-74 Standard)',
-          totalSupplyRaw: cSupply.evidence?.rawSupply || '0',
-          totalSupplyFormatted: cSupply.evidence?.rawSupply ? verifier.formatUnits(cSupply.evidence?.rawSupply, cSupply.evidence?.decimals) : '0',
-          decimals: cSupply.evidence?.decimals || 9,
+          burnCapability: isStandardTEP74 ? 'AVAILABLE (TEP-74 Standard)' : 'NOT VERIFIED (Bytecode Unverified)',
+          totalSupplyRaw: supplyVerified ? String(cSupply.evidence.rawSupply) : 'NOT VERIFIED',
+          totalSupplyFormatted: supplyVerified ? verifier.formatUnits(cSupply.evidence.rawSupply, cSupply.evidence?.decimals) : 'NOT VERIFIED',
+          decimals: cSupply.evidence?.decimals ?? 9,
           verificationSource: rep.dataSources.join(' + ') || 'UNVERIFIED',
           verifiedAt: Date.now(),
           codeHashHex: cCode.evidence?.codeHashHex,
-          isStandardTEP74: cCode.evidence?.isStandardTEP74,
+          isStandardTEP74,
           fullReport: rep,
           error: (rep.claims.account_status?.status === 'FAILED' || rep.claims.validation_error || rep.claims.engine_execution)
             ? (rep.claims.validation_error?.detail || rep.claims.account_status?.detail || rep.claims.engine_execution?.detail)
@@ -1841,13 +1868,17 @@
       minterRawAddress: rawAddr,
       adminAddress: null,
       isRenounced: false,
+      isUnverified: true,
+      adminVerified: false,
+      supplyVerified: false,
+      isStandardTEP74: false,
       isUserAdmin: false,
-      mintAuthority: 'UNKNOWN',
-      additionalMinting: 'UNKNOWN',
-      renounceStatus: 'UNVERIFIED',
-      burnCapability: 'AVAILABLE (TEP-74 Standard)',
+      mintAuthority: 'NOT VERIFIED',
+      additionalMinting: 'NOT VERIFIED',
+      renounceStatus: 'NOT VERIFIED',
+      burnCapability: 'NOT VERIFIED (Bytecode Audit Required)',
       totalSupplyRaw: '0',
-      totalSupplyFormatted: '0',
+      totalSupplyFormatted: 'NOT VERIFIED',
       decimals: 9,
       verificationSource: 'TON Blockchain get_jetton_data',
       verifiedAt: Date.now(),
@@ -1867,30 +1898,35 @@
 
       const decoded = data.decoded || {};
       const admin = decoded.admin_address;
-      const totalSupply = decoded.total_supply || '0';
-
-      result.totalSupplyRaw = totalSupply.toString();
+      const totalSupply = decoded.total_supply;
+      if (totalSupply !== undefined && totalSupply !== null) {
+        result.totalSupplyRaw = totalSupply.toString();
+        result.supplyVerified = true;
+      }
 
       // Jetton metadata for decimals
       try {
         const metaRes = await fetch(`${getNetworkContext().tonApiBase}/jettons/${encodeURIComponent(friendlyAddr)}`);
         if (metaRes.ok) {
           const meta = await metaRes.json();
-          if (meta.metadata && meta.metadata.decimals) {
+          if (meta.metadata && meta.metadata.decimals !== undefined) {
             result.decimals = parseInt(meta.metadata.decimals, 10);
           }
         }
       } catch (e) {}
 
       const dec = result.decimals;
-      try {
-        const tsBig = BigInt(result.totalSupplyRaw);
-        const div = BigInt(10 ** dec);
-        const whole = tsBig / div;
-        const frac = tsBig % div;
-        result.totalSupplyFormatted = Number(whole).toLocaleString() + (frac > 0n ? '.' + frac.toString().padStart(dec, '0').slice(0, 4) : '');
-      } catch (e) {
-        result.totalSupplyFormatted = (Number(result.totalSupplyRaw) / (10 ** dec)).toLocaleString();
+      if (result.supplyVerified) {
+        try {
+          const tsBig = BigInt(result.totalSupplyRaw);
+          const div = 10n ** BigInt(dec);
+          const whole = tsBig / div;
+          const frac = tsBig % div;
+          const wholeStr = whole.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          result.totalSupplyFormatted = wholeStr + (frac > 0n && dec > 0 ? '.' + frac.toString().padStart(dec, '0').replace(/0+$/, '') : '');
+        } catch (e) {
+          result.totalSupplyFormatted = 'NOT VERIFIED';
+        }
       }
 
       // Check admin status on TON: addr_none decodes to empty string "" or "null" or all-zeroes
@@ -1898,15 +1934,18 @@
       if (isNullAdmin) {
         result.adminAddress = null;
         result.isUserAdmin = false;
+        result.isUnverified = true;
         // SEC-01: Exigir bytecode canónico verificado antes de certificar renuncia permanente
         // Sin TokenVerificationEngine confirmando bytecode estándar TEP-74, marcar como NOT VERIFIED
         result.isRenounced = false;
-        result.mintAuthority = 'UNKNOWN (BYTECODE UNVERIFIED)';
+        result.mintAuthority = 'NOT VERIFIED (BYTECODE UNVERIFIED)';
         result.additionalMinting = 'NOT VERIFIED';
         result.renounceStatus = 'NOT VERIFIED (BYTECODE AUDIT REQUIRED)';
       } else {
         result.adminAddress = admin;
+        result.adminVerified = true;
         result.isRenounced = false;
+        result.isUnverified = false;
 
         // Check if user is the admin
         const tc = window.tonConnectUI || window.TonConnectUIInstance;
@@ -1929,6 +1968,7 @@
       return result;
     } catch (err) {
       result.error = err.message;
+      result.isUnverified = true;
       result.verificationSource = 'FAILED TO REACH ON-CHAIN DATA';
       return result;
     }
@@ -1947,6 +1987,11 @@
     const secBurnStatus = document.getElementById('sec-burn-status');
     const burnBalEl = document.getElementById('labs-burn-balance');
     const burnSymEl = document.getElementById('labs-burn-symbol');
+    const renBanner = document.getElementById('mint-renounced-banner');
+    const renStatusBanner = document.getElementById('labs-renounce-status-banner');
+    const mintBtn = document.getElementById('mint-btn');
+    const renBtn = document.getElementById('renounce-btn');
+    const note = document.getElementById('sec-verification-note');
 
     const token = wizardState.activeToken || wizardState.deployedToken || {};
     const renAddr = document.getElementById('renounce-minter-addr');
@@ -1957,7 +2002,7 @@
 
     if (secContract) {
       const shortMinter = shortAddr(rawToFriendly(minterAddr));
-      secContract.innerHTML = `<a href="${getNetworkContext().tonscanBase}/address/${encodeURIComponent(rawToFriendly(minterAddr))}" target="_blank" style="color:var(--labs-cyan); text-decoration:none;">${shortMinter} ↗</a>`;
+      secContract.innerHTML = `<a href="${getNetworkContext().tonscanBase}/address/${encodeURIComponent(rawToFriendly(minterAddr))}" target="_blank" style="color:var(--labs-cyan); text-decoration:none;">${escapeHtml(shortMinter)} ↗</a>`;
     }
 
     if (secAdmin) secAdmin.innerHTML = '<span class="status-dot"></span> Checking on-chain...';
@@ -1968,33 +2013,73 @@
     const sec = await window.labsVerifyOnChainTokenSecurity(minterAddr);
     if (!sec) return;
 
-    // Explicit UNVERIFIED state on network/API failure
+    // ALTO-02: Explicit NOT VERIFIED state on network/API failure — clear any residual green banners
     if (sec.error) {
-      if (secAdmin) secAdmin.innerHTML = `<span style="color:#ffaa00; font-weight:600;">⚠️ UNVERIFIED (${escapeHtml(sec.error)})</span>`;
-      if (secSupply) secSupply.innerHTML = '<span style="color:#ffaa00;">UNVERIFIED</span>';
-      if (secMintAuth) secMintAuth.innerHTML = '<span style="color:#ffaa00;">UNVERIFIED</span>';
-      if (secMintStatus) secMintStatus.innerHTML = '<span style="color:#ffaa00;">UNVERIFIED</span>';
-      if (secRenStatus) secRenStatus.innerHTML = '<span style="color:#ffaa00;">UNVERIFIED</span>';
-      const note = document.getElementById('sec-verification-note');
-      if (note) note.innerHTML = `<span style="color:#ffaa00;">⚠️ Blockchain query could not be completed: ${escapeHtml(sec.error)}. Click "Refresh" to retry.</span>`;
+      if (secAdmin) secAdmin.innerHTML = `<span style="color:#ffaa00; font-weight:600;">⚠️ NOT VERIFIED (${escapeHtml(sec.error)})</span>`;
+      if (secSupply) secSupply.innerHTML = '<span style="color:#ffaa00; font-weight:600;">NOT VERIFIED</span>';
+      if (secMintAuth) secMintAuth.innerHTML = '<span style="color:#ffaa00; font-weight:600;">NOT VERIFIED</span>';
+      if (secMintStatus) secMintStatus.innerHTML = '<span style="color:#ffaa00; font-weight:600;">NOT VERIFIED</span>';
+      if (secRenStatus) secRenStatus.innerHTML = '<span style="color:#ffaa00; font-weight:600;">NOT VERIFIED</span>';
+      if (secBurnStatus) secBurnStatus.innerHTML = '<span style="color:#ffaa00; font-weight:600;">NOT VERIFIED</span>';
+
+      // Hide any previous green renounced banners so stale verified state never lingers
+      if (renBanner) renBanner.style.display = 'none';
+      if (renStatusBanner) {
+        renStatusBanner.style.display = 'none';
+        renStatusBanner.innerHTML = '';
+      }
+      if (mintBtn) {
+        mintBtn.disabled = true;
+        mintBtn.style.opacity = '0.45';
+        mintBtn.style.cursor = 'not-allowed';
+        mintBtn.innerHTML = '⚠️ Minting Locked (On-Chain State Not Verified)';
+      }
+      if (renBtn) {
+        renBtn.disabled = true;
+        renBtn.style.opacity = '0.45';
+        renBtn.style.cursor = 'not-allowed';
+        renBtn.textContent = '⚠️ Renounce Locked (On-Chain State Not Verified)';
+      }
+
+      const lastKnownNote = wizardState.lastVerifiedSecurityAt
+        ? ` (Last known verification: ${new Date(wizardState.lastVerifiedSecurityAt).toLocaleTimeString()} — current state NOT VERIFIED)`
+        : '';
+      if (note) {
+        note.innerHTML = `<span style="color:#ffaa00;">⚠️ Blockchain query could not be completed: ${escapeHtml(sec.error)}${escapeHtml(lastKnownNote)}. Click "Refresh" to retry.</span>`;
+      }
       return;
     }
 
-    // Update Security Card with verified on-chain data
-    if (secSupply) secSupply.textContent = sec.totalSupplyFormatted;
+    // Update Security Card with verified or explicitly NOT VERIFIED on-chain data
+    if (secSupply) {
+      if (sec.supplyVerified && sec.totalSupplyFormatted && sec.totalSupplyFormatted !== 'NOT VERIFIED' && sec.totalSupplyFormatted !== 'INVALID') {
+        secSupply.textContent = sec.totalSupplyFormatted;
+      } else {
+        secSupply.innerHTML = '<span style="color:#ffaa00; font-weight:600;">⚠️ NOT VERIFIED</span>';
+      }
+    }
+
+    const hasVerifiedActiveAdmin = Boolean(!sec.isRenounced && sec.adminAddress && sec.adminVerified !== false);
+    const isUnverifiedState = Boolean(sec.isUnverified || (!sec.isRenounced && !hasVerifiedActiveAdmin));
 
     if (secAdmin) {
-      if (sec.isRenounced) {
+      if (sec.isRenounced && !isUnverifiedState) {
         secAdmin.innerHTML = '<span style="color:var(--labs-green); font-weight:700;">🔒 None (Permanently Renounced)</span>';
-      } else {
+      } else if (hasVerifiedActiveAdmin) {
         const shortAdmin = shortAddr(rawToFriendly(sec.adminAddress));
-        secAdmin.innerHTML = `<a href="${getNetworkContext().tonscanBase}/address/${encodeURIComponent(rawToFriendly(sec.adminAddress))}" target="_blank" style="color:var(--labs-cyan); text-decoration:none;">${shortAdmin} ↗</a> ${sec.isUserAdmin ? '<span style="color:var(--labs-green); font-size:11px;">(You)</span>' : ''}`;
+        secAdmin.innerHTML = `<a href="${getNetworkContext().tonscanBase}/address/${encodeURIComponent(rawToFriendly(sec.adminAddress))}" target="_blank" style="color:var(--labs-cyan); text-decoration:none;">${escapeHtml(shortAdmin)} ↗</a> ${sec.isUserAdmin ? '<span style="color:var(--labs-green); font-size:11px;">(You)</span>' : ''}`;
+      } else if (!sec.adminAddress) {
+        secAdmin.innerHTML = '<span style="color:#ffaa00; font-weight:700;">⚠️ Null Admin — NOT VERIFIED (Bytecode Unverified)</span>';
+      } else {
+        secAdmin.innerHTML = '<span style="color:#ffaa00; font-weight:700;">⚠️ NOT VERIFIED</span>';
       }
     }
 
     if (secMintAuth) {
-      if (sec.isRenounced) {
+      if (sec.isRenounced && !isUnverifiedState) {
         secMintAuth.innerHTML = '<span style="color:var(--labs-red); font-weight:700;">DISABLED (No Admin)</span>';
+      } else if (isUnverifiedState) {
+        secMintAuth.innerHTML = '<span style="color:#ffaa00; font-weight:700;">⚠️ NOT VERIFIED</span>';
       } else if (sec.isUserAdmin) {
         secMintAuth.innerHTML = '<span style="color:var(--labs-green); font-weight:700;">ACTIVE (Creator Wallet)</span>';
       } else {
@@ -2003,39 +2088,43 @@
     }
 
     if (secMintStatus) {
-      if (sec.isRenounced) {
+      if (sec.isRenounced && !isUnverifiedState) {
         secMintStatus.innerHTML = '<span style="color:var(--labs-red); font-weight:700;">PERMANENTLY BLOCKED</span>';
+      } else if (isUnverifiedState) {
+        secMintStatus.innerHTML = '<span style="color:#ffaa00; font-weight:700;">⚠️ NOT VERIFIED</span>';
       } else {
         secMintStatus.innerHTML = '<span style="color:var(--labs-green); font-weight:700;">POSSIBLE (Admin Controlled)</span>';
       }
     }
 
     if (secRenStatus) {
-      if (sec.isRenounced) {
+      if (sec.isRenounced && !isUnverifiedState) {
         secRenStatus.innerHTML = '<span style="color:var(--labs-green); font-weight:700;">✔ VERIFIED ON-CHAIN (PERMANENT)</span>';
+      } else if (isUnverifiedState) {
+        secRenStatus.innerHTML = `<span style="color:#ffaa00; font-weight:700;">⚠️ ${escapeHtml(sec.renounceStatus || 'NOT VERIFIED')}</span>`;
       } else {
         secRenStatus.innerHTML = '<span style="color:#ffaa00; font-weight:700;">NOT RENOUNCED (ADMIN ACTIVE)</span>';
       }
     }
 
     if (secBurnStatus) {
-      secBurnStatus.innerHTML = '<span style="color:var(--labs-green); font-weight:700;">✔ AVAILABLE (TEP-74 Standard)</span>';
+      if (sec.isStandardTEP74) {
+        secBurnStatus.innerHTML = '<span style="color:var(--labs-green); font-weight:700;">✔ AVAILABLE (TEP-74 Standard)</span>';
+      } else {
+        secBurnStatus.innerHTML = '<span style="color:#ffaa00; font-weight:700;">⚠️ NOT VERIFIED (Bytecode Unverified)</span>';
+      }
     }
 
     // Update Action Buttons & Banners based on verified state
-    const renBanner = document.getElementById('mint-renounced-banner');
-    const renStatusBanner = document.getElementById('labs-renounce-status-banner');
-    const mintBtn = document.getElementById('mint-btn');
-    const renBtn = document.getElementById('renounce-btn');
-
-    if (sec.isRenounced) {
+    if (sec.isRenounced && !isUnverifiedState) {
+      wizardState.lastVerifiedSecurityAt = sec.verifiedAt || Date.now();
       if (renBanner) renBanner.style.display = 'block';
       if (renStatusBanner) {
         renStatusBanner.style.display = 'block';
         renStatusBanner.style.background = 'rgba(0,255,136,0.08)';
         renStatusBanner.style.border = '1px solid var(--labs-green)';
         renStatusBanner.style.color = '#fff';
-        renStatusBanner.innerHTML = '✔ <strong>Verified On-Chain:</strong> Contract admin has been permanently renounced. <code>admin_address</code> is null (<code>addr_none</code>). Supply is permanently fixed.';
+        renStatusBanner.innerHTML = '✔ <strong>Verified On-Chain:</strong> Contract admin has been permanently renounced. <code>admin_address</code> is null (<code>addr_none</code>) and canonical TEP-74 bytecode is confirmed. Supply is permanently fixed.';
       }
       if (mintBtn) {
         mintBtn.disabled = true;
@@ -2049,9 +2138,34 @@
         renBtn.style.cursor = 'not-allowed';
         renBtn.textContent = '🔒 Admin Already Renounced On-Chain';
       }
-    } else {
+    } else if (isUnverifiedState) {
       if (renBanner) renBanner.style.display = 'none';
-      if (renStatusBanner) renStatusBanner.style.display = 'none';
+      if (renStatusBanner) {
+        renStatusBanner.style.display = 'block';
+        renStatusBanner.style.background = 'rgba(255,170,0,0.08)';
+        renStatusBanner.style.border = '1px solid #ffaa00';
+        renStatusBanner.style.color = '#ffaa00';
+        renStatusBanner.innerHTML = '⚠️ <strong>NOT VERIFIED:</strong> Contract bytecode or TVM getter state could not be verified against canonical TEP-74 artifacts. Administrative actions are locked until verification succeeds.';
+      }
+      if (mintBtn) {
+        mintBtn.disabled = true;
+        mintBtn.style.opacity = '0.45';
+        mintBtn.style.cursor = 'not-allowed';
+        mintBtn.innerHTML = '⚠️ Minting Locked (State Not Verified)';
+      }
+      if (renBtn) {
+        renBtn.disabled = true;
+        renBtn.style.opacity = '0.45';
+        renBtn.style.cursor = 'not-allowed';
+        renBtn.textContent = '⚠️ Renounce Locked (State Not Verified)';
+      }
+    } else {
+      wizardState.lastVerifiedSecurityAt = sec.verifiedAt || Date.now();
+      if (renBanner) renBanner.style.display = 'none';
+      if (renStatusBanner) {
+        renStatusBanner.style.display = 'none';
+        renStatusBanner.innerHTML = '';
+      }
       if (mintBtn) {
         mintBtn.disabled = !sec.isUserAdmin;
         mintBtn.style.opacity = sec.isUserAdmin ? '1' : '0.5';

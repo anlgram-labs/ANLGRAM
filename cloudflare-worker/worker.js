@@ -25,10 +25,11 @@ const ALLOWED_ORIGINS = [
 ];
 
 // Strict Whitelist of allowed TonAPI route patterns
-const ALLOWED_ROUTES = [
+export const ALLOWED_ROUTES = [
   // Account endpoints
   /^\/accounts\/[a-zA-Z0-9_\-\:]+$/,
   /^\/accounts\/[a-zA-Z0-9_\-\:]+\/jettons$/,
+  /^\/accounts\/[a-zA-Z0-9_\-\:]+\/jettons\/[a-zA-Z0-9_\-\:]+$/,
   /^\/accounts\/[a-zA-Z0-9_\-\:]+\/nfts$/,
   /^\/accounts\/[a-zA-Z0-9_\-\:]+\/events$/,
   /^\/accounts\/search$/,
@@ -37,7 +38,7 @@ const ALLOWED_ROUTES = [
   // Jettons
   /^\/jettons\/[a-zA-Z0-9_\-\:]+$/,
   /^\/jettons\/[a-zA-Z0-9_\-\:]+\/holders$/,
-  // Low level blockchain inspection & TVM getters (SEC-02 hardened)
+  // Low level blockchain inspection & TVM getters (SEC-02 & ALTO-01 hardened)
   /^\/blockchain\/transactions\/[a-fA-F0-9]+$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/methods\/[a-zA-Z0-9_]{1,64}$/,
@@ -45,8 +46,18 @@ const ALLOWED_ROUTES = [
   /^\/blockchain\/masterchain-head$/
 ];
 
-// Allowed query parameter keys
-const ALLOWED_QUERY_PARAMS = new Set([
+// Explicit allowlist of permitted TVM getter methods (ALTO-01)
+export const ALLOWED_TVM_METHODS = new Set([
+  'get_jetton_data',
+  'get_wallet_address',
+  'get_vesting_data',
+  'get_claimable_at',
+  'get_staking_data',
+  'get_staker_data'
+]);
+
+// Allowed query parameter keys (ALTO-03: includes supported_extensions)
+export const ALLOWED_QUERY_PARAMS = new Set([
   'limit',
   'before_lt',
   'start_lt',
@@ -55,8 +66,74 @@ const ALLOWED_QUERY_PARAMS = new Set([
   'currencies',
   'name',
   'account_id',
-  'args'
+  'args',
+  'supported_extensions'
 ]);
+
+/**
+ * CRC16-CCITT (XMODEM polynomial 0x1021) for TEP-2 friendly TON addresses
+ */
+function crc16Ton(bytes) {
+  let crc = 0;
+  for (let i = 0; i < bytes.length; i++) {
+    crc ^= (bytes[i] << 8);
+    for (let j = 0; j < 8; j++) {
+      if (crc & 0x8000) {
+        crc = ((crc << 1) ^ 0x1021) & 0xffff;
+      } else {
+        crc = (crc << 1) & 0xffff;
+      }
+    }
+  }
+  return crc;
+}
+
+/**
+ * Strict TON address validation (raw 0:/-1: 64-hex or 48-char TEP-2 base64/base64url with CRC16 checksum)
+ */
+export function isValidTonAddress(addr) {
+  if (!addr || typeof addr !== 'string') return false;
+  const clean = addr.trim();
+  if (clean.length > 128) return false;
+
+  // 1. Raw format: (-1|0):<64 hex chars>
+  if (/^(-1|0):[0-9a-fA-F]{64}$/.test(clean)) {
+    return true;
+  }
+
+  // 2. Friendly 48-char base64 / base64url with TEP-2 tag, workchain, and CRC16-CCITT verification
+  if (/^[A-Za-z0-9_+\/-]{48}$/.test(clean)) {
+    try {
+      const b64 = clean.replace(/-/g, '+').replace(/_/g, '/');
+      let bytes;
+      if (typeof atob === 'function') {
+        const bin = atob(b64);
+        if (bin.length !== 36) return false;
+        bytes = new Uint8Array(36);
+        for (let i = 0; i < 36; i++) bytes[i] = bin.charCodeAt(i);
+      } else if (typeof Buffer !== 'undefined') {
+        const buf = Buffer.from(b64, 'base64');
+        if (buf.length !== 36) return false;
+        bytes = new Uint8Array(buf);
+      } else {
+        return false;
+      }
+
+      const tag = bytes[0];
+      if ((tag & 0x3f) !== 0x11) return false;
+      const wc = bytes[1];
+      if (wc !== 0x00 && wc !== 0xff) return false;
+
+      const expectedCrc = crc16Ton(bytes.subarray(0, 34));
+      const actualCrc = (bytes[34] << 8) | bytes[35];
+      return expectedCrc === actualCrc;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  return false;
+}
 
 function getCorsHeaders(origin) {
   const isAllowed = ALLOWED_ORIGINS.includes(origin);
@@ -96,9 +173,15 @@ function sanitizePath(rawPath) {
   return clean;
 }
 
-export default {
-  async fetch(request, env, ctx) {
-    const origin = request.headers.get('Origin') || '';
+const workerHandler = {
+  ALLOWED_ROUTES,
+  ALLOWED_TVM_METHODS,
+  ALLOWED_QUERY_PARAMS,
+  isValidTonAddress,
+  async fetch(request, env = {}, ctx = { waitUntil: () => {} }) {
+    const origin = (request.headers && typeof request.headers.get === 'function')
+      ? (request.headers.get('Origin') || '')
+      : '';
     const corsHeaders = getCorsHeaders(origin);
 
     // 1. Handle CORS Preflight
@@ -117,8 +200,74 @@ export default {
       }, 405, corsHeaders);
     }
 
-    const url = new URL(request.url);
-    const subPath = sanitizePath(url.pathname);
+    const rawRequestUrl = String(request.url || '');
+    if (!rawRequestUrl || rawRequestUrl.length > 2048) {
+      return jsonResponse({
+        error: 'Bad Request',
+        message: 'Request URL exceeds maximum permitted length'
+      }, 400, corsHeaders);
+    }
+
+    // Check raw URL path portion before WHATWG URL normalization collapses /%2e%2e/
+    const rawPathPart = rawRequestUrl.replace(/^https?:\/\/[^\/]+/i, '').split('?')[0];
+    if (/%2e|%2f|%5c|%25|%00|%0a|%0d/i.test(rawPathPart) || rawPathPart.includes('\\') || rawPathPart.includes('..')) {
+      return jsonResponse({
+        error: 'Bad Request',
+        message: 'Disallowed path traversal, double encoding, or control sequence in path'
+      }, 400, corsHeaders);
+    }
+
+    let url;
+    try {
+      url = new URL(rawRequestUrl);
+    } catch (_) {
+      return jsonResponse({
+        error: 'Bad Request',
+        message: 'Malformed request URL'
+      }, 400, corsHeaders);
+    }
+
+    const rawPathname = url.pathname || '';
+    if (rawPathname.length > 512) {
+      return jsonResponse({
+        error: 'Bad Request',
+        message: 'Request path exceeds maximum permitted length'
+      }, 400, corsHeaders);
+    }
+
+    // ALTO-01: Reject encoded traversal (%2e, %2f, %5c), double-encoding (%25), null bytes (%00), or backslashes
+    if (/%2e|%2f|%5c|%25|%00|%0a|%0d/i.test(rawPathname) || rawPathname.includes('\\') || rawPathname.includes('..')) {
+      return jsonResponse({
+        error: 'Bad Request',
+        message: 'Disallowed path traversal, double encoding, or control sequence in path'
+      }, 400, corsHeaders);
+    }
+
+    // ALTO-01: Decode URI component exactly once, catching malformed percent-encoding
+    let decodedPathname;
+    try {
+      decodedPathname = decodeURIComponent(rawPathname);
+    } catch (_) {
+      return jsonResponse({
+        error: 'Bad Request',
+        message: 'Malformed URI percent-encoding in path'
+      }, 400, corsHeaders);
+    }
+
+    // Reject any residual %, control characters, newlines, '..', or '\' after single decode
+    if (
+      decodedPathname.includes('%') ||
+      decodedPathname.includes('..') ||
+      decodedPathname.includes('\\') ||
+      /[\x00-\x1f\x7f\r\n]/.test(decodedPathname)
+    ) {
+      return jsonResponse({
+        error: 'Bad Request',
+        message: 'Disallowed characters or multi-layered encoding in path'
+      }, 400, corsHeaders);
+    }
+
+    const subPath = sanitizePath(decodedPathname);
 
     // Root Healthcheck
     if (subPath === '/' || subPath === '/health') {
@@ -126,7 +275,7 @@ export default {
         service: 'ANLGRAM TonAPI Edge Proxy',
         status: 'healthy',
         network: 'TON Mainnet',
-        authenticated: !!env.TONAPI_KEY,
+        authenticated: !!(env && env.TONAPI_KEY),
         timestamp: new Date().toISOString()
       }, 200, corsHeaders);
     }
@@ -140,15 +289,39 @@ export default {
       }, 403, corsHeaders);
     }
 
-    // Strict TON Address Validation on path parameters (SEC-04)
+    // ALTO-01: Validate TVM getter method name against explicit allowlist
+    const methodMatch = subPath.match(/^\/blockchain\/accounts\/([a-zA-Z0-9_\-\:]+)\/methods\/([a-zA-Z0-9_]+)$/);
+    if (methodMatch) {
+      const methodName = methodMatch[2];
+      if (!ALLOWED_TVM_METHODS.has(methodName)) {
+        return jsonResponse({
+          error: 'Forbidden',
+          message: `TVM method '${methodName}' is not permitted by this proxy`
+        }, 403, corsHeaders);
+      }
+    }
+
+    // Strict TON Address Validation on path parameters (SEC-04, ALTO-01, ALTO-03, BAJO-01)
     const accountMatch = subPath.match(/^\/(?:blockchain\/)?(?:accounts|jettons)\/([a-zA-Z0-9_\-\:]+)/);
     if (accountMatch && accountMatch[1] && accountMatch[1] !== 'search') {
       const targetAddr = accountMatch[1];
-      const isTonAddr = /^([A-Za-z0-9_-]{48}|(-1|0):[0-9a-fA-F]{64})$/.test(targetAddr);
-      if (!isTonAddr) {
+      if (!isValidTonAddress(targetAddr)) {
         return jsonResponse({
           error: 'Bad Request',
-          message: 'Invalid TON address parameter format. Must be raw (0:hex) or friendly 48-char base64url.'
+          message: 'Invalid TON address parameter format. Must be raw (0:hex) or valid friendly 48-char TEP-2 address.'
+        }, 400, corsHeaders);
+      }
+    }
+
+    // ALTO-03: Validate secondary TON address on /accounts/:wallet/jettons/:minter
+    const accountJettonMatch = subPath.match(/^\/accounts\/([a-zA-Z0-9_\-\:]+)\/jettons\/([a-zA-Z0-9_\-\:]+)$/);
+    if (accountJettonMatch) {
+      const walletAddr = accountJettonMatch[1];
+      const minterAddr = accountJettonMatch[2];
+      if (!isValidTonAddress(walletAddr) || !isValidTonAddress(minterAddr)) {
+        return jsonResponse({
+          error: 'Bad Request',
+          message: 'Invalid wallet or jetton TON address parameter format.'
         }, 400, corsHeaders);
       }
     }
@@ -162,11 +335,25 @@ export default {
           message: `Query parameter '${key}' is not permitted`
         }, 400, corsHeaders);
       }
-      // Safety limit on parameter value length
-      if (val.length > 512) {
+      // Safety limit on parameter value length and control characters
+      if (val.length > 512 || /[\x00-\x1f\x7f\r\n]/.test(val)) {
         return jsonResponse({
           error: 'Bad Request',
-          message: `Query parameter '${key}' exceeds maximum length`
+          message: `Query parameter '${key}' exceeds maximum length or contains invalid characters`
+        }, 400, corsHeaders);
+      }
+      // Block full URLs or path traversal in query values
+      if (/^https?:\/\//i.test(val) || val.includes('..') || val.includes('\\')) {
+        return jsonResponse({
+          error: 'Bad Request',
+          message: `Query parameter '${key}' contains disallowed URL or traversal sequence`
+        }, 400, corsHeaders);
+      }
+      // ALTO-03: Strict format validation for supported_extensions
+      if (key === 'supported_extensions' && (val.length > 64 || !/^[a-zA-Z0-9_,\-]+$/.test(val))) {
+        return jsonResponse({
+          error: 'Bad Request',
+          message: 'Invalid supported_extensions parameter value'
         }, 400, corsHeaders);
       }
       filteredParams.set(key, val);
@@ -181,17 +368,19 @@ export default {
     else if (subPath.includes('/events') || subPath.includes('/transactions')) ttl = 10;
 
     const cacheKey = new Request(targetUrl, { method: 'GET' });
-    const cache = caches.default;
+    const cache = (typeof caches !== 'undefined' && caches && caches.default) ? caches.default : null;
 
-    // Check Cloudflare Cache
-    let cachedResponse = await cache.match(cacheKey);
-    if (cachedResponse) {
-      const responseWithCors = new Response(cachedResponse.body, cachedResponse);
-      for (const [k, v] of Object.entries(corsHeaders)) {
-        responseWithCors.headers.set(k, v);
+    // Check Cloudflare Cache if available
+    if (cache) {
+      let cachedResponse = await cache.match(cacheKey);
+      if (cachedResponse) {
+        const responseWithCors = new Response(cachedResponse.body, cachedResponse);
+        for (const [k, v] of Object.entries(corsHeaders)) {
+          responseWithCors.headers.set(k, v);
+        }
+        responseWithCors.headers.set('X-Proxy-Cache', 'HIT');
+        return responseWithCors;
       }
-      responseWithCors.headers.set('X-Proxy-Cache', 'HIT');
-      return responseWithCors;
     }
 
     // 6. Build Upstream Headers securely
@@ -200,7 +389,7 @@ export default {
       'User-Agent': 'ANLGRAM-Edge-Proxy/2.1'
     };
 
-    if (env.TONAPI_KEY && env.TONAPI_KEY.trim()) {
+    if (env && env.TONAPI_KEY && env.TONAPI_KEY.trim()) {
       upstreamHeaders['Authorization'] = `Bearer ${env.TONAPI_KEY.trim()}`;
     }
 
@@ -268,7 +457,7 @@ export default {
         });
 
         // Cache 200 OK responses in Cloudflare Cache
-        if (upstreamRes.status === 200) {
+        if (cache && upstreamRes.status === 200 && ctx && typeof ctx.waitUntil === 'function') {
           ctx.waitUntil(cache.put(cacheKey, outResponse.clone()));
         }
 
@@ -288,3 +477,5 @@ export default {
     }, 504, corsHeaders);
   }
 };
+
+export default workerHandler;

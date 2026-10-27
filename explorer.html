@@ -2759,26 +2759,44 @@ function renderJettonMasterView(jm, holders) {
     window.TokenVerificationEngine.verifyToken(currentAccount.address).then(rep => {
       if (!rep) return;
       const isZeroAdmin = !currentAccount.admin?.address || currentAccount.admin.address === '0:0000000000000000000000000000000000000000000000000000000000000000';
+      const hasUnverified = (rep.summary?.totalChecksUnverified || 0) > 0;
+      const hasFailed = (rep.summary?.totalChecksFailed || 0) > 0;
+      const isPermRenounced = Boolean(rep.summary?.permanentRenounced && !hasFailed && !hasUnverified);
+      const isStandardActiveAdmin = Boolean(
+        !isPermRenounced &&
+        !hasUnverified &&
+        rep.claims?.admin_status?.status === 'VERIFIED' &&
+        rep.claims?.admin_status?.evidence?.adminAddress
+      );
+
       if (jmMintEl && !isGram) {
-        if (rep.summary.permanentRenounced) {
+        if (isPermRenounced) {
           jmMintEl.innerHTML = '<span style="color:var(--flow-positive); font-weight:700;">No — Emisión Bloqueada Permanentemente</span> <span style="font-size:11px; color:var(--text-muted);">(TEP-74 Canónico / Op 21 Inactivo)</span>';
-        } else if (isZeroAdmin) {
-          jmMintEl.innerHTML = '<span style="color:#ffa500; font-weight:700;">Admin Nulo — Inmutabilidad No Certificada</span> <span style="font-size:11px; color:var(--text-muted);">(Bytecode no estándar / Requiere auditoría)</span>';
+        } else if (isZeroAdmin || hasUnverified) {
+          jmMintEl.innerHTML = '<span style="color:#ffa500; font-weight:700;">No Verificado — Inmutabilidad No Certificada</span> <span style="font-size:11px; color:var(--text-muted);">(Bytecode no estándar o datos incompletos / Requiere auditoría)</span>';
         }
       }
       if (badgeEl) {
-        if (rep.summary.permanentRenounced) {
+        if (isPermRenounced) {
           badgeEl.textContent = '✔ PERMANENTEMENTE RENUNCIADO (SEGURO)';
           badgeEl.style.background = 'rgba(0, 255, 136, 0.15)';
           badgeEl.style.color = 'var(--flow-positive)';
-        } else if (rep.summary.totalChecksFailed > 0) {
+        } else if (isStandardActiveAdmin) {
+          badgeEl.textContent = '⚠️ ADMIN ACTIVO (SUMINISTRO CONTROLADO)';
+          badgeEl.style.background = 'rgba(255, 165, 0, 0.15)';
+          badgeEl.style.color = '#ffa500';
+        } else if (hasFailed) {
           badgeEl.textContent = '⚠️ ALTO RIESGO / CHEQUEOS FALLIDOS';
           badgeEl.style.background = 'rgba(255, 68, 68, 0.15)';
           badgeEl.style.color = 'var(--flow-negative)';
+        } else if (hasUnverified) {
+          badgeEl.textContent = '⚠️ NO VERIFICADO (DATOS INCOMPLETOS / BYTECODE NO ESTÁNDAR)';
+          badgeEl.style.background = 'rgba(255, 170, 0, 0.15)';
+          badgeEl.style.color = '#ffaa00';
         } else {
-          badgeEl.textContent = 'ADMIN ACTIVO (SUMINISTRO CONTROLADO)';
-          badgeEl.style.background = 'rgba(255, 165, 0, 0.15)';
-          badgeEl.style.color = '#ffa500';
+          badgeEl.textContent = '⚠️ NO VERIFICADO (AUDITORÍA PENDIENTE)';
+          badgeEl.style.background = 'rgba(255, 170, 0, 0.15)';
+          badgeEl.style.color = '#ffaa00';
         }
       }
       if (claimsEl && rep.claims) {
@@ -2791,9 +2809,9 @@ function renderJettonMasterView(jm, holders) {
       }
     }).catch(e => {
       if (badgeEl) {
-        badgeEl.textContent = 'NO DISPONIBLE';
-        badgeEl.style.background = 'rgba(255, 255, 255, 0.05)';
-        badgeEl.style.color = 'var(--text-muted)';
+        badgeEl.textContent = '⚠️ ERROR TEMPORAL DE RED (REINTENTAR)';
+        badgeEl.style.background = 'rgba(255, 170, 0, 0.12)';
+        badgeEl.style.color = '#ffaa00';
       }
     });
   }

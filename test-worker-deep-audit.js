@@ -101,45 +101,122 @@ async function runWorkerAudit() {
     assert.strictEqual(res.status, 403);
   });
 
-  // 4. TON Address Validation on Routes
-  console.log('\n--- 4. TON Address Validation & Method Execution Routing (SEC-02 & SEC-04) ---');
-  await test('Permits valid Friendly address in method getter route', async () => {
-    const addr = 'EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOe';
-    const req = new Request(`https://anlgram.com/api/ton/blockchain/accounts/${addr}/methods/get_jetton_data`, { method: 'GET' });
-    // This route is whitelisted. In unit test without real upstream fetch, it reaches upstream fetch logic.
-    assert.strictEqual(
-      workerModule.ALLOWED_ROUTES ? workerModule.ALLOWED_ROUTES.some(p => p.test(`/blockchain/accounts/${addr}/methods/get_jetton_data`)) : true,
-      true
-    );
-  });
+  // 4. TON Address Validation, URL-Encoded Raw Addresses & Method Execution Routing (ALTO-01, ALTO-03, BAJO-01)
+  console.log('\n--- 4. Real worker.fetch Execution: Friendly, Raw, URL-Encoded & Method Allowlist ---');
 
-  await test('Permits valid Raw address in method getter route', async () => {
-    const addr = '0:fe3d356840b2d0a299b28ad217878bc657f03b911f5ca7f8fd40b3dfd2371831';
-    const req = new Request(`https://anlgram.com/api/ton/blockchain/accounts/${addr}/methods/get_jetton_data`, { method: 'GET' });
-    assert.strictEqual(
-      workerModule.ALLOWED_ROUTES ? workerModule.ALLOWED_ROUTES.some(p => p.test(`/blockchain/accounts/${addr}/methods/get_jetton_data`)) : true,
-      true
-    );
-  });
+  const origFetch = global.fetch;
+  let lastUpstreamUrl = null;
+  global.fetch = async (url, opts) => {
+    lastUpstreamUrl = String(url);
+    return new Response(JSON.stringify({ ok: true, upstreamUrl: lastUpstreamUrl }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
 
-  await test('Rejects malformed TON address with HTTP 400', async () => {
-    const malformed = 'not_a_ton_address';
-    const req = new Request(`https://anlgram.com/api/ton/accounts/${malformed}`, { method: 'GET' });
-    const res = await worker.fetch(req, env, ctx);
-    assert.strictEqual(res.status, 400);
-    const body = await res.json();
-    assert.strictEqual(body.error, 'Bad Request');
-  });
+  try {
+    await test('ALTO-01: worker.fetch permits valid Friendly address in method getter route -> HTTP 200', async () => {
+      const addr = 'EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOe';
+      const req = new Request(`https://anlgram.com/api/ton/blockchain/accounts/${addr}/methods/get_jetton_data`, { method: 'GET' });
+      const res = await worker.fetch(req, env, ctx);
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(lastUpstreamUrl, `https://tonapi.io/v2/blockchain/accounts/${addr}/methods/get_jetton_data`);
+    });
 
-  await test('Rejects disallowed method names with special chars or traversal with HTTP 403', async () => {
-    const addr = 'EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOe';
-    const req = new Request(`https://anlgram.com/api/ton/blockchain/accounts/${addr}/methods/get_jetton;rm -rf`, { method: 'GET' });
-    const res = await worker.fetch(req, env, ctx);
-    assert.strictEqual(res.status, 403);
-  });
+    await test('ALTO-01: worker.fetch permits valid unencoded Raw address in method getter route -> HTTP 200', async () => {
+      const addr = '0:fe3d356840b2d0a299b28ad217878bc657f03b911f5ca7f8fd40b3dfd2371831';
+      const req = new Request(`https://anlgram.com/api/ton/blockchain/accounts/${addr}/methods/get_jetton_data`, { method: 'GET' });
+      const res = await worker.fetch(req, env, ctx);
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(lastUpstreamUrl, `https://tonapi.io/v2/blockchain/accounts/${addr}/methods/get_jetton_data`);
+    });
 
-  // 5. Query Parameter Validation
-  console.log('\n--- 5. Query Parameter Whitelist & Length Caps ---');
+    await test('ALTO-01: worker.fetch permits URL-encoded Raw address (0%3A...) via encodeURIComponent -> HTTP 200', async () => {
+      const rawAddr = '0:fe3d356840b2d0a299b28ad217878bc657f03b911f5ca7f8fd40b3dfd2371831';
+      const encodedAddr = encodeURIComponent(rawAddr);
+      assert.strictEqual(encodedAddr.startsWith('0%3A'), true);
+      const req = new Request(`https://anlgram.com/api/ton/blockchain/accounts/${encodedAddr}/methods/get_jetton_data`, { method: 'GET' });
+      const res = await worker.fetch(req, env, ctx);
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(lastUpstreamUrl, `https://tonapi.io/v2/blockchain/accounts/${rawAddr}/methods/get_jetton_data`);
+    });
+
+    await test('ALTO-03: worker.fetch permits /accounts/:wallet/jettons/:minter with both friendly and encoded raw addresses -> HTTP 200', async () => {
+      const walletRaw = '0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d';
+      const minterFriendly = 'EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOe';
+      const req = new Request(`https://anlgram.com/api/ton/accounts/${encodeURIComponent(walletRaw)}/jettons/${encodeURIComponent(minterFriendly)}`, { method: 'GET' });
+      const res = await worker.fetch(req, env, ctx);
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(lastUpstreamUrl, `https://tonapi.io/v2/accounts/${walletRaw}/jettons/${minterFriendly}`);
+    });
+
+    await test('ALTO-03: worker.fetch rejects /accounts/:wallet/jettons/:minter when second address (:minter) is invalid -> HTTP 400', async () => {
+      const walletFriendly = 'EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOe';
+      const badMinter = 'EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaXX'; // corrupted CRC16
+      const req = new Request(`https://anlgram.com/api/ton/accounts/${walletFriendly}/jettons/${badMinter}`, { method: 'GET' });
+      const res = await worker.fetch(req, env, ctx);
+      assert.strictEqual(res.status, 400);
+    });
+
+    await test('ALTO-03: worker.fetch permits ?supported_extensions=custom_payload on /accounts/:id/jettons -> HTTP 200', async () => {
+      const walletFriendly = 'EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOe';
+      const req = new Request(`https://anlgram.com/api/ton/accounts/${walletFriendly}/jettons?supported_extensions=custom_payload`, { method: 'GET' });
+      const res = await worker.fetch(req, env, ctx);
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(lastUpstreamUrl, `https://tonapi.io/v2/accounts/${walletFriendly}/jettons?supported_extensions=custom_payload`);
+    });
+
+    await test('BAJO-01: worker.fetch rejects friendly TON address with corrupted CRC16 checksum -> HTTP 400', async () => {
+      const badCrcAddr = 'EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOf'; // last char altered
+      const req = new Request(`https://anlgram.com/api/ton/accounts/${badCrcAddr}`, { method: 'GET' });
+      const res = await worker.fetch(req, env, ctx);
+      assert.strictEqual(res.status, 400);
+    });
+
+    await test('Rejects malformed TON address with HTTP 400', async () => {
+      const malformed = 'not_a_ton_address';
+      const req = new Request(`https://anlgram.com/api/ton/accounts/${malformed}`, { method: 'GET' });
+      const res = await worker.fetch(req, env, ctx);
+      assert.strictEqual(res.status, 400);
+      const body = await res.json();
+      assert.strictEqual(body.error, 'Bad Request');
+    });
+
+    await test('ALTO-01: Rejects unpermitted TVM method name (e.g. arbitrary_method) with HTTP 403', async () => {
+      const addr = 'EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOe';
+      const req = new Request(`https://anlgram.com/api/ton/blockchain/accounts/${addr}/methods/arbitrary_method`, { method: 'GET' });
+      const res = await worker.fetch(req, env, ctx);
+      assert.strictEqual(res.status, 403);
+    });
+
+    await test('Rejects disallowed method names with special chars or traversal with HTTP 403', async () => {
+      const addr = 'EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOe';
+      const req = new Request(`https://anlgram.com/api/ton/blockchain/accounts/${addr}/methods/get_jetton;rm -rf`, { method: 'GET' });
+      const res = await worker.fetch(req, env, ctx);
+      assert.strictEqual(res.status, 403);
+    });
+
+    await test('ALTO-01: Rejects encoded traversal (%2e%2e, %2f, %5c), double encoding (%253A), and control chars (%00, %0a) -> HTTP 400', async () => {
+      const badRequests = [
+        { method: 'GET', url: 'https://anlgram.com/api/ton/accounts/%2e%2e/rates', headers: new Headers() },
+        new Request('https://anlgram.com/api/ton/accounts/%2e%2e%2frates', { method: 'GET' }),
+        new Request('https://anlgram.com/api/ton/accounts/0%2ffe3d356840b2d0a299b28ad217878bc657f03b911f5ca7f8fd40b3dfd2371831', { method: 'GET' }),
+        new Request('https://anlgram.com/api/ton/accounts/0%5cfe3d356840b2d0a299b28ad217878bc657f03b911f5ca7f8fd40b3dfd2371831', { method: 'GET' }),
+        new Request('https://anlgram.com/api/ton/blockchain/accounts/0%253Afe3d356840b2d0a299b28ad217878bc657f03b911f5ca7f8fd40b3dfd2371831/methods/get_jetton_data', { method: 'GET' }),
+        new Request('https://anlgram.com/api/ton/rates%00', { method: 'GET' }),
+        new Request('https://anlgram.com/api/ton/rates%0a', { method: 'GET' })
+      ];
+      for (const req of badRequests) {
+        const res = await worker.fetch(req, env, ctx);
+        assert.strictEqual(res.status, 400, `Expected 400 for ${req.url}, got ${res.status}`);
+      }
+    });
+  } finally {
+    global.fetch = origFetch;
+  }
+
+  // 5. Query Parameter Validation & Server Parity
+  console.log('\n--- 5. Query Parameter Whitelist, Length Caps & server.js Parity ---');
   await test('Rejects unwhitelisted query parameter with HTTP 400', async () => {
     const req = new Request('https://anlgram.com/api/ton/rates?malicious_param=1', { method: 'GET' });
     const res = await worker.fetch(req, env, ctx);
@@ -153,11 +230,14 @@ async function runWorkerAudit() {
     assert.strictEqual(res.status, 400);
   });
 
-  await test('Permits whitelisted query parameter args on getter methods', async () => {
-    assert.strictEqual(
-      workerModule.ALLOWED_QUERY_PARAMS ? workerModule.ALLOWED_QUERY_PARAMS.has('args') : true,
-      true
-    );
+  await test('Permits whitelisted query parameters args and supported_extensions in both Worker and server.js', async () => {
+    const srv = require('./server.js');
+    assert.strictEqual(worker.ALLOWED_QUERY_PARAMS.has('args'), true);
+    assert.strictEqual(worker.ALLOWED_QUERY_PARAMS.has('supported_extensions'), true);
+    assert.strictEqual(srv.ALLOWED_QUERY_PARAMS.has('args'), true);
+    assert.strictEqual(srv.ALLOWED_QUERY_PARAMS.has('supported_extensions'), true);
+    assert.strictEqual(srv. isValidTonAddress('EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOe'), true);
+    assert.strictEqual(srv.isValidTonAddress('EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOf'), false);
   });
 
   console.log('\n═══════════════════════════════════════════════════════════════════');

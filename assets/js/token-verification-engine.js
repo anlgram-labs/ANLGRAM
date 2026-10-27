@@ -29,7 +29,26 @@
   // 1. CANONICAL AUDITED BYTECODE HASHES
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const AUDITED_BYTECODE_REGISTRY = {
+  function deepFreeze(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    Object.freeze(obj);
+    Object.getOwnPropertyNames(obj).forEach(prop => {
+      const val = obj[prop];
+      if (val && (typeof val === 'object' || typeof val === 'function') && !Object.isFrozen(val)) {
+        deepFreeze(val);
+      }
+    });
+    return obj;
+  }
+
+  function deepClone(obj) {
+    if (typeof structuredClone === 'function') {
+      try { return structuredClone(obj); } catch (e) {}
+    }
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  const AUDITED_BYTECODE_REGISTRY = deepFreeze({
     // Standard TEP-74 Jetton Minter (ton-blockchain reference implementation)
     STANDARD_JETTON_MINTER: {
       hashHex: '9a0f98dd6fbf225eef8165e4e64417ee931f7eea000653439e7b5dcdc0644cd6',
@@ -53,26 +72,76 @@
       isUpgradeable: false,
       hasAdminClawback: false
     }
-  };
+  });
 
   // Status Constants
-  const STATUS = {
+  const STATUS = deepFreeze({
     VERIFIED: 'VERIFIED',
     FAILED: 'FAILED',
     NOT_VERIFIED: 'NOT VERIFIED',
     PENDING: 'PENDING',
     NOT_APPLICABLE: 'NOT APPLICABLE'
-  };
+  });
 
-  // SEC-04: Strict TON Address Format Regex
-  // Matches raw (0:hex or -1:hex, 64 hex chars) or friendly base64url (48 chars)
-  const TON_ADDRESS_REGEX = /^([A-Za-z0-9_-]{48}|(-1|0):[0-9a-fA-F]{64})$/;
+  // SEC-04 & BAJO-01: Strict TON Address Parser & Validator (Raw + Friendly TEP-2 with CRC16-CCITT)
+  function parseTonAddress(addr) {
+    if (!addr || typeof addr !== 'string') return null;
+    const clean = addr.trim();
+    if (clean.length === 0 || clean.length > 128) return null;
+
+    // 1. Raw format: (-1|0):<64 hex chars>
+    if (/^(-1|0):[0-9a-fA-F]{64}$/.test(clean)) {
+      return clean.toLowerCase();
+    }
+
+    // 2. Friendly TEP-2 format: 48 base64 / base64url chars with valid tag, workchain, and CRC16-CCITT
+    if (!/^[A-Za-z0-9_+\/-]{48}$/.test(clean)) return null;
+    try {
+      const b64 = clean.replace(/-/g, '+').replace(/_/g, '/');
+      let bytes;
+      if (typeof Buffer !== 'undefined') {
+        const buf = Buffer.from(b64, 'base64');
+        if (buf.length !== 36) return null;
+        bytes = new Uint8Array(buf);
+      } else if (typeof atob === 'function') {
+        const binStr = atob(b64);
+        if (binStr.length !== 36) return null;
+        bytes = new Uint8Array(36);
+        for (let i = 0; i < 36; i++) bytes[i] = binStr.charCodeAt(i);
+      } else {
+        return null;
+      }
+
+      // TEP-2 tag byte: 0x11 (bounceable), 0x51 (non-bounceable), 0x91 (testnet bounceable), 0xd1 (testnet non-bounceable)
+      if ((bytes[0] & 0x3f) !== 0x11) return null;
+      // Workchain byte: 0x00 (workchain 0) or 0xff (masterchain -1)
+      if (bytes[1] !== 0x00 && bytes[1] !== 0xff) return null;
+
+      // Verify CRC16-CCITT (XMODEM polynomial 0x1021) over bytes 0..33
+      let crc = 0;
+      for (let i = 0; i < 34; i++) {
+        crc ^= (bytes[i] << 8);
+        for (let j = 0; j < 8; j++) {
+          crc = (crc & 0x8000) ? (((crc << 1) ^ 0x1021) & 0xffff) : ((crc << 1) & 0xffff);
+        }
+      }
+      if (((crc >> 8) & 0xff) !== bytes[34] || (crc & 0xff) !== bytes[35]) {
+        return null;
+      }
+
+      const wc = bytes[1] === 0xff ? -1 : 0;
+      let hex = '';
+      for (let i = 2; i < 34; i++) {
+        hex += bytes[i].toString(16).padStart(2, '0');
+      }
+      return `${wc}:${hex}`;
+    } catch (e) {
+      return null;
+    }
+  }
 
   function isValidTonAddress(addr) {
-    if (!addr || typeof addr !== 'string') return false;
-    const clean = addr.trim();
-    if (clean.length > 128) return false;
-    return TON_ADDRESS_REGEX.test(clean);
+    return parseTonAddress(addr) !== null;
   }
 
   // In-memory verification cache with explicit timestamp and source tracking
@@ -101,31 +170,114 @@
     return null;
   }
 
-  function safeBigInt(val, fallback = 0n) {
-    if (val === null || val === undefined || val === '') return fallback;
-    try {
-      if (typeof val === 'string' && val.startsWith('0x')) return BigInt(val);
+  function parseStrictBigInt(val) {
+    if (typeof val === 'bigint') return val >= 0n ? val : null;
+    if (typeof val === 'number') {
+      if (!Number.isInteger(val) || !Number.isSafeInteger(val) || val < 0) return null;
       return BigInt(val);
-    } catch (e) {
-      return fallback;
     }
+    if (typeof val === 'string') {
+      const clean = val.trim();
+      if (!/^(0x[0-9a-fA-F]+|[0-9]+)$/.test(clean)) return null;
+      try {
+        const bn = BigInt(clean);
+        return bn >= 0n ? bn : null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 
+  function safeBigInt(val, fallback = 0n) {
+    const parsed = parseStrictBigInt(val);
+    return parsed !== null ? parsed : fallback;
+  }
+
+  /**
+   * MEDIO-03: Exact BigInt-safe unit formatter.
+   * - Respects decimals = 0.
+   * - Never converts whole BigInt part to IEEE-754 Number (preserves exact precision > Number.MAX_SAFE_INTEGER).
+   * - Validates decimals range (0..255) and rejects malformed inputs explicitly with 'INVALID'.
+   * - Preserves all significant fractional digits without silent truncation.
+   */
   function formatUnits(amountBigInt, decimals = 9) {
-    try {
-      const bn = typeof amountBigInt === 'bigint' ? amountBigInt : BigInt(amountBigInt || 0);
-      const dec = Number(decimals) || 9;
-      const divisor = 10n ** BigInt(dec);
-      const whole = bn / divisor;
-      const fraction = bn % divisor;
-      if (fraction === 0n) {
-        return Number(whole).toLocaleString('en-US');
-      }
-      const fracStr = fraction.toString().padStart(dec, '0').replace(/0+$/, '');
-      return `${Number(whole).toLocaleString('en-US')}.${fracStr.slice(0, 4)}`;
-    } catch (e) {
-      return '0';
+    const bn = parseStrictBigInt(amountBigInt);
+    if (bn === null) return 'INVALID';
+
+    let dec = 9;
+    if (decimals !== undefined) {
+      if (decimals === null || decimals === '' || typeof decimals === 'boolean') return 'INVALID';
+      const numDec = Number(decimals);
+      if (!Number.isInteger(numDec) || numDec < 0 || numDec > 255) return 'INVALID';
+      dec = numDec;
     }
+
+    const divisor = 10n ** BigInt(dec);
+    const whole = bn / divisor;
+    const fraction = bn % divisor;
+    const wholeFormatted = whole.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+    if (dec === 0 || fraction === 0n) {
+      return wholeFormatted;
+    }
+    const fracStr = fraction.toString().padStart(dec, '0').replace(/0+$/, '');
+    return `${wholeFormatted}.${fracStr}`;
+  }
+
+  /**
+   * MEDIO-02 & BAJO-02: Decode TVM MsgAddress directly from BOC cell (hex or base64).
+   * Uses @ton/core when available and includes deterministic pure-JS bit parser for 267-bit addr_std BOCs.
+   */
+  function decodeAddressFromBoc(bocStr) {
+    if (!bocStr || typeof bocStr !== 'string') return { ok: false, address: undefined };
+    const clean = bocStr.trim();
+    if (clean.toLowerCase() === 'b5ee9c7201010101000300000120') {
+      return { ok: true, address: null };
+    }
+    try {
+      const tonCore = getTonCore();
+      if (tonCore && tonCore.Cell) {
+        const buf = /^[0-9a-fA-F]+$/.test(clean)
+          ? Buffer.from(clean, 'hex')
+          : Buffer.from(clean, 'base64');
+        const cell = tonCore.Cell.fromBoc(buf)[0];
+        const slice = cell.beginParse();
+        if (slice.remainingBits >= 2) {
+          const maybeAddr = slice.loadMaybeAddress();
+          if (maybeAddr === null) {
+            return { ok: true, address: null };
+          }
+          if (typeof maybeAddr.toRawString === 'function') {
+            return { ok: true, address: maybeAddr.toRawString().toLowerCase() };
+          }
+        }
+      }
+    } catch (e) {}
+
+    // Pure-JS fallback for standard single-cell 267-bit addr_std BOC in hex
+    const lowerHex = clean.toLowerCase();
+    if (/^b5ee9c72010101010024000043[0-9a-f]{68}$/.test(lowerHex)) {
+      const dataHex = lowerHex.slice(26);
+      let bits = '';
+      for (let i = 0; i < dataHex.length; i++) {
+        bits += parseInt(dataHex[i], 16).toString(2).padStart(4, '0');
+      }
+      if (bits.slice(0, 3) === '100') {
+        const wcByte = parseInt(bits.slice(3, 11), 2);
+        const wc = wcByte === 0xff ? -1 : (wcByte === 0x00 ? 0 : undefined);
+        if (wc !== undefined) {
+          const addrBits = bits.slice(11, 267);
+          let addrHex = '';
+          for (let i = 0; i < 256; i += 4) {
+            addrHex += parseInt(addrBits.slice(i, i + 4), 2).toString(16);
+          }
+          return { ok: true, address: `${wc}:${addrHex}` };
+        }
+      }
+    }
+
+    return { ok: false, address: undefined };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -222,23 +374,26 @@
     }
 
     const cleanAddress = minterAddress.trim();
+    const canonicalMinter = parseTonAddress(cleanAddress);
 
-    // SEC-04: Strict TON Address Pre-Validation before network requests
-    if (!isValidTonAddress(cleanAddress)) {
-      return createErrorReport(cleanAddress, 'Invalid TON address format. Must be raw (0:hex) or friendly 48-char base64url.');
+    // SEC-04 & BAJO-01: Strict TON Address Pre-Validation (including CRC16-CCITT) before network requests
+    if (!canonicalMinter) {
+      return createErrorReport(cleanAddress, 'Invalid TON address format or checksum. Must be raw (0:hex) or friendly 48-char TEP-2 base64url.');
     }
-    const cacheKey = `verify:${cleanAddress.toLowerCase()}`;
 
-    // Cache hit check
+    const canonicalViewer = viewerWallet ? (parseTonAddress(viewerWallet) || String(viewerWallet).trim().toLowerCase()) : '';
+    const canonicalVesting = knownVestingAddress ? (parseTonAddress(knownVestingAddress) || String(knownVestingAddress).trim().toLowerCase()) : '';
+    const cacheKey = `verify:${canonicalMinter}|viewer:${canonicalViewer}|vesting:${canonicalVesting}`;
+
+    // Cache hit check (returns deep clone to prevent caller mutation of cached state)
     if (!forceFresh) {
       const cached = verificationCache.get(cacheKey);
       if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
-        return {
-          ...cached.report,
-          isCached: true,
-          cachedAt: new Date(cached.timestamp).toISOString(),
-          freshness: 'CACHED (Within 30s TTL)'
-        };
+        const cloned = deepClone(cached.report);
+        cloned.isCached = true;
+        cloned.cachedAt = new Date(cached.timestamp).toISOString();
+        cloned.freshness = 'CACHED (Within 30s TTL)';
+        return cloned;
       }
     }
 
@@ -249,9 +404,10 @@
     const report = {
       target: {
         minterAddress: cleanAddress,
-        rawAddress: '',
+        rawAddress: canonicalMinter,
         network: 'TON Mainnet'
       },
+       _cacheKey: cacheKey,
       auditTimestamp: nowIso,
       dataSources: providersUsed,
       isCached: false,
@@ -306,13 +462,13 @@
         return finalizeReport(report);
       }
 
-      report.target.rawAddress = accountData.address || cleanAddress;
+      report.target.rawAddress = accountData.address || canonicalMinter;
       const isAccountActive = accountData.status === 'active';
 
       report.claims['account_status'] = {
         title: 'Contract Account Liveness',
         status: isAccountActive ? STATUS.VERIFIED : STATUS.FAILED,
-        detail: `Contract is ${accountData.status.toUpperCase()} with native balance ${((accountData.balance || 0) / 1e9).toFixed(4)} TON`,
+        detail: `Contract is ${String(accountData.status || 'unknown').toUpperCase()} with native balance ${((accountData.balance || 0) / 1e9).toFixed(4)} TON`,
         evidence: {
           status: accountData.status,
           balanceNano: accountData.balance,
@@ -347,7 +503,7 @@
 
         report.claims['bytecode_integrity'] = {
           title: 'Bytecode Integrity & Standard Conformance',
-          status: codeMatchStandard ? STATUS.VERIFIED : (deployedCodeHashHex ? STATUS.NOT_VERIFIED : STATUS.NOT_VERIFIED),
+          status: codeMatchStandard ? STATUS.VERIFIED : STATUS.NOT_VERIFIED,
           detail: codeMatchStandard
             ? 'Deployed bytecode matches canonical TEP-74 Jetton Minter (100% Bit-for-bit exact match)'
             : (deployedCodeHashHex ? `Non-standard or custom bytecode detected (Hash: ${deployedCodeHashHex.slice(0, 16)}...)` : 'Bytecode present but hash could not be calculated locally'),
@@ -379,7 +535,7 @@
       }
 
       // ───────────────────────────────────────────────────────────────────────
-      // STEP 3: On-Chain Getter Execution (`get_jetton_data`)
+      // STEP 3: On-Chain Getter Execution (`get_jetton_data`) — MEDIO-02
       // ───────────────────────────────────────────────────────────────────────
       let getterData = null;
       try {
@@ -389,54 +545,78 @@
 
       let rawTotalSupply = '0';
       let supplyVerified = false;
+      let supplySource = 'UNVERIFIED';
       let parsedAdminAddress = undefined;
       let adminVerified = false;
+      let adminSource = 'UNVERIFIED';
       let rawAdminCellHex = '';
       let isMintableStackFlag = false;
 
-      if (getterData && getterData.success && Array.isArray(getterData.stack)) {
+      if (getterData && getterData.success && Array.isArray(getterData.stack) && getterData.stack.length >= 3) {
         const stack = getterData.stack;
         // stack[0]: total_supply
         if (stack[0] && stack[0].num !== undefined) {
-          rawTotalSupply = safeBigInt(stack[0].num).toString();
-          supplyVerified = true;
+          const parsedSupplyBn = parseStrictBigInt(stack[0].num);
+          if (parsedSupplyBn !== null) {
+            rawTotalSupply = parsedSupplyBn.toString();
+            supplyVerified = true;
+            supplySource = 'ONCHAIN_GETTER';
+          }
         }
         // stack[1]: mintable (-1 = true, 0 = false)
         if (stack[1] && stack[1].num !== undefined) {
           isMintableStackFlag = (stack[1].num === '-0x1' || stack[1].num === '-1');
         }
-        // stack[2]: admin_address cell
-        if (stack[2] && stack[2].cell) {
-          rawAdminCellHex = stack[2].cell;
-          // Check for addr_none: 2 bits "00" (cell hex begins with b5ee9c... and bit slice is 2 bits 00)
-          if (rawAdminCellHex === 'b5ee9c7201010101000300000120' || getterData.decoded?.admin_address === '') {
-            parsedAdminAddress = null; // Explicitly verified addr_none
+        // stack[2]: admin_address cell / slice (MEDIO-02: decode BOC directly first)
+        const adminCellStr = stack[2]?.cell || stack[2]?.slice;
+        if (adminCellStr) {
+          rawAdminCellHex = adminCellStr;
+          const bocDecoded = decodeAddressFromBoc(adminCellStr);
+          if (bocDecoded.ok) {
+            parsedAdminAddress = bocDecoded.address;
             adminVerified = true;
-          } else if (getterData.decoded?.admin_address) {
-            parsedAdminAddress = getterData.decoded.admin_address;
-            adminVerified = true;
+            adminSource = 'ONCHAIN_GETTER_BOC';
+          } else if (getterData.decoded && typeof getterData.decoded.admin_address === 'string') {
+            if (getterData.decoded.admin_address === '' && adminCellStr.toLowerCase() === 'b5ee9c7201010101000300000120') {
+              parsedAdminAddress = null;
+              adminVerified = true;
+              adminSource = 'ONCHAIN_GETTER_DECODED';
+            } else {
+              const normDecoded = parseTonAddress(getterData.decoded.admin_address);
+              if (normDecoded) {
+                parsedAdminAddress = normDecoded;
+                adminVerified = true;
+                adminSource = 'ONCHAIN_GETTER_DECODED';
+              }
+            }
           }
         }
       }
 
-      // Metadata & Decimals query
+      // Metadata & Decimals query (Indexer is used for metadata/decimals; never overrides or substitutes failed getter as VERIFIED)
       let metadataObj = {};
+      let indexerSupply = null;
+      let indexerAdmin = undefined;
       try {
         const jettonInfo = await queryTonApi(`/jettons/${encodeURIComponent(cleanAddress)}`);
         providersUsed.push('TonAPI Jetton Metadata Indexer');
         metadataObj = jettonInfo.metadata || {};
-        if (!supplyVerified && jettonInfo.total_supply !== undefined) {
-          rawTotalSupply = String(jettonInfo.total_supply);
-          supplyVerified = true;
+        if (jettonInfo.total_supply !== undefined) {
+          const idxSupBn = parseStrictBigInt(String(jettonInfo.total_supply));
+          if (idxSupBn !== null) indexerSupply = idxSupBn.toString();
         }
-        if (!adminVerified && jettonInfo.admin?.address) {
-          // Cross-verify with decoded getter when active admin address is present
-          parsedAdminAddress = jettonInfo.admin.address;
-          adminVerified = true;
+        if (jettonInfo.admin?.address) {
+          indexerAdmin = parseTonAddress(jettonInfo.admin.address) || jettonInfo.admin.address;
         }
       } catch (e) {}
 
-      const decimals = parseInt(metadataObj.decimals || '9', 10);
+      let decimals = 9;
+      if (metadataObj.decimals !== undefined && metadataObj.decimals !== null && metadataObj.decimals !== '') {
+        const parsedDec = Number(metadataObj.decimals);
+        if (Number.isInteger(parsedDec) && parsedDec >= 0 && parsedDec <= 255) {
+          decimals = parsedDec;
+        }
+      }
       const formattedSupply = formatUnits(rawTotalSupply, decimals);
 
       if (supplyVerified) {
@@ -448,7 +628,9 @@
             rawSupply: rawTotalSupply,
             decimals: decimals,
             symbol: metadataObj.symbol,
-            name: metadataObj.name
+            name: metadataObj.name,
+            source: supplySource,
+            indexerSupplyMatches: indexerSupply !== null ? (indexerSupply === rawTotalSupply) : null
           }
         };
         report.summary.totalChecksPassed++;
@@ -456,8 +638,16 @@
         report.claims['total_supply'] = {
           title: 'On-Chain Total Supply & Decimals',
           status: STATUS.NOT_VERIFIED,
-          detail: 'Total supply could not be retrieved from on-chain getter or indexer',
-          evidence: null
+          detail: indexerSupply !== null
+            ? `On-chain getter get_jetton_data failed; indexer reports unverified supply (${formatUnits(indexerSupply, decimals)} ${metadataObj.symbol || 'tokens'})`
+            : 'Total supply could not be retrieved from on-chain getter',
+          evidence: indexerSupply !== null ? {
+            rawSupply: null,
+            unverifiedIndexerSupply: indexerSupply,
+            decimals: decimals,
+            symbol: metadataObj.symbol,
+            source: 'INDEXER_UNVERIFIED'
+          } : null
         };
         report.summary.totalChecksUnverified++;
       }
@@ -469,8 +659,10 @@
         report.claims['admin_status'] = {
           title: 'Administrator Identity',
           status: STATUS.NOT_VERIFIED,
-          detail: 'Admin state could not be verified due to incomplete or failed RPC getter response',
-          evidence: null
+          detail: indexerAdmin
+            ? `On-chain getter failed; indexer reports unverified admin ${indexerAdmin}`
+            : 'Admin state could not be verified due to incomplete or failed RPC getter response',
+          evidence: indexerAdmin ? { adminAddress: null, unverifiedIndexerAdmin: indexerAdmin, source: 'INDEXER_UNVERIFIED' } : null
         };
         report.summary.totalChecksUnverified++;
 
@@ -490,11 +682,12 @@
         };
         report.summary.totalChecksUnverified++;
       } else {
-        const isNullAdmin = (parsedAdminAddress === null || parsedAdminAddress === '' || parsedAdminAddress === '0:0000000000000000000000000000000000000000000000000000000000000000');
+        const isNullAdmin = (parsedAdminAddress === null);
+        const normAdmin = parsedAdminAddress ? (parseTonAddress(parsedAdminAddress) || parsedAdminAddress.toLowerCase()) : null;
 
         let isUserAdmin = false;
-        if (viewerWallet && parsedAdminAddress) {
-          isUserAdmin = (viewerWallet.toLowerCase() === parsedAdminAddress.toLowerCase());
+        if (canonicalViewer && normAdmin) {
+          isUserAdmin = (canonicalViewer === normAdmin);
         }
 
         if (isNullAdmin && codeMatchStandard) {
@@ -506,7 +699,8 @@
             evidence: {
               adminAddress: null,
               rawAdminCell: rawAdminCellHex,
-              isUserAdmin: false
+              isUserAdmin: false,
+              source: adminSource
             }
           };
           report.summary.totalChecksPassed++;
@@ -542,8 +736,8 @@
           report.claims['admin_status'] = {
             title: 'Administrator Identity',
             status: STATUS.VERIFIED,
-            detail: 'Admin field decodes to null/empty',
-            evidence: { adminAddress: null }
+            detail: 'Admin field decodes to null/empty (addr_none)',
+            evidence: { adminAddress: null, source: adminSource }
           };
           report.summary.totalChecksPassed++;
 
@@ -571,7 +765,8 @@
             detail: `Active Admin: ${parsedAdminAddress} ${isUserAdmin ? '(Current Wallet)' : ''}`,
             evidence: {
               adminAddress: parsedAdminAddress,
-              isUserAdmin: isUserAdmin
+              isUserAdmin: isUserAdmin,
+              source: adminSource
             }
           };
           report.summary.totalChecksPassed++;
@@ -650,9 +845,13 @@
       // ───────────────────────────────────────────────────────────────────────
       const targetVesting = knownVestingAddress || detectVestingHolder(holderBalances);
       if (targetVesting) {
-        const vestingAudit = await auditVestingContract(targetVesting, cleanAddress);
+        const vestingAudit = await auditVestingContract(targetVesting, cleanAddress, {
+          decimals,
+          symbol: metadataObj.symbol || 'tokens'
+        });
         report.claims['vesting_contract'] = vestingAudit.claim;
         if (vestingAudit.claim.status === STATUS.VERIFIED) report.summary.totalChecksPassed++;
+        else if (vestingAudit.claim.status === STATUS.NOT_VERIFIED) report.summary.totalChecksUnverified++;
         else report.summary.totalChecksFailed++;
       } else {
         report.claims['vesting_contract'] = {
@@ -686,16 +885,33 @@
   }
 
   /**
-   * Independently audit a deployed ANLGRAM Vesting Contract
+   * Independently audit a deployed ANLGRAM Vesting Contract (BAJO-02 hardened)
    */
-  async function auditVestingContract(vestingAddress, expectedMasterAddress) {
+  async function auditVestingContract(vestingAddress, expectedMasterAddress, options = {}) {
+    const tokenDecimals = options.decimals !== undefined ? options.decimals : 9;
+    const tokenSymbol = options.symbol || 'tokens';
+
+    if (!isValidTonAddress(vestingAddress)) {
+      return {
+        claim: {
+          title: 'Vesting Contract Non-Custodial Lock Audit',
+          status: STATUS.FAILED,
+          detail: 'Invalid vesting contract TON address format or checksum',
+          evidence: null
+        }
+      };
+    }
+
     try {
-      const vAcc = await queryTonApi(`/blockchain/accounts/${encodeURIComponent(vestingAddress)}`);
+      const vAcc = await queryTonApi(`/blockchain/accounts/${encodeURIComponent(vestingAddress.trim())}`);
       let vCodeHash = '';
       try {
         const tonCore = getTonCore();
         if (tonCore && tonCore.Cell && vAcc.code) {
-          const vCell = tonCore.Cell.fromBoc(Buffer.from(vAcc.code, 'hex'))[0];
+          const codeBuf = /^[0-9a-fA-F]+$/.test(vAcc.code)
+            ? Buffer.from(vAcc.code, 'hex')
+            : Buffer.from(vAcc.code, 'base64');
+          const vCell = tonCore.Cell.fromBoc(codeBuf)[0];
           vCodeHash = vCell.hash().toString('hex');
         }
       } catch (e) {}
@@ -704,40 +920,87 @@
       const isVestingCodeStandard = (vCodeHash.toLowerCase() === stdVesting.hashHex.toLowerCase());
 
       // Query getter `get_vesting_data`
-      const vGetter = await queryTonApi(`/blockchain/accounts/${encodeURIComponent(vestingAddress)}/methods/get_vesting_data`);
+      const vGetter = await queryTonApi(`/blockchain/accounts/${encodeURIComponent(vestingAddress.trim())}/methods/get_vesting_data`);
       let isInit = false;
       let totalLocked = '0';
       let claimedAmount = '0';
       let startTime = 0;
       let cliffDuration = 0;
       let totalDuration = 0;
+      let beneficiaryAddr = null;
+      let creatorAddr = null;
+      let vestingMasterAddr = null;
 
-      if (vGetter.success && vGetter.stack) {
+      if (vGetter && vGetter.success && Array.isArray(vGetter.stack) && vGetter.stack.length >= 10) {
         totalLocked = safeBigInt(vGetter.stack[0]?.num).toString();
         claimedAmount = safeBigInt(vGetter.stack[1]?.num).toString();
         startTime = Number(vGetter.stack[3]?.num || 0);
         cliffDuration = Number(vGetter.stack[4]?.num || 0);
         totalDuration = Number(vGetter.stack[5]?.num || 0);
+
+        const benDecoded = decodeAddressFromBoc(vGetter.stack[6]?.cell || vGetter.stack[6]?.slice);
+        if (benDecoded.ok) beneficiaryAddr = benDecoded.address;
+
+        const creDecoded = decodeAddressFromBoc(vGetter.stack[7]?.cell || vGetter.stack[7]?.slice);
+        if (creDecoded.ok) creatorAddr = creDecoded.address;
+
+        const masDecoded = decodeAddressFromBoc(vGetter.stack[8]?.cell || vGetter.stack[8]?.slice);
+        if (masDecoded.ok) vestingMasterAddr = masDecoded.address;
+
         isInit = (vGetter.stack[9]?.num === '0x1' || vGetter.stack[9]?.num === '1');
       }
 
-      const isValid = (vAcc.status === 'active') && isVestingCodeStandard && isInit;
+      // BAJO-02: Verify association between Vesting Contract and expected Jetton Master
+      let masterAssociationStatus = STATUS.VERIFIED;
+      const expectedMasterRaw = expectedMasterAddress ? parseTonAddress(expectedMasterAddress) : null;
+      if (expectedMasterAddress) {
+        if (!expectedMasterRaw || !vestingMasterAddr) {
+          masterAssociationStatus = STATUS.NOT_VERIFIED;
+        } else if (vestingMasterAddr.toLowerCase() !== expectedMasterRaw.toLowerCase()) {
+          masterAssociationStatus = STATUS.FAILED;
+        }
+      } else if (!vestingMasterAddr) {
+        masterAssociationStatus = STATUS.NOT_VERIFIED;
+      }
+
+      const cliffDays = (cliffDuration / 86400).toFixed(0);
+      const durationDays = (totalDuration / 86400).toFixed(0);
+      const isBaseValid = (vAcc.status === 'active') && isVestingCodeStandard && isInit;
+
+      let finalStatus = STATUS.FAILED;
+      let detailMsg = '';
+
+      if (!isBaseValid) {
+        finalStatus = STATUS.FAILED;
+        detailMsg = `Vesting contract validation failed (Active: ${vAcc.status === 'active'}, CodeMatch: ${isVestingCodeStandard}, Initialized: ${isInit})`;
+      } else if (masterAssociationStatus === STATUS.FAILED) {
+        finalStatus = STATUS.FAILED;
+        detailMsg = `Vesting Jetton Master mismatch: contract locks ${vestingMasterAddr}, expected ${expectedMasterRaw}`;
+      } else if (masterAssociationStatus === STATUS.NOT_VERIFIED) {
+        finalStatus = STATUS.NOT_VERIFIED;
+        detailMsg = 'Vesting contract is active, but association with the expected Jetton Master could not be verified on-chain';
+      } else {
+        finalStatus = STATUS.VERIFIED;
+        detailMsg = `Verified Non-Custodial Vesting (${formatUnits(totalLocked, tokenDecimals)} ${tokenSymbol} locked, ${cliffDays}d cliff, ${durationDays}d duration, 0 clawback paths)`;
+      }
 
       return {
         claim: {
           title: 'Vesting Contract Non-Custodial Lock Audit',
-          status: isValid ? STATUS.VERIFIED : STATUS.FAILED,
-          detail: isValid
-            ? `Verified Non-Custodial Vesting (${formatUnits(totalLocked, 9)} MOON locked, 30d cliff, 180d duration, 0 clawback paths)`
-            : `Vesting contract validation failed (Active: ${vAcc.status === 'active'}, CodeMatch: ${isVestingCodeStandard}, Initialized: ${isInit})`,
+          status: finalStatus,
+          detail: detailMsg,
           evidence: {
             vestingAddress: vestingAddress,
             codeHashHex: vCodeHash,
+            jettonMasterAddress: vestingMasterAddr,
+            expectedMasterAddress: expectedMasterRaw,
+            beneficiaryAddress: beneficiaryAddr,
+            creatorAddress: creatorAddr,
             totalLockedUnits: totalLocked,
             claimedUnits: claimedAmount,
-            startTimeUtc: new Date(startTime * 1000).toISOString(),
-            cliffDurationDays: (cliffDuration / 86400).toFixed(0),
-            totalDurationDays: (totalDuration / 86400).toFixed(0),
+            startTimeUtc: startTime > 0 ? new Date(startTime * 1000).toISOString() : null,
+            cliffDurationDays: cliffDays,
+            totalDurationDays: durationDays,
             isInitialized: isInit
           }
         }
@@ -746,8 +1009,8 @@
       return {
         claim: {
           title: 'Vesting Contract Non-Custodial Lock Audit',
-          status: STATUS.FAILED,
-          detail: `Failed to query vesting contract: ${e.message}`,
+          status: STATUS.NOT_VERIFIED,
+          detail: `Could not complete on-chain vesting contract audit: ${e.message}`,
           evidence: null
         }
       };
@@ -755,6 +1018,9 @@
   }
 
   function finalizeReport(report) {
+    const cacheKey = report._cacheKey;
+    delete report._cacheKey;
+
     const summary = report.summary;
     summary.allVerified = (summary.totalChecksFailed === 0 && summary.totalChecksUnverified === 0);
 
@@ -768,15 +1034,15 @@
       summary.securityRating = 'OPERATIONAL (ADMIN ACTIVE, UNRENOUNCED)';
     }
 
-    // Cache report only when core on-chain state (account, supply, admin) was retrieved
-    if (report.claims.account_status?.status === STATUS.VERIFIED &&
+    // BAJO-01: Cache report only when all checks are verified (no failed or unverified claims)
+    if (cacheKey && summary.totalChecksFailed === 0 && summary.totalChecksUnverified === 0 &&
+        report.claims.account_status?.status === STATUS.VERIFIED &&
         report.claims.total_supply?.status === STATUS.VERIFIED &&
         report.claims.admin_status?.status === STATUS.VERIFIED) {
-      const key = `verify:${report.target.minterAddress.toLowerCase()}`;
-      verificationCache.set(key, { timestamp: Date.now(), report });
+      verificationCache.set(cacheKey, { timestamp: Date.now(), report: deepClone(report) });
     }
 
-    return report;
+    return deepClone(report);
   }
 
   function createErrorReport(address, message) {
@@ -805,15 +1071,17 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 5. PUBLIC API
+  // 5. PUBLIC API (MEDIO-01: Deep-frozen against runtime mutation)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  return {
+  return deepFreeze({
     STATUS,
     AUDITED_BYTECODE_REGISTRY,
     verifyToken,
     auditVestingContract,
     formatUnits,
-    isValidTonAddress
-  };
+    isValidTonAddress,
+    parseTonAddress,
+    decodeAddressFromBoc
+  });
 }));

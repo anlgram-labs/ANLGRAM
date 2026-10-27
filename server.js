@@ -30,6 +30,7 @@ const clientRateMap = new Map();
 const ALLOWED_PROXY_ROUTES = [
   /^\/accounts\/[a-zA-Z0-9_\-\:]+$/,
   /^\/accounts\/[a-zA-Z0-9_\-\:]+\/jettons$/,
+  /^\/accounts\/[a-zA-Z0-9_\-\:]+\/jettons\/[a-zA-Z0-9_\-\:]+$/,
   /^\/accounts\/[a-zA-Z0-9_\-\:]+\/nfts$/,
   /^\/accounts\/[a-zA-Z0-9_\-\:]+\/events$/,
   /^\/accounts\/search$/,
@@ -38,19 +39,71 @@ const ALLOWED_PROXY_ROUTES = [
   /^\/jettons\/[a-zA-Z0-9_\-\:]+\/holders$/,
   /^\/blockchain\/transactions\/[a-fA-F0-9]+$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+$/,
-  /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/methods\/[a-zA-Z0-9_]+$/,
+  /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/methods\/[a-zA-Z0-9_]{1,64}$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/transactions$/,
   /^\/blockchain\/masterchain-head$/
 ];
 
-// SEC-04: Strict TON Address Format Regex
-const TON_ADDRESS_REGEX = /^([A-Za-z0-9_-]{48}|(-1|0):[0-9a-fA-F]{64})$/;
+const ALLOWED_TVM_METHODS = new Set([
+  'get_jetton_data',
+  'get_wallet_address',
+  'get_vesting_data',
+  'get_claimable_at',
+  'get_staking_data',
+  'get_staker_data'
+]);
 
+const ALLOWED_QUERY_PARAMS = new Set([
+  'limit',
+  'before_lt',
+  'start_lt',
+  'end_lt',
+  'tokens',
+  'currencies',
+  'name',
+  'account_id',
+  'args',
+  'supported_extensions'
+]);
+
+function crc16Ton(bytes) {
+  let crc = 0;
+  for (let i = 0; i < bytes.length; i++) {
+    crc ^= (bytes[i] << 8);
+    for (let j = 0; j < 8; j++) {
+      if (crc & 0x8000) {
+        crc = ((crc << 1) ^ 0x1021) & 0xffff;
+      } else {
+        crc = (crc << 1) & 0xffff;
+      }
+    }
+  }
+  return crc;
+}
+
+// SEC-04 & BAJO-01: Strict TON Address Format & Checksum Validation
 function isValidTonAddress(addr) {
   if (!addr || typeof addr !== 'string') return false;
   const clean = addr.trim();
   if (clean.length > 128) return false;
-  return TON_ADDRESS_REGEX.test(clean);
+  if (/^(-1|0):[0-9a-fA-F]{64}$/.test(clean)) return true;
+  if (/^[A-Za-z0-9_+\/-]{48}$/.test(clean)) {
+    try {
+      const b64 = clean.replace(/-/g, '+').replace(/_/g, '/');
+      const buf = Buffer.from(b64, 'base64');
+      if (buf.length !== 36) return false;
+      const tag = buf[0];
+      if ((tag & 0x3f) !== 0x11) return false;
+      const wc = buf[1];
+      if (wc !== 0x00 && wc !== 0xff) return false;
+      const expectedCrc = crc16Ton(buf.subarray(0, 34));
+      const actualCrc = (buf[34] << 8) | buf[35];
+      return expectedCrc === actualCrc;
+    } catch (_) {
+      return false;
+    }
+  }
+  return false;
 }
 
 function checkClientRateLimit(clientIp) {
@@ -66,13 +119,33 @@ function checkClientRateLimit(clientIp) {
 }
 
 const server = http.createServer((req, res) => {
-  // Remove query params and decode URI safely
-  let cleanUrl = req.url.split('?')[0];
+  const rawUrlPath = (req.url || '').split('?')[0];
+  if (rawUrlPath.length > 512) {
+    res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+    res.end(JSON.stringify({ error: 'Bad Request', message: 'Request path exceeds maximum permitted length' }));
+    return;
+  }
+
+  // ALTO-01: Reject encoded traversal (%2e, %2f, %5c), double-encoding (%25), null bytes (%00), or backslashes on API routes
+  if (rawUrlPath.startsWith('/api/') && (/%2e|%2f|%5c|%25|%00|%0a|%0d/i.test(rawUrlPath) || rawUrlPath.includes('\\') || rawUrlPath.includes('..'))) {
+    res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+    res.end(JSON.stringify({ error: 'Bad Request', message: 'Disallowed path traversal, double encoding, or control sequence in path' }));
+    return;
+  }
+
+  // Remove query params and decode URI safely once
+  let cleanUrl = rawUrlPath;
   try {
-    cleanUrl = decodeURIComponent(cleanUrl);
+    cleanUrl = decodeURIComponent(rawUrlPath);
   } catch (e) {
-    res.writeHead(400, { 'Content-Type': 'text/plain', ...SECURITY_HEADERS });
-    res.end('Bad Request');
+    res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+    res.end(JSON.stringify({ error: 'Bad Request', message: 'Malformed URI percent-encoding in path' }));
+    return;
+  }
+
+  if (cleanUrl.startsWith('/api/') && (cleanUrl.includes('%') || cleanUrl.includes('..') || cleanUrl.includes('\\') || /[\x00-\x1f\x7f\r\n]/.test(cleanUrl))) {
+    res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+    res.end(JSON.stringify({ error: 'Bad Request', message: 'Disallowed characters or multi-layered encoding in path' }));
     return;
   }
 
@@ -302,19 +375,72 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // SEC-04: Strict TON Address Validation on path parameters
+    // ALTO-01: Validate TVM getter method name against explicit allowlist
+    const methodMatch = subPath.match(/^\/blockchain\/accounts\/([a-zA-Z0-9_\-\:]+)\/methods\/([a-zA-Z0-9_]+)$/);
+    if (methodMatch) {
+      const methodName = methodMatch[2];
+      if (!ALLOWED_TVM_METHODS.has(methodName)) {
+        res.writeHead(403, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+        res.end(JSON.stringify({ error: 'Forbidden', message: `TVM method '${methodName}' is not permitted by this proxy` }));
+        return;
+      }
+    }
+
+    // SEC-04 & BAJO-01: Strict TON Address Validation on path parameters
     const accountMatch = subPath.match(/^\/(?:blockchain\/)?(?:accounts|jettons)\/([a-zA-Z0-9_\-\:]+)/);
     if (accountMatch && accountMatch[1] && accountMatch[1] !== 'search') {
       if (!isValidTonAddress(accountMatch[1])) {
         res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
         res.end(JSON.stringify({
           error: 'Bad Request',
-          message: 'Invalid TON address path parameter format. Must be raw (0:hex) or friendly 48-char base64url.'
+          message: 'Invalid TON address path parameter format. Must be raw (0:hex) or valid friendly 48-char TEP-2 address.'
         }));
         return;
       }
     }
-    const queryString = req.url.includes('?') ? '?' + req.url.split('?').slice(1).join('?') : '';
+
+    // ALTO-03: Validate secondary TON address on /accounts/:wallet/jettons/:minter
+    const accountJettonMatch = subPath.match(/^\/accounts\/([a-zA-Z0-9_\-\:]+)\/jettons\/([a-zA-Z0-9_\-\:]+)$/);
+    if (accountJettonMatch) {
+      if (!isValidTonAddress(accountJettonMatch[1]) || !isValidTonAddress(accountJettonMatch[2])) {
+        res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+        res.end(JSON.stringify({
+          error: 'Bad Request',
+          message: 'Invalid wallet or jetton TON address parameter format.'
+        }));
+        return;
+      }
+    }
+
+    // Validate Query Parameters (ALTO-03 parity with Cloudflare Worker)
+    const filteredParams = new URLSearchParams();
+    try {
+      const reqUrlObj = new URL(req.url, 'http://localhost');
+      for (const [key, val] of reqUrlObj.searchParams.entries()) {
+        if (!ALLOWED_QUERY_PARAMS.has(key)) {
+          res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+          res.end(JSON.stringify({ error: 'Bad Request', message: `Query parameter '${key}' is not permitted` }));
+          return;
+        }
+        if (val.length > 512 || /[\x00-\x1f\x7f\r\n]/.test(val) || /^https?:\/\//i.test(val) || val.includes('..') || val.includes('\\')) {
+          res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+          res.end(JSON.stringify({ error: 'Bad Request', message: `Query parameter '${key}' exceeds maximum length or contains invalid characters` }));
+          return;
+        }
+        if (key === 'supported_extensions' && (val.length > 64 || !/^[a-zA-Z0-9_,\-]+$/.test(val))) {
+          res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+          res.end(JSON.stringify({ error: 'Bad Request', message: 'Invalid supported_extensions parameter value' }));
+          return;
+        }
+        filteredParams.set(key, val);
+      }
+    } catch (_) {
+      res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+      res.end(JSON.stringify({ error: 'Bad Request', message: 'Malformed query string' }));
+      return;
+    }
+
+    const queryString = filteredParams.toString() ? `?${filteredParams.toString()}` : '';
     const cacheKey = `${subPath}${queryString}`;
     const now = Date.now();
 
@@ -454,6 +580,16 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(8080, () => {
-  console.log('Server running at http://localhost:8080/');
-});
+if (require.main === module) {
+  server.listen(8080, () => {
+    console.log('Server running at http://localhost:8080/');
+  });
+}
+
+module.exports = {
+  server,
+  ALLOWED_PROXY_ROUTES,
+  ALLOWED_TVM_METHODS,
+  ALLOWED_QUERY_PARAMS,
+  isValidTonAddress
+};
