@@ -114,11 +114,10 @@ it('labsVerifyOnChainTokenSecurity targets get_jetton_data endpoint', () => {
   assert.strictEqual(js.includes('/methods/get_jetton_data'), true);
 });
 
-it('labsVerifyOnChainTokenSecurity decodes null/empty admin as renounced on-chain', () => {
-  assert.strictEqual(js.includes("!admin || admin.trim() === '' || admin === 'null'"), true);
-  assert.strictEqual(js.includes("result.mintAuthority = 'DISABLED'"), true);
-  assert.strictEqual(js.includes("result.additionalMinting = 'PERMANENTLY BLOCKED'"), true);
-  assert.strictEqual(js.includes("result.renounceStatus = 'VERIFIED ON-CHAIN (PERMANENTLY RENOUNCED)'"), true);
+it('labsVerifyOnChainTokenSecurity requires verified bytecode before certifying permanent renunciation (SEC-01)', () => {
+  assert.strictEqual(js.includes("rep.summary.permanentRenounced"), true);
+  assert.strictEqual(js.includes("rep.summary.permanentRenounced ? 'VERIFIED ON-CHAIN (PERMANENTLY RENOUNCED)'"), true);
+  assert.strictEqual(js.includes("rep.summary.permanentRenounced ? 'PERMANENTLY BLOCKED'"), true);
 });
 
 console.log('\nSECTION 4: Real On-Chain Token Burn (TEP-74 op::burn)');

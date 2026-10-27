@@ -2688,9 +2688,9 @@ function renderJettonMasterView(jm, holders) {
       jmMintEl.textContent = 'Sí (Proof-of-Work Givers / Minería Descentralizada)';
       jmMintEl.style.color = '#f59e0b';
     } else if (isZeroAdmin) {
-      // Verificación real on-chain: En TEP-74, get_jetton_data retorna -1 por especificación estática,
-      // pero el código de ejecución Op 21 revierte con exit code 73 si sender != admin_address (addr_none).
-      jmMintEl.innerHTML = '<span style="color:var(--flow-positive); font-weight:700;">No — Emisión Bloqueada Permanentemente</span> <span style="font-size:11px; color:var(--text-muted);">(Admin Renunciado / Op 21 Protegido)</span>';
+      // SEC-01: Nunca asumir inmutabilidad permanente sólo porque admin sea null.
+      // Requiere verificación criptográfica del bytecode antes de certificar bloqueo permanente.
+      jmMintEl.innerHTML = '<span style="color:#ffa500; font-weight:700;">Admin No Asignado</span> <span style="font-size:11px; color:var(--text-muted);">(Verificando bytecode on-chain...)</span>';
     } else {
       jmMintEl.textContent = jm.mintable ? 'Sí (Emisión abierta / Controlada por Administrador)' : 'No (Suministro fijado / Bloqueado)';
       jmMintEl.style.color = jm.mintable ? '#f59e0b' : 'var(--flow-positive)';
@@ -2758,6 +2758,14 @@ function renderJettonMasterView(jm, holders) {
     }
     window.TokenVerificationEngine.verifyToken(currentAccount.address).then(rep => {
       if (!rep) return;
+      const isZeroAdmin = !currentAccount.admin?.address || currentAccount.admin.address === '0:0000000000000000000000000000000000000000000000000000000000000000';
+      if (jmMintEl && !isGram) {
+        if (rep.summary.permanentRenounced) {
+          jmMintEl.innerHTML = '<span style="color:var(--flow-positive); font-weight:700;">No — Emisión Bloqueada Permanentemente</span> <span style="font-size:11px; color:var(--text-muted);">(TEP-74 Canónico / Op 21 Inactivo)</span>';
+        } else if (isZeroAdmin) {
+          jmMintEl.innerHTML = '<span style="color:#ffa500; font-weight:700;">Admin Nulo — Inmutabilidad No Certificada</span> <span style="font-size:11px; color:var(--text-muted);">(Bytecode no estándar / Requiere auditoría)</span>';
+        }
+      }
       if (badgeEl) {
         if (rep.summary.permanentRenounced) {
           badgeEl.textContent = '✔ PERMANENTEMENTE RENUNCIADO (SEGURO)';

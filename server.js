@@ -43,6 +43,16 @@ const ALLOWED_PROXY_ROUTES = [
   /^\/blockchain\/masterchain-head$/
 ];
 
+// SEC-04: Strict TON Address Format Regex
+const TON_ADDRESS_REGEX = /^([A-Za-z0-9_-]{48}|(-1|0):[0-9a-fA-F]{64})$/;
+
+function isValidTonAddress(addr) {
+  if (!addr || typeof addr !== 'string') return false;
+  const clean = addr.trim();
+  if (clean.length > 128) return false;
+  return TON_ADDRESS_REGEX.test(clean);
+}
+
 function checkClientRateLimit(clientIp) {
   const now = Date.now();
   let record = clientRateMap.get(clientIp);
@@ -92,9 +102,13 @@ const server = http.createServer((req, res) => {
     }
 
     const executeVerification = async (targetAddress, forceFresh) => {
-      if (!targetAddress || typeof targetAddress !== 'string') {
+      // SEC-04: Strict TON address pre-validation before dispatching upstream network RPCs
+      if (!targetAddress || typeof targetAddress !== 'string' || !isValidTonAddress(targetAddress)) {
         res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
-        res.end(JSON.stringify({ error: 'Missing or invalid token address parameter' }));
+        res.end(JSON.stringify({
+          error: 'Invalid TON address parameter format. Must be raw (0:hex) or friendly 48-char base64url.',
+          status: 400
+        }));
         return;
       }
       try {
@@ -189,7 +203,14 @@ const server = http.createServer((req, res) => {
           }
 
           let publicCdnUrl = null;
-          const imgurClientIds = ['546c25a59c58ad7', 'c06eb6f6b5b5ba3'];
+          // SEC-06: Configurable Imgur Client-IDs via environment variable.
+          // Note: Imgur Client-IDs are public anonymous upload identifiers, not OAuth client secrets.
+          const configuredImgurIds = process.env.IMGUR_CLIENT_IDS
+            ? process.env.IMGUR_CLIENT_IDS.split(',').map(s => s.trim()).filter(Boolean)
+            : [];
+          const imgurClientIds = configuredImgurIds.length > 0
+            ? configuredImgurIds
+            : ['546c25a59c58ad7', 'c06eb6f6b5b5ba3'];
           for (const cId of imgurClientIds) {
             try {
               const fd = new FormData();
@@ -279,6 +300,19 @@ const server = http.createServer((req, res) => {
       res.writeHead(403, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
       res.end(JSON.stringify({ error: 'Forbidden', message: 'The requested path is not permitted by this proxy' }));
       return;
+    }
+
+    // SEC-04: Strict TON Address Validation on path parameters
+    const accountMatch = subPath.match(/^\/(?:blockchain\/)?(?:accounts|jettons)\/([a-zA-Z0-9_\-\:]+)/);
+    if (accountMatch && accountMatch[1] && accountMatch[1] !== 'search') {
+      if (!isValidTonAddress(accountMatch[1])) {
+        res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+        res.end(JSON.stringify({
+          error: 'Bad Request',
+          message: 'Invalid TON address path parameter format. Must be raw (0:hex) or friendly 48-char base64url.'
+        }));
+        return;
+      }
     }
     const queryString = req.url.includes('?') ? '?' + req.url.split('?').slice(1).join('?') : '';
     const cacheKey = `${subPath}${queryString}`;

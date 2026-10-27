@@ -64,6 +64,17 @@
     NOT_APPLICABLE: 'NOT APPLICABLE'
   };
 
+  // SEC-04: Strict TON Address Format Regex
+  // Matches raw (0:hex or -1:hex, 64 hex chars) or friendly base64url (48 chars)
+  const TON_ADDRESS_REGEX = /^([A-Za-z0-9_-]{48}|(-1|0):[0-9a-fA-F]{64})$/;
+
+  function isValidTonAddress(addr) {
+    if (!addr || typeof addr !== 'string') return false;
+    const clean = addr.trim();
+    if (clean.length > 128) return false;
+    return TON_ADDRESS_REGEX.test(clean);
+  }
+
   // In-memory verification cache with explicit timestamp and source tracking
   const verificationCache = new Map();
   const CACHE_TTL_MS = 30000; // 30 seconds fresh cache
@@ -142,9 +153,15 @@
     const primaryUrl = isBrowser ? `${proxyBase}${endpoint}` : `https://tonapi.io/v2${endpoint}`;
 
     try {
-      const res = await fetchWithTimeout(primaryUrl, {
+      let res = await fetchWithTimeout(primaryUrl, {
         headers: { 'Accept': 'application/json' }
       });
+      if (res.status === 429) {
+        await new Promise(r => setTimeout(r, 1250));
+        res = await fetchWithTimeout(primaryUrl, {
+          headers: { 'Accept': 'application/json' }
+        });
+      }
       if (res.ok) {
         return await res.json();
       }
@@ -205,6 +222,11 @@
     }
 
     const cleanAddress = minterAddress.trim();
+
+    // SEC-04: Strict TON Address Pre-Validation before network requests
+    if (!isValidTonAddress(cleanAddress)) {
+      return createErrorReport(cleanAddress, 'Invalid TON address format. Must be raw (0:hex) or friendly 48-char base64url.');
+    }
     const cacheKey = `verify:${cleanAddress.toLowerCase()}`;
 
     // Cache hit check
@@ -366,18 +388,21 @@
       } catch (err) {}
 
       let rawTotalSupply = '0';
-      let parsedAdminAddress = null;
+      let supplyVerified = false;
+      let parsedAdminAddress = undefined;
+      let adminVerified = false;
       let rawAdminCellHex = '';
       let isMintableStackFlag = false;
 
-      if (getterData && getterData.success && getterData.stack) {
+      if (getterData && getterData.success && Array.isArray(getterData.stack)) {
         const stack = getterData.stack;
         // stack[0]: total_supply
-        if (stack[0] && stack[0].num) {
+        if (stack[0] && stack[0].num !== undefined) {
           rawTotalSupply = safeBigInt(stack[0].num).toString();
+          supplyVerified = true;
         }
         // stack[1]: mintable (-1 = true, 0 = false)
-        if (stack[1] && stack[1].num) {
+        if (stack[1] && stack[1].num !== undefined) {
           isMintableStackFlag = (stack[1].num === '-0x1' || stack[1].num === '-1');
         }
         // stack[2]: admin_address cell
@@ -385,9 +410,11 @@
           rawAdminCellHex = stack[2].cell;
           // Check for addr_none: 2 bits "00" (cell hex begins with b5ee9c... and bit slice is 2 bits 00)
           if (rawAdminCellHex === 'b5ee9c7201010101000300000120' || getterData.decoded?.admin_address === '') {
-            parsedAdminAddress = null; // addr_none
+            parsedAdminAddress = null; // Explicitly verified addr_none
+            adminVerified = true;
           } else if (getterData.decoded?.admin_address) {
             parsedAdminAddress = getterData.decoded.admin_address;
+            adminVerified = true;
           }
         }
       }
@@ -398,135 +425,173 @@
         const jettonInfo = await queryTonApi(`/jettons/${encodeURIComponent(cleanAddress)}`);
         providersUsed.push('TonAPI Jetton Metadata Indexer');
         metadataObj = jettonInfo.metadata || {};
-        if (!rawTotalSupply || rawTotalSupply === '0') {
-          rawTotalSupply = jettonInfo.total_supply || '0';
+        if (!supplyVerified && jettonInfo.total_supply !== undefined) {
+          rawTotalSupply = String(jettonInfo.total_supply);
+          supplyVerified = true;
         }
-        if (parsedAdminAddress === null && jettonInfo.admin?.address) {
-          // Cross-verify with decoded getter
-          if (!getterData) parsedAdminAddress = jettonInfo.admin.address;
+        if (!adminVerified && jettonInfo.admin?.address) {
+          // Cross-verify with decoded getter when active admin address is present
+          parsedAdminAddress = jettonInfo.admin.address;
+          adminVerified = true;
         }
       } catch (e) {}
 
       const decimals = parseInt(metadataObj.decimals || '9', 10);
       const formattedSupply = formatUnits(rawTotalSupply, decimals);
 
-      report.claims['total_supply'] = {
-        title: 'On-Chain Total Supply & Decimals',
-        status: STATUS.VERIFIED,
-        detail: `${formattedSupply} ${metadataObj.symbol || 'tokens'} (${rawTotalSupply} atomic units, ${decimals} decimals)`,
-        evidence: {
-          rawSupply: rawTotalSupply,
-          decimals: decimals,
-          symbol: metadataObj.symbol,
-          name: metadataObj.name
-        }
-      };
-      report.summary.totalChecksPassed++;
+      if (supplyVerified) {
+        report.claims['total_supply'] = {
+          title: 'On-Chain Total Supply & Decimals',
+          status: STATUS.VERIFIED,
+          detail: `${formattedSupply} ${metadataObj.symbol || 'tokens'} (${rawTotalSupply} atomic units, ${decimals} decimals)`,
+          evidence: {
+            rawSupply: rawTotalSupply,
+            decimals: decimals,
+            symbol: metadataObj.symbol,
+            name: metadataObj.name
+          }
+        };
+        report.summary.totalChecksPassed++;
+      } else {
+        report.claims['total_supply'] = {
+          title: 'On-Chain Total Supply & Decimals',
+          status: STATUS.NOT_VERIFIED,
+          detail: 'Total supply could not be retrieved from on-chain getter or indexer',
+          evidence: null
+        };
+        report.summary.totalChecksUnverified++;
+      }
 
       // ───────────────────────────────────────────────────────────────────────
       // STEP 4: Admin Verification & Renunciation Analysis
       // ───────────────────────────────────────────────────────────────────────
-      const isNullAdmin = (parsedAdminAddress === null || parsedAdminAddress === '' || parsedAdminAddress === '0:0000000000000000000000000000000000000000000000000000000000000000');
-
-      let isUserAdmin = false;
-      if (viewerWallet && parsedAdminAddress) {
-        isUserAdmin = (viewerWallet.toLowerCase() === parsedAdminAddress.toLowerCase());
-      }
-
-      if (isNullAdmin && codeMatchStandard) {
-        // Cryptographically guaranteed permanent renunciation
+      if (!adminVerified) {
         report.claims['admin_status'] = {
           title: 'Administrator Identity',
-          status: STATUS.VERIFIED,
-          detail: 'Admin is permanently addr_none (Renounced / Null Address)',
-          evidence: {
-            adminAddress: null,
-            rawAdminCell: rawAdminCellHex,
-            isUserAdmin: false
-          }
+          status: STATUS.NOT_VERIFIED,
+          detail: 'Admin state could not be verified due to incomplete or failed RPC getter response',
+          evidence: null
         };
-        report.summary.totalChecksPassed++;
-
-        report.claims['minting_permissions'] = {
-          title: 'Minting Authorization & Supply Cap',
-          status: STATUS.VERIFIED,
-          detail: 'Minting is PERMANENTLY BLOCKED on-chain (Op 21 throws TVM exit code 73 on all senders)',
-          evidence: {
-            runtimeMintPossible: false,
-            indexerReportedMintableFlag: isMintableStackFlag,
-            indexerDiscrepancyNote: isMintableStackFlag
-              ? 'TonAPI reports "mintable: true" because standard TEP-74 get_jetton_data hardcodes tuple element 2 to -1. However, runtime Op 21 strictly requires sender == admin_address, which is mathematically impossible for addr_none.'
-              : 'No discrepancy'
-          }
-        };
-        report.summary.totalChecksPassed++;
-
-        report.claims['renunciation_immutability'] = {
-          title: 'Permanent Renunciation Guarantee',
-          status: STATUS.VERIFIED,
-          detail: 'Admin cannot be reclaimed or reassigned (Op 3 also requires sender == admin_address)',
-          evidence: {
-            canAdminBeRestored: false,
-            canContentBeModified: false
-          }
-        };
-        report.summary.totalChecksPassed++;
-        report.summary.permanentRenounced = true;
-
-      } else if (isNullAdmin && !codeMatchStandard) {
-        // Admin is null, but non-standard code prevents guaranteeing no backdoor
-        report.claims['admin_status'] = {
-          title: 'Administrator Identity',
-          status: STATUS.VERIFIED,
-          detail: 'Admin field decodes to null/empty',
-          evidence: { adminAddress: null }
-        };
-        report.summary.totalChecksPassed++;
+        report.summary.totalChecksUnverified++;
 
         report.claims['minting_permissions'] = {
           title: 'Minting Authorization',
           status: STATUS.NOT_VERIFIED,
-          detail: 'Admin is empty, but non-standard bytecode may contain alternate privileged paths',
-          evidence: { runtimeMintPossible: 'UNCERTAIN' }
+          detail: 'Minting permissions cannot be verified without on-chain getter execution',
+          evidence: { runtimeMintPossible: 'UNKNOWN' }
         };
         report.summary.totalChecksUnverified++;
 
         report.claims['renunciation_immutability'] = {
           title: 'Permanent Renunciation Guarantee',
           status: STATUS.NOT_VERIFIED,
-          detail: 'Cannot guarantee permanent immutability without verified standard bytecode',
+          detail: 'Renunciation status cannot be certified without verified on-chain getter state',
           evidence: { canAdminBeRestored: 'UNKNOWN' }
         };
         report.summary.totalChecksUnverified++;
-
       } else {
-        // Admin is active
-        report.claims['admin_status'] = {
-          title: 'Administrator Identity',
-          status: STATUS.VERIFIED,
-          detail: `Active Admin: ${parsedAdminAddress} ${isUserAdmin ? '(Current Wallet)' : ''}`,
-          evidence: {
-            adminAddress: parsedAdminAddress,
-            isUserAdmin: isUserAdmin
-          }
-        };
-        report.summary.totalChecksPassed++;
+        const isNullAdmin = (parsedAdminAddress === null || parsedAdminAddress === '' || parsedAdminAddress === '0:0000000000000000000000000000000000000000000000000000000000000000');
 
-        report.claims['minting_permissions'] = {
-          title: 'Minting Authorization',
-          status: STATUS.VERIFIED,
-          detail: `Active: Administrator can mint additional tokens (Op 21 authorized for ${parsedAdminAddress.slice(0, 8)}...)`,
-          evidence: { runtimeMintPossible: true }
-        };
-        report.summary.totalChecksPassed++;
+        let isUserAdmin = false;
+        if (viewerWallet && parsedAdminAddress) {
+          isUserAdmin = (viewerWallet.toLowerCase() === parsedAdminAddress.toLowerCase());
+        }
 
-        report.claims['renunciation_immutability'] = {
-          title: 'Permanent Renunciation Guarantee',
-          status: STATUS.FAILED,
-          detail: 'Token is NOT renounced. Administrator retains privileged access.',
-          evidence: { canAdminBeRestored: 'N/A (Admin already active)' }
-        };
-        report.summary.totalChecksFailed++;
+        if (isNullAdmin && codeMatchStandard) {
+          // Cryptographically guaranteed permanent renunciation
+          report.claims['admin_status'] = {
+            title: 'Administrator Identity',
+            status: STATUS.VERIFIED,
+            detail: 'Admin is permanently addr_none (Renounced / Null Address)',
+            evidence: {
+              adminAddress: null,
+              rawAdminCell: rawAdminCellHex,
+              isUserAdmin: false
+            }
+          };
+          report.summary.totalChecksPassed++;
+
+          report.claims['minting_permissions'] = {
+            title: 'Minting Authorization & Supply Cap',
+            status: STATUS.VERIFIED,
+            detail: 'Minting is PERMANENTLY BLOCKED on-chain (Op 21 throws TVM exit code 73 on all senders)',
+            evidence: {
+              runtimeMintPossible: false,
+              indexerReportedMintableFlag: isMintableStackFlag,
+              indexerDiscrepancyNote: isMintableStackFlag
+                ? 'TonAPI reports "mintable: true" because standard TEP-74 get_jetton_data hardcodes tuple element 2 to -1. However, runtime Op 21 strictly requires sender == admin_address, which is mathematically impossible for addr_none.'
+                : 'No discrepancy'
+            }
+          };
+          report.summary.totalChecksPassed++;
+
+          report.claims['renunciation_immutability'] = {
+            title: 'Permanent Renunciation Guarantee',
+            status: STATUS.VERIFIED,
+            detail: 'Admin cannot be reclaimed or reassigned (Op 3 also requires sender == admin_address)',
+            evidence: {
+              canAdminBeRestored: false,
+              canContentBeModified: false
+            }
+          };
+          report.summary.totalChecksPassed++;
+          report.summary.permanentRenounced = true;
+
+        } else if (isNullAdmin && !codeMatchStandard) {
+          // Admin is null, but non-standard code prevents guaranteeing no backdoor
+          report.claims['admin_status'] = {
+            title: 'Administrator Identity',
+            status: STATUS.VERIFIED,
+            detail: 'Admin field decodes to null/empty',
+            evidence: { adminAddress: null }
+          };
+          report.summary.totalChecksPassed++;
+
+          report.claims['minting_permissions'] = {
+            title: 'Minting Authorization',
+            status: STATUS.NOT_VERIFIED,
+            detail: 'Admin is empty, but non-standard bytecode may contain alternate privileged paths',
+            evidence: { runtimeMintPossible: 'UNCERTAIN' }
+          };
+          report.summary.totalChecksUnverified++;
+
+          report.claims['renunciation_immutability'] = {
+            title: 'Permanent Renunciation Guarantee',
+            status: STATUS.NOT_VERIFIED,
+            detail: 'Cannot guarantee permanent immutability without verified standard bytecode',
+            evidence: { canAdminBeRestored: 'UNKNOWN' }
+          };
+          report.summary.totalChecksUnverified++;
+
+        } else {
+          // Admin is active
+          report.claims['admin_status'] = {
+            title: 'Administrator Identity',
+            status: STATUS.VERIFIED,
+            detail: `Active Admin: ${parsedAdminAddress} ${isUserAdmin ? '(Current Wallet)' : ''}`,
+            evidence: {
+              adminAddress: parsedAdminAddress,
+              isUserAdmin: isUserAdmin
+            }
+          };
+          report.summary.totalChecksPassed++;
+
+          report.claims['minting_permissions'] = {
+            title: 'Minting Authorization',
+            status: STATUS.VERIFIED,
+            detail: `Active: Administrator can mint additional tokens (Op 21 authorized for ${parsedAdminAddress.slice(0, 8)}...)`,
+            evidence: { runtimeMintPossible: true }
+          };
+          report.summary.totalChecksPassed++;
+
+          report.claims['renunciation_immutability'] = {
+            title: 'Permanent Renunciation Guarantee',
+            status: STATUS.FAILED,
+            detail: 'Token is NOT renounced. Administrator retains privileged access.',
+            evidence: { canAdminBeRestored: 'N/A (Admin already active)' }
+          };
+          report.summary.totalChecksFailed++;
+        }
       }
 
       // ───────────────────────────────────────────────────────────────────────
@@ -551,8 +616,8 @@
             balanceFormatted: formatUnits(bal, decimals)
           };
         });
-        // If total reported matches array length, the scan is complete
-        holderScanComplete = (holderBalances.length >= totalHoldersReported);
+        // If supply was verified, holders exist, and total reported matches array length, the scan is complete
+        holderScanComplete = supplyVerified && (totalHoldersReported > 0) && (holderBalances.length >= totalHoldersReported);
       } catch (e) {}
 
       const rawSupplyBn = safeBigInt(rawTotalSupply);
@@ -703,9 +768,13 @@
       summary.securityRating = 'OPERATIONAL (ADMIN ACTIVE, UNRENOUNCED)';
     }
 
-    // Cache report
-    const key = `verify:${report.target.minterAddress.toLowerCase()}`;
-    verificationCache.set(key, { timestamp: Date.now(), report });
+    // Cache report only when core on-chain state (account, supply, admin) was retrieved
+    if (report.claims.account_status?.status === STATUS.VERIFIED &&
+        report.claims.total_supply?.status === STATUS.VERIFIED &&
+        report.claims.admin_status?.status === STATUS.VERIFIED) {
+      const key = `verify:${report.target.minterAddress.toLowerCase()}`;
+      verificationCache.set(key, { timestamp: Date.now(), report });
+    }
 
     return report;
   }
@@ -744,6 +813,7 @@
     AUDITED_BYTECODE_REGISTRY,
     verifyToken,
     auditVestingContract,
-    formatUnits
+    formatUnits,
+    isValidTonAddress
   };
 }));

@@ -1808,25 +1808,28 @@
         const cMint = rep.claims.minting_permissions || {};
         const cCode = rep.claims.bytecode_integrity || {};
 
+        const isUnverified = (cMint.status === 'NOT VERIFIED' || cAdmin.status === 'NOT VERIFIED');
         return {
           minterAddress: friendlyAddr,
           minterRawAddress: rep.target.rawAddress || rawAddr,
           adminAddress: cAdmin.evidence?.adminAddress || null,
           isRenounced: rep.summary.permanentRenounced,
           isUserAdmin: cAdmin.evidence?.isUserAdmin || false,
-          mintAuthority: rep.summary.permanentRenounced ? 'DISABLED' : (cAdmin.evidence?.isUserAdmin ? 'ACTIVE (CREATOR WALLET)' : 'ACTIVE (OTHER CREATOR)'),
-          additionalMinting: rep.summary.permanentRenounced ? 'PERMANENTLY BLOCKED' : 'POSSIBLE BY ADMIN',
-          renounceStatus: rep.summary.permanentRenounced ? 'VERIFIED ON-CHAIN (PERMANENTLY RENOUNCED)' : 'NOT RENOUNCED (ADMIN ACTIVE)',
+          mintAuthority: rep.summary.permanentRenounced ? 'DISABLED' : (isUnverified ? 'UNKNOWN (NOT VERIFIED)' : (cAdmin.evidence?.isUserAdmin ? 'ACTIVE (CREATOR WALLET)' : 'ACTIVE (OTHER CREATOR)')),
+          additionalMinting: rep.summary.permanentRenounced ? 'PERMANENTLY BLOCKED' : (isUnverified ? 'NOT VERIFIED' : 'POSSIBLE BY ADMIN'),
+          renounceStatus: rep.summary.permanentRenounced ? 'VERIFIED ON-CHAIN (PERMANENTLY RENOUNCED)' : (isUnverified ? 'NOT VERIFIED (BYTECODE / RPC AUDIT REQUIRED)' : 'NOT RENOUNCED (ADMIN ACTIVE)'),
           burnCapability: 'AVAILABLE (TEP-74 Standard)',
           totalSupplyRaw: cSupply.evidence?.rawSupply || '0',
-          totalSupplyFormatted: rep.claims.total_supply ? verifier.formatUnits(cSupply.evidence?.rawSupply, cSupply.evidence?.decimals) : '0',
+          totalSupplyFormatted: cSupply.evidence?.rawSupply ? verifier.formatUnits(cSupply.evidence?.rawSupply, cSupply.evidence?.decimals) : '0',
           decimals: cSupply.evidence?.decimals || 9,
-          verificationSource: rep.dataSources.join(' + '),
+          verificationSource: rep.dataSources.join(' + ') || 'UNVERIFIED',
           verifiedAt: Date.now(),
           codeHashHex: cCode.evidence?.codeHashHex,
           isStandardTEP74: cCode.evidence?.isStandardTEP74,
           fullReport: rep,
-          error: null
+          error: (rep.claims.account_status?.status === 'FAILED' || rep.claims.validation_error || rep.claims.engine_execution)
+            ? (rep.claims.validation_error?.detail || rep.claims.account_status?.detail || rep.claims.engine_execution?.detail)
+            : null
         };
       } catch (engineErr) {
         console.warn('[ANLGRAM-VERIFIER] Engine execution fallback:', engineErr);
@@ -1891,13 +1894,16 @@
       }
 
       // Check admin status on TON: addr_none decodes to empty string "" or "null" or all-zeroes
-      if (!admin || admin.trim() === '' || admin === 'null' || admin === '0:0000000000000000000000000000000000000000000000000000000000000000') {
+      const isNullAdmin = (!admin || admin.trim() === '' || admin === 'null' || admin === '0:0000000000000000000000000000000000000000000000000000000000000000');
+      if (isNullAdmin) {
         result.adminAddress = null;
-        result.isRenounced = true;
         result.isUserAdmin = false;
-        result.mintAuthority = 'DISABLED';
-        result.additionalMinting = 'PERMANENTLY BLOCKED';
-        result.renounceStatus = 'VERIFIED ON-CHAIN (PERMANENTLY RENOUNCED)';
+        // SEC-01: Exigir bytecode canónico verificado antes de certificar renuncia permanente
+        // Sin TokenVerificationEngine confirmando bytecode estándar TEP-74, marcar como NOT VERIFIED
+        result.isRenounced = false;
+        result.mintAuthority = 'UNKNOWN (BYTECODE UNVERIFIED)';
+        result.additionalMinting = 'NOT VERIFIED';
+        result.renounceStatus = 'NOT VERIFIED (BYTECODE AUDIT REQUIRED)';
       } else {
         result.adminAddress = admin;
         result.isRenounced = false;

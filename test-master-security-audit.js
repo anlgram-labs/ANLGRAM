@@ -219,9 +219,9 @@ async function runMasterAuditTests() {
   );
 
   // ─────────────────────────────────────────────────────────────────────────
-  // TEST GROUP 6: Input Validation & Error Handling
+  // TEST GROUP 6: Input Validation & Edge Cases (SEC-04 Hardened)
   // ─────────────────────────────────────────────────────────────────────────
-  console.log('\n--- TEST GROUP 6: Input Validation & Edge Cases ---');
+  console.log('\n--- TEST GROUP 6: Input Validation & Adversarial Inputs (SEC-04) ---');
 
   const emptyReport = await verifier.verifyToken('');
   assert(
@@ -236,6 +236,82 @@ async function runMasterAuditTests() {
     'Engine rejects null address input with explicit FAILED status',
     nullReport.claims.validation_error?.detail
   );
+
+  // SEC-04 Adversarial Inputs: SSRF, XSS, SQLi, and excessive payloads
+  const adversarialCases = [
+    { name: 'SSRF attempt', input: 'http://169.254.169.254/latest/meta-data' },
+    { name: 'XSS script injection', input: '<script>alert(1)</script>' },
+    { name: 'SQL injection string', input: "'; DROP TABLE jettons;--" },
+    { name: 'Excessive 5000-char string', input: 'EQ' + 'A'.repeat(5000) },
+    { name: 'Malformed length (47 chars)', input: 'EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaO' },
+    { name: 'Invalid workchain (workchain 2)', input: '2:fe3d356840b2d0a299b28ad217878bc657f03b911f5ca7f8fd40b3dfd2371831' }
+  ];
+
+  for (const tc of adversarialCases) {
+    assert(
+      verifier.isValidTonAddress(tc.input) === false,
+      `SEC-04 validator strictly rejects ${tc.name}`,
+      `Input: ${tc.input.slice(0, 32)}...`
+    );
+
+    const report = await verifier.verifyToken(tc.input);
+    assert(
+      report.claims.validation_error?.status === verifier.STATUS.FAILED &&
+      report.claims.validation_error?.detail.includes('Invalid TON address format'),
+      `Engine returns immediate FAILED status for ${tc.name} without external RPC`,
+      report.claims.validation_error?.detail
+    );
+  }
+
+  // SEC-01 / Condition 4: Verify incomplete RPC data / timeouts / exceptions NEVER default to VERIFIED
+  const origFetch = global.fetch;
+  try {
+    global.fetch = async (url) => {
+      const u = String(url);
+      // Simulate account active with canonical standard TEP-74 bytecode, but getter/metadata timeout (HTTP 504)
+      if (u.includes('/blockchain/accounts/') && !u.includes('/methods/')) {
+        return {
+          ok: true,
+          json: async () => ({
+            address: '0:1111111111111111111111111111111111111111111111111111111111111111',
+            status: 'active',
+            balance: 100000000,
+            code: pinned.standardMinterCodeHex
+          })
+        };
+      }
+      throw new Error('Simulated RPC timeout / HTTP 504');
+    };
+
+    const incompleteRep = await verifier.verifyToken(
+      '0:1111111111111111111111111111111111111111111111111111111111111111',
+      { forceFresh: true }
+    );
+    assert(
+      incompleteRep.summary.permanentRenounced === false &&
+      incompleteRep.claims.admin_status?.status === verifier.STATUS.NOT_VERIFIED &&
+      incompleteRep.claims.minting_permissions?.status === verifier.STATUS.NOT_VERIFIED &&
+      incompleteRep.claims.renunciation_immutability?.status === verifier.STATUS.NOT_VERIFIED &&
+      incompleteRep.claims.total_supply?.status === verifier.STATUS.NOT_VERIFIED,
+      'Incomplete RPC / getter timeout on standard bytecode strictly returns NOT VERIFIED (never defaults to VERIFIED)',
+      `permanentRenounced=${incompleteRep.summary.permanentRenounced}, admin=${incompleteRep.claims.admin_status?.status}`
+    );
+  } finally {
+    global.fetch = origFetch;
+  }
+
+  // Verify server.js HTTP 400 Bad Request on adversarial inputs
+  try {
+    const srvRes = await fetch('http://localhost:8080/api/verify-token?address=http://169.254.169.254/');
+    const srvJson = await srvRes.json();
+    assert(
+      srvRes.status === 400 && srvJson.status === 400,
+      'server.js /api/verify-token immediately responds with HTTP 400 Bad Request on invalid address',
+      `HTTP ${srvRes.status}: ${srvJson.error}`
+    );
+  } catch (err) {
+    console.warn('Local server check skipped (server not reachable on 8080):', err.message);
+  }
 
   console.log('\n═══════════════════════════════════════════════════════════════════');
   console.log(`AUDIT TEST RESULTS: ${testsPassed} PASSED | ${testsFailed} FAILED | ${testsSkipped} SKIPPED`);

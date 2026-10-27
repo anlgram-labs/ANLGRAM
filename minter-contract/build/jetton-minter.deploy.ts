@@ -1,12 +1,12 @@
 import { Cell, beginCell, Address, WalletContract, beginDict, Slice } from "ton";
 
-import walletHex from "./jetton-wallet.compiled.json";
-import minterHex from "./jetton-minter.compiled.json";
+// SEC-05: Consume canonical pinned artifacts without duplicating or altering bytecode
+import pinned from "../../src/config/pinned-contract-artifacts.json";
 import { Sha256 } from "@aws-crypto/sha256-js";
 import BN from "bn.js";
 
-export const JETTON_WALLET_CODE = Cell.fromBoc(walletHex.hex)[0];
-export const JETTON_MINTER_CODE = Cell.fromBoc(minterHex.hex)[0]; // code cell from build output
+export const JETTON_WALLET_CODE = Cell.fromBoc(pinned.standardWalletCodeHex)[0];
+export const JETTON_MINTER_CODE = Cell.fromBoc(pinned.standardMinterCodeHex)[0];
 
 const ONCHAIN_CONTENT_PREFIX = 0x00;
 const SNAKE_PREFIX = 0x00;

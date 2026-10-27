@@ -37,8 +37,10 @@ const ALLOWED_ROUTES = [
   // Jettons
   /^\/jettons\/[a-zA-Z0-9_\-\:]+$/,
   /^\/jettons\/[a-zA-Z0-9_\-\:]+\/holders$/,
-  // Low level blockchain inspection
+  // Low level blockchain inspection & TVM getters (SEC-02 hardened)
   /^\/blockchain\/transactions\/[a-fA-F0-9]+$/,
+  /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+$/,
+  /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/methods\/[a-zA-Z0-9_]{1,64}$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/transactions$/,
   /^\/blockchain\/masterchain-head$/
 ];
@@ -52,7 +54,8 @@ const ALLOWED_QUERY_PARAMS = new Set([
   'tokens',
   'currencies',
   'name',
-  'account_id'
+  'account_id',
+  'args'
 ]);
 
 function getCorsHeaders(origin) {
@@ -135,6 +138,19 @@ export default {
         error: 'Forbidden',
         message: 'The requested path is not permitted by this proxy'
       }, 403, corsHeaders);
+    }
+
+    // Strict TON Address Validation on path parameters (SEC-04)
+    const accountMatch = subPath.match(/^\/(?:blockchain\/)?(?:accounts|jettons)\/([a-zA-Z0-9_\-\:]+)/);
+    if (accountMatch && accountMatch[1] && accountMatch[1] !== 'search') {
+      const targetAddr = accountMatch[1];
+      const isTonAddr = /^([A-Za-z0-9_-]{48}|(-1|0):[0-9a-fA-F]{64})$/.test(targetAddr);
+      if (!isTonAddr) {
+        return jsonResponse({
+          error: 'Bad Request',
+          message: 'Invalid TON address parameter format. Must be raw (0:hex) or friendly 48-char base64url.'
+        }, 400, corsHeaders);
+      }
     }
 
     // 4. Validate Query Parameters
