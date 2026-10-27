@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
   <title>ANL Labs — The Complete Meme Coin Flow — ANLGRAM</title>
   <meta name="description" content="Enterprise-grade TON/GRAM Memecoin Platform"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://api.imgur.com https://*.imgur.com https://i.imgur.com https://freeimage.host https://litterbox.catbox.moe https://catbox.moe https://raw.githubusercontent.com https://tonapi.io https://api.ston.fi https://*.ston.fi https://toncenter.com https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io; frame-src 'self' https://app.ston.fi https://dedust.io https://telegram.org; object-src 'none'; base-uri 'self';"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://d3js.org https://esm.sh https://cdn.emailjs.com https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://api.imgur.com https://*.imgur.com https://i.imgur.com https://freeimage.host https://litterbox.catbox.moe https://catbox.moe https://*.workers.dev https://raw.githubusercontent.com https://tonapi.io https://testnet.tonapi.io https://*.tonapi.io https://toncenter.com https://testnet.toncenter.com https://*.toncenter.com https://api.ston.fi https://*.ston.fi https://api.coingecko.com https://api.telegram.org https://api.emailjs.com https://unpkg.com https://esm.sh wss://*.tonconnect.io https://*.tonconnect.io https://bridge.tonapi.io wss://bridge.tonapi.io https://walletbot.me https://*.telegram.org https://*.mytonwallet.org https://*.tonhubapi.com https://*.bgwapi.io https://*.binance.com https://*.okx.com https://*.hot-labs.org https://*.bybit.com https://*.safepal.com https://*.gateio.services https://*.tomo.inc https://*.mirai.app https://*.architecton.su https://*.mytokenpocket.vip https://*.uxuy.me https://*.echooo.link https://*.kolo.in https://*.token.im https://*.defiway.com https://*.ton.org https://*.stower.money https://*.wallet.coffee.agency; frame-src 'self' https://app.ston.fi https://dedust.io https://telegram.org; object-src 'none'; base-uri 'self';"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
@@ -722,7 +722,7 @@
               <p style="font-size:13px; color:var(--labs-text-sub); line-height:1.6; margin:0 0 8px;">
                 Non-custodial on-chain vesting contracts require rigorous formal audits before handling mainnet token reserves. ANL Labs is preparing an audited, standard TEP-74 linear vesting contract.
               </p>
-              <div style="font-size:12px; color:#ffa500; font-weight:600;">
+              <div id="vesting-network-status-note" style="font-size:12px; color:#ffa500; font-weight:600;">
                 Status: Contract in specification & security audit. Mainnet token locking is currently disabled to prevent simulated or insecure locks.
               </div>
             </div>
@@ -733,18 +733,18 @@
               
               <div class="labs-field" style="margin-bottom:12px;">
                 <label class="labs-label">Beneficiary Wallet Address</label>
-                <input type="text" id="labs-vesting-beneficiary" class="labs-input" placeholder="UQ8s4...9f3k" style="font-family:var(--font-mono);"/>
+                <input type="text" id="labs-vesting-beneficiary" class="labs-input" placeholder="UQ8s4...9f3k" style="font-family:var(--font-mono);" oninput="if(window.labsUpdateVestingScheduleCalculation) labsUpdateVestingScheduleCalculation()"/>
               </div>
 
               <div class="labs-field" style="margin-bottom:12px;">
                 <label class="labs-label">Token Amount to Lock</label>
-                <input type="number" id="labs-vesting-amount" class="labs-input" value="100000000"/>
+                <input type="number" id="labs-vesting-amount" class="labs-input" value="100000000" oninput="if(window.labsUpdateVestingScheduleCalculation) labsUpdateVestingScheduleCalculation()"/>
               </div>
 
               <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
                 <div class="labs-field">
                   <label class="labs-label">Cliff Period</label>
-                  <select id="labs-vesting-cliff" class="labs-input">
+                  <select id="labs-vesting-cliff" class="labs-input" onchange="if(window.labsUpdateVestingScheduleCalculation) labsUpdateVestingScheduleCalculation()">
                     <option value="1 month">1 month</option>
                     <option value="3 months" selected>3 months</option>
                     <option value="6 months">6 months</option>
@@ -752,7 +752,7 @@
                 </div>
                 <div class="labs-field">
                   <label class="labs-label">Vesting Duration</label>
-                  <select id="labs-vesting-period" class="labs-input">
+                  <select id="labs-vesting-period" class="labs-input" onchange="if(window.labsUpdateVestingScheduleCalculation) labsUpdateVestingScheduleCalculation()">
                     <option value="6 months">6 months</option>
                     <option value="12 months" selected>12 months</option>
                     <option value="24 months">24 months</option>
@@ -762,12 +762,27 @@
 
               <div class="labs-field" style="margin-bottom:16px;">
                 <label class="labs-label">Unlock Start Date</label>
-                <input type="date" id="labs-vesting-date" class="labs-input" value="2026-11-01"/>
+                <input type="date" id="labs-vesting-date" class="labs-input" value="2026-11-01" onchange="if(window.labsUpdateVestingScheduleCalculation) labsUpdateVestingScheduleCalculation()"/>
               </div>
 
-              <button class="labs-btn-secondary" style="width:100%; opacity:0.6; cursor:not-allowed;" disabled onclick="labsSubmitVesting()">
+              <!-- Dynamic Schedule Calculation Breakdown -->
+              <div id="vesting-breakdown-card" style="background:rgba(0,210,255,0.04); border:1px solid rgba(0,210,255,0.15); border-radius:10px; padding:14px; margin-bottom:16px; font-size:13px; line-height:1.6;">
+                <div style="font-weight:600; color:#fff; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>📊 Vesting Schedule Release Breakdown</span>
+                  <span id="vesting-calc-status" style="color:var(--labs-cyan); font-size:11px; font-weight:normal;">Verified Linear Formula</span>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; color:var(--labs-text-sub); font-size:12px;">
+                  <div>Cliff Unlock: <strong id="vesting-cliff-release" style="color:#fff;">25.0% (25,000,000)</strong></div>
+                  <div>Monthly Rate: <strong id="vesting-monthly-rate" style="color:#fff;">8.33% / mo</strong></div>
+                  <div>Unlock End Date: <strong id="vesting-end-date" style="color:#fff;">2027-11-01</strong></div>
+                </div>
+                <div id="vesting-validation-error" style="color:#ff5555; font-size:12px; margin-top:8px; display:none;"></div>
+              </div>
+
+              <button id="labs-vesting-submit-btn" class="labs-btn-secondary" style="width:100%; opacity:0.6; cursor:not-allowed;" disabled onclick="labsSubmitVesting()">
                 🔒 Mainnet Contract Locked (Pending Security Verification)
               </button>
+              <div id="vesting-tx-status" style="margin-top:12px; display:none;"></div>
             </div>
 
             <div class="labs-wizard-actions">
@@ -2034,7 +2049,7 @@
       const btn = event.currentTarget;
       const tc = window.tonConnectUI;
       const selectEl = document.getElementById('user-jetton-select');
-      const rawJettonAddr = selectEl ? selectEl.value : '';
+      const rawJettonAddr = (window.wizardState && window.wizardState.activeToken && window.wizardState.activeToken.address) || (selectEl ? selectEl.value : '');
 
       if (!tc || !tc.connected) {
         alert("¡Conecta tu wallet primero!");
@@ -2080,7 +2095,7 @@
       const btn = event.currentTarget;
       const tc = window.tonConnectUI;
       const selectEl = document.getElementById('user-jetton-select');
-      const minterRawAddr = selectEl ? selectEl.value : '';
+      const minterRawAddr = (window.wizardState && window.wizardState.activeToken && window.wizardState.activeToken.address) || (selectEl ? selectEl.value : '');
       const mintAmountInput = document.getElementById('mint-amount');
       const mintAmount = parseFloat(mintAmountInput ? mintAmountInput.value : '0') || 0;
 
