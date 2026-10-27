@@ -265,13 +265,9 @@
     <div class="labs-container">
       <header class="labs-topbar">
         <div class="labs-brand">
-          <div class="labs-logo-mark">
-            <img src="assets/img/anlgram-icon.svg" alt="ANLGRAM"/>
-          </div>
           <div class="labs-brand-info">
             <div class="labs-brand-title-row">
-              <span class="labs-brand-name">ANLGRAM</span>
-              <span class="labs-brand-section">Meme Lab</span>
+              <span class="labs-brand-name" style="font-size:22px; font-weight:800; letter-spacing:0.5px; color:#fff;">MEMELABS</span>
             </div>
             <div class="labs-brand-desc">Create • Distribute • Lock • Analyze</div>
             <div class="labs-brand-desc" style="font-size:10px; color:var(--labs-text-muted);">Your all-in-one platform for meme coins on TON</div>
@@ -1174,6 +1170,14 @@
           </p>
           <div style="background:rgba(0,140,255,0.08); border:1px solid rgba(0,210,255,0.3); border-radius:12px; padding:16px; margin:16px 0;">
             <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px;">
+              <span style="color:var(--labs-text-muted);">Network:</span>
+              <strong style="color:#00f0ff;">TON Mainnet</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px;">
+              <span style="color:var(--labs-text-muted);">Contract Standard:</span>
+              <strong style="color:#00ff66;">TEP-74 Canonical Audited Minter</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px;">
               <span style="color:var(--labs-text-muted);">Token:</span>
               <strong style="color:#fff;"><span id="deploy-confirm-token-name">MoonDog</span> (<span id="deploy-confirm-token-symbol">$MOON</span>)</strong>
             </div>
@@ -1183,9 +1187,13 @@
             </div>
             <div style="display:flex; justify-content:space-between; font-size:13px;">
               <span style="color:var(--labs-text-muted);">Estimated Network Fee:</span>
-              <strong style="color:var(--labs-cyan);">~0.20 TON</strong>
+              <strong style="color:var(--labs-cyan);">~0.20 TON (0.05 deploy + 0.15 mint)</strong>
             </div>
           </div>
+          <label style="display:flex; align-items:flex-start; gap:10px; font-size:12px; color:#fff; cursor:pointer; margin-bottom:16px;">
+            <input type="checkbox" id="deploy-confirm-checkbox" style="margin-top:2px; accent-color:#00f0ff;"/>
+            <span>I review and authorize this smart contract deployment plan on TON Mainnet.</span>
+          </label>
           <p style="font-size:12px; color:var(--labs-text-muted); line-height:1.4;">
             Your connected TON wallet (Tonkeeper / Telegram Wallet) will prompt you to review and sign the transaction.
           </p>
@@ -1918,20 +1926,50 @@
         
         const metadataCell = beginCell().storeUint(0, 8).storeDict(metadata).endCell();
   
-        btn.innerHTML = '<span class="status-dot"></span> Preparando Códigos Base...';
+        btn.innerHTML = '<span class="status-dot"></span> Preparando Códigos Base Verificados...';
         
-        // 2. Fetch standard Minter & Wallet Code from an existing Mainnet Jetton
-        const cloneSource = "0:30eb766a2e69f0440efb3d6d3b0962049e0c20f9e222cac6aa67c216a542f49c"; // A known standard jetton minter
-        const res = await fetch(`https://tonapi.io/v2/blockchain/accounts/${cloneSource}`);
-        const data = await res.json();
-        if(!data.code || !data.data) throw new Error("Could not fetch Code from Mainnet");
-        
-        const minterCode = Cell.fromBoc(hexToBytes(data.code))[0];
-        const sourceMinterData = Cell.fromBoc(hexToBytes(data.data))[0].beginParse();
-        sourceMinterData.loadCoins();   // skip total_supply
-        sourceMinterData.loadAddress(); // skip admin_address
-        sourceMinterData.loadRef();     // skip metadata
-        const walletCodeCell = sourceMinterData.loadRef(); // extract exact standard wallet code
+        // 2. Canonical Pinned Minter & Wallet Bytecode (TEP-74 Standard)
+        // Hash: 9a0f98dd6fbf225eef8165e4e64417ee931f7eea000653439e7b5dcdc0644cd6
+        const CANONICAL_MINTER_HASH = "9a0f98dd6fbf225eef8165e4e64417ee931f7eea000653439e7b5dcdc0644cd6";
+        let minterCode = null;
+        let walletCodeCell = null;
+
+        // Try pinned code first
+        try {
+          const pinnedRes = await fetch('src/config/pinned-contract-artifacts.json');
+          if (pinnedRes.ok) {
+            const pinned = await pinnedRes.json();
+            if (pinned.standardMinterCodeHex && pinned.standardWalletCodeHex) {
+              minterCode = Cell.fromBoc(hexToBytes(pinned.standardMinterCodeHex))[0];
+              walletCodeCell = Cell.fromBoc(hexToBytes(pinned.standardWalletCodeHex))[0];
+            }
+          }
+        } catch(e) {}
+
+        // Fallback: fetch from cloneSource but strictly verify code hash
+        if (!minterCode || !walletCodeCell) {
+          const cloneSource = "0:30eb766a2e69f0440efb3d6d3b0962049e0c20f9e222cac6aa67c216a542f49c";
+          const res = await fetch(`https://tonapi.io/v2/blockchain/accounts/${cloneSource}`);
+          const data = await res.json();
+          if(!data.code || !data.data) throw new Error("Could not fetch Code from Mainnet");
+          
+          minterCode = Cell.fromBoc(hexToBytes(data.code))[0];
+          const sourceMinterData = Cell.fromBoc(hexToBytes(data.data))[0].beginParse();
+          sourceMinterData.loadCoins();   // skip total_supply
+          if (typeof sourceMinterData.loadMaybeAddress === 'function') {
+            sourceMinterData.loadMaybeAddress();
+          } else {
+            sourceMinterData.loadAddress();
+          }
+          sourceMinterData.loadRef();     // skip metadata
+          walletCodeCell = sourceMinterData.loadRef(); // extract exact standard wallet code
+        }
+
+        // Cryptographic Bytecode Verification before deployment
+        const computedMinterHash = minterCode.hash().toString('hex').toLowerCase();
+        if (computedMinterHash !== CANONICAL_MINTER_HASH.toLowerCase()) {
+          throw new Error("SECURITY FAULT: Minter bytecode hash does not match canonical audited standard!");
+        }
   
         // 3. Construct Initial Minter Data
         const minterData = beginCell()
@@ -1996,19 +2034,14 @@
   
         await tc.sendTransaction(transaction);
         
+        btn.innerHTML = '<span class="status-dot"></span> Transacción enviada — Verificando en blockchain...';
+        btn.style.background = 'rgba(0,210,255,0.15)';
+        btn.style.borderColor = 'var(--accent-cyan)';
+        btn.style.color = 'var(--accent-cyan)';
+
         window.dispatchEvent(new CustomEvent('anlgramJettonDeployed', {
-          detail: { destAddress, destAddressMint, name, symbol }
+          detail: { destAddress, destAddressMint, name, symbol, btn, origHTML }
         }));
-        
-        btn.innerHTML = '✅ Jetton Desplegado con Éxito (On-Chain)!';
-        btn.style.background = 'rgba(0,255,100,0.2)';
-        btn.style.borderColor = '#00ff66';
-        btn.style.color = '#00ff66';
-        
-        setTimeout(() => {
-          btn.innerHTML = origHTML;
-          btn.removeAttribute('style');
-        }, 5000);
         
       } catch (e) {
         console.error("Deploy Error:", e);

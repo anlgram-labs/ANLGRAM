@@ -521,6 +521,11 @@
   };
 
   window.labsExecuteDeployFromWizard = async function () {
+    const deployCheck = document.getElementById('deploy-confirm-checkbox');
+    if (deployCheck && !deployCheck.checked) {
+      alert('⚠️ You must review and check the deployment authorization box before broadcasting.');
+      return;
+    }
     labsCloseModal('deploy-confirm-modal');
 
     const statusBanner = document.getElementById('wizard-deploy-status-banner');
@@ -600,24 +605,38 @@
     let confirmed = false;
     let foundMinter = '';
 
-    // Poll TonAPI for new transactions on user's wallet
-    for (let attempt = 1; attempt <= 12; attempt++) {
+    // Poll using institutional TokenVerificationEngine
+    let verificationReport = null;
+    for (let attempt = 1; attempt <= 15; attempt++) {
       if (statusText) {
-        statusText.innerHTML = `<span class="status-dot"></span> Verifying on-chain state (Attempt ${attempt}/12)...`;
+        statusText.innerHTML = `<span class="status-dot"></span> Verifying on-chain state via TokenVerificationEngine (Attempt ${attempt}/15)...`;
       }
       await new Promise((r) => setTimeout(r, 3500));
 
       try {
-        const res = await fetch(`${getNetworkContext().tonApiBase}/accounts/${encodeURIComponent(sender)}/jettons`);
-        if (res.ok) {
-          const jData = await res.json();
-          const balances = jData.balances || [];
-          // Look for newly created jetton matching our symbol/name
-          const match = balances.find((b) => b.jetton.symbol === wizardState.tokenDraft.symbol);
-          if (match) {
-            confirmed = true;
-            foundMinter = match.jetton.address;
-            break;
+        if (!foundMinter && sender) {
+          const res = await fetch(`${getNetworkContext().tonApiBase}/accounts/${encodeURIComponent(sender)}/jettons`);
+          if (res.ok) {
+            const jData = await res.json();
+            const balances = jData.balances || [];
+            const match = balances.find((b) => b.jetton.symbol === wizardState.tokenDraft.symbol);
+            if (match) {
+              foundMinter = match.jetton.address;
+            }
+          }
+        }
+
+        const targetMinter = explicitMinter || foundMinter;
+        if (targetMinter) {
+          const verifier = window.TokenVerificationEngine;
+          if (verifier && typeof verifier.verifyToken === 'function') {
+            const rep = await verifier.verifyToken(targetMinter, { viewerWallet: sender, forceFresh: true });
+            if (rep && rep.claims && rep.claims.account_status && rep.claims.account_status.status === 'VERIFIED') {
+              confirmed = true;
+              foundMinter = targetMinter;
+              verificationReport = rep;
+              break;
+            }
           }
         }
       } catch (e) {
@@ -1774,6 +1793,44 @@
         rawAddr = parsed.toRawString();
         friendlyAddr = parsed.toString({ bounceable: true, urlSafe: true });
       } catch (e) {}
+    }
+
+    const tc = window.tonConnectUI || window.TonConnectUIInstance;
+    const userWallet = tc?.account?.address;
+
+    // Institutional TokenVerificationEngine integration
+    const verifier = window.TokenVerificationEngine;
+    if (verifier && typeof verifier.verifyToken === 'function') {
+      try {
+        const rep = await verifier.verifyToken(friendlyAddr, { viewerWallet: userWallet, forceFresh: true });
+        const cAdmin = rep.claims.admin_status || {};
+        const cSupply = rep.claims.total_supply || {};
+        const cMint = rep.claims.minting_permissions || {};
+        const cCode = rep.claims.bytecode_integrity || {};
+
+        return {
+          minterAddress: friendlyAddr,
+          minterRawAddress: rep.target.rawAddress || rawAddr,
+          adminAddress: cAdmin.evidence?.adminAddress || null,
+          isRenounced: rep.summary.permanentRenounced,
+          isUserAdmin: cAdmin.evidence?.isUserAdmin || false,
+          mintAuthority: rep.summary.permanentRenounced ? 'DISABLED' : (cAdmin.evidence?.isUserAdmin ? 'ACTIVE (CREATOR WALLET)' : 'ACTIVE (OTHER CREATOR)'),
+          additionalMinting: rep.summary.permanentRenounced ? 'PERMANENTLY BLOCKED' : 'POSSIBLE BY ADMIN',
+          renounceStatus: rep.summary.permanentRenounced ? 'VERIFIED ON-CHAIN (PERMANENTLY RENOUNCED)' : 'NOT RENOUNCED (ADMIN ACTIVE)',
+          burnCapability: 'AVAILABLE (TEP-74 Standard)',
+          totalSupplyRaw: cSupply.evidence?.rawSupply || '0',
+          totalSupplyFormatted: rep.claims.total_supply ? verifier.formatUnits(cSupply.evidence?.rawSupply, cSupply.evidence?.decimals) : '0',
+          decimals: cSupply.evidence?.decimals || 9,
+          verificationSource: rep.dataSources.join(' + '),
+          verifiedAt: Date.now(),
+          codeHashHex: cCode.evidence?.codeHashHex,
+          isStandardTEP74: cCode.evidence?.isStandardTEP74,
+          fullReport: rep,
+          error: null
+        };
+      } catch (engineErr) {
+        console.warn('[ANLGRAM-VERIFIER] Engine execution fallback:', engineErr);
+      }
     }
 
     const result = {

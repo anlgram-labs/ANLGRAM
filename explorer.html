@@ -1019,6 +1019,19 @@
               </div>
             </div>
 
+            <!-- On-Chain Security Audit Card (ANLGRAM Sentinel) -->
+            <div id="jmSecurityAuditCard" style="display:none; margin-top:14px; background:rgba(0, 240, 255, 0.04); border:1px solid rgba(0, 240, 255, 0.2); border-radius:10px; padding:12px 16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="material-symbols-outlined" style="color:var(--accent-cyan); font-size:18px;">verified_user</span>
+                  <strong style="font-size:13px; color:#fff;">Auditoría Criptográfica On-Chain (ANLGRAM Sentinel)</strong>
+                </div>
+                <span id="jmSecurityRatingBadge" style="font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px; font-family:var(--font-mono);">VERIFICANDO...</span>
+              </div>
+              <div id="jmSecurityClaimsList" style="margin-top:10px; font-size:11px; font-family:var(--font-mono); color:var(--text-sub); display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:6px;">
+              </div>
+            </div>
+
             <!-- Top Holders Distribution Table -->
             <div style="border-top:1px solid var(--border-subtle); padding-top:14px; margin-top:8px;">
               <div style="font-weight:700; font-size:13px; margin-bottom:10px; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between;">
@@ -2670,11 +2683,16 @@ function renderJettonMasterView(jm, holders) {
 
   const jmMintEl = document.getElementById('jmMintable');
   if (jmMintEl) {
+    const isZeroAdmin = !jm.admin?.address || jm.admin.address === '0:0000000000000000000000000000000000000000000000000000000000000000';
     if (isGram) {
       jmMintEl.textContent = 'Sí (Proof-of-Work Givers / Minería Descentralizada)';
       jmMintEl.style.color = '#f59e0b';
+    } else if (isZeroAdmin) {
+      // Verificación real on-chain: En TEP-74, get_jetton_data retorna -1 por especificación estática,
+      // pero el código de ejecución Op 21 revierte con exit code 73 si sender != admin_address (addr_none).
+      jmMintEl.innerHTML = '<span style="color:var(--flow-positive); font-weight:700;">No — Emisión Bloqueada Permanentemente</span> <span style="font-size:11px; color:var(--text-muted);">(Admin Renunciado / Op 21 Protegido)</span>';
     } else {
-      jmMintEl.textContent = jm.mintable ? 'Sí (Emisión abierta / Riesgo de inflación)' : 'No (Suministro fijado / Bloqueado)';
+      jmMintEl.textContent = jm.mintable ? 'Sí (Emisión abierta / Controlada por Administrador)' : 'No (Suministro fijado / Bloqueado)';
       jmMintEl.style.color = jm.mintable ? '#f59e0b' : 'var(--flow-positive)';
     }
   }
@@ -2725,6 +2743,51 @@ function renderJettonMasterView(jm, holders) {
       swapLink.href = `https://app.ston.fi/swap?chartVisible=false&ft=TON&tt=${encodeURIComponent(currentAccount?.address || '')}`;
       swapLink.textContent = 'Comerciar en STON.fi ↗';
     }
+  }
+
+  // Trigger Cryptographic Token Verification Engine (ANLGRAM Sentinel)
+  const cardEl = document.getElementById('jmSecurityAuditCard');
+  const badgeEl = document.getElementById('jmSecurityRatingBadge');
+  const claimsEl = document.getElementById('jmSecurityClaimsList');
+  if (cardEl && window.TokenVerificationEngine && currentAccount?.address) {
+    cardEl.style.display = 'block';
+    if (badgeEl) {
+      badgeEl.textContent = 'VERIFICANDO ON-CHAIN...';
+      badgeEl.style.background = 'rgba(0, 240, 255, 0.15)';
+      badgeEl.style.color = 'var(--accent-cyan)';
+    }
+    window.TokenVerificationEngine.verifyToken(currentAccount.address).then(rep => {
+      if (!rep) return;
+      if (badgeEl) {
+        if (rep.summary.permanentRenounced) {
+          badgeEl.textContent = '✔ PERMANENTEMENTE RENUNCIADO (SEGURO)';
+          badgeEl.style.background = 'rgba(0, 255, 136, 0.15)';
+          badgeEl.style.color = 'var(--flow-positive)';
+        } else if (rep.summary.totalChecksFailed > 0) {
+          badgeEl.textContent = '⚠️ ALTO RIESGO / CHEQUEOS FALLIDOS';
+          badgeEl.style.background = 'rgba(255, 68, 68, 0.15)';
+          badgeEl.style.color = 'var(--flow-negative)';
+        } else {
+          badgeEl.textContent = 'ADMIN ACTIVO (SUMINISTRO CONTROLADO)';
+          badgeEl.style.background = 'rgba(255, 165, 0, 0.15)';
+          badgeEl.style.color = '#ffa500';
+        }
+      }
+      if (claimsEl && rep.claims) {
+        claimsEl.innerHTML = Object.keys(rep.claims).map(k => {
+          const c = rep.claims[k];
+          const color = c.status === 'VERIFIED' ? 'var(--flow-positive)' : (c.status === 'FAILED' ? 'var(--flow-negative)' : '#ffaa00');
+          const icon = c.status === 'VERIFIED' ? '✔' : (c.status === 'FAILED' ? '✖' : 'ℹ');
+          return `<div style="padding:4px 0;"><span style="color:${color}; font-weight:700;">${icon} [${c.status}]</span> <span style="color:#fff;">${escapeHtml(c.title)}:</span> <span style="color:var(--text-sub);">${escapeHtml(c.detail)}</span></div>`;
+        }).join('');
+      }
+    }).catch(e => {
+      if (badgeEl) {
+        badgeEl.textContent = 'NO DISPONIBLE';
+        badgeEl.style.background = 'rgba(255, 255, 255, 0.05)';
+        badgeEl.style.color = 'var(--text-muted)';
+      }
+    });
   }
 
   // Render Holders Distribution Table
