@@ -472,8 +472,10 @@ async function runTests() {
   const fakeRenounceRes = await curveContract.sendInternalMessage(fakeRenounceMsg);
   assert(fakeRenounceRes.type === 'failed' && fakeRenounceRes.exit_code === 401, 'Forged renounce notification from attacker strictly rejected with exit code 401');
 
-  // 3.6 Adversarial Test: Renounce notification with non-null admin rejected with 408
-  const badAdminRenounceMsg = new InternalMessage({
+  const RENOUNCE_QUERY_ID = 0x414e4c4752454e4fn; // "ANLGRENO"
+
+  // 3.6A Adversarial Test: Renounce notification with wrong query_id rejected with 412
+  const wrongQueryRenounceMsg = new InternalMessage({
     to: mockCurveWallet,
     from: masterAddr,
     value: new BN('20000000'),
@@ -483,6 +485,26 @@ async function runTests() {
         beginCell()
           .storeUint(0x7a3e810f, 32)
           .storeUint(999, 64)
+          .storeUint(0, 2)                // addr_none
+          .storeCoins(new BN(total1B.toString()))
+          .endCell()
+      )
+    })
+  });
+  const wrongQueryRes = await curveContract.sendInternalMessage(wrongQueryRenounceMsg);
+  assert(wrongQueryRes.type === 'failed' && wrongQueryRes.exit_code === 412, 'Renounce notification with wrong query_id strictly rejected with exit code 412 (INVALID_RENOUNCE_QUERY)');
+
+  // 3.6B Adversarial Test: Renounce notification with non-null admin rejected with 408
+  const badAdminRenounceMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: masterAddr,
+    value: new BN('20000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x7a3e810f, 32)
+          .storeUint(new BN(RENOUNCE_QUERY_ID.toString()), 64)
           .storeAddress(spamAttackerAddr) // Not addr_none!
           .storeCoins(new BN(total1B.toString()))
           .endCell()
@@ -502,7 +524,7 @@ async function runTests() {
       body: new CellMessage(
         beginCell()
           .storeUint(0x7a3e810f, 32)
-          .storeUint(999, 64)
+          .storeUint(new BN(RENOUNCE_QUERY_ID.toString()), 64)
           .storeUint(0, 2)                // addr_none
           .storeCoins(new BN(total1B.toString()))
           .endCell()
@@ -619,6 +641,55 @@ async function runTests() {
   const doubleClaimRes = await curveContract.sendInternalMessage(claimRefundMsg);
   assert(doubleClaimRes.type === 'failed' && doubleClaimRes.exit_code === 409, 'Double claim attempt strictly rejected with exit code 409 (ERROR_NO_PENDING_REFUND)');
 
+  // 3.12B Bounced Outbound Jetton Transfer Recovery:
+  // Outbound Jetton transfer bounces back from curve_jetton_wallet
+  const bouncedTokensAmount = 5000000n * ONE_TOKEN;
+  const bouncedMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: mockCurveWallet,
+    value: new BN('30000000'),
+    bounce: false,
+    bounced: true,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0xffffffff, 32)
+          .storeUint(0x0f8a7ea5, 32) // op::transfer()
+          .storeUint(777, 64)
+          .storeCoins(new BN(bouncedTokensAmount.toString()))
+          .storeAddress(sellerAddr)
+          .endCell()
+      )
+    })
+  });
+  const bounceRes = await curveContract.sendInternalMessage(bouncedMsg);
+  assert(bounceRes.type === 'success', 'Bounced Jetton transfer parsed and accepted by Curve');
+
+  const stateAfterBounce = await curveContract.invokeGetMethod('get_curve_state', []);
+  assert(stateAfterBounce.result[7].toString() === bouncedTokensAmount.toString(), 'Bounced tokens safely credited to pending_refunds_tokens escrow');
+
+  // Seller claims the recovered bounced tokens via op::claim_refund
+  const claimBouncedMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: sellerAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c34, 32)    // op::claim_refund
+          .storeUint(33, 64)
+          .endCell()
+      )
+    })
+  });
+  const claimBouncedRes = await curveContract.sendInternalMessage(claimBouncedMsg);
+  assert(claimBouncedRes.type === 'success', 'Seller successfully claims bounced token refund');
+  assert(claimBouncedRes.actionList && claimBouncedRes.actionList.length === 1, 'Emits return transfer delivering recovered bounced tokens to claimant');
+
+  const stateAfterClaimBounced = await curveContract.invokeGetMethod('get_curve_state', []);
+  assert(stateAfterClaimBounced.result[7].toString() === '0', 'pending_refunds_tokens reset to 0 after claiming recovered bounce');
+
   // 3.13 Huge Buy triggers Graduation Threshold -> STATE_GRADUATION_PENDING
   const hugeBuyMsg = new InternalMessage({
     to: mockCurveWallet,
@@ -698,6 +769,198 @@ async function runTests() {
   const sweepRes = await curveContract.sendInternalMessage(sweepMsg);
   assert(sweepRes.type === 'success', 'Treasury sweeps accumulated protocol fees successfully');
   assert(sweepRes.actionList && sweepRes.actionList.length === 1, 'Emits outbound fee transfer to Treasury wallet');
+
+  // ===========================================================================
+  // TEST SUITE 4: ANLGRAM MIGRATION ROUTER (STON.fi v2.1 TL-B & Abort Verification)
+  // ===========================================================================
+  console.log('\n--- 4. AnlgramMigrationRouter TVM Verification (STON.fi v2.1 TL-B & Abort) ---');
+
+  const ptonMinterAddr    = new Address(0, Buffer.alloc(32, 10));
+  const routerTokenWallet = new Address(0, Buffer.alloc(32, 11));
+  const lpTokenWallet     = new Address(0, Buffer.alloc(32, 12));
+  const ptonWallet        = new Address(0, Buffer.alloc(32, 13));
+
+  const initialMigratorData = beginCell()
+    .storeUint(0, 1)                      // is_initialized: 0
+    .storeAddress(mockCurveWallet)        // curve_address
+    .storeAddress(lockerAddr)             // lp_locker_address
+    .storeAddress(routerAddr)             // dex_router_address
+    .storeRef(
+      beginCell()
+        .storeAddress(masterAddr)         // token_minter_address
+        .storeAddress(ptonMinterAddr)     // pton_minter_address
+        .storeCoins(0)                    // ton_liquidity
+        .storeCoins(0)                    // tokens_liquidity
+        .endCell()
+    )
+    .endCell();
+
+  const migratorContract = await SmartContract.fromCell(migratorCodeCell, initialMigratorData);
+
+  // 4.1 Initial Getters
+  const migInitState = await migratorContract.invokeGetMethod('get_migration_data', []);
+  assert(migInitState.type === 'success', 'get_migration_data getter executes successfully');
+  assert(migInitState.result[0].toString() === '0', 'Migration router initially uninitialized');
+  assert(migInitState.result[6].toString() === '0', 'Initial ton_liquidity is 0');
+  assert(migInitState.result[7].toString() === '0', 'Initial tokens_liquidity is 0');
+
+  // 4.2 Adversarial Test: Unauthorized TON deposit rejected with exit code 401
+  const fakeTonDepMsg = new InternalMessage({
+    to: migrationRouter,
+    from: spamAttackerAddr,
+    value: new BN('100000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c36, 32)      // op::deposit_ton_liquidity
+          .storeUint(1, 64)
+          .storeCoins(new BN((500n * ONE_TON).toString()))
+          .endCell()
+      )
+    })
+  });
+  const fakeTonDepRes = await migratorContract.sendInternalMessage(fakeTonDepMsg);
+  assert(fakeTonDepRes.type === 'failed' && fakeTonDepRes.exit_code === 401, 'Unauthorized TON deposit strictly rejected with exit code 401');
+
+  // 4.3 Authorized TON deposit from authentic Curve
+  const authTonDepMsg = new InternalMessage({
+    to: migrationRouter,
+    from: mockCurveWallet,
+    value: new BN((500n * ONE_TON).toString()),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c36, 32)
+          .storeUint(2, 64)
+          .storeCoins(new BN((500n * ONE_TON).toString()))
+          .endCell()
+      )
+    })
+  });
+  const authTonDepRes = await migratorContract.sendInternalMessage(authTonDepMsg);
+  assert(authTonDepRes.type === 'success', 'Authorized TON deposit accepted from Curve');
+
+  // 4.4 Inbound 200M DEX token liquidity via transfer_notification
+  const dexTokenDeposit = 200000000n * ONE_TOKEN;
+  const tokenDepMsg = new InternalMessage({
+    to: migrationRouter,
+    from: mockCurveWallet,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x7362d09c, 32)      // op::transfer_notification
+          .storeUint(3, 64)
+          .storeCoins(new BN(dexTokenDeposit.toString()))
+          .storeAddress(mockCurveWallet)
+          .storeUint(0, 1)
+          .endCell()
+      )
+    })
+  });
+  const tokenDepRes = await migratorContract.sendInternalMessage(tokenDepMsg);
+  assert(tokenDepRes.type === 'success', 'Inbound 200M DEX token liquidity received successfully');
+
+  const fundedState = await migratorContract.invokeGetMethod('get_migration_data', []);
+  assert(fundedState.result[6].toString() === (500n * ONE_TON).toString(), 'ton_liquidity records exact 500 TON');
+  assert(fundedState.result[7].toString() === dexTokenDeposit.toString(), 'tokens_liquidity records exact 200M tokens');
+
+  // 4.5 Adversarial Test: Unauthorized execute_dex_provision rejected with exit code 401
+  const fakeExecMsg = new InternalMessage({
+    to: migrationRouter,
+    from: spamAttackerAddr,
+    value: new BN('600000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c37, 32)      // op::execute_dex_provision
+          .storeUint(4, 64)
+          .storeAddress(routerTokenWallet)
+          .storeAddress(lpTokenWallet)
+          .storeAddress(ptonWallet)
+          .endCell()
+      )
+    })
+  });
+  const fakeExecRes = await migratorContract.sendInternalMessage(fakeExecMsg);
+  assert(fakeExecRes.type === 'failed' && fakeExecRes.exit_code === 401, 'Unauthorized execute_dex_provision strictly rejected with exit code 401');
+
+  // 4.6 Authorized execute_dex_provision with exact STON.fi v2.1 TL-B construction
+  const authExecMsg = new InternalMessage({
+    to: migrationRouter,
+    from: mockCurveWallet,
+    value: new BN('600000000'),          // 0.60 TON attached gas
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c37, 32)
+          .storeUint(5, 64)
+          .storeAddress(routerTokenWallet)
+          .storeAddress(lpTokenWallet)
+          .storeAddress(ptonWallet)
+          .endCell()
+      )
+    })
+  });
+  const authExecRes = await migratorContract.sendInternalMessage(authExecMsg);
+  assert(authExecRes.type === 'success', 'execute_dex_provision executes successfully');
+  assert(authExecRes.actionList && authExecRes.actionList.length === 3, 'Emits exactly 3 messages: set_lp_wallet, Jetton provide_lp, and pTON ton_transfer');
+
+  const stateAfterExec = await migratorContract.invokeGetMethod('get_migration_data', []);
+  assert(stateAfterExec.result[0].toString() === '1', 'Migration router marked is_initialized == 1');
+  assert(stateAfterExec.result[6].toString() === '0', 'ton_liquidity reset to 0 after dispatch');
+  assert(stateAfterExec.result[7].toString() === '0', 'tokens_liquidity reset to 0 after dispatch');
+
+  // 4.7 Abort / Emergency Refund Flow (op::abort_migration)
+  const abortData = beginCell()
+    .storeUint(0, 1)
+    .storeAddress(mockCurveWallet)
+    .storeAddress(lockerAddr)
+    .storeAddress(routerAddr)
+    .storeRef(
+      beginCell()
+        .storeAddress(masterAddr)
+        .storeAddress(ptonMinterAddr)
+        .storeCoins(new BN((25n * ONE_TON).toString())) // 25 TON held
+        .storeCoins(0)
+        .endCell()
+    )
+    .endCell();
+  const abortContract = await SmartContract.fromCell(migratorCodeCell, abortData);
+
+  // Adversarial: non-curve cannot abort
+  const fakeAbortMsg = new InternalMessage({
+    to: migrationRouter,
+    from: spamAttackerAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(beginCell().storeUint(0x414e4c38, 32).storeUint(6, 64).endCell())
+    })
+  });
+  const fakeAbortRes = await abortContract.sendInternalMessage(fakeAbortMsg);
+  assert(fakeAbortRes.type === 'failed' && fakeAbortRes.exit_code === 401, 'Unauthorized abort_migration strictly rejected with exit code 401');
+
+  // Authorized abort refunds TON to curve
+  const authAbortMsg = new InternalMessage({
+    to: migrationRouter,
+    from: mockCurveWallet,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(beginCell().storeUint(0x414e4c38, 32).storeUint(7, 64).endCell())
+    })
+  });
+  const authAbortRes = await abortContract.sendInternalMessage(authAbortMsg);
+  assert(authAbortRes.type === 'success', 'Authorized abort_migration executes successfully');
+  assert(authAbortRes.actionList && authAbortRes.actionList.length === 1, 'Emits refund message returning TON liquidity back to Curve');
+  const abortFinal = await abortContract.invokeGetMethod('get_migration_data', []);
+  assert(abortFinal.result[6].toString() === '0', 'ton_liquidity reset to 0 following successful abort refund');
 
   console.log('\n═══════════════════════════════════════════════════════════════════════════');
   console.log(`📊 TVM SIMULATION TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);

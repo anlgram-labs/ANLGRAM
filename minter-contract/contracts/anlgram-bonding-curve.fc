@@ -35,6 +35,10 @@ const int STATE_ACTIVE                  = 3;
 const int STATE_GRADUATION_PENDING      = 4;
 const int STATE_MIGRATION_IN_PROGRESS   = 5;
 const int STATE_GRADUATED               = 6;
+const int STATE_MIGRATION_FAILED        = 7;
+
+;; Correlation Identifiers
+const int RENOUNCE_QUERY_ID             = 0x414e4c4752454e4f; ;; "ANLGRENO" in ASCII hex
 
 ;; Protocol Error Codes
 const int ERROR_UNAUTHORIZED            = 401;
@@ -46,6 +50,9 @@ const int ERROR_ZERO_INPUT              = 406;
 const int ERROR_INVALID_STATE           = 407;
 const int ERROR_INVALID_RENOUNCE        = 408;
 const int ERROR_NO_PENDING_REFUND       = 409;
+const int ERROR_TOTAL_SUPPLY_MISMATCH    = 410;
+const int ERROR_SUPPLY_MISMATCH_RENOUNCE = 411;
+const int ERROR_INVALID_RENOUNCE_QUERY   = 412;
 
 ;; Opcodes
 const int op::init_launchpad                = 0x414e4c01;
@@ -210,7 +217,49 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_uint(4);
     if (flags & 1) {
-        return (); ;; Ignore standard bounced messages
+        ;; Bounced Outbound Jetton Transfer Recovery:
+        ;; When an outbound Jetton transfer bounces from curve_jetton_wallet, TVM delivers:
+        ;; [32-bit 0xffffffff][original_op (32-bit)][query_id (64-bit)][amount (coins)][recipient (MsgAddress)]
+        slice sender_address = cs~load_msg_addr();
+        (
+            int state, slice admin_address, slice creator_address, slice treasury_address,
+            slice jetton_master_address, slice curve_jetton_wallet, slice dex_router_address, slice lp_locker_address, slice migration_router_address,
+            int real_ton_reserve, int real_token_reserve, int accrued_protocol_fees, int pending_refunds_tokens,
+            int virtual_ton_reserve, int virtual_token_reserve, int graduation_threshold_ton, int dex_tokens_escrow,
+            cell pending_refunds_dict, cell jetton_wallet_code
+        ) = load_data();
+
+        if (equal_slices(sender_address, curve_jetton_wallet)) {
+            in_msg_body~skip_bits(32); ;; 0xffffffff prefix
+            slice body_slice = in_msg_body;
+            if ((body_slice.slice_bits() < 32) & (body_slice.slice_refs() > 0)) {
+                body_slice = body_slice~load_ref().begin_parse();
+            }
+            if (body_slice.slice_bits() >= 32) {
+                int orig_op = body_slice~load_uint(32);
+                if (orig_op == op::transfer()) {
+                    body_slice~skip_bits(64); ;; skip query_id
+                    int bounced_tokens = body_slice~load_coins();
+                    if (body_slice.slice_bits() >= 2) {
+                        slice recipient = body_slice~load_msg_addr();
+                        int recipient_hash = slice_hash(recipient);
+                        (slice old_val, int found) = pending_refunds_dict.udict_get?(256, recipient_hash);
+                        int existing = found ? old_val~load_coins() : 0;
+                        pending_refunds_dict~udict_set_builder(256, recipient_hash, begin_cell().store_coins(existing + bounced_tokens));
+                        pending_refunds_tokens += bounced_tokens;
+
+                        save_data(
+                            state, admin_address, creator_address, treasury_address,
+                            jetton_master_address, curve_jetton_wallet, dex_router_address, lp_locker_address, migration_router_address,
+                            real_ton_reserve, real_token_reserve, accrued_protocol_fees, pending_refunds_tokens,
+                            virtual_ton_reserve, virtual_token_reserve, graduation_threshold_ton, dex_tokens_escrow,
+                            pending_refunds_dict, jetton_wallet_code
+                        );
+                    }
+                }
+            }
+        }
+        return ();
     }
     slice sender_address = cs~load_msg_addr();
 
@@ -272,12 +321,12 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
         ;; SUB-FLOW A: Initial 1B Token Custody Receipt
         if (state == STATE_INITIALIZING) {
             int total_expected = real_token_reserve + dex_tokens_escrow;
-            throw_unless(410, token_amount == total_expected);
+            throw_unless(ERROR_TOTAL_SUPPLY_MISMATCH, token_amount == total_expected);
 
             ;; Send op == 3 (change_admin) to Jetton Minter setting admin to addr_none
             var msg_body = begin_cell()
                 .store_uint(3, 32)
-                .store_uint(query_id, 64)
+                .store_uint(RENOUNCE_QUERY_ID, 64)
                 .store_uint(0, 2)  ;; addr_none (permanent renounce)
                 .end_cell();
 
@@ -415,6 +464,7 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
         ;; Verification 1: Must originate strictly from configured Jetton Master
         throw_unless(ERROR_UNAUTHORIZED, equal_slices(sender_address, jetton_master_address));
         throw_unless(ERROR_INVALID_STATE, state == STATE_RENOUNCE_PENDING);
+        throw_unless(ERROR_INVALID_RENOUNCE_QUERY, query_id == RENOUNCE_QUERY_ID);
 
         slice reported_admin = in_msg_body~load_msg_addr();
         int reported_supply = in_msg_body~load_coins();
@@ -424,7 +474,7 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
 
         ;; Verification 3: Total supply must match 1 Billion tokens
         int total_expected = real_token_reserve + dex_tokens_escrow;
-        throw_unless(411, reported_supply == total_expected);
+        throw_unless(ERROR_SUPPLY_MISMATCH_RENOUNCE, reported_supply == total_expected);
 
         ;; Renounce verified with 100% cryptographic proof! Transition to STATE_ACTIVE
         state = STATE_ACTIVE;
@@ -446,7 +496,7 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
 
         var query_msg_body = begin_cell()
             .store_uint(op::query_admin_status, 32)
-            .store_uint(query_id, 64)
+            .store_uint(RENOUNCE_QUERY_ID, 64)
             .end_cell();
 
         var query_msg = begin_cell()

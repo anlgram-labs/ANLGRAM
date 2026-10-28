@@ -1,12 +1,15 @@
-;; ANLGRAM Launchpad — STON.fi v2.1 Migration Router Smart Contract
+;; ANLGRAM Launchpad — STON.fi v2.1 Migration Router Smart Contract (Fully Conforming TL-B)
 ;; File: minter-contract/contracts/anlgram-migration-router.fc
 ;; 
 ;; Features:
 ;; 1. Receives graduation reserves (TON + 200M DEX tokens) strictly from the authorized Curve.
 ;; 2. Configures the immutable LP Locker via op::set_lp_wallet (0x414e4c31).
-;; 3. Formats official STON.fi v2.1 CPI Router messages using op::provide_lp (0x37c096df).
-;; 4. Directs all minted LP tokens to the immutable LP Locker.
-;; 5. Returns excess gas to the curve or initiator.
+;; 3. Formats official STON.fi v2.1 CPI Router messages using exact TL-B schema:
+;;    provide_lp#37c096df token_wallet1:MsgAddress refund_address:MsgAddress excesses_address:MsgAddress
+;;      tx_deadline:uint64 cross_provide_lp_body:^[min_lp_out:Coins to_address:MsgAddress both_positive:uint1 fwd_amount:Coins custom_payload:(Maybe ^Cell)]
+;; 4. Formats pTON v2 ton_transfer#01f3835d forwarding the matched provide_lp payload.
+;; 5. Directs all minted LP tokens directly to the immutable LP Locker (anlgram-lp-locker.fc).
+;; 6. Abort / recovery flow via op::abort_migration (0x414e4c38) allows unspent reserves to return to Curve upon failure.
 
 #include "imports/stdlib.fc";
 #include "imports/params.fc";
@@ -19,10 +22,13 @@ const int ERROR_UNAUTHORIZED_SENDER = 401;
 const int ERROR_INVALID_STATE       = 402;
 const int ERROR_UNKNOWN_OP          = 404;
 
+;; Protocol Opcodes
 const int op::provide_lp             = 0x37c096df;
+const int op::ton_transfer           = 0x01f3835d;
 const int op::set_lp_wallet          = 0x414e4c31;
 const int op::deposit_ton_liquidity  = 0x414e4c36;
 const int op::execute_dex_provision  = 0x414e4c37;
+const int op::abort_migration        = 0x414e4c38;
 
 ;; Storage Layout:
 ;; is_initialized:uint1
@@ -114,7 +120,7 @@ const int op::execute_dex_provision  = 0x414e4c37;
     }
 
     ;; ------------------------------------------------------------------------
-    ;; 3. EXECUTE DEX LIQUIDITY PROVISION (STON.fi v2.1 Routing)
+    ;; 3. EXECUTE DEX LIQUIDITY PROVISION (STON.fi v2.1 Routing with Exact TL-B)
     ;; ------------------------------------------------------------------------
     if (op == op::execute_dex_provision) {
         throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, curve_address));
@@ -122,7 +128,8 @@ const int op::execute_dex_provision  = 0x414e4c37;
         throw_unless(411, tokens_liquidity > 0);
 
         slice router_token_wallet = in_msg_body~load_msg_addr();
-        slice lp_token_wallet = in_msg_body~load_msg_addr();
+        slice lp_token_wallet     = in_msg_body~load_msg_addr();
+        slice pton_wallet         = in_msg_body~load_msg_addr();
 
         ;; Step A: Configure LP Locker with verified LP token wallet
         var set_lp_msg = begin_cell()
@@ -135,55 +142,101 @@ const int op::execute_dex_provision  = 0x414e4c37;
             .store_slice(lp_token_wallet);
         send_raw_message(set_lp_msg.end_cell(), 1);
 
-        ;; Step B: Construct STON.fi v2.1 provide_lp payload for Jetton deposit
-        ;; provide_lp#37c096df query_id:uint64 to_address:MsgAddress min_lp_out:Coins ...
-        var provide_payload = begin_cell()
-            .store_uint(op::provide_lp, 32)
-            .store_uint(query_id, 64)
-            .store_slice(lp_locker_address) ;; LP tokens minted to LP Locker!
-            .store_coins(1)                 ;; min_lp_out: 1 unit minimum
+        ;; Step B: Construct exact STON.fi v2.1 cross_provide_lp_body
+        ;; cross_provide_lp_body:^[min_lp_out:Coins to_address:MsgAddress both_positive:uint1 fwd_amount:Coins custom_payload:(Maybe ^Cell)]
+        cell cross_body = begin_cell()
+            .store_coins(1)                     ;; min_lp_out: 1 unit minimum
+            .store_slice(lp_locker_address)     ;; to_address: LP Locker receives all minted LP tokens!
+            .store_uint(1, 1)                   ;; both_positive: true (both Token and TON > 0)
+            .store_coins(20000000)              ;; fwd_amount: 0.02 TON
+            .store_uint(0, 1)                   ;; null custom_payload
             .end_cell();
 
-        ;; Outbound Jetton Transfer to STON.fi Router Token Wallet
+        ;; Step C: Construct DexPayload for Token Deposit
+        ;; provide_lp#37c096df token_wallet1:MsgAddress refund_address:MsgAddress excesses_address:MsgAddress tx_deadline:uint64 cross_provide_lp_body:^Cell
+        cell token_dex_payload = begin_cell()
+            .store_uint(op::provide_lp, 32)
+            .store_slice(pton_wallet)           ;; token_wallet1 (the paired pTON wallet)
+            .store_slice(curve_address)         ;; refund_address
+            .store_slice(curve_address)         ;; excesses_address
+            .store_uint(now() + 1800, 64)       ;; tx_deadline: 30 minutes
+            .store_ref(cross_body)
+            .end_cell();
+
+        ;; Outbound Jetton Transfer of 200M Tokens to STON.fi Router Token Wallet
         var jetton_msg_body = begin_cell()
             .store_uint(op::transfer(), 32)
             .store_uint(query_id, 64)
             .store_coins(tokens_liquidity)
-            .store_slice(dex_router_address)
-            .store_slice(curve_address)
-            .store_uint(0, 1)
-            .store_coins(100000000) ;; forward 0.10 TON with provide_lp payload
-            .store_uint(1, 1)
-            .store_ref(provide_payload)
+            .store_slice(dex_router_address)    ;; destination: Router
+            .store_slice(curve_address)         ;; response_destination: Curve
+            .store_uint(0, 1)                   ;; null custom payload
+            .store_coins(100000000)             ;; forward 0.10 TON with forward payload
+            .store_uint(1, 1)                   ;; forward payload in ref cell
+            .store_ref(token_dex_payload)
             .end_cell();
 
         var jetton_msg = begin_cell()
             .store_uint(0x18, 6)
             .store_slice(router_token_wallet)
-            .store_coins(150000000) ;; 0.15 TON for gas
+            .store_coins(150000000)             ;; 0.15 TON attached gas
             .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
             .store_ref(jetton_msg_body);
         send_raw_message(jetton_msg.end_cell(), 1);
 
-        ;; Step C: Outbound TON Transfer to STON.fi Router / pTON Vault
-        var pton_msg_body = begin_cell()
+        ;; Step D: Outbound pTON ton_transfer#01f3835d to pTON Wallet / Vault
+        cell pton_dex_payload = begin_cell()
             .store_uint(op::provide_lp, 32)
+            .store_slice(router_token_wallet)   ;; token_wallet1 (the paired Token wallet)
+            .store_slice(curve_address)         ;; refund_address
+            .store_slice(curve_address)         ;; excesses_address
+            .store_uint(now() + 1800, 64)       ;; tx_deadline: 30 minutes
+            .store_ref(cross_body)
+            .end_cell();
+
+        var ton_msg_body = begin_cell()
+            .store_uint(op::ton_transfer, 32)   ;; 0x01f3835d
             .store_uint(query_id, 64)
-            .store_slice(lp_locker_address)
-            .store_coins(1)
+            .store_coins(ton_liquidity)
+            .store_slice(curve_address)         ;; refund_address
+            .store_uint(1, 1)                   ;; forward_payload as reference
+            .store_ref(pton_dex_payload)
             .end_cell();
 
         var ton_msg = begin_cell()
             .store_uint(0x18, 6)
-            .store_slice(dex_router_address)
-            .store_coins(ton_liquidity)
+            .store_slice(pton_wallet)
+            .store_coins(ton_liquidity + 150000000) ;; principal + 0.15 TON operational gas
             .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-            .store_ref(pton_msg_body);
+            .store_ref(ton_msg_body);
         send_raw_message(ton_msg.end_cell(), 1);
 
         ton_liquidity = 0;
         tokens_liquidity = 0;
         save_data(1, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity);
+        return ();
+    }
+
+    ;; ------------------------------------------------------------------------
+    ;; 4. OP::ABORT_MIGRATION (Emergency / Failure Refund to Curve)
+    ;; ------------------------------------------------------------------------
+    if (op == op::abort_migration) {
+        throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, curve_address));
+
+        if (ton_liquidity > 0) {
+            var ret_ton = begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(curve_address)
+                .store_coins(ton_liquidity)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .store_uint(op::deposit_ton_liquidity, 32)
+                .store_uint(query_id, 64)
+                .store_coins(ton_liquidity);
+            send_raw_message(ret_ton.end_cell(), 1);
+            ton_liquidity = 0;
+        }
+
+        save_data(is_initialized, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity);
         return ();
     }
 
