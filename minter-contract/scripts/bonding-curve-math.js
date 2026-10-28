@@ -29,14 +29,14 @@
   const DEFAULT_DECIMALS = 9n;
   const ONE_TOKEN = 10n ** DEFAULT_DECIMALS; // 1,000,000,000 atomic units per whole token
 
-  // Default Canonical Model Parameters
+  // Default Canonical Model Parameters (Price Continuity Configured)
   const DEFAULT_CONFIG = {
     totalSupply: 1_000_000_000n * ONE_TOKEN,       // 1 Billion tokens
     curveTokens:   800_000_000n * ONE_TOKEN,       // 800M tokens on curve (80%)
     gradTokens:    200_000_000n * ONE_TOKEN,       // 200M tokens for DEX liquidity (20%)
     creatorTokens: 0n,                             // 0 tokens (Fair launch)
     treasuryTokens: 0n,                            // 0 tokens
-    initialVirtualTon: 30n * 1_000_000_000n,       // 30 TON virtual reserve
+    initialVirtualTon: 166_666_666_666n,           // 166.666666666 TON virtual reserve (derived for exact price continuity)
     graduationThresholdTon: 500n * 1_000_000_000n, // 500 TON real threshold
     protocolFeeBps: 100n,                          // 100 bps = 1.00%
     decimals: 9n,
@@ -85,11 +85,12 @@
 
       // Derived Virtual Token Reserve:
       // v_TOK = floor(v_TON * S_curve / T_grad)
-      this.virtualToken = (this.config.initialVirtualTon * this.config.curveTokens) / this.config.graduationThresholdTon;
       this.virtualTon = this.config.initialVirtualTon;
+      this.virtualToken = (this.virtualTon * this.config.curveTokens) / this.config.graduationThresholdTon;
 
       // Invariant K = v_TON * (S_curve + v_TOK)
       this.K = this.virtualTon * (this.config.curveTokens + this.virtualToken);
+      this.lastK = this.K;
 
       // Real Reserves (Mutable state)
       this.realTon = 0n;
@@ -426,11 +427,15 @@
         throw new Error(`CRITICAL INVARIANT FAULT: realTokens (${this.realTokens}) exceeds curve initial allocation (${this.config.curveTokens})`);
       }
 
-      // 3. Constant product invariant non-decreasing
+      // 3. Constant product invariant non-decreasing (Step-by-step monotonic & base preservation)
       const currentK = this.effectiveTon * this.effectiveTokens;
+      if (currentK < this.lastK) {
+        throw new Error(`CRITICAL INVARIANT FAULT: Step invariant K (${currentK}) fell below previous K (${this.lastK})`);
+      }
       if (currentK < this.K) {
         throw new Error(`CRITICAL INVARIANT FAULT: Current invariant K (${currentK}) fell below base invariant (${this.K})`);
       }
+      this.lastK = currentK;
 
       // 4. Token supply conservation
       const soldTokens = this.config.curveTokens - this.realTokens;
@@ -441,9 +446,25 @@
     }
 
     /**
+     * Compute required DEX tokens to match terminal curve price
+     */
+    calculateRequiredDexTokens(actualTon = this.realTon) {
+      if (actualTon <= 0n) return 0n;
+      const spot = this.getCurrentSpotPriceNano();
+      if (spot <= 0n) return 0n;
+      const oneToken = 10n ** this.config.decimals;
+      return (actualTon * oneToken) / spot;
+    }
+
+    /**
      * Snapshot of full internal state
      */
     getState() {
+      const circulatingTokens = this.config.curveTokens - this.realTokens;
+      const oneToken = 10n ** this.config.decimals;
+      const spotPriceNano = this.getCurrentSpotPriceNano();
+      const terminalDexPriceNano = (this.config.graduationThresholdTon * oneToken) / this.config.gradTokens;
+
       return {
         config: { ...this.config },
         virtualTon: this.virtualTon,
@@ -456,7 +477,12 @@
         accumulatedFeesTon: this.accumulatedFeesTon,
         graduated: this.graduated,
         tradeCount: this.tradeCount,
-        spotPriceNano: this.getCurrentSpotPriceNano(),
+        spotPriceNano,
+        circulatingTokens,
+        fullyDilutedValuationNano: (spotPriceNano * this.config.totalSupply) / oneToken,
+        marketCapitalizationNano: (spotPriceNano * circulatingTokens) / oneToken,
+        terminalDexPriceNano,
+        priceDiscrepancyNano: spotPriceNano > terminalDexPriceNano ? spotPriceNano - terminalDexPriceNano : terminalDexPriceNano - spotPriceNano,
       };
     }
   }

@@ -40,29 +40,28 @@ $$X = r_{\text{TON}} + v_{\text{TON}}$$
 $$Y = r_{\text{TOK}} + v_{\text{TOK}}$$
 
 Where:
-- $r_{\text{TON}}$: **Real TON reserve** held in contract balance (starts at $0$, increases on buys, decreases on sells).
-- $v_{\text{TON}}$: **Virtual TON reserve** (initial liquidity depth parameter, e.g. $30\text{ TON} = 30 \times 10^9\text{ nanoTON}$).
-- $r_{\text{TOK}}$: **Real Token inventory** available in the curve (starts at $S_{\text{curve}} = 800\text{M}$ tokens, decreases on buys, increases on sells).
-- $v_{\text{TOK}}$: **Virtual Token reserve** (virtual inventory depth parameter).
+- $r_{\text{TON}}$: **Real TON reserve** held in contract balance (starts at $0$, targets $T_{\text{grad}} = 500\text{ TON}$).
+- $v_{\text{TON}}$: **Virtual TON reserve** (derived via price-continuity equation as $166.666666666\text{ TON} = 166,666,666,666\text{ nanoTON}$).
+- $r_{\text{TOK}}$: **Real Token inventory** available in the curve (starts at $S_{\text{curve}} = 800\text{M}$ tokens, reaches $0$ at graduation).
+- $v_{\text{TOK}}$: **Virtual Token reserve** (derived via sellout equation as $266,666,666.6656\text{ tokens} = 266,666,666,665,600,000\text{ base units}$).
 
-### 2.1 Determination of Virtual Token Reserve ($v_{\text{TOK}}$)
-Let $T_{\text{grad}}$ be the real TON graduation threshold (e.g. $500\text{ TON} = 500 \times 10^9\text{ nanoTON}$).
+### 2.1 Price Continuity & Virtual Reserve Derivation
+To prevent a catastrophic price cliff upon DEX migration, the terminal curve spot price when $r_{\text{TOK}} \to 0$ and $r_{\text{TON}} \to T_{\text{grad}}$ must **exactly match** the opening spot price of the DEX pool seeded with $T_{\text{grad}}$ and $S_{\text{grad}}$:
 
-The fundamental economic constraint of the launchpad requires that:
-1. At genesis ($r_{\text{TON}} = 0$): real token inventory $r_{\text{TOK}} = S_{\text{curve}}$.
-2. At graduation ($r_{\text{TON}} = T_{\text{grad}}$): real token inventory $r_{\text{TOK}} = 0$ (all $800\text{M}$ curve tokens have been sold).
+$$\text{Constraint 1 (Sellout Condition): } \quad v_{\text{TOK}} = \frac{v_{\text{TON}} \cdot S_{\text{curve}}}{T_{\text{grad}}}$$
+$$\text{Constraint 2 (Price Continuity): } \quad \frac{T_{\text{grad}} + v_{\text{TON}}}{v_{\text{TOK}}} = \frac{T_{\text{grad}}}{S_{\text{grad}}}$$
 
-Since the invariant $K$ is constant across the entire curve lifecycle:
-$$K = X_{\text{start}} \cdot Y_{\text{start}} = X_{\text{grad}} \cdot Y_{\text{grad}}$$
-$$v_{\text{TON}} \cdot (S_{\text{curve}} + v_{\text{TOK}}) = (v_{\text{TON}} + T_{\text{grad}}) \cdot v_{\text{TOK}}$$
-$$v_{\text{TON}} \cdot S_{\text{curve}} + v_{\text{TON}} \cdot v_{\text{TOK}} = v_{\text{TON}} \cdot v_{\text{TOK}} + T_{\text{grad}} \cdot v_{\text{TOK}}$$
-$$v_{\text{TON}} \cdot S_{\text{curve}} = T_{\text{grad}} \cdot v_{\text{TOK}}$$
+Solving the simultaneous system:
+$$\mathbf{v_{\text{TON}} = \left\lfloor \frac{S_{\text{grad}} \cdot T_{\text{grad}}}{S_{\text{curve}} - S_{\text{grad}}} \right\rfloor = \left\lfloor \frac{200\text{M} \cdot 500\text{ TON}}{800\text{M} - 200\text{M}} \right\rfloor = \mathbf{166,666,666,666\text{ nanoTON}} \quad \left(\frac{500}{3}\text{ TON}\right)}$$
 
-Therefore, $v_{\text{TOK}}$ is uniquely and deterministically derived:
-$$\mathbf{v_{\text{TOK}} = \left\lfloor \frac{v_{\text{TON}} \cdot S_{\text{curve}}}{T_{\text{grad}}} \right\rfloor}$$
+$$\mathbf{v_{\text{TOK}} = \left\lfloor \frac{v_{\text{TON}} \cdot S_{\text{curve}}}{T_{\text{grad}}} \right\rfloor = \left\lfloor \frac{166,666,666,666 \cdot 800\text{M}}{500} \right\rfloor = \mathbf{266,666,666,665,600,000\text{ base units}} \quad \left(\frac{800\text{M}}{3}\text{ tokens}\right)}$$
 
-And the constant invariant $K$ is:
-$$\mathbf{K = v_{\text{TON}} \cdot (S_{\text{curve}} + v_{\text{TOK}})}$$
+### 2.2 Exact Price Continuity Verification
+- **Terminal Curve Spot Price**:
+  $$P_{\text{curve\_terminal}} = \frac{(500,000,000,000 + 166,666,666,666) \cdot 10^9}{266,666,666,665,600,000} = \mathbf{2,500\text{ nanoTON/token}} \quad (0.0000025\text{ TON})$$
+- **Initial DEX Pool Spot Price**:
+  $$P_{\text{DEX\_initial}} = \frac{500,000,000,000 \cdot 10^9}{200,000,000 \cdot 10^9} = \mathbf{2,500\text{ nanoTON/token}} \quad (0.0000025\text{ TON})$$
+- **Deviation**: $\mathbf{0\text{ nanoTON} \quad (0.000000\% \text{ deviation})}$. Perfect price continuity is mathematically achieved.
 
 ---
 
@@ -187,7 +186,7 @@ Slippage tolerance protects against front-running and block-ordering manipulatio
 
 ---
 
-## 9. Default Model Parameter Set (For Testing & Validation)
+## 9. Default Model Parameter Set (Price-Continuity Verified)
 
 | Parameter | Symbol | Value (Human) | Value (Integer Base Units) |
 | :--- | :---: | :---: | :---: |
@@ -195,9 +194,12 @@ Slippage tolerance protects against front-running and block-ordering manipulatio
 | Curve Token Inventory | $S_{\text{curve}}$ | $800,000,000$ TOK | $800,000,000,000,000,000$ |
 | Graduation Token Escrow | $S_{\text{grad}}$ | $200,000,000$ TOK | $200,000,000,000,000,000$ |
 | Creator Allocation | $S_{\text{creator}}$ | $0$ TOK | $0$ |
-| Initial Virtual TON Reserve | $v_{\text{TON}}$ | $30$ TON | $30,000,000,000$ nanoTON |
+| Initial Virtual TON Reserve | $v_{\text{TON}}$ | $166.666666666$ TON | $166,666,666,666$ nanoTON |
 | Real TON Graduation Threshold | $T_{\text{grad}}$ | $500$ TON | $500,000,000,000$ nanoTON |
-| Derived Virtual Token Reserve | $v_{\text{TOK}}$ | $48,000,000$ TOK | $48,000,000,000,000,000$ |
-| Initial Invariant | $K$ | — | $v_{\text{TON}} \cdot (S_{\text{curve}} + v_{\text{TOK}})$ |
+| Derived Virtual Token Reserve | $v_{\text{TOK}}$ | $266,666,666.6656$ TOK | $266,666,666,665,600,000$ |
+| Genesis Invariant | $K$ | — | $177,777,777,776,888,888,888,889,600,000$ |
+| Terminal Curve Spot Price | $P_{\text{curve\_terminal}}$ | $0.0000025$ TON | $2,500$ nanoTON |
+| Opening DEX Pool Spot Price | $P_{\text{DEX\_initial}}$ | $0.0000025$ TON | $2,500$ nanoTON |
+| Price Discrepancy on Migration | $\Delta P$ | $0.00$ TON | $0$ nanoTON ($0.000000\%$) |
 | Trading Protocol Fee | $f_{\text{bps}}$ | $1.00\%$ | $100$ bps |
 | Decimals | $D$ | $9$ | $9$ |

@@ -65,16 +65,19 @@ console.log('--- 1. Parameter Derivation & Conservation Invariants ---');
 const curve = new BondingCurveEngine();
 const state = curve.getState();
 
+// Price Continuity Derivation:
+// v_TON = floor(S_DEX * T_grad / (S_curve - S_DEX))
+// v_TON = floor(200M * 500 / 600M) = 166.666666666 TON = 166,666,666,666 nanoTON
 assert(
-  state.virtualTon === 30n * 1_000_000_000n,
-  'Virtual TON reserve initialized to 30 TON (30,000,000,000 nanoTON)'
+  state.virtualTon === 166_666_666_666n,
+  'Virtual TON reserve initialized to derived price-continuity value (166,666,666,666 nanoTON)'
 );
 
-// v_TOK = floor(30 * 800M / 500) = 48M tokens
-const expectedVirtualToken = (30n * 1_000_000_000n * (800_000_000n * ONE_TOKEN)) / (500n * 1_000_000_000n);
+// v_TOK = floor(v_TON * S_curve / T_grad)
+const expectedVirtualToken = (166_666_666_666n * (800_000_000n * ONE_TOKEN)) / (500n * 1_000_000_000n);
 assert(
-  state.virtualToken === expectedVirtualToken && state.virtualToken === 48_000_000n * ONE_TOKEN,
-  'Virtual Token reserve correctly derived as exactly 48,000,000 tokens'
+  state.virtualToken === expectedVirtualToken && state.virtualToken === 266_666_666_665_600_000n,
+  'Virtual Token reserve correctly derived as 266,666,666.6656 tokens'
 );
 
 const expectedK = state.virtualTon * (DEFAULT_CONFIG.curveTokens + state.virtualToken);
@@ -91,6 +94,32 @@ assert(
 assert(
   state.realTokens === 800_000_000n * ONE_TOKEN,
   'Real Token inventory starts at exactly 800,000,000 tokens'
+);
+
+// Price Continuity Verification:
+// Terminal Curve Price vs. Initial DEX Pool Price
+const terminalCurveSpot = ((500n * 1_000_000_000n + state.virtualTon) * ONE_TOKEN) / state.virtualToken;
+const initialDexSpot = (500n * 1_000_000_000n * ONE_TOKEN) / (200_000_000n * ONE_TOKEN);
+
+assert(
+  terminalCurveSpot === 2500n && initialDexSpot === 2500n,
+  'Terminal curve marginal price matches initial DEX pool price exactly (2,500 nanoTON/token)'
+);
+
+assert(
+  terminalCurveSpot - initialDexSpot === 0n,
+  'Graduation price discontinuity is exactly ZERO (0.000000% deviation)'
+);
+
+// Valuation Metric Verification:
+// At genesis: Circulating = 0, Market Cap = 0, FDV = Spot * 1B
+assert(
+  state.circulatingTokens === 0n && state.marketCapitalizationNano === 0n,
+  'At genesis: Circulating tokens = 0, Market Capitalization = 0'
+);
+assert(
+  state.fullyDilutedValuationNano > 0n,
+  'At genesis: Fully Diluted Valuation (FDV) is calculated strictly as Spot * TotalSupply'
 );
 
 // -----------------------------------------------------------------------------
@@ -183,6 +212,22 @@ const gradBuy = gradCurve.applyBuy(hugeBuyAmount, 0n);
 assert(gradBuy.success, 'Huge buy accepted and triggers graduation');
 assert(gradCurve.graduated === true, 'Curve state transitioned to graduated = true');
 assert(gradCurve.realTokens === 0n, 'All 800M curve tokens sold out at graduation');
+
+// Required DEX Token Calculation & Valuation Alignment
+const gradState = gradCurve.getState();
+const requiredDexTokens = gradCurve.calculateRequiredDexTokens(gradCurve.realTon);
+assert(
+  requiredDexTokens === 200_000_000n * ONE_TOKEN,
+  'At graduation: Required DEX token allocation calculates to exactly 200,000,000 tokens'
+);
+assert(
+  gradState.marketCapitalizationNano === 2_000n * 1_000_000_000n,
+  'At graduation: Circulating Market Cap = 2,000 TON (800M tokens * 2,500 nanoTON)'
+);
+assert(
+  gradState.fullyDilutedValuationNano === 2_500n * 1_000_000_000n,
+  'At graduation: Fully Diluted Valuation (FDV) = 2,500 TON (1B tokens * 2,500 nanoTON)'
+);
 
 // Subsequent trades must be rejected
 const postGradBuy = gradCurve.applyBuy(1_000_000_000n, 0n);
