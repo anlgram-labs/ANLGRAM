@@ -514,6 +514,26 @@ async function runTests() {
   const badAdminRenounceRes = await curveContract.sendInternalMessage(badAdminRenounceMsg);
   assert(badAdminRenounceRes.type === 'failed' && badAdminRenounceRes.exit_code === 408, 'Renounce notification with non-null admin rejected with exit code 408');
 
+  // 3.6C Adversarial Test: Renounce notification with wrong total supply rejected with 411
+  const wrongSupplyRenounceMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: masterAddr,
+    value: new BN('20000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x7a3e810f, 32)
+          .storeUint(new BN(RENOUNCE_QUERY_ID.toString()), 64)
+          .storeUint(0, 2)                // addr_none
+          .storeCoins(new BN((999000000n * ONE_TOKEN).toString())) // Wrong supply: 999M != 1B
+          .endCell()
+      )
+    })
+  });
+  const wrongSupplyRes = await curveContract.sendInternalMessage(wrongSupplyRenounceMsg);
+  assert(wrongSupplyRes.type === 'failed' && wrongSupplyRes.exit_code === 411, 'Renounce notification with wrong total supply strictly rejected with exit code 411 (ERROR_SUPPLY_MISMATCH_RENOUNCE)');
+
   // 3.7 Valid on-chain cryptographic renounce confirmation from authentic Master
   const validRenounceMsg = new InternalMessage({
     to: mockCurveWallet,
@@ -537,6 +557,23 @@ async function runTests() {
   const activeStateRes = await curveContract.invokeGetMethod('get_curve_state', []);
   assert(activeStateRes.result[0].toString() === '3', 'Trading activated! State transitioned to STATE_ACTIVE (3)');
 
+  // 3.7B Adversarial Test: Duplicate renounce notification rejected with exit code 407 (One-Time Activation Guard)
+  const duplicateRenounceRes = await curveContract.sendInternalMessage(validRenounceMsg);
+  assert(duplicateRenounceRes.type === 'failed' && duplicateRenounceRes.exit_code === 407, 'Duplicate renounce notification strictly rejected with exit code 407 (One-Time Activation)');
+
+  // 3.7C Adversarial Test: Status query while in STATE_ACTIVE rejected with exit code 407
+  const statusQueryActiveMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('20000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(beginCell().storeUint(0x51c9d382, 32).storeUint(123, 64).endCell())
+    })
+  });
+  const statusQueryActiveRes = await curveContract.sendInternalMessage(statusQueryActiveMsg);
+  assert(statusQueryActiveRes.type === 'failed' && statusQueryActiveRes.exit_code === 407, 'op::check_renounce while in STATE_ACTIVE strictly rejected with exit code 407');
+
   // 3.8 Execute Buy Order
   const buyAmountTon = 10n * ONE_TON;
   const buyRes = await curveContract.sendInternalMessage(
@@ -552,6 +589,28 @@ async function runTests() {
   );
   assert(buyRes.type === 'success', 'Buy order executes on TVM curve successfully');
   assert(buyRes.actionList && buyRes.actionList.length === 1, 'Emits outbound Jetton transfer delivering tokens to Buyer');
+
+  // 3.8B Adversarial Test: Inbound sell notification from unauthorized Jetton wallet rejected with exit code 401
+  const fakeWalletSellMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: spamAttackerAddr, // NOT curve_jetton_wallet!
+    value: new BN('60000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x7362d09c, 32)
+          .storeUint(29, 64)
+          .storeCoins(new BN((5000000n * ONE_TOKEN).toString()))
+          .storeAddress(sellerAddr)
+          .storeUint(0, 1)
+          .storeCoins(0)
+          .endCell()
+      )
+    })
+  });
+  const fakeWalletSellRes = await curveContract.sendInternalMessage(fakeWalletSellMsg);
+  assert(fakeWalletSellRes.type === 'failed' && fakeWalletSellRes.exit_code === 401, 'Inbound sell notification from unauthorized Jetton wallet strictly rejected with exit code 401');
 
   // 3.9 Blocker 4 Remediation: Slippage Rejection with Sufficient Gas (Immediate Refund)
   const rejectedSellAmount = 5000000n * ONE_TOKEN;
@@ -615,6 +674,32 @@ async function runTests() {
   assert(stateAfterUnderfunded.result[4].toString() === tonReserveBefore, 'Curve real TON reserve untouched by underfunded sell');
   assert(stateAfterUnderfunded.result[5].toString() === tokenReserveBefore, 'Tradable token inventory strictly segregated from pending refund escrow');
 
+  // 3.10B Adversarial Test: Claim refund with insufficient gas (< 0.04 TON) rejected with 405
+  const lowGasClaimMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: sellerAddr,
+    value: new BN('20000000'), // 0.02 TON < 0.04 TON required
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(beginCell().storeUint(0x414e4c34, 32).storeUint(31, 64).endCell())
+    })
+  });
+  const lowGasClaimRes = await curveContract.sendInternalMessage(lowGasClaimMsg);
+  assert(lowGasClaimRes.type === 'failed' && lowGasClaimRes.exit_code === 405, 'Claim refund with insufficient gas strictly rejected with exit code 405 (ERROR_INSUFFICIENT_GAS)');
+
+  // 3.10C Adversarial Test: Claim refund from non-entitled user rejected with 409
+  const nonEntitledClaimMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: spamAttackerAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(beginCell().storeUint(0x414e4c34, 32).storeUint(32, 64).endCell())
+    })
+  });
+  const nonEntitledClaimRes = await curveContract.sendInternalMessage(nonEntitledClaimMsg);
+  assert(nonEntitledClaimRes.type === 'failed' && nonEntitledClaimRes.exit_code === 409, 'Claim refund from non-entitled user strictly rejected with exit code 409 (ERROR_NO_PENDING_REFUND)');
+
   // 3.11 User Claims Pending Refund via op::claim_refund
   const claimRefundMsg = new InternalMessage({
     to: mockCurveWallet,
@@ -641,9 +726,57 @@ async function runTests() {
   const doubleClaimRes = await curveContract.sendInternalMessage(claimRefundMsg);
   assert(doubleClaimRes.type === 'failed' && doubleClaimRes.exit_code === 409, 'Double claim attempt strictly rejected with exit code 409 (ERROR_NO_PENDING_REFUND)');
 
+  // 3.12A1 Adversarial Test: Bounced message from unauthorized sender (not curve_jetton_wallet) safely ignored
+  const bouncedTokensAmount = 5000000n * ONE_TOKEN;
+  const fakeBouncedMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: spamAttackerAddr, // Not curve wallet!
+    value: new BN('30000000'),
+    bounce: false,
+    bounced: true,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0xffffffff, 32)
+          .storeUint(0x0f8a7ea5, 32)
+          .storeUint(776, 64)
+          .storeCoins(new BN(bouncedTokensAmount.toString()))
+          .storeAddress(sellerAddr)
+          .endCell()
+      )
+    })
+  });
+  const fakeBounceRes = await curveContract.sendInternalMessage(fakeBouncedMsg);
+  assert(fakeBounceRes.type === 'success', 'Bounced message from non-wallet ignored safely without state change');
+  const stateAfterFakeBounce = await curveContract.invokeGetMethod('get_curve_state', []);
+  assert(stateAfterFakeBounce.result[7].toString() === '0', 'Zero pending refund tokens credited from forged bounce message');
+
+  // 3.12A2 Adversarial Test: Bounced message with non-transfer opcode safely ignored
+  const wrongOpBouncedMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: mockCurveWallet,
+    value: new BN('30000000'),
+    bounce: false,
+    bounced: true,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0xffffffff, 32)
+          .storeUint(0x12345678, 32) // Not op::transfer()!
+          .storeUint(776, 64)
+          .storeCoins(new BN(bouncedTokensAmount.toString()))
+          .storeAddress(sellerAddr)
+          .endCell()
+      )
+    })
+  });
+  const wrongOpBounceRes = await curveContract.sendInternalMessage(wrongOpBouncedMsg);
+  assert(wrongOpBounceRes.type === 'success', 'Bounced message with non-transfer opcode ignored safely without state change');
+  const stateAfterWrongOpBounce = await curveContract.invokeGetMethod('get_curve_state', []);
+  assert(stateAfterWrongOpBounce.result[7].toString() === '0', 'Zero pending refund tokens credited from non-transfer bounce message');
+
   // 3.12B Bounced Outbound Jetton Transfer Recovery:
   // Outbound Jetton transfer bounces back from curve_jetton_wallet
-  const bouncedTokensAmount = 5000000n * ONE_TOKEN;
   const bouncedMsg = new InternalMessage({
     to: mockCurveWallet,
     from: mockCurveWallet,
@@ -775,7 +908,8 @@ async function runTests() {
   // ===========================================================================
   console.log('\n--- 4. AnlgramMigrationRouter TVM Verification (STON.fi v2.1 TL-B & Abort) ---');
 
-  const ptonMinterAddr    = new Address(0, Buffer.alloc(32, 10));
+  // STON.fi v2.1 Testnet pTON Minter (verified on-chain: 0:024b7d03368510ecd7c0a4fbf387b78199267d2f8ca027e964356b5b6bc4d04f)
+  const ptonMinterAddr    = Address.parseFriendly('kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px').address;
   const routerTokenWallet = new Address(0, Buffer.alloc(32, 11));
   const lpTokenWallet     = new Address(0, Buffer.alloc(32, 12));
   const ptonWallet        = new Address(0, Buffer.alloc(32, 13));

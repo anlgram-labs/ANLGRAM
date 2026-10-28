@@ -4,8 +4,9 @@
  */
 'use strict';
 
-const path = require('path');
-const fs   = require('fs');
+const path   = require('path');
+const fs     = require('fs');
+const crypto = require('crypto');
 
 async function compileMigrationRouter() {
   const { compileFunc } = require('@ton-community/func-js');
@@ -37,9 +38,12 @@ async function compileMigrationRouter() {
     process.exit(1);
   }
 
-  const codeCell = Cell.fromBoc(Buffer.from(result.codeBoc, 'base64'))[0];
-  const codeHex  = codeCell.toBoc().toString('hex');
-  const codeHash = codeCell.hash().toString('hex');
+  const codeCell       = Cell.fromBoc(Buffer.from(result.codeBoc, 'base64'))[0];
+  const bocBuffer      = codeCell.toBoc();
+  const codeHex        = bocBuffer.toString('hex');
+  const codeCellHash   = codeCell.hash().toString('hex');
+  const bocFileSha256  = crypto.createHash('sha256').update(bocBuffer).digest('hex');
+  const bocSizeBytes   = bocBuffer.length;
 
   const outputPath = path.join(__dirname, 'build', 'anlgram-migration-router.compiled.json');
   fs.mkdirSync(path.join(__dirname, 'build'), { recursive: true });
@@ -47,13 +51,17 @@ async function compileMigrationRouter() {
     contract: 'anlgram-migration-router.fc',
     codeBocBase64: result.codeBoc,
     codeHex: codeHex,
-    codeHash: codeHash,
+    codeCellHash: codeCellHash,
+    codeHash: codeCellHash,
+    bocFileSha256: bocFileSha256,
+    bocSizeBytes: bocSizeBytes,
     compiledAt: new Date().toISOString(),
   }, null, 2), 'utf-8');
 
   console.log('SUCCESS! Compiled to:', outputPath);
-  console.log('Code cell hash (SHA-256):', codeHash);
-  console.log('Code BOC (base64) length:', result.codeBoc.length);
+  console.log('TON code cell representation hash:', codeCellHash);
+  console.log('Serialized BOC file SHA-256 digest:', bocFileSha256);
+  console.log('Serialized BOC size (bytes):', bocSizeBytes);
 }
 
 compileMigrationRouter().catch(err => {
