@@ -62,6 +62,7 @@ const int op::query_admin_status            = 0x51c9d381;
 const int op::check_renounce                = 0x51c9d382;
 const int op::claim_refund                  = 0x414e4c34;
 const int op::initiate_migration            = 0x414e4c35;
+const int op::deposit_ton_liquidity         = 0x414e4c36;
 const int op::lp_locked_confirmation        = 0x414e4c33;
 const int op::sweep_fees                    = 0x414e4c05;
 
@@ -103,6 +104,9 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
     slice sb2 = sub_addrs2.begin_parse();
     slice lp_locker_address = sb2~load_msg_addr();
     slice migration_router_address = sb2~load_msg_addr();
+    sb2.end_parse();
+    sb1.end_parse();
+    sa.end_parse();
 
     cell ref_reserves = ds~load_ref();
     slice sr = ref_reserves.begin_parse();
@@ -114,11 +118,20 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
     int virtual_token_reserve = sr~load_coins();
     int graduation_threshold_ton = sr~load_coins();
     int dex_tokens_escrow = sr~load_coins();
+    sr.end_parse();
 
     cell ref_dicts = ds~load_ref();
     slice sd = ref_dicts.begin_parse();
     cell pending_refunds_dict = sd~load_dict();
     cell jetton_wallet_code = sd~load_ref();
+    sd.end_parse();
+    ds.end_parse();
+
+    throw_unless(408, admin_address.preload_uint(2) == 2);
+    throw_unless(408, creator_address.preload_uint(2) == 2);
+    throw_unless(408, treasury_address.preload_uint(2) == 2);
+    throw_unless(408, jetton_master_address.preload_uint(2) == 2);
+    throw_unless(408, dex_router_address.preload_uint(2) == 2);
 
     return (
         state, admin_address, creator_address, treasury_address,
@@ -242,11 +255,21 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
                     int bounced_tokens = body_slice~load_coins();
                     if (body_slice.slice_bits() >= 2) {
                         slice recipient = body_slice~load_msg_addr();
-                        int recipient_hash = slice_hash(recipient);
-                        (slice old_val, int found) = pending_refunds_dict.udict_get?(256, recipient_hash);
-                        int existing = found ? old_val~load_coins() : 0;
-                        pending_refunds_dict~udict_set_builder(256, recipient_hash, begin_cell().store_coins(existing + bounced_tokens));
-                        pending_refunds_tokens += bounced_tokens;
+                        if ((migration_router_address.preload_uint(2) == 2) & equal_slices(recipient, migration_router_address) & ((state == STATE_MIGRATION_IN_PROGRESS) | (state == STATE_MIGRATION_FAILED))) {
+                            ;; Bounced 200M DEX migration token transfer: restore dex_tokens_escrow
+                            dex_tokens_escrow += bounced_tokens;
+                            if ((real_ton_reserve > 0) & (dex_tokens_escrow > 0)) {
+                                state = STATE_GRADUATION_PENDING;
+                            } else {
+                                state = STATE_MIGRATION_FAILED;
+                            }
+                        } else {
+                            int recipient_hash = slice_hash(recipient);
+                            (slice old_val, int found) = pending_refunds_dict.udict_get?(256, recipient_hash);
+                            int existing = found ? old_val~load_coins() : 0;
+                            pending_refunds_dict~udict_set_builder(256, recipient_hash, begin_cell().store_coins(existing + bounced_tokens));
+                            pending_refunds_tokens += bounced_tokens;
+                        }
 
                         save_data(
                             state, admin_address, creator_address, treasury_address,
@@ -258,6 +281,36 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
                     }
                 }
             }
+            return ();
+        }
+
+        if ((migration_router_address.preload_uint(2) == 2) & equal_slices(sender_address, migration_router_address) & ((state == STATE_MIGRATION_IN_PROGRESS) | (state == STATE_MIGRATION_FAILED))) {
+            in_msg_body~skip_bits(32); ;; 0xffffffff prefix
+            slice body_slice = in_msg_body;
+            if ((body_slice.slice_bits() < 32) & (body_slice.slice_refs() > 0)) {
+                body_slice = body_slice~load_ref().begin_parse();
+            }
+            if (body_slice.slice_bits() >= 32 + 64) {
+                int orig_op = body_slice~load_uint(32);
+                if (orig_op == op::deposit_ton_liquidity) {
+                    body_slice~skip_bits(64); ;; skip query_id
+                    int bounced_ton = body_slice~load_coins();
+                    real_ton_reserve += bounced_ton;
+                    if ((real_ton_reserve >= graduation_threshold_ton) & (dex_tokens_escrow > 0)) {
+                        state = STATE_GRADUATION_PENDING;
+                    } else {
+                        state = STATE_MIGRATION_FAILED;
+                    }
+                    save_data(
+                        state, admin_address, creator_address, treasury_address,
+                        jetton_master_address, curve_jetton_wallet, dex_router_address, lp_locker_address, migration_router_address,
+                        real_ton_reserve, real_token_reserve, accrued_protocol_fees, pending_refunds_tokens,
+                        virtual_ton_reserve, virtual_token_reserve, graduation_threshold_ton, dex_tokens_escrow,
+                        pending_refunds_dict, jetton_wallet_code
+                    );
+                }
+            }
+            return ();
         }
         return ();
     }
@@ -290,15 +343,39 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
         slice new_locker = s_ref1~load_msg_addr();
         slice new_migration_router = s_ref1~load_msg_addr();
 
-        throw_if(408, new_master.preload_uint(2) == 0);
-        throw_if(408, new_locker.preload_uint(2) == 0);
-        throw_if(408, new_migration_router.preload_uint(2) == 0);
+        throw_unless(408, new_master.preload_uint(2) == 2);
+        throw_unless(408, new_router.preload_uint(2) == 2);
+        throw_unless(408, new_locker.preload_uint(2) == 2);
+        throw_unless(408, new_migration_router.preload_uint(2) == 2);
+        force_chain(new_master);
+        force_chain(new_router);
+        force_chain(new_locker);
+        force_chain(new_migration_router);
+
+        ;; Ensure initialized master and DEX router match the immutable genesis configuration
+        throw_unless(408, equal_slices(new_master, jetton_master_address));
+        throw_unless(408, equal_slices(new_router, dex_router_address));
+
+        ;; Reject any duplicate/colliding contract addresses
+        throw_if(408,
+            equal_slices(new_master, new_router) |
+            equal_slices(new_master, new_locker) |
+            equal_slices(new_master, new_migration_router) |
+            equal_slices(new_router, new_locker) |
+            equal_slices(new_router, new_migration_router) |
+            equal_slices(new_locker, new_migration_router) |
+            equal_slices(new_locker, my_address()) |
+            equal_slices(new_migration_router, my_address())
+        );
 
         cell new_wallet_code = in_msg_body~load_ref();
 
+        cell state_init = calculate_jetton_wallet_state_init(my_address(), new_master, new_wallet_code);
+        slice expected_curve_wallet = calculate_jetton_wallet_address(state_init);
         if (new_curve_wallet.preload_uint(2) == 0) {
-            cell state_init = calculate_jetton_wallet_state_init(my_address(), new_master, new_wallet_code);
-            new_curve_wallet = calculate_jetton_wallet_address(state_init);
+            new_curve_wallet = expected_curve_wallet;
+        } else {
+            throw_unless(408, equal_slices(new_curve_wallet, expected_curve_wallet));
         }
 
         state = STATE_INITIALIZING;
@@ -324,6 +401,7 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
 
         ;; SUB-FLOW A: Initial 1B Token Custody Receipt
         if (state == STATE_INITIALIZING) {
+            throw_if(408, migration_router_address.preload_uint(2) == 0);
             int total_expected = real_token_reserve + dex_tokens_escrow;
             throw_unless(ERROR_TOTAL_SUPPLY_MISMATCH, token_amount == total_expected);
 
@@ -344,6 +422,25 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
             send_raw_message(msg.end_cell(), 1);
 
             state = STATE_RENOUNCE_PENDING;
+            save_data(
+                state, admin_address, creator_address, treasury_address,
+                jetton_master_address, curve_jetton_wallet, dex_router_address, lp_locker_address, migration_router_address,
+                real_ton_reserve, real_token_reserve, accrued_protocol_fees, pending_refunds_tokens,
+                virtual_ton_reserve, virtual_token_reserve, graduation_threshold_ton, dex_tokens_escrow,
+                pending_refunds_dict, jetton_wallet_code
+            );
+            return ();
+        }
+
+        ;; SUB-FLOW A2: Migration Token Recovery / Refund from Migration Router
+        if (((state == STATE_MIGRATION_IN_PROGRESS) | (state == STATE_MIGRATION_FAILED)) & (migration_router_address.preload_uint(2) == 2) & equal_slices(from_address, migration_router_address)) {
+            throw_unless(ERROR_ZERO_INPUT, token_amount > 0);
+            dex_tokens_escrow += token_amount;
+            if ((real_ton_reserve > 0) & (dex_tokens_escrow > 0)) {
+                state = STATE_GRADUATION_PENDING;
+            } else {
+                state = STATE_MIGRATION_FAILED;
+            }
             save_data(
                 state, admin_address, creator_address, treasury_address,
                 jetton_master_address, curve_jetton_wallet, dex_router_address, lp_locker_address, migration_router_address,
@@ -623,11 +720,14 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
     if (op == op::initiate_migration) {
         throw_unless(ERROR_UNAUTHORIZED, equal_slices(sender_address, admin_address) | equal_slices(sender_address, creator_address));
         throw_unless(ERROR_INVALID_STATE, state == STATE_GRADUATION_PENDING);
+        throw_unless(ERROR_INVALID_STATE, (real_ton_reserve > 0) & (dex_tokens_escrow > 0));
         throw_unless(ERROR_INSUFFICIENT_GAS, msg_value >= 250000000); ;; 0.25 TON attached for migration gas
 
-        state = STATE_MIGRATION_IN_PROGRESS;
         int ton_to_migrate = real_ton_reserve;
         int tokens_to_migrate = dex_tokens_escrow;
+        state = STATE_MIGRATION_IN_PROGRESS;
+        real_ton_reserve = 0;
+        dex_tokens_escrow = 0;
 
         save_data(
             state, admin_address, creator_address, treasury_address,
@@ -646,10 +746,38 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
             .store_slice(migration_router_address)
             .store_coins(ton_to_migrate)
             .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-            .store_uint(0x414e4c36, 32) ;; op::deposit_ton_liquidity
+            .store_uint(op::deposit_ton_liquidity, 32) ;; 0x414e4c36
             .store_uint(query_id, 64)
             .store_coins(ton_to_migrate);
         send_raw_message(ton_msg.end_cell(), 1);
+        return ();
+    }
+
+    ;; ------------------------------------------------------------------------
+    ;; 7B. OP::DEPOSIT_TON_LIQUIDITY (Migration TON Recovery from Migration Router)
+    ;; ------------------------------------------------------------------------
+    if (op == op::deposit_ton_liquidity) {
+        throw_unless(ERROR_UNAUTHORIZED, (migration_router_address.preload_uint(2) == 2) & equal_slices(sender_address, migration_router_address));
+        throw_unless(ERROR_INVALID_STATE, (state == STATE_MIGRATION_IN_PROGRESS) | (state == STATE_MIGRATION_FAILED));
+
+        int returned_ton = in_msg_body~load_coins();
+        throw_unless(ERROR_ZERO_INPUT, returned_ton > 0);
+        throw_unless(ERROR_INSUFFICIENT_GAS, msg_value >= returned_ton);
+
+        real_ton_reserve += returned_ton;
+        if ((real_ton_reserve > 0) & (dex_tokens_escrow > 0)) {
+            state = STATE_GRADUATION_PENDING;
+        } else {
+            state = STATE_MIGRATION_FAILED;
+        }
+
+        save_data(
+            state, admin_address, creator_address, treasury_address,
+            jetton_master_address, curve_jetton_wallet, dex_router_address, lp_locker_address, migration_router_address,
+            real_ton_reserve, real_token_reserve, accrued_protocol_fees, pending_refunds_tokens,
+            virtual_ton_reserve, virtual_token_reserve, graduation_threshold_ton, dex_tokens_escrow,
+            pending_refunds_dict, jetton_wallet_code
+        );
         return ();
     }
 
@@ -806,3 +934,22 @@ int get_pending_refund(slice user_address) method_id {
     }
     return 0;
 }
+
+(int, int, int, slice, slice, slice) get_dex_escrow_state() method_id {
+    (
+        int state, _, _, _,
+        _, slice curve_jetton_wallet, _, slice lp_locker_address, slice migration_router_address,
+        int real_ton_reserve, _, _, _,
+        _, _, _, int dex_tokens_escrow,
+        _, _
+    ) = load_data();
+    return (
+        state,
+        real_ton_reserve,
+        dex_tokens_escrow,
+        curve_jetton_wallet,
+        lp_locker_address,
+        migration_router_address
+    );
+}
+

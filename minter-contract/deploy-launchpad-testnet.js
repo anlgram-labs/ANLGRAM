@@ -89,16 +89,24 @@ const RESOLVED_BOOTSTRAP_MECHANISMS = [
   {
     id: 'RESOLVED_CURVE_MIGRATION_ROUTER',
     nodes: ['bondingCurve', 'migrationRouter'],
-    message: 'Curve initial StateInit sets lp_locker and migration_router to addr_none. Post-deployment, authorized one-time op::init_launchpad (0x414e4c01) configures authentic addresses and transitions state from STATE_UNINITIALIZED to STATE_INITIALIZING.',
+    message: 'Curve initial StateInit sets lp_locker and migration_router to addr_none. Post-deployment, authorized one-time op::init_launchpad (0x414e4c01) configures authentic addresses, verifies deterministic curve_jetton_wallet derivation, and transitions state from STATE_UNINITIALIZED to STATE_INITIALIZING.',
   },
   {
     id: 'RESOLVED_MIGRATION_ROUTER_LP_LOCKER',
     nodes: ['migrationRouter', 'lpLocker'],
-    message: 'LP Locker initial StateInit sets router_address to addr_none and stores curve_address directly. Post-deployment, authorized one-time op::init_lp_locker (0x414e4c39) by admin configures authentic Migration Router address. Migration Router stores authentic lp_locker_address directly in StateInit.',
+    message: 'LP Locker initial StateInit sets router_address to addr_none and stores curve_address directly. Post-deployment, authorized one-time op::init_lp_locker (0x414e4c39) by admin configures authentic Migration Router address. Migration Router stores authentic lp_locker_address, explicit admin_address, and jetton_wallet_code directly in StateInit.',
   },
 ];
 
 const KNOWN_BOOTSTRAP_BLOCKERS = [];
+
+const EXTERNAL_DEX_BLOCKERS = [
+  {
+    id: 'STONFI_TESTNET_ROUTER_EXIT_CODE_9',
+    address: 'kQALh-JBBIKK7gr0o4AVf9JZnEsFndqO0qTCyT-D-yBsWk0v',
+    message: 'External STON.fi v2.1 Testnet CPI Router (kQALh-JBBIKK7gr0o4AVf9JZnEsFndqO0qTCyT-D-yBsWk0v) currently aborts on all inbound messages and get_router_data with TVM exit_code: 9 (Cell underflow in 2 VM steps since 2025-11-11). Live DEX liquidity provision and LP token minting cannot be verified on Testnet until a healthy STON.fi v2.1 Router endpoint is confirmed.',
+  },
+];
 
 function parseArgs(argv) {
   const allowed = new Set(['--verify-config', '--show-plan', '--dry-run', '--verify-dex-readonly', '--help']);
@@ -365,6 +373,317 @@ function tonToNano(tonString) {
   return BigInt(whole) * 1000000000n + BigInt((fraction + '000000000').slice(0, 9));
 }
 
+function deriveJettonWalletAddress(ownerAddress, jettonMasterAddress, jettonWalletCode, tonCore = require('@ton/core')) {
+  const { beginCell, Address } = tonCore;
+  const owner = typeof ownerAddress === 'string' ? Address.parse(ownerAddress) : ownerAddress;
+  const master = typeof jettonMasterAddress === 'string' ? Address.parse(jettonMasterAddress) : jettonMasterAddress;
+  const walletData = beginCell()
+    .storeCoins(0n)
+    .storeAddress(owner)
+    .storeAddress(master)
+    .storeRef(jettonWalletCode)
+    .endCell();
+  const stateInit = beginCell()
+    .storeUint(0, 2)
+    .storeMaybeRef(jettonWalletCode)
+    .storeMaybeRef(walletData)
+    .storeUint(0, 1)
+    .endCell();
+  return new Address(0, stateInit.hash());
+}
+
+function buildLaunchpadInitialStates(params, tonCore = require('@ton/core')) {
+  const { beginCell, Cell, Address } = tonCore;
+  const parseAddr = (a, allowNull = false) => {
+    if (a === null || a === undefined) {
+      if (allowNull) return null;
+      throw new Error('Required address is null or undefined.');
+    }
+    return typeof a === 'string' ? Address.parse(a) : a;
+  };
+
+  const adminAddress = parseAddr(params.adminAddress);
+  const creatorAddress = parseAddr(params.creatorAddress || params.adminAddress);
+  const treasuryAddress = parseAddr(params.treasuryAddress || params.adminAddress);
+  const minterAddress = parseAddr(params.minterAddress);
+  const curveAddress = parseAddr(params.curveAddress);
+  const lpLockerAddress = parseAddr(params.lpLockerAddress);
+  const migrationRouterAddress = parseAddr(params.migrationRouterAddress);
+  const dexRouterAddress = parseAddr(params.dexRouterAddress);
+  const ptonMinterAddress = parseAddr(params.ptonMinterAddress);
+  const poolAddress = parseAddr(params.poolAddress || params.dexRouterAddress);
+  const expectedLpWallet = parseAddr(params.expectedLpWallet, true);
+  const expectedPtonWallet = parseAddr(params.expectedPtonWallet, true);
+  const contentCell = params.contentCell || new Cell();
+  const jettonWalletCode = params.jettonWalletCode;
+  if (!jettonWalletCode) throw new Error('jettonWalletCode cell is required for deterministic TEP-74 wallet derivation.');
+
+  const launchpadMinterData = beginCell()
+    .storeCoins(0n)
+    .storeAddress(adminAddress)
+    .storeRef(contentCell)
+    .storeRef(jettonWalletCode)
+    .endCell();
+
+  const bondingCurveData = beginCell()
+    .storeUint(0, 8)     // STATE_UNINITIALIZED
+    .storeUint(100, 16)  // protocol_fee_bps = 100 (1%)
+    .storeRef(
+      beginCell()
+        .storeAddress(adminAddress)
+        .storeAddress(creatorAddress)
+        .storeAddress(treasuryAddress)
+        .storeRef(
+          beginCell()
+            .storeAddress(minterAddress)
+            .storeAddress(null) // curve_jetton_wallet derived/verified in op::init_launchpad
+            .storeAddress(dexRouterAddress)
+            .storeRef(
+              beginCell()
+                .storeAddress(null) // lp_locker_address bound in op::init_launchpad
+                .storeAddress(null) // migration_router_address bound in op::init_launchpad
+                .endCell()
+            )
+            .endCell()
+        )
+        .endCell()
+    )
+    .storeRef(
+      beginCell()
+        .storeCoins(0n)                           // real_ton_reserve
+        .storeCoins(800000000n * 1000000000n)     // real_token_reserve (800M)
+        .storeCoins(0n)                           // accrued_protocol_fees
+        .storeCoins(0n)                           // pending_refunds_tokens
+        .storeCoins(166666666666n)                // virtual_ton_reserve
+        .storeCoins(266666666665600000n)          // virtual_token_reserve
+        .storeCoins(500n * 1000000000n)           // graduation_threshold_ton (500 TON)
+        .storeCoins(200000000n * 1000000000n)     // dex_tokens_escrow (200M)
+        .endCell()
+    )
+    .storeRef(
+      beginCell()
+        .storeDict(null)
+        .storeRef(jettonWalletCode)
+        .endCell()
+    )
+    .endCell();
+
+  const lpLockerData = beginCell()
+    .storeUint(0, 1)                     // is_locked
+    .storeUint(0xFFFFFFFFFFFFFFFFn, 64)  // unlock_timestamp (permanent)
+    .storeCoins(0n)                      // lp_amount_locked
+    .storeUint(0, 1)                     // is_wallet_initialized
+    .storeUint(0, 1)                     // is_router_initialized
+    .storeAddress(poolAddress)
+    .storeAddress(curveAddress)
+    .storeRef(
+      beginCell()
+        .storeAddress(null)              // lp_wallet_address
+        .storeAddress(null)              // router_address bound via op::init_lp_locker
+        .endCell()
+    )
+    .storeRef(
+      beginCell()
+        .storeAddress(adminAddress)
+        .endCell()
+    )
+    .endCell();
+
+  const migrationRouterData = beginCell()
+    .storeUint(0, 1)                     // is_initialized
+    .storeAddress(curveAddress)
+    .storeAddress(lpLockerAddress)
+    .storeAddress(dexRouterAddress)
+    .storeRef(
+      beginCell()
+        .storeAddress(minterAddress)
+        .storeAddress(ptonMinterAddress)
+        .storeCoins(0n)                  // ton_liquidity
+        .storeCoins(0n)                  // tokens_liquidity
+        .storeAddress(adminAddress)      // mandatory admin_address (no fallback)
+        .endCell()
+    )
+    .storeRef(
+      beginCell()
+        .storeAddress(expectedLpWallet)
+        .storeAddress(expectedPtonWallet)
+        .storeCoins(0n)                  // pending_ton
+        .storeCoins(0n)                  // pending_tokens
+        .storeRef(jettonWalletCode)      // mandatory jetton_wallet_code
+        .endCell()
+    )
+    .endCell();
+
+  const curveJettonWallet = deriveJettonWalletAddress(curveAddress, minterAddress, jettonWalletCode, tonCore);
+  const migrationRouterJettonWallet = deriveJettonWalletAddress(migrationRouterAddress, minterAddress, jettonWalletCode, tonCore);
+  const dexRouterTokenWallet = deriveJettonWalletAddress(dexRouterAddress, minterAddress, jettonWalletCode, tonCore);
+
+  return {
+    launchpadMinterData,
+    bondingCurveData,
+    lpLockerData,
+    migrationRouterData,
+    derivedWallets: {
+      curveJettonWallet,
+      migrationRouterJettonWallet,
+      dexRouterTokenWallet,
+    },
+  };
+}
+
+function verifyLaunchpadStateInitLayout(states, tonCore = require('@ton/core')) {
+  const errors = [];
+  try {
+    // 1. Parse launchpadMinterData matching load_data()
+    const ms = states.launchpadMinterData.beginParse();
+    const totalSupply = ms.loadCoins();
+    const minterAdmin = ms.loadAddress();
+    const content = ms.loadRef();
+    const minterWalletCode = ms.loadRef();
+    ms.endParse();
+    if (totalSupply !== 0n) errors.push('launchpadMinter initial total_supply must be 0.');
+    if (!minterAdmin) errors.push('launchpadMinter admin_address is null.');
+    if (!content) errors.push('launchpadMinter content ref missing.');
+
+    // 2. Parse bondingCurveData matching load_data()
+    const cs = states.bondingCurveData.beginParse();
+    const state = cs.loadUint(8);
+    const feeBps = cs.loadUint(16);
+    const sa = cs.loadRef().beginParse();
+    const curveAdmin = sa.loadAddress();
+    const creator = sa.loadAddress();
+    const treasury = sa.loadAddress();
+    const sb1 = sa.loadRef().beginParse();
+    const curveMaster = sb1.loadAddress();
+    const curveWallet = sb1.loadMaybeAddress();
+    const curveDexRouter = sb1.loadAddress();
+    const sb2 = sb1.loadRef().beginParse();
+    const curveLocker = sb2.loadMaybeAddress();
+    const curveMigrator = sb2.loadMaybeAddress();
+    sb2.endParse();
+    sb1.endParse();
+    sa.endParse();
+    const sr = cs.loadRef().beginParse();
+    const realTon = sr.loadCoins();
+    const realTok = sr.loadCoins();
+    const fees = sr.loadCoins();
+    const pendingRef = sr.loadCoins();
+    const vTon = sr.loadCoins();
+    const vTok = sr.loadCoins();
+    const gradTon = sr.loadCoins();
+    const dexEscrow = sr.loadCoins();
+    sr.endParse();
+    const sd = cs.loadRef().beginParse();
+    sd.loadBit(); // empty dict bit = 0
+    const curveWalletCode = sd.loadRef();
+    sd.endParse();
+    cs.endParse();
+    if (state !== 0) errors.push('bondingCurve initial state must be STATE_UNINITIALIZED (0).');
+    if (feeBps !== 100) errors.push('bondingCurve protocol_fee_bps must be 100.');
+    if (!curveAdmin || !creator || !treasury || !curveMaster || !curveDexRouter) {
+      errors.push('bondingCurve required genesis addresses must be non-null.');
+    }
+    if (curveWallet !== null || curveLocker !== null || curveMigrator !== null) {
+      errors.push('bondingCurve deferred bootstrap addresses must start as addr_none.');
+    }
+    if (realTon !== 0n || fees !== 0n || pendingRef !== 0n || realTok <= 0n || vTon <= 0n || vTok <= 0n || gradTon <= 0n || dexEscrow <= 0n) {
+      errors.push('bondingCurve initial reserve parameters are invalid.');
+    }
+
+    // 3. Parse lpLockerData matching load_data()
+    const ls = states.lpLockerData.beginParse();
+    const isLocked = ls.loadUint(1);
+    const unlockTs = ls.loadUintBig(64);
+    const lpLocked = ls.loadCoins();
+    const isWalletInit = ls.loadUint(1);
+    const isRouterInit = ls.loadUint(1);
+    const poolAddr = ls.loadAddress();
+    const lockerCurveAddr = ls.loadAddress();
+    const ls2 = ls.loadRef().beginParse();
+    const lockerLpWallet = ls2.loadMaybeAddress();
+    const lockerRouter = ls2.loadMaybeAddress();
+    ls2.endParse();
+    const ls3 = ls.loadRef().beginParse();
+    const lockerAdmin = ls3.loadAddress();
+    ls3.endParse();
+    ls.endParse();
+    if (isLocked !== 0 || lpLocked !== 0n || isWalletInit !== 0 || isRouterInit !== 0) {
+      errors.push('lpLocker initial flags/amounts must be 0.');
+    }
+    if (unlockTs !== 0xFFFFFFFFFFFFFFFFn) errors.push('lpLocker unlock_timestamp must be 0xFFFFFFFFFFFFFFFF.');
+    if (!poolAddr || !lockerCurveAddr || !lockerAdmin) errors.push('lpLocker required addresses must be non-null.');
+    if (lockerLpWallet !== null || lockerRouter !== null) errors.push('lpLocker deferred addresses must start as addr_none.');
+
+    // 4. Parse migrationRouterData matching load_data()
+    const rs = states.migrationRouterData.beginParse();
+    const migInit = rs.loadUint(1);
+    const migCurve = rs.loadAddress();
+    const migLocker = rs.loadAddress();
+    const migDexRouter = rs.loadAddress();
+    const rs2 = rs.loadRef().beginParse();
+    const migMinter = rs2.loadAddress();
+    const migPtonMinter = rs2.loadAddress();
+    const migTon = rs2.loadCoins();
+    const migTok = rs2.loadCoins();
+    const migAdmin = rs2.loadAddress();
+    rs2.endParse();
+    const rs3 = rs.loadRef().beginParse();
+    rs3.loadMaybeAddress(); // expected_lp_wallet
+    rs3.loadMaybeAddress(); // expected_pton_wallet
+    const pendingTon = rs3.loadCoins();
+    const pendingTok = rs3.loadCoins();
+    const migWalletCode = rs3.loadRef();
+    rs3.endParse();
+    rs.endParse();
+
+    if (migInit !== 0 || migTon !== 0n || migTok !== 0n || pendingTon !== 0n || pendingTok !== 0n) {
+      errors.push('migrationRouter initial flags/balances must be 0.');
+    }
+    if (!migCurve || !migLocker || !migDexRouter || !migMinter || !migPtonMinter || !migAdmin) {
+      errors.push('migrationRouter required addresses (including admin_address) must be non-null.');
+    }
+    if (migCurve && migAdmin && migCurve.equals(migAdmin)) {
+      errors.push('migrationRouter admin_address must not fall back to curve_address.');
+    }
+
+    // 5. Cross-contract consistency checks
+    if (minterAdmin && curveAdmin && !minterAdmin.equals(curveAdmin)) {
+      errors.push('launchpadMinter and bondingCurve admin_address mismatch.');
+    }
+    if (curveAdmin && lockerAdmin && !curveAdmin.equals(lockerAdmin)) {
+      errors.push('bondingCurve and lpLocker admin_address mismatch.');
+    }
+    if (curveAdmin && migAdmin && !curveAdmin.equals(migAdmin)) {
+      errors.push('bondingCurve and migrationRouter admin_address mismatch.');
+    }
+    if (lockerCurveAddr && migCurve && !lockerCurveAddr.equals(migCurve)) {
+      errors.push('lpLocker and migrationRouter curve_address mismatch.');
+    }
+    if (curveMaster && migMinter && !curveMaster.equals(migMinter)) {
+      errors.push('bondingCurve and migrationRouter token_minter_address mismatch.');
+    }
+    if (curveDexRouter && migDexRouter && !curveDexRouter.equals(migDexRouter)) {
+      errors.push('bondingCurve and migrationRouter dex_router_address mismatch.');
+    }
+    const minterCodeHash = minterWalletCode.hash().toString('hex');
+    const curveCodeHash = curveWalletCode.hash().toString('hex');
+    const migCodeHash = migWalletCode.hash().toString('hex');
+    if (minterCodeHash !== curveCodeHash || curveCodeHash !== migCodeHash) {
+      errors.push('jetton_wallet_code hash mismatch across Minter, Curve, and Migration Router.');
+    }
+
+    if (states.derivedWallets) {
+      const { migrationRouterJettonWallet, dexRouterTokenWallet } = states.derivedWallets;
+      if (migrationRouterJettonWallet.equals(dexRouterTokenWallet)) {
+        errors.push('Derived migrationRouterJettonWallet must not equal dexRouterTokenWallet.');
+      }
+    }
+  } catch (e) {
+    errors.push(`StateInit deserialization failed: ${e.message}`);
+  }
+  return { ok: errors.length === 0, errors };
+}
+
 async function verifyDexAccountsReadOnly(env = process.env, fetchImpl = globalThis.fetch) {
   const config = validateNetworkConfig(env);
   if (!config.ok) return { ok: false, checks: [], errors: config.errors };
@@ -513,12 +832,18 @@ async function main(argv = process.argv.slice(2), env = process.env) {
       console.log('  Step 2: Deployer calls op::init_launchpad (0x414e4c01) on Bonding Curve with Minter, Locker & Router addresses.');
       console.log('  Step 3: Deployer mints 1,000,000,000 tokens from Minter to Curve, triggering automatic admin renounce to addr_none.');
       console.log('  Step 4: Curve receives admin_changed_notification and transitions to STATE_ACTIVE (trading enabled).');
+      console.log('  Step 5 (At Graduation): Authorized caller invokes op::initiate_migration (0x414e4c35) on Curve (>= 0.25 TON gas), delivering 500 TON and 200M Jettons to Migration Router.');
+      console.log('  Step 6 (DEX Provision): Authorized caller invokes op::execute_dex_provision (0x414e4c37) on Migration Router (>= 0.40 TON gas), sending TEP-74 op::transfer to Migration Router Jetton Wallet and pTON ton_transfer to pTON Wallet.');
       console.log('Funding estimate: Minimum ~2.5 TON testnet recommended for initial contract state storage rent and bootstrap messages.');
     } else {
       for (const c of CONTRACTS) console.log(`- ${c.label}: ${c.source} -> ${c.artifact}`);
       console.log('Predicted addresses: NOT CALCULATED — initial StateInit dependency cycles are unresolved.');
       console.log('Deployment order: BLOCKED — do not deploy contracts until immutable-address cycles are removed or an audited bootstrap sequence is implemented.');
       console.log('Funding estimate: NOT CERTIFIED — deployment/state-init dependencies and actual message costs are not resolved.');
+    }
+    if (EXTERNAL_DEX_BLOCKERS.length) {
+      console.log('\n[External Testnet DEX Blockers]');
+      for (const b of EXTERNAL_DEX_BLOCKERS) console.log(`- BLOCKER ${b.id}: ${b.message}`);
     }
   }
 
@@ -540,6 +865,9 @@ async function main(argv = process.argv.slice(2), env = process.env) {
   if (artifacts && !artifacts.ok) hardBlockers.push('One or more compiled artifacts do not match the current contract sources or recorded hashes.');
   if (configResult && !configResult.ok) hardBlockers.push('Testnet network configuration is incomplete or unsafe.');
   if (dexReadResult && !dexReadResult.ok) hardBlockers.push('Read-only live DEX account identity/interface checks failed or remain unverified.');
+  for (const extBlocker of EXTERNAL_DEX_BLOCKERS) {
+    hardBlockers.push(`${extBlocker.id}: ${extBlocker.message}`);
+  }
 
   if (hardBlockers.length) {
     console.log('\nFINAL PREFLIGHT VERDICT: BLOCKED');
@@ -573,8 +901,12 @@ module.exports = {
   validateRequiredTestnetAddress,
   artifactChecksumsFromJson,
   verifyDexAccountsReadOnly,
+  deriveJettonWalletAddress,
+  buildLaunchpadInitialStates,
+  verifyLaunchpadStateInitLayout,
   CONTRACTS,
   DEPENDENCY_GRAPH,
   KNOWN_BOOTSTRAP_BLOCKERS,
+  EXTERNAL_DEX_BLOCKERS,
   main,
 };

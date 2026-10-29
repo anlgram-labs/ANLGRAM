@@ -62,10 +62,17 @@ const int op::lp_locked_confirmation = 0x414e4c33;
     slice s2 = c2.begin_parse();
     slice lp_wallet_address = s2~load_msg_addr();
     slice router_address = s2~load_msg_addr();
+    s2.end_parse();
 
     cell c3 = ds~load_ref();
     slice s3 = c3.begin_parse();
     slice admin_address = s3~load_msg_addr();
+    s3.end_parse();
+    ds.end_parse();
+
+    throw_unless(ERROR_INVALID_ADDRESS, pool_address.preload_uint(2) == 2);
+    throw_unless(ERROR_INVALID_ADDRESS, curve_address.preload_uint(2) == 2);
+    throw_unless(ERROR_INVALID_ADDRESS, admin_address.preload_uint(2) == 2);
 
     return (
         is_locked, unlock_timestamp, lp_amount_locked, is_wallet_initialized, is_router_initialized,
@@ -125,7 +132,14 @@ const int op::lp_locked_confirmation = 0x414e4c33;
         throw_if(ERROR_ALREADY_INITIALIZED, is_router_initialized == 1);
 
         slice new_router = in_msg_body~load_msg_addr();
-        throw_if(ERROR_INVALID_ADDRESS, new_router.preload_uint(2) == 0);
+        throw_unless(ERROR_INVALID_ADDRESS, new_router.preload_uint(2) == 2);
+        force_chain(new_router);
+        throw_if(ERROR_INVALID_ADDRESS,
+            equal_slices(new_router, curve_address) |
+            equal_slices(new_router, pool_address) |
+            equal_slices(new_router, admin_address) |
+            equal_slices(new_router, my_address())
+        );
         router_address = new_router;
         is_router_initialized = 1;
 
@@ -142,7 +156,18 @@ const int op::lp_locked_confirmation = 0x414e4c33;
         throw_if(ERROR_ALREADY_INITIALIZED, is_wallet_initialized == 1);
 
         slice new_lp_wallet = in_msg_body~load_msg_addr();
-        throw_if(ERROR_INVALID_ADDRESS, new_lp_wallet.preload_uint(2) == 0);
+        throw_unless(ERROR_INVALID_ADDRESS, new_lp_wallet.preload_uint(2) == 2);
+        force_chain(new_lp_wallet);
+        throw_if(ERROR_INVALID_ADDRESS,
+            equal_slices(new_lp_wallet, pool_address) |
+            equal_slices(new_lp_wallet, curve_address) |
+            equal_slices(new_lp_wallet, router_address) |
+            equal_slices(new_lp_wallet, admin_address) |
+            equal_slices(new_lp_wallet, my_address())
+        );
+        if (lp_wallet_address.preload_uint(2) != 0) {
+            throw_unless(ERROR_INVALID_ADDRESS, equal_slices(new_lp_wallet, lp_wallet_address));
+        }
         lp_wallet_address = new_lp_wallet;
         is_wallet_initialized = 1;
 
@@ -154,14 +179,22 @@ const int op::lp_locked_confirmation = 0x414e4c33;
     ;; 2. OP::TRANSFER_NOTIFICATION (Inbound Official LP Tokens)
     ;; ------------------------------------------------------------------------
     if (op == op::transfer_notification()) {
-        ;; Anti-Front-Running Gate 1: Must be initialized
-        throw_unless(ERROR_NOT_INITIALIZED, is_wallet_initialized == 1);
+        ;; Anti-Front-Running Gate 1: Both router and LP wallet must be initialized
+        throw_unless(ERROR_NOT_INITIALIZED, (is_wallet_initialized == 1) & (is_router_initialized == 1));
 
         ;; Anti-Front-Running Gate 2: Sender MUST be the authentic configured LP Wallet
         throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, lp_wallet_address));
 
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
+
+        ;; Anti-Front-Running Gate 3: Positive amount & authorized origin (DEX Pool / Router / Minter)
+        throw_unless(ERROR_NOT_INITIALIZED, jetton_amount > 0);
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,
+            (from_address.preload_uint(2) == 0) |
+            equal_slices(from_address, pool_address) |
+            equal_slices(from_address, router_address)
+        );
 
         lp_amount_locked += jetton_amount;
         is_locked = 1;

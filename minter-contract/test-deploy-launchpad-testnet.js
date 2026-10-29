@@ -11,6 +11,10 @@ const {
   tonToNano,
   parseTonAddressForTestnet,
   verifyDexAccountsReadOnly,
+  deriveJettonWalletAddress,
+  buildLaunchpadInitialStates,
+  verifyLaunchpadStateInitLayout,
+  EXTERNAL_DEX_BLOCKERS,
 } = require('./deploy-launchpad-testnet');
 
 const goodEnv = {
@@ -108,4 +112,101 @@ test('read-only live checker uses GET only and labels its evidence as partial', 
   assert.equal(result.ok, true);
   assert.ok(result.checks.every(c => c.result === 'PARTIAL_PASS'));
   assert.match(result.checks[0].caveat, /not proven by this request alone/);
+});
+
+test('StateInit builder constructs conformant initial data and round-trip validator succeeds', () => {
+  const tonCore = require('@ton/core');
+  const { Address, Cell, beginCell } = tonCore;
+  const mockWalletCode = beginCell().storeUint(0x1234, 16).endCell();
+
+  const deployer = Address.parseFriendly(goodEnv.ANLGRAM_TESTNET_DEPLOYER_ADDRESS).address;
+  const dexRouter = Address.parseFriendly(goodEnv.STONFI_TESTNET_ROUTER).address;
+  const ptonMinter = Address.parseFriendly(goodEnv.STONFI_TESTNET_PTON_MASTER).address;
+  const minter = new Address(0, Buffer.alloc(32, 1));
+  const curve = new Address(0, Buffer.alloc(32, 2));
+  const locker = new Address(0, Buffer.alloc(32, 3));
+  const migrator = new Address(0, Buffer.alloc(32, 4));
+
+  const states = buildLaunchpadInitialStates({
+    adminAddress: deployer,
+    creatorAddress: deployer,
+    treasuryAddress: deployer,
+    minterAddress: minter,
+    curveAddress: curve,
+    lpLockerAddress: locker,
+    migrationRouterAddress: migrator,
+    dexRouterAddress: dexRouter,
+    ptonMinterAddress: ptonMinter,
+    jettonWalletCode: mockWalletCode,
+  }, tonCore);
+
+  const validation = verifyLaunchpadStateInitLayout(states, tonCore);
+  assert.equal(validation.ok, true, `Validation errors: ${validation.errors.join('; ')}`);
+  assert.equal(validation.errors.length, 0);
+
+  // Derived wallets verification
+  const myWallet = deriveJettonWalletAddress(migrator, minter, mockWalletCode, tonCore);
+  const dexWallet = deriveJettonWalletAddress(dexRouter, minter, mockWalletCode, tonCore);
+  assert.equal(states.derivedWallets.migrationRouterJettonWallet.equals(myWallet), true);
+  assert.equal(states.derivedWallets.dexRouterTokenWallet.equals(dexWallet), true);
+  assert.equal(myWallet.equals(dexWallet), false, 'Migration router wallet must not equal DEX router wallet');
+});
+
+test('StateInit validator strictly rejects missing admin_address or fallback to curve_address in migrationRouter', () => {
+  const tonCore = require('@ton/core');
+  const { Address, Cell, beginCell } = tonCore;
+  const mockWalletCode = beginCell().storeUint(0x1234, 16).endCell();
+
+  const deployer = Address.parseFriendly(goodEnv.ANLGRAM_TESTNET_DEPLOYER_ADDRESS).address;
+  const dexRouter = Address.parseFriendly(goodEnv.STONFI_TESTNET_ROUTER).address;
+  const ptonMinter = Address.parseFriendly(goodEnv.STONFI_TESTNET_PTON_MASTER).address;
+  const minter = new Address(0, Buffer.alloc(32, 1));
+  const curve = new Address(0, Buffer.alloc(32, 2));
+  const locker = new Address(0, Buffer.alloc(32, 3));
+  const migrator = new Address(0, Buffer.alloc(32, 4));
+
+  // Case 1: migrationRouter admin falls back to curve_address
+  const fallbackStates = buildLaunchpadInitialStates({
+    adminAddress: deployer,
+    minterAddress: minter,
+    curveAddress: curve,
+    lpLockerAddress: locker,
+    migrationRouterAddress: migrator,
+    dexRouterAddress: dexRouter,
+    ptonMinterAddress: ptonMinter,
+    jettonWalletCode: mockWalletCode,
+  }, tonCore);
+
+  // Replace migrationRouterData with one where admin_address == curve_address
+  fallbackStates.migrationRouterData = beginCell()
+    .storeUint(0, 1)
+    .storeAddress(curve)
+    .storeAddress(locker)
+    .storeAddress(dexRouter)
+    .storeRef(
+      beginCell()
+        .storeAddress(minter)
+        .storeAddress(ptonMinter)
+        .storeCoins(0n)
+        .storeCoins(0n)
+        .storeAddress(curve) // Fallback to curve_address!
+        .endCell()
+    )
+    .storeRef(
+      beginCell()
+        .storeAddress(null)
+        .storeAddress(null)
+        .storeCoins(0n)
+        .storeCoins(0n)
+        .storeRef(mockWalletCode)
+        .endCell()
+    )
+    .endCell();
+
+  const fallbackCheck = verifyLaunchpadStateInitLayout(fallbackStates, tonCore);
+  assert.equal(fallbackCheck.ok, false);
+  assert.ok(fallbackCheck.errors.some(e => e.includes('admin_address must not fall back to curve_address') || e.includes('admin_address mismatch')));
+
+  // Case 2: external DEX blockers records STONFI_TESTNET_ROUTER_EXIT_CODE_9
+  assert.ok(EXTERNAL_DEX_BLOCKERS.some(b => b.id === 'STONFI_TESTNET_ROUTER_EXIT_CODE_9'));
 });
