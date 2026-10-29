@@ -317,7 +317,26 @@
     return null;
   };
 
-  window.isWalletReadyForTransaction = function() {
+    window.validateLaunchpadNetwork = function() {
+    const chainId = window.getConnectedWalletChainId ? window.getConnectedWalletChainId() : null;
+    if (!chainId) {
+      return { valid: false, error: 'No wallet connected. Please connect a TON wallet on Testnet.' };
+    }
+    if (chainId === '-239') {
+      return {
+        valid: false,
+        chainId: '-239',
+        network: 'mainnet',
+        error: 'Mainnet connection detected. MemeLabs launchpad operations in this phase are strictly restricted to TON Testnet (Chain -3). Please switch your wallet network to Testnet.'
+      };
+    }
+    if (chainId === '-3') {
+      return { valid: true, chainId: '-3', network: 'testnet' };
+    }
+    return { valid: false, error: 'Unrecognized network. TON Testnet (Chain -3) is required.' };
+  };
+
+window.isWalletReadyForTransaction = function() {
     const isTonConnect = localStorage.getItem('anlgram_wallet_is_tonconnect') === 'true';
     const hasAddr = Boolean(localStorage.getItem('anlgram_wallet_addr'));
     const hasUI = Boolean(window.tonConnectUI && window.tonConnectUI.wallet);
