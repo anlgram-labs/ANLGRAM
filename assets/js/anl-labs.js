@@ -209,39 +209,58 @@
     const existingLiquidity = document.getElementById('tab-liquidity');
     const existingAnalytics = document.getElementById('tab-analytics');
 
-    if (existingExplorer) existingExplorer.style.display = 'none';
-    if (existingLaunchpad) existingLaunchpad.style.display = 'none';
-    if (existingWallet) existingWallet.style.display = 'none';
-    if (existingLiquidity) existingLiquidity.style.display = 'none';
-    if (existingAnalytics) existingAnalytics.style.display = 'none';
-    if (flowSection) flowSection.style.display = 'block';
+    if (existingExplorer) { existingExplorer.style.display = 'none'; existingExplorer.classList.remove('active'); }
+    if (existingLaunchpad) { existingLaunchpad.style.display = 'none'; existingLaunchpad.classList.remove('active'); }
+    if (existingWallet) { existingWallet.style.display = 'none'; existingWallet.classList.remove('active'); }
+    if (existingLiquidity) { existingLiquidity.style.display = 'none'; existingLiquidity.classList.remove('active'); }
+    if (existingAnalytics) { existingAnalytics.style.display = 'none'; existingAnalytics.classList.remove('active'); }
 
     switch (sectionId) {
       case 'labs':
+        if (flowSection) flowSection.style.display = 'block';
         window.labsGoToStep(1);
         break;
       case 'launchpad':
-        window.labsGoToStep(1);
+        if (flowSection) flowSection.style.display = 'none';
+        if (existingLaunchpad) {
+          existingLaunchpad.style.display = 'block';
+          existingLaunchpad.classList.add('active');
+          if (typeof window.updateCurveQuotes === 'function') {
+            window.updateCurveQuotes();
+          }
+        }
         break;
       case 'token-manager':
+        if (flowSection) flowSection.style.display = 'block';
         window.labsGoToStep(5);
         break;
       case 'distribution':
+        if (flowSection) flowSection.style.display = 'block';
         window.labsGoToStep(3);
         break;
       case 'vesting':
+        if (flowSection) flowSection.style.display = 'block';
         window.labsGoToStep(4);
         break;
       case 'liquidity':
-        window.labsGoToStep(5);
+        if (flowSection) flowSection.style.display = 'none';
+        if (existingLiquidity) {
+          existingLiquidity.style.display = 'block';
+          existingLiquidity.classList.add('active');
+        }
         break;
       case 'analytics':
-        window.labsGoToStep(6);
+        if (flowSection) flowSection.style.display = 'none';
+        if (existingAnalytics) {
+          existingAnalytics.style.display = 'block';
+          existingAnalytics.classList.add('active');
+        }
         break;
       case 'projects':
         window.labsOpenModal('my-projects-modal');
         break;
       default:
+        if (flowSection) flowSection.style.display = 'block';
         window.labsGoToStep(1);
         break;
     }
@@ -2763,8 +2782,13 @@
       });
     }
 
-    // Initialize Step 1
-    window.labsGoToStep(1);
+    // Initialize Step or Tab from URL hash
+    const initialHash = (window.location.hash || '').replace('#', '').toLowerCase();
+    if (['launchpad', 'liquidity', 'analytics', 'token-manager', 'distribution', 'vesting', 'projects'].includes(initialHash)) {
+      window.labsSwitchSection(initialHash);
+    } else {
+      window.labsGoToStep(1);
+    }
   });
 
 })();

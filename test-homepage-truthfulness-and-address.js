@@ -194,7 +194,11 @@ it('calculateSwap() computes reference quote for 100 TON', () => {
 console.log('\nSECTION 5: Ecosystem Navigation & Working Functionality Preservation');
 console.log('----------------------------------------------------------------');
 
-it('Navigation links to all DApps are intact', () => {
+it('Navigation links to all DApps are intact including MemeLabs', () => {
+  assert.strictEqual(html.includes('href="memecoin-platform.html"'), true, 'memecoin-platform.html missing from index.html');
+  assert.strictEqual(html.includes('🚀 MemeLabs'), true, '🚀 MemeLabs missing from navbar');
+  assert.strictEqual(html.includes('🚀 Launch on MemeLabs'), true, '🚀 Launch on MemeLabs missing from hero');
+  assert.strictEqual(html.includes('MemeLabs &amp; Launchpad'), true, 'MemeLabs card missing from ecosystem grid');
   assert.strictEqual(html.includes('href="explorer.html"'), true);
   assert.strictEqual(html.includes('href="visualizer.html"'), true);
   assert.strictEqual(html.includes('href="staking.html"'), true);

@@ -14,10 +14,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/design-system.css?v=2026.3"/>
-  <link rel="stylesheet" href="assets/css/layout.css?v=2026.50"/>
-  <link rel="stylesheet" href="assets/css/tma-mobile.css?v=2026.50"/>
-  <link rel="stylesheet" href="assets/css/animations.css"/>
+  <link rel="stylesheet" href="assets/css/design-system.css?v=2026.51"/>
+  <link rel="stylesheet" href="assets/css/layout.css?v=2026.51"/>
+  <link rel="stylesheet" href="assets/css/tma-mobile.css?v=2026.51"/>
+  <link rel="stylesheet" href="assets/css/animations.css?v=2026.51"/>
   <!-- Telegram Mini App (TMA) Native SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="assets/js/telegram-mini-app.js"></script>
@@ -389,6 +389,7 @@
   </a>
 
   <div class="nav-links">
+    <a href="memecoin-platform.html" class="nav-link" style="color:var(--neon-cyan);font-weight:700;">🚀 MemeLabs</a>
     <a href="explorer.html" class="nav-link" style="color:var(--neon-cyan);font-weight:700;">🔍 Explorer</a>
     <a href="visualizer.html" class="nav-link">🌐 Flow Visualizer</a>
     <a href="staking.html" class="nav-link" style="color:var(--neon-cyan);font-weight:700;">⚡ Staking</a>
@@ -429,6 +430,9 @@
     </p>
 
     <div class="hero-actions">
+      <a href="memecoin-platform.html" class="btn-premium" style="background:linear-gradient(135deg, #00d2ff 0%, #0072ff 100%); text-decoration:none;">
+        🚀 Launch on MemeLabs
+      </a>
       <button class="btn-premium connect-wallet-btn">
         ⚡ Connect Wallet
       </button>
@@ -484,6 +488,23 @@
   </div>
 
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
+    <!-- MemeLabs & Launchpad -->
+    <a href="memecoin-platform.html" class="stat-card" style="text-align:left; text-decoration:none; display:flex; flex-direction:column; justify-content:space-between; border:1px solid rgba(0,210,255,0.45); background:linear-gradient(180deg, rgba(10,22,40,0.85) 0%, rgba(3,10,24,0.98) 100%); box-shadow:0 0 25px rgba(0,210,255,0.08);">
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div style="width:40px; height:40px; border-radius:10px; background:rgba(0,210,255,0.12); border:1px solid rgba(0,210,255,0.35); display:flex; align-items:center; justify-content:center; color:#00d2ff; font-size:20px;">
+            🚀
+          </div>
+          <span style="font-size:11px; font-weight:700; color:#00d2ff; font-family:var(--font-mono); background:rgba(0,210,255,0.1); padding:3px 8px; border-radius:6px; border:1px solid rgba(0,210,255,0.25);">MEMELABS</span>
+        </div>
+        <h3 style="font-size:18px; font-weight:700; color:#fff; margin-bottom:8px;">MemeLabs &amp; Launchpad</h3>
+        <p style="font-size:13px; color:var(--text-secondary); line-height:1.5;">Supervised Jetton creation (TEP-74), Bonding Curve AMM quote simulator, automated DEX migration router, and token custody console.</p>
+      </div>
+      <div style="margin-top:20px; font-size:13px; font-weight:700; color:#00d2ff; display:flex; align-items:center; gap:6px;">
+        Launch Token on MemeLabs →
+      </div>
+    </a>
+
     <!-- Explorer -->
     <a href="explorer.html" class="stat-card" style="text-align:left; text-decoration:none; display:flex; flex-direction:column; justify-content:space-between; border:1px solid rgba(0,240,255,0.25); background:linear-gradient(180deg, rgba(10,13,20,0.8) 0%, rgba(3,7,18,0.95) 100%);">
       <div>
@@ -842,6 +863,7 @@
     <div class="footer-col">
       <div class="footer-title">Ecosystem</div>
       <div class="footer-links-vert">
+        <a href="memecoin-platform.html">MemeLabs (Launchpad)</a>
         <a href="#buy">How to Buy</a>
         <a href="#tokenomics">Tokenomics</a>
         <a href="#roadmap">Roadmap</a>
@@ -1038,11 +1060,11 @@ syncLivePrice();
 setInterval(syncLivePrice, 20000);
 </script>
 
-<script src="assets/js/platform.js?v=2026.35"></script>
+<script src="assets/js/platform.js?v=2026.51"></script>
 
 
 <script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
-<script src="assets/js/donation-config.js?v=2026.1"></script>
-<script src="assets/js/wallet-connect.js?v=2026.35"></script>
+<script src="assets/js/donation-config.js?v=2026.51"></script>
+<script src="assets/js/wallet-connect.js?v=2026.51"></script>
 </body>
 </html>
