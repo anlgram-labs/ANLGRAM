@@ -22,6 +22,18 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const readline = require('node:readline');
 
+const {
+  TONCONNECT_SPEC,
+  SUPERVISED_BUDGET,
+  buildDeploymentOperations,
+  validateTonConnectSession,
+  buildTonConnectTransactionPayload,
+  formatHumanApprovalCard,
+  verifyStepPreconditionsReadOnly,
+  evaluatePostApprovalResult,
+  sanitizeLogOutput,
+} = require('./supervised-execution-engine');
+
 const SCRIPT_DIR = __dirname;
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '..');
 const EXPECTED_GLOBAL_ID = '-3';
@@ -1027,5 +1039,14 @@ module.exports = {
   APPROVED_TESTNET_DEX,
   CONTRACT_SPECS,
   DEPENDENCY_DAG,
+  TONCONNECT_SPEC,
+  SUPERVISED_BUDGET,
+  buildDeploymentOperations,
+  validateTonConnectSession,
+  buildTonConnectTransactionPayload,
+  formatHumanApprovalCard,
+  verifyStepPreconditionsReadOnly,
+  evaluatePostApprovalResult,
+  sanitizeLogOutput,
   main,
 };
