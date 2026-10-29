@@ -19,7 +19,7 @@ const goodEnv = {
   TONCENTER_TESTNET_URL: 'https://testnet.toncenter.com/api/v2',
   TONAPI_TESTNET_URL: 'https://testnet.tonapi.io/v2',
   ANLGRAM_TESTNET_DEPLOYER_ADDRESS: 'kQBzQx6SZa94aoiJFfaHPV-cJ1EV-Y74djNEKwv1Z5GOn06-',
-  STONFI_TESTNET_ROUTER: 'kQALh-JBBIKK7gr0o4AVf9JZnEsFndqO0qTCyT-D-yBsWk0v',
+  STONFI_TESTNET_ROUTER: 'kQAFpeGFJQA9KqiCxXZ8J4l__vSYAxFSirSOvPHn6SSX4ztn',
   STONFI_TESTNET_PTON_MASTER: 'kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px',
   TESTNET_DEPLOYER_MNEMONIC: 'SHOULD_NOT_BE_READ_OR_PRINTED',
 };
@@ -41,8 +41,8 @@ test('mainnet and non-HTTPS endpoints are rejected', () => {
 });
 
 test('friendly testnet addresses validate checksum and testnet flag', () => {
-  assert.equal(parseTonAddressForTestnet('kQALh-JBBIKK7gr0o4AVf9JZnEsFndqO0qTCyT-D-yBsWk0v').valid, true);
-  assert.equal(parseTonAddressForTestnet('kQALh-JBBIKK7gr0o4AVf9JZnEsFndqO0qTCyT-D-yBsWk0v').testnetFlagPresent, true);
+  assert.equal(parseTonAddressForTestnet('kQAFpeGFJQA9KqiCxXZ8J4l__vSYAxFSirSOvPHn6SSX4ztn').valid, true);
+  assert.equal(parseTonAddressForTestnet('kQAFpeGFJQA9KqiCxXZ8J4l__vSYAxFSirSOvPHn6SSX4ztn').testnetFlagPresent, true);
   assert.equal(parseTonAddressForTestnet('kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px').valid, true);
   assert.equal(parseTonAddressForTestnet('kQAcOvNK00CGceGQCdQinqcPvGCT7BXP7amCYLTCnM8TQCn8').valid, false);
   assert.equal(parseTonAddressForTestnet('EQC47093oX5Xhb0xuk2lCr2RhS8rj-vul61u4W2UH5ORmG_O').testnetFlagPresent, false);

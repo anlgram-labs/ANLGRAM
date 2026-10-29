@@ -53,6 +53,7 @@ const int ERROR_NO_PENDING_REFUND       = 409;
 const int ERROR_TOTAL_SUPPLY_MISMATCH    = 410;
 const int ERROR_SUPPLY_MISMATCH_RENOUNCE = 411;
 const int ERROR_INVALID_RENOUNCE_QUERY   = 412;
+const int ERROR_ALREADY_INITIALIZED      = 413;
 
 ;; Opcodes
 const int op::init_launchpad                = 0x414e4c01;
@@ -350,6 +351,7 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
 
         ;; SUB-FLOW A: Initial 1B Token Custody Receipt
         if (state == STATE_INITIALIZING) {
+            throw_if(408, migration_router_address.preload_uint(2) == 0);
             int total_expected = real_token_reserve + dex_tokens_escrow;
             throw_unless(ERROR_TOTAL_SUPPLY_MISMATCH, token_amount == total_expected);
 
@@ -770,7 +772,14 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
     ;; ------------------------------------------------------------------------
     if (op == op::set_migration_router) {
         throw_unless(ERROR_UNAUTHORIZED, equal_slices(sender_address, creator_address) | equal_slices(sender_address, admin_address));
-        throw_unless(ERROR_INVALID_STATE, (state == STATE_GRADUATION_PENDING) | (state == STATE_MIGRATION_FAILED));
+        
+        ;; SECURITY INVARIANT 1: Strictly prohibited after initial setup.
+        ;; Rejected in STATE_ACTIVE, STATE_GRADUATION_PENDING, STATE_MIGRATION_IN_PROGRESS, STATE_MIGRATION_FAILED.
+        throw_unless(ERROR_INVALID_STATE, state == STATE_INITIALIZING);
+
+        ;; SECURITY INVARIANT 2: One-time configuration guard.
+        ;; If migration_router_address is already bound, reject successive replacement.
+        throw_if(ERROR_ALREADY_INITIALIZED, migration_router_address.preload_uint(2) != 0);
 
         slice new_migration_router = in_msg_body~load_msg_addr();
         throw_if(408, new_migration_router.preload_uint(2) == 0);

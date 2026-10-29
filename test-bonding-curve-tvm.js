@@ -1755,7 +1755,53 @@ async function runTests() {
   // Candidate B Router address (STON.fi v2.2 Constant Product Router)
   const candidateBRouterAddr = new Address(0, Buffer.from('05a5e18525003d2aa882c5767c27897ffef4980311528ab48ebcf1e7e92497e3', 'hex'));
 
-  // 6.2 Adversarial: Call op::set_migration_router from STATE_MIGRATION_IN_PROGRESS (invalid state)
+  // Helper: Construct complete curve c4 data cell tree
+  function buildCurveCell(state, migRouter) {
+    return beginCell()
+      .storeUint(state, 8)
+      .storeUint(100, 16)
+      .storeRef(
+        beginCell()
+          .storeAddress(adminAddr)
+          .storeAddress(creatorAddr)
+          .storeAddress(treasuryAddr)
+          .storeRef(
+            beginCell()
+              .storeAddress(masterAddr)
+              .storeAddress(mockCurveWallet)
+              .storeAddress(routerAddr)
+              .storeRef(
+                beginCell()
+                  .storeAddress(lockerAddr)
+                  .storeAddress(migRouter || null)
+                  .endCell()
+              )
+              .endCell()
+          )
+          .endCell()
+      )
+      .storeRef(
+        beginCell()
+          .storeCoins(state === 4 || state === 7 ? new BN((500n * ONE_TON).toString()) : 0)
+          .storeCoins(new BN(curveTokens.toString()))
+          .storeCoins(0)
+          .storeCoins(0)
+          .storeCoins(new BN(vTon.toString()))
+          .storeCoins(new BN(vTok.toString()))
+          .storeCoins(new BN(tGrad.toString()))
+          .storeCoins(new BN(dexEscrow.toString()))
+          .endCell()
+      )
+      .storeRef(
+        beginCell()
+          .storeDict(null)
+          .storeRef(mockWalletCode)
+          .endCell()
+      )
+      .endCell();
+  }
+
+  // 6.2 Adversarial: Call op::set_migration_router from STATE_MIGRATION_IN_PROGRESS (invalid state, exit code 407)
   const invalidStateSetRouterMsg = new InternalMessage({
     to: mockCurveWallet,
     from: adminAddr,
@@ -1764,7 +1810,7 @@ async function runTests() {
     body: new CommonMessageInfo({
       body: new CellMessage(
         beginCell()
-          .storeUint(0x414e4c37, 32) // op::set_migration_router
+          .storeUint(0x414e4c37, 32)
           .storeUint(20, 64)
           .storeAddress(candidateBRouterAddr)
           .endCell()
@@ -1795,10 +1841,10 @@ async function runTests() {
   const curveStateFailed = await curveContract.invokeGetMethod('get_curve_state', []);
   assert(curveStateFailed.result[0].toString() === '7', 'Curve in STATE_MIGRATION_FAILED (7)');
 
-  // 6.3 Adversarial: Unauthorized caller cannot set migration router
-  const unauthSetRouterMsg = new InternalMessage({
+  // 6.3 CRITICAL ANTI-RUG-PULL TEST: Calling op::set_migration_router in STATE_MIGRATION_FAILED is strictly rejected (exit code 407)
+  const failedSetRouterMsg = new InternalMessage({
     to: mockCurveWallet,
-    from: spamAttackerAddr,
+    from: adminAddr,
     value: new BN('50000000'),
     bounce: false,
     body: new CommonMessageInfo({
@@ -1811,10 +1857,55 @@ async function runTests() {
       )
     })
   });
-  const unauthSetRouterRes = await curveContract.sendInternalMessage(unauthSetRouterMsg);
-  assert(unauthSetRouterRes.type === 'failed' && unauthSetRouterRes.exit_code === 401, 'Unauthorized op::set_migration_router strictly rejected with exit code 401');
+  const failedSetRouterRes = await curveContract.sendInternalMessage(failedSetRouterMsg);
+  assert(failedSetRouterRes.type === 'failed' && failedSetRouterRes.exit_code === 407, 'op::set_migration_router in STATE_MIGRATION_FAILED strictly rejected with exit code 407 (ANTI-RUG-PULL)');
 
-  // 6.4 Adversarial: set_migration_router with null address
+  // 6.4 Authorized Retry in STATE_MIGRATION_FAILED dispatches graduation reserves ONLY to the authentic immutable router
+  const retryOrigRouterMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('300000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c35, 32)
+          .storeUint(22, 64)
+          .endCell()
+      )
+    })
+  });
+  const retryOrigRouterRes = await curveContract.sendInternalMessage(retryOrigRouterMsg);
+  assert(retryOrigRouterRes.type === 'success', 'op::initiate_migration safely re-dispatches reserves to authentic immutable migration router');
+  assert(retryOrigRouterRes.actionList && retryOrigRouterRes.actionList.length === 2, 'Emits 2 outbound messages: 200M tokens + 500 TON liquidity');
+  const curveStateMigrating = await curveContract.invokeGetMethod('get_curve_state', []);
+  assert(curveStateMigrating.result[0].toString() === '5', 'Curve safely back in STATE_MIGRATION_IN_PROGRESS (5) with funds intact');
+
+  // -------------------------------------------------------------------------
+  // Pre-Activation Bootstrap Tests: Fresh Curve in STATE_INITIALIZING with unbound router
+  // -------------------------------------------------------------------------
+  const curveInit = await SmartContract.fromCell(curveCodeCell, buildCurveCell(1, null));
+
+  // 6.5 Adversarial: Unauthorized caller in STATE_INITIALIZING rejected with exit code 401
+  const unauthInitMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: spamAttackerAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c37, 32)
+          .storeUint(23, 64)
+          .storeAddress(candidateBRouterAddr)
+          .endCell()
+      )
+    })
+  });
+  const unauthInitRes = await curveInit.sendInternalMessage(unauthInitMsg);
+  assert(unauthInitRes.type === 'failed' && unauthInitRes.exit_code === 401, 'Unauthorized op::set_migration_router in STATE_INITIALIZING strictly rejected with exit code 401');
+
+  // 6.6 Adversarial: set_migration_router in STATE_INITIALIZING with null address rejected with 408
   const nullSetRouterMsg = new InternalMessage({
     to: mockCurveWallet,
     from: adminAddr,
@@ -1824,16 +1915,16 @@ async function runTests() {
       body: new CellMessage(
         beginCell()
           .storeUint(0x414e4c37, 32)
-          .storeUint(22, 64)
-          .storeUint(0, 2) // addr_none
+          .storeUint(24, 64)
+          .storeUint(0, 2)
           .endCell()
       )
     })
   });
-  const nullSetRouterRes = await curveContract.sendInternalMessage(nullSetRouterMsg);
+  const nullSetRouterRes = await curveInit.sendInternalMessage(nullSetRouterMsg);
   assert(nullSetRouterRes.type === 'failed' && nullSetRouterRes.exit_code === 408, 'op::set_migration_router with null address rejected with exit code 408');
 
-  // 6.5 Adversarial: set_migration_router with colliding LP locker address
+  // 6.7 Adversarial: set_migration_router with colliding LP locker address rejected with 408
   const collideLockerMsg = new InternalMessage({
     to: mockCurveWallet,
     from: adminAddr,
@@ -1843,16 +1934,16 @@ async function runTests() {
       body: new CellMessage(
         beginCell()
           .storeUint(0x414e4c37, 32)
-          .storeUint(23, 64)
+          .storeUint(25, 64)
           .storeAddress(lockerAddr)
           .endCell()
       )
     })
   });
-  const collideLockerRes = await curveContract.sendInternalMessage(collideLockerMsg);
+  const collideLockerRes = await curveInit.sendInternalMessage(collideLockerMsg);
   assert(collideLockerRes.type === 'failed' && collideLockerRes.exit_code === 408, 'op::set_migration_router with colliding LP locker rejected with exit code 408');
 
-  // 6.6 Adversarial: set_migration_router with colliding Jetton master address
+  // 6.8 Adversarial: set_migration_router with colliding Jetton master address rejected with 408
   const collideMasterMsg = new InternalMessage({
     to: mockCurveWallet,
     from: adminAddr,
@@ -1862,17 +1953,17 @@ async function runTests() {
       body: new CellMessage(
         beginCell()
           .storeUint(0x414e4c37, 32)
-          .storeUint(24, 64)
+          .storeUint(26, 64)
           .storeAddress(masterAddr)
           .endCell()
       )
     })
   });
-  const collideMasterRes = await curveContract.sendInternalMessage(collideMasterMsg);
+  const collideMasterRes = await curveInit.sendInternalMessage(collideMasterMsg);
   assert(collideMasterRes.type === 'failed' && collideMasterRes.exit_code === 408, 'op::set_migration_router with colliding Jetton master rejected with exit code 408');
 
-  // 6.7 Authorized reconfiguration of migration router by admin from STATE_MIGRATION_FAILED
-  const authSetRouterMsg = new InternalMessage({
+  // 6.9 Authorized initial configuration of migration router in STATE_INITIALIZING
+  const authInitMsg = new InternalMessage({
     to: mockCurveWallet,
     from: adminAddr,
     value: new BN('50000000'),
@@ -1881,39 +1972,47 @@ async function runTests() {
       body: new CellMessage(
         beginCell()
           .storeUint(0x414e4c37, 32)
-          .storeUint(25, 64)
+          .storeUint(27, 64)
           .storeAddress(candidateBRouterAddr)
           .endCell()
       )
     })
   });
-  const authSetRouterRes = await curveContract.sendInternalMessage(authSetRouterMsg);
-  assert(authSetRouterRes.type === 'success', 'Authorized op::set_migration_router executes successfully');
+  const authInitRes = await curveInit.sendInternalMessage(authInitMsg);
+  assert(authInitRes.type === 'success', 'Authorized initial op::set_migration_router in STATE_INITIALIZING executes successfully');
 
-  // 6.8 Verify get_migration_router reflects new candidate router
-  const updatedMigRouterRes = await curveContract.invokeGetMethod('get_migration_router', []);
-  assert(updatedMigRouterRes.result && updatedMigRouterRes.result.length > 0, 'get_migration_router returns updated router address');
+  // 6.10 get_migration_router getter returns Candidate B router
+  const initGetterRes = await curveInit.invokeGetMethod('get_migration_router', []);
+  assert(initGetterRes.result && initGetterRes.result.length > 0, 'get_migration_router returns Candidate B router in STATE_INITIALIZING');
 
-  // 6.9 Authorized Retry dispatches graduation reserves to the NEW migration router
-  const retryNewRouterMsg = new InternalMessage({
+  // 6.11 Adversarial: Second configuration attempt in STATE_INITIALIZING strictly rejected with exit code 413 (One-Time Guard)
+  const duplicateInitMsg = new InternalMessage({
     to: mockCurveWallet,
     from: adminAddr,
-    value: new BN('300000000'),
+    value: new BN('50000000'),
     bounce: false,
     body: new CommonMessageInfo({
       body: new CellMessage(
         beginCell()
-          .storeUint(0x414e4c35, 32)
-          .storeUint(26, 64)
+          .storeUint(0x414e4c37, 32)
+          .storeUint(28, 64)
+          .storeAddress(routerAddr)
           .endCell()
       )
     })
   });
-  const retryNewRouterRes = await curveContract.sendInternalMessage(retryNewRouterMsg);
-  assert(retryNewRouterRes.type === 'success', 'op::initiate_migration re-dispatches reserves to new migration router');
-  assert(retryNewRouterRes.actionList && retryNewRouterRes.actionList.length === 2, 'Emits 2 outbound messages: 200M tokens + 500 TON liquidity');
-  const curveStateMigrating = await curveContract.invokeGetMethod('get_curve_state', []);
-  assert(curveStateMigrating.result[0].toString() === '5', 'Curve safely back in STATE_MIGRATION_IN_PROGRESS (5)');
+  const duplicateInitRes = await curveInit.sendInternalMessage(duplicateInitMsg);
+  assert(duplicateInitRes.type === 'failed' && duplicateInitRes.exit_code === 413, 'Second op::set_migration_router attempt strictly rejected with exit code 413 (ALREADY_INITIALIZED)');
+
+  // 6.12 Adversarial: op::set_migration_router in STATE_ACTIVE rejected with exit code 407 (Post-Active Immutability)
+  const curveActive = await SmartContract.fromCell(curveCodeCell, buildCurveCell(3, migrationRouter));
+  const activeSetRouterRes = await curveActive.sendInternalMessage(authInitMsg);
+  assert(activeSetRouterRes.type === 'failed' && activeSetRouterRes.exit_code === 407, 'op::set_migration_router in STATE_ACTIVE strictly rejected with exit code 407 (IMMUTABLE)');
+
+  // 6.13 Adversarial: op::set_migration_router in STATE_GRADUATION_PENDING rejected with exit code 407 (ANTI-RUG-PULL)
+  const curveGrad = await SmartContract.fromCell(curveCodeCell, buildCurveCell(4, migrationRouter));
+  const gradSetRouterRes = await curveGrad.sendInternalMessage(authInitMsg);
+  assert(gradSetRouterRes.type === 'failed' && gradSetRouterRes.exit_code === 407, 'op::set_migration_router in STATE_GRADUATION_PENDING strictly rejected with exit code 407 (ANTI-RUG-PULL)');
 
   console.log('\n═══════════════════════════════════════════════════════════════════════════');
   console.log(`📊 TVM SIMULATION TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
