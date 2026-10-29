@@ -447,28 +447,28 @@
 <!-- ── Live Stats ─────────────────────────────────────── -->
 <section class="section-container" style="padding-top:0; margin-top:-60px;">
   <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
-    <span class="badge badge-muted" style="font-size:10px; padding:3px 8px; border:1px solid rgba(255,255,255,0.1); color:#94a3b8;">ANLGRAM DEMO METRICS · TON MAINNET</span>
+    <span class="badge badge-muted" style="font-size:10px; padding:3px 8px; border:1px solid rgba(0,240,255,0.25); color:var(--neon-cyan);">ILLUSTRATIVE PREVIEW METRICS · PRE-LAUNCH SIMULATION</span>
   </div>
   <div class="stats-grid animate-fade-up">
     <div class="stat-card">
       <div class="stat-label">Projected Price</div>
       <div class="stat-val" id="stat-price">$0.042</div>
-      <div class="stat-change change-up" style="margin-top:8px; font-size:13px; color:var(--green);">▲ +14.2% (24h)</div>
+      <div class="stat-change change-up" style="margin-top:8px; font-size:13px; color:var(--green);">▲ Illustrative Target</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Market Cap</div>
       <div class="stat-val" id="stat-mcap">$42.5M</div>
-      <div class="stat-change change-up" style="margin-top:8px; font-size:13px; color:var(--green);">Fully Diluted</div>
+      <div class="stat-change change-up" style="margin-top:8px; font-size:13px; color:var(--green);">Fully Diluted Model</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Liquidity (DEX)</div>
       <div class="stat-val" id="stat-liquidity">$8.2M</div>
-      <div class="stat-change" style="margin-top:8px; font-size:13px; color:var(--neon-cyan);">Locked via DeDust</div>
+      <div class="stat-change" style="margin-top:8px; font-size:13px; color:var(--neon-cyan);">Target Reserve Model</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Total Holders</div>
       <div class="stat-val" id="stat-holders">24.5K</div>
-      <div class="stat-change change-up" style="margin-top:8px; font-size:13px; color:var(--green);">▲ +850 today</div>
+      <div class="stat-change change-up" style="margin-top:8px; font-size:13px; color:var(--green);">Target Projection</div>
     </div>
   </div>
 </section>
@@ -600,12 +600,12 @@
   <div class="security-card">
     <h2 style="font-size:32px; font-weight:800; margin-bottom:16px;">Security & Transparency</h2>
     <p style="color:var(--text-secondary); font-size:16px; margin-bottom:30px;">
-      Smart contract audited, liquidity permanently locked, and ownership renounced.
+      Security-first architecture: deterministic deployment DAGs, constant-product bonding curves, and permanent LP custody vaults.
     </p>
     
-    <div id="official-contract-label" style="font-size:14px; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Official Contract Address (ANLGRAM)</div>
+    <div id="official-contract-label" style="font-size:14px; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Contract Status</div>
     <div class="contract-box">
-      <div class="contract-addr" id="contract-address">EQC_anlgram_token_address_example_hash_9fB2</div>
+      <div class="contract-addr" id="contract-address">TBA — Contract Deployment Pending Supervised Launch</div>
       <button class="btn-glass" onclick="copyContract()" style="height:36px; padding:0 16px;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         Copy
@@ -613,9 +613,9 @@
     </div>
     
     <div class="audit-links">
-      <a href="https://tonviewer.com/UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd" target="_blank" rel="noopener" class="audit-badge">🔍 View on Tonviewer</a>
-      <a href="https://app.ston.fi/" target="_blank" rel="noopener" class="audit-badge">💧 STON.fi Pool</a>
-      <a href="https://dedust.io/" target="_blank" rel="noopener" class="audit-badge">🌪 DeDust Pool</a>
+      <a href="https://tonviewer.com/UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd" target="_blank" rel="noopener" class="audit-badge">🔍 View Treasury on Tonviewer</a>
+      <a href="https://app.ston.fi/" target="_blank" rel="noopener" class="audit-badge">💧 STON.fi Pool (Pending Launch)</a>
+      <a href="https://dedust.io/" target="_blank" rel="noopener" class="audit-badge">🌪 DeDust Pool (Pending Launch)</a>
     </div>
   </div>
 </section>
@@ -868,9 +868,9 @@ function copyContract() {
   const previewAddr = 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd';
   navigator.clipboard.writeText(previewAddr);
   if (typeof showWalletToast === 'function') {
-    showWalletToast('📋 Address Copied', 'ANLGRAM Treasury/Preview address copied to clipboard.');
+    showWalletToast('📋 Address Copied', 'ANLGRAM Treasury address copied. Token contract deployment is pending supervised launch.');
   } else {
-    alert('ANLGRAM Treasury Address Copied:\n' + previewAddr);
+    alert('ANLGRAM Treasury Address Copied (Token contract deployment is pending supervised launch):\n' + previewAddr);
   }
 }
 

@@ -1581,7 +1581,7 @@
           <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:14px;">
             <div style="font-size:11px; text-transform:uppercase; color:var(--accent-cyan); font-weight:700; margin-bottom:4px;">2. Bonding Curve</div>
             <div style="font-size:14px; font-weight:600; color:#fff;">AMM Liquidity Curve</div>
-            <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">800M initial tokens, 125 TON virtual reserve</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">800M initial tokens, 166.67 TON virtual reserve (exact DEX price continuity)</div>
           </div>
           <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:14px;">
             <div style="font-size:11px; text-transform:uppercase; color:var(--accent-cyan); font-weight:700; margin-bottom:4px;">3. LP Locker</div>
@@ -1599,7 +1599,7 @@
         <div style="margin-top:24px; padding:20px; background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(0,210,255,0.15);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
             <strong style="color:#fff; font-size:14px;">📊 Live Bonding Curve Mathematical Quote Calculator</strong>
-            <span style="font-size:11px; color:var(--text-muted);">Formula: Constant Virtual Reserve AMM (1% Protocol Fee)</span>
+            <span style="font-size:11px; color:var(--text-muted);">Formula: Constant Product AMM (K = 1.778×10¹¹, 1% Protocol Fee)</span>
           </div>
 
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
@@ -1610,7 +1610,7 @@
                 <span style="padding:10px; font-size:12px; color:var(--text-muted); display:flex; align-items:center;">TON</span>
               </div>
               <div style="margin-top:8px; font-size:12px; color:var(--text-sub);">
-                You receive: <strong id="calc-buy-tokens-output" style="color:var(--accent-cyan);">~6,289,308</strong> TKN
+                You receive: <strong id="calc-buy-tokens-output" style="color:var(--accent-cyan);">~6,298,568</strong> TKN
                 <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Net applied: <span id="calc-buy-net-ton">0.99</span> TON (0.01 TON fee)</div>
               </div>
             </div>
@@ -1632,10 +1632,10 @@
           <div style="margin-top:18px;">
             <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;">
               <span style="color:var(--text-muted);">Bonding Curve Graduation Target (0.00 / 500.00 TON)</span>
-              <span style="color:var(--accent-cyan); font-family:var(--font-mono);">0.00%</span>
+              <span id="calc-grad-pct" style="color:var(--accent-cyan); font-family:var(--font-mono);">0.00%</span>
             </div>
             <div style="width:100%; height:8px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden;">
-              <div style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-cyan), #00ff88); border-radius:4px;"></div>
+              <div id="calc-grad-bar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-cyan), #00ff88); border-radius:4px; transition:width 0.3s ease;"></div>
             </div>
           </div>
         </div>
@@ -1649,6 +1649,58 @@
           </button>
         </div>
       </div>
+
+      <script>
+      function updateCurveQuotes() {
+        const V_TON = 166.666666666; // 166.67 TON virtual reserve (exact price continuity)
+        const V_TKN = 266666666.6656; // 266.67M virtual tokens
+        const TOTAL_CURVE = 800000000.0; // 800M tokens
+        const K = V_TON * (V_TKN + TOTAL_CURVE); // Invariant K = 1.77777777777e11
+
+        // Buy calculation
+        const buyTonInput = parseFloat(document.getElementById('calc-buy-ton-input')?.value || '0');
+        if (buyTonInput > 0) {
+          const fee = buyTonInput * 0.01;
+          const netTon = buyTonInput - fee;
+          const newTonReserve = V_TON + netTon;
+          const newTokenReserve = K / newTonReserve;
+          const tokensOut = Math.max(0, (V_TKN + TOTAL_CURVE) - newTokenReserve);
+
+          const outEl = document.getElementById('calc-buy-tokens-output');
+          const netEl = document.getElementById('calc-buy-net-ton');
+          if (outEl) outEl.textContent = '~' + Math.floor(tokensOut).toLocaleString();
+          if (netEl) netEl.textContent = netTon.toFixed(2);
+
+          const gradPct = Math.min(100, (netTon / 500.0) * 100);
+          const gradPctEl = document.getElementById('calc-grad-pct');
+          const gradBarEl = document.getElementById('calc-grad-bar');
+          if (gradPctEl) gradPctEl.textContent = gradPct.toFixed(2) + '%';
+          if (gradBarEl) gradBarEl.style.width = gradPct.toFixed(2) + '%';
+        }
+
+        // Sell calculation
+        const sellTknInput = parseFloat(document.getElementById('calc-sell-token-input')?.value || '0');
+        if (sellTknInput > 0) {
+          const currentTonPool = 10.0;
+          const currentTknPool = (V_TKN + TOTAL_CURVE) - 50000000.0;
+          const newTknReserve = currentTknPool + sellTknInput;
+          const newTonReserve = K / newTknReserve;
+          const grossTonOut = Math.max(0, (V_TON + currentTonPool) - newTonReserve);
+          const netTonOut = grossTonOut * 0.99;
+
+          const sellOutEl = document.getElementById('calc-sell-ton-output');
+          if (sellOutEl) sellOutEl.textContent = '~' + netTonOut.toFixed(2);
+        }
+      }
+      if (typeof window !== 'undefined') {
+        window.updateCurveQuotes = updateCurveQuotes;
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', updateCurveQuotes);
+        } else {
+          updateCurveQuotes();
+        }
+      }
+      </script>
 
       <!-- Standard Jetton Creator Form (Preserved & Fully Functional) -->
       <div class="glass-card" style="max-width:600px; margin:0 auto;">
