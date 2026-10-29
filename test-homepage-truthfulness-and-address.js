@@ -85,10 +85,10 @@ it('Token Contract element displays TBA status and pending message', () => {
   assert.strictEqual(html.includes('TBA — Contract Deployment Pending Supervised Launch'), true);
 });
 
-it('Treasury address is displayed in its own dedicated box with verified label', () => {
+it('Treasury address is displayed in its own dedicated box with accurate recipient label', () => {
   assert.strictEqual(html.includes('id="treasury-address"'), true);
   assert.strictEqual(html.includes('UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd'), true);
-  assert.strictEqual(html.includes('Verified Treasury Multi-Sig / Deployer'), true);
+  assert.strictEqual(html.includes('Designated Token Creation Donation Recipient'), true);
 });
 
 it('Contract copy button is disabled and designated as pending', () => {

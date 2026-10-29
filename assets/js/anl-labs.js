@@ -565,7 +565,7 @@
   window.labsExecuteDeployFromWizard = async function () {
     const deployCheck = document.getElementById('deploy-confirm-checkbox');
     if (deployCheck && !deployCheck.checked) {
-      alert('⚠️ You must review and check the deployment authorization box before broadcasting.');
+      alert('⚠️ You must review and check the acknowledgement box confirming the 10% Token Creation Donation (0.02 TON) before broadcasting.');
       return;
     }
     labsCloseModal('deploy-confirm-modal');

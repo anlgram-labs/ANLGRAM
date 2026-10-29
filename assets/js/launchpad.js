@@ -1,16 +1,15 @@
 /**
  * ANLGRAM Launchpad — Factory Integration
- * Version: 1.0.0
+ * Version: 2026.1
  *
- * Routes token creation through the ANLGRAM Factory contract.
- * ONE transaction → Factory deploys Jetton, mints supply,
- * sends platform fee to treasury, refunds excess.
+ * Routes token creation with integrated 10% Token Creation Donation.
+ * ONE transaction → Deploys Jetton minter, mints supply,
+ * sends 10% Token Creation Donation (0.02 TON) to designated recipient.
  *
- * Fee model (all BigInt, no floating point):
- *   Blockchain execution : ~0.064 TON
- *   ANLGRAM service (70%): ~0.0448 TON
- *   Estimated total      : ~0.1088 TON
- *   User sends (buffer)  :  0.120  TON
+ * Fee & Donation model (all BigInt, no floating point):
+ *   Blockchain execution base :  0.20 TON (0.05 minter deploy + 0.15 mint)
+ *   10% Token Creation Donation: 0.02 TON (10% of 0.20 TON)
+ *   Total estimated cost      :  0.22 TON
  */
 
 (function () {
@@ -23,13 +22,15 @@
     FACTORY_TESTNET: '',   // TODO: fill after testnet deploy
     FACTORY_MAINNET: '',   // TODO: fill after mainnet deploy
 
-    TREASURY: 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd',
+    TREASURY: (typeof window !== 'undefined' && window.ANLGRAM_DONATION_CONFIG?.RECIPIENT_ADDRESS)
+      || 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd',
 
-    SERVICE_RATE_NUMERATOR:   70n,
-    SERVICE_RATE_DENOMINATOR: 100n,
+    DONATION_RATE_NUMERATOR:   10n,
+    DONATION_RATE_DENOMINATOR: 100n,
 
-    BLOCKCHAIN_COST_NANO: 64_000_000n,  // 0.064 TON
-    BUFFER_RATE: 10n,                   // +10% safety buffer
+    BLOCKCHAIN_COST_NANO: (typeof window !== 'undefined' && window.ANLGRAM_DONATION_CONFIG?.BASE_EXECUTION_NANO)
+      || 200_000_000n,  // 0.20 TON base execution cost
+    BUFFER_RATE: 0n,
 
     NETWORK: 'testnet',  // change to 'mainnet' when ready
 
@@ -39,26 +40,25 @@
   };
 
   // ══════════════════════════════════════════════════════════
-  // FEE CALCULATION  (BigInt only)
+  // FEE & DONATION CALCULATION  (BigInt only)
   // ══════════════════════════════════════════════════════════
 
   function calculateFees() {
-    const blockchainCost = ANLGRAM_CONFIG.BLOCKCHAIN_COST_NANO;
-    const platformFee    = blockchainCost
-                           * ANLGRAM_CONFIG.SERVICE_RATE_NUMERATOR
-                           / ANLGRAM_CONFIG.SERVICE_RATE_DENOMINATOR;
-    const estimatedTotal = blockchainCost + platformFee;
-    const withBuffer     = estimatedTotal + (estimatedTotal * ANLGRAM_CONFIG.BUFFER_RATE / 100n);
+    const dConfig = typeof window !== 'undefined' && window.ANLGRAM_DONATION_CONFIG;
+    const blockchainCost = dConfig ? dConfig.BASE_EXECUTION_NANO : ANLGRAM_CONFIG.BLOCKCHAIN_COST_NANO;
+    const donationFee    = dConfig ? dConfig.DONATION_NANO : (blockchainCost * ANLGRAM_CONFIG.DONATION_RATE_NUMERATOR / ANLGRAM_CONFIG.DONATION_RATE_DENOMINATOR);
+    const estimatedTotal = dConfig ? dConfig.TOTAL_ESTIMATED_NANO : (blockchainCost + donationFee);
+    const withBuffer     = estimatedTotal;
 
     return {
       blockchainCostNano: blockchainCost,
-      platformFeeNano:    platformFee,
+      platformFeeNano:    donationFee,
       estimatedTotalNano: estimatedTotal,
       sendAmountNano:     withBuffer,
-      blockchainCostTON:  nanoToTON(blockchainCost),
-      platformFeeTON:     nanoToTON(platformFee),
-      estimatedTotalTON:  nanoToTON(estimatedTotal),
-      sendAmountTON:      nanoToTON(withBuffer),
+      blockchainCostTON:  dConfig ? dConfig.formatNano(blockchainCost) : nanoToTON(blockchainCost),
+      platformFeeTON:     dConfig ? dConfig.formatNano(donationFee) : nanoToTON(donationFee),
+      estimatedTotalTON:  dConfig ? dConfig.formatNano(estimatedTotal) : nanoToTON(estimatedTotal),
+      sendAmountTON:      dConfig ? dConfig.formatNano(withBuffer) : nanoToTON(withBuffer),
     };
   }
 
@@ -283,12 +283,19 @@
       const mint  = beginCell().storeUint(21,32).storeUint(0n,64)
         .storeAddress(adminAddress).storeCoins(toNano('0.08')).storeRef(itr).endCell();
 
-      showProgress(btn, 2, 'Confirm 2 transactions in wallet...');
+      const dConfig = window.ANLGRAM_DONATION_CONFIG;
+      const donationNano = (dConfig ? dConfig.DONATION_NANO : 20_000_000n).toString();
+      const donationComment = (dConfig ? dConfig.PAYLOAD_COMMENT : 'ANLGRAM 10% Token Creation Donation');
+      const donationPayload = beginCell().storeUint(0, 32).storeStringTail(donationComment).endCell();
+      const donationRecipient = (dConfig ? dConfig.RECIPIENT_ADDRESS : ANLGRAM_CONFIG.TREASURY);
+
+      showProgress(btn, 2, 'Confirm 3 messages in wallet (0.22 TON total)...');
       await tc.sendTransaction({
         validUntil: Math.floor(Date.now()/1000)+600,
         messages: [
           { address: dest,    amount: toNano('0.05').toString(), stateInit: siCell.toBoc().toString('base64') },
           { address: destBnc, amount: toNano('0.15').toString(), payload:   mint.toBoc().toString('base64') },
+          { address: donationRecipient, amount: donationNano, payload: donationPayload.toBoc().toString('base64') },
         ],
       });
 
@@ -701,24 +708,29 @@
     const fees = calculateFees();
     const card = document.createElement('div');
     card.id = 'anlgram-fee-breakdown';
+    const dConfig = typeof window !== 'undefined' && window.ANLGRAM_DONATION_CONFIG;
+    const recipientAddr = dConfig ? dConfig.RECIPIENT_ADDRESS : ANLGRAM_CONFIG.TREASURY;
     card.innerHTML = `
 <div style="background:rgba(0,240,255,0.04);border:1px solid rgba(0,240,255,0.15);border-radius:12px;padding:16px 20px;margin-bottom:16px;">
-  <div style="color:var(--accent-cyan);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Token Creation Cost</div>
+  <div style="color:var(--accent-cyan);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Token Creation Cost &amp; Donation Breakdown</div>
   <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;">
-    <span style="color:#94a3b8;">Blockchain execution</span>
+    <span style="color:#94a3b8;">Blockchain execution base</span>
     <span style="font-family:var(--font-mono);">~${fees.blockchainCostTON} TON</span>
   </div>
   <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;align-items:center;">
     <span style="color:#94a3b8;display:flex;align-items:center;gap:5px;">
-      ANLGRAM platform service
-      <span title="ANLGRAM's platform service covers launchpad operations and token creation infrastructure."
+      10% Token Creation Donation
+      <span title="A 10% Token Creation Donation (0.02 TON), calculated from the 0.20 TON blockchain execution base, is sent to ${recipientAddr}."
         style="width:15px;height:15px;border-radius:50%;background:rgba(0,240,255,0.15);border:1px solid rgba(0,240,255,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:var(--accent-cyan);cursor:help;">ℹ</span>
     </span>
-    <span style="font-family:var(--font-mono);">~${fees.platformFeeTON} TON</span>
+    <span style="font-family:var(--font-mono);color:#4ade80;">+${fees.platformFeeTON} TON</span>
   </div>
   <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;">
     <strong style="font-size:13px;">Estimated total</strong>
     <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:700;font-size:15px;">~${fees.estimatedTotalTON} TON</span>
+  </div>
+  <div style="margin-top:8px;font-size:11px;color:#94a3b8;word-break:break-all;">
+    Recipient: <span style="font-family:var(--font-mono);color:#e2e8f0;">${recipientAddr}</span>
   </div>
 </div>`;
     btn.parentNode.insertBefore(card, btn);

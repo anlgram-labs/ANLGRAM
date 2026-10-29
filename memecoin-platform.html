@@ -602,19 +602,31 @@
             <!-- Fee Breakdown Card -->
             <div class="wizard-review-box" style="margin-bottom:20px; background:rgba(0,210,255,0.04); border-color:rgba(0,210,255,0.2);">
               <div style="font-size:12px; font-weight:700; color:var(--labs-cyan); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
-                Estimated Blockchain Deployment Fees
+                Blockchain Deployment Fees & Required Donation
               </div>
               <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; color:var(--labs-text-sub);">
-                <span>Minter StateInit & Contract Storage</span>
+                <span>Minter StateInit & Contract Storage:</span>
                 <span style="font-family:var(--font-mono); color:#fff;">~0.05 TON</span>
               </div>
               <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; color:var(--labs-text-sub);">
-                <span>Initial Supply Minting & Jetton Wallet Creation</span>
+                <span>Initial Supply Minting & Jetton Wallet Creation:</span>
                 <span style="font-family:var(--font-mono); color:#fff;">~0.15 TON</span>
               </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; color:var(--labs-text-sub);">
+                <span>Execution Base Cost:</span>
+                <span style="font-family:var(--font-mono); color:#fff;">~0.20 TON</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; color:var(--labs-cyan); font-weight:600;">
+                <span>10% Token Creation Donation (Required):</span>
+                <span style="font-family:var(--font-mono);">0.02 TON</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:11px; color:var(--labs-text-muted);">
+                <span>Donation Recipient:</span>
+                <span style="font-family:var(--font-mono); word-break:break-all;">UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd</span>
+              </div>
               <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px; display:flex; justify-content:space-between; font-weight:700;">
-                <span style="color:#fff;">Total Estimated Cost:</span>
-                <span style="color:var(--labs-cyan); font-family:var(--font-mono); font-size:15px;">~0.20 TON</span>
+                <span style="color:#fff;">Total Estimated Transaction Cost:</span>
+                <span style="color:var(--labs-cyan); font-family:var(--font-mono); font-size:15px;">~0.22 TON</span>
               </div>
             </div>
 
@@ -1198,14 +1210,29 @@
               <span style="color:var(--labs-text-muted);">Initial Mint:</span>
               <strong style="color:#fff;" id="deploy-confirm-token-supply">1,000,000,000</strong>
             </div>
-            <div style="display:flex; justify-content:space-between; font-size:13px;">
-              <span style="color:var(--labs-text-muted);">Estimated Network Fee:</span>
-              <strong style="color:var(--labs-cyan);">~0.20 TON (0.05 deploy + 0.15 mint)</strong>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px;">
+              <span style="color:var(--labs-text-muted);">Execution Base Cost:</span>
+              <strong style="color:#fff;">~0.20 TON (0.05 deploy + 0.15 mint)</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px;">
+              <span style="color:var(--labs-cyan); font-weight:600;">10% Token Creation Donation:</span>
+              <strong style="color:var(--labs-cyan);">0.02 TON</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:11px;">
+              <span style="color:var(--labs-text-muted);">Donation Recipient:</span>
+              <span style="font-family:var(--font-mono); color:var(--labs-text-sub); font-size:11px; word-break:break-all;">UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd</span>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:6px; margin-top:6px; display:flex; justify-content:space-between; font-size:14px; font-weight:700;">
+              <span style="color:#fff;">Total Transaction to Authorize:</span>
+              <strong style="color:#00f0ff;">~0.22 TON</strong>
             </div>
           </div>
+          <p style="font-size:12px; color:var(--labs-text-sub); line-height:1.4; margin-bottom:12px;">
+            The 10% Token Creation Donation (0.02 TON) is automatically bundled and required in this creation flow. It is sent directly to the project donation recipient. No payment will be authorized or broadcast by the website without your explicit wallet approval.
+          </p>
           <label style="display:flex; align-items:flex-start; gap:10px; font-size:12px; color:#fff; cursor:pointer; margin-bottom:16px;">
             <input type="checkbox" id="deploy-confirm-checkbox" style="margin-top:2px; accent-color:#00f0ff;"/>
-            <span>I review and authorize this smart contract deployment plan on TON Mainnet.</span>
+            <span>I understand that a 10% Token Creation Donation (0.02 TON), calculated from the displayed 0.20 TON execution base, will be sent to the displayed recipient wallet (UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd) as part of this token-creation flow.</span>
           </label>
           <p style="font-size:12px; color:var(--labs-text-muted); line-height:1.4;">
             Your connected TON wallet (Tonkeeper / Telegram Wallet) will prompt you to review and sign the transaction.
@@ -2012,6 +2039,7 @@
 
     async function deployJettonWeb3(event) {
       const btn = event.currentTarget;
+      const origHTML = btn.innerHTML;
       
       const tc = window.tonConnectUI;
       if (!tc) {
@@ -2019,15 +2047,26 @@
          return;
       }
       if (!tc.connected) {
-        alert("¡Conecta tu wallet de TON primero usando el botón 'Connect Wallet'!");
+        alert("Please connect your TON wallet first using the 'Connect Wallet' button!");
         tc.openModal();
         return;
       }
   
       const { beginCell, toNano, storeStateInit, Dictionary, Cell, contractAddress, Address } = window.TON_CORE || {};
       if(!beginCell) {
-         alert("Las librerías Web3 de TON (core) aún están cargando. Intenta de nuevo en unos segundos.");
+         alert("TON Web3 core libraries are still loading. Please retry in a few seconds.");
          return;
+      }
+
+      // 🛡️ User Consent & 10% Token Creation Donation Acknowledgement Guard
+      const deployCheckbox = document.getElementById('deploy-confirm-checkbox');
+      if (deployCheckbox && !deployCheckbox.checked) {
+        if (typeof window.labsOpenDeployConfirmModal === 'function') {
+          window.labsOpenDeployConfirmModal();
+        } else {
+          alert("⚠️ Please review and check the acknowledgement box confirming the 10% Token Creation Donation (0.02 TON) before deploying.");
+        }
+        return;
       }
   
       const name = (document.getElementById('labs-card1-name')?.value || document.getElementById('lp-name')?.value || window.wizardState?.tokenDraft?.name || 'Memecoin').trim();
@@ -2036,28 +2075,27 @@
       const rawLogo = (document.getElementById('lp-logo')?.value || window.wizardState?.tokenDraft?.logoUrl || window.wizardState?.tokenDraft?.logoDataUrl || localStorage.getItem('anlgram_last_uploaded_logo') || 'https://anlgram.com/assets/images/icon-192.png').trim();
       let logo = typeof sanitizeUrl === 'function' ? sanitizeUrl(rawLogo, 'https://anlgram.com/assets/images/icon-192.png') : rawLogo;
 
-    // 🛡️ DEX & Wallet Compatibility Check (TEP-64 standard for STON.fi, DeDust, Tonkeeper, TonViewer)
-    if (logo.startsWith('data:') || (!logo.startsWith('http://') && !logo.startsWith('https://') && !logo.startsWith('ipfs://'))) {
-      const userConfirm = confirm(
-        '\u26a0\ufe0f AVISO DE COMPATIBILIDAD DEX Y WALLETS (TEP-64):\n\n' +
-        'La imagen seleccionada est\u00e1 en formato local (data:URI).\n' +
-        'Para que el logo aparezca correctamente indexado en Tonkeeper, STON.fi, DeDust, MyTonWallet y Exploradores, se requiere una URL p\u00fablica (HTTPS o IPFS).\n\n' +
-        '\u2022 Presiona \'Aceptar\' para continuar usando el logo oficial p\u00fablico (https://anlgram.com/assets/images/icon-192.png).\n' +
-        '\u2022 Presiona \'Cancelar\' para ingresar o subir una URL p\u00fablica HTTPS.'
-      );
-      if (!userConfirm) {
-        btn.innerHTML = origHTML;
-        btn.style.pointerEvents = 'auto';
-        const urlContainer = document.getElementById('logo-url-container');
-        if (urlContainer) urlContainer.style.display = 'block';
-        document.getElementById('lp-logo')?.focus();
-        return;
+      // 🛡️ DEX & Wallet Compatibility Check (TEP-64 standard for STON.fi, DeDust, Tonkeeper, TonViewer)
+      if (logo.startsWith('data:') || (!logo.startsWith('http://') && !logo.startsWith('https://') && !logo.startsWith('ipfs://'))) {
+        const userConfirm = confirm(
+          '⚠️ DEX & WALLET COMPATIBILITY NOTICE (TEP-64):\n\n' +
+          'The selected image is in local format (data:URI).\n' +
+          'For your logo to index correctly in Tonkeeper, STON.fi, DeDust, MyTonWallet, and explorers, a public URL (HTTPS or IPFS) is required.\n\n' +
+          '• Press OK to continue using the official public logo (https://anlgram.com/assets/images/icon-192.png).\n' +
+          '• Press Cancel to enter or upload a public HTTPS image URL.'
+        );
+        if (!userConfirm) {
+          btn.innerHTML = origHTML;
+          btn.style.pointerEvents = 'auto';
+          const urlContainer = document.getElementById('logo-url-container');
+          if (urlContainer) urlContainer.style.display = 'block';
+          document.getElementById('lp-logo')?.focus();
+          return;
+        }
+        logo = 'https://anlgram.com/assets/images/icon-192.png';
       }
-      logo = 'https://anlgram.com/assets/images/icon-192.png';
-    }
   
-      const origHTML = btn.innerHTML;
-      btn.innerHTML = '<span class="status-dot"></span> Construyendo Metadatos (TEP-64)...';
+      btn.innerHTML = '<span class="status-dot"></span> Building TEP-64 Metadata...';
       btn.style.pointerEvents = 'none';
   
       try {
@@ -2087,7 +2125,7 @@
         
         const metadataCell = beginCell().storeUint(0, 8).storeDict(metadata).endCell();
   
-        btn.innerHTML = '<span class="status-dot"></span> Preparando Códigos Base Verificados...';
+        btn.innerHTML = '<span class="status-dot"></span> Preparing Verified Base Bytecode...';
         
         // 2. Canonical Pinned Minter & Wallet Bytecode (TEP-74 Standard)
         // Hash: 9a0f98dd6fbf225eef8165e4e64417ee931f7eea000653439e7b5dcdc0644cd6
@@ -2145,12 +2183,10 @@
         const destAddress = contractAddress(0, stateInitObj).toString({bounceable: false});
         const destAddressMint = contractAddress(0, stateInitObj).toString({bounceable: true});
 
-        btn.innerHTML = '<span class="status-dot"></span> Firmando en Tonkeeper...';
+        btn.innerHTML = '<span class="status-dot"></span> Awaiting Signature in TON Wallet...';
         
         // 4. Construct Deploy & Mint Payloads
         const INITIAL_SUPPLY = toNano("1000000000"); // 1 Billion tokens (9 decimals)
-        
-        // No deploy payload - standard minter initializes from stateInit data only
         
         // Mint Payload
         const forwardPayload = beginCell().storeUint(0, 32).storeStringTail("Initial mint").endCell();
@@ -2174,28 +2210,46 @@
             .endCell();
         
         const mintPayloadBase64 = mintPayload.toBoc().toString('base64');
+
+        // Centralized Token Creation Donation configuration
+        const donationCfg = window.ANLGRAM_DONATION_CONFIG || {
+          RECIPIENT_ADDRESS: 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd',
+          DONATION_AMOUNT_NANO: 20000000n,
+          BASE_DEPLOY_NANO: 50000000n,
+          BASE_MINT_NANO: 150000000n,
+          PAYLOAD_COMMENT: 'ANLGRAM 10% Token Creation Donation'
+        };
+
+        const donationCommentPayload = beginCell()
+          .storeUint(0, 32)
+          .storeStringTail(donationCfg.PAYLOAD_COMMENT)
+          .endCell();
         
-        // 5. Send Transaction request (Deploy + Mint bundled)
+        // 5. Send Transaction request (Deploy + Mint + 10% Token Creation Donation bundled into ONE atomic transaction)
         const transaction = {
             validUntil: Math.floor(Date.now() / 1000) + 600,
             messages: [
                 {
                     address: destAddress,
-                    amount: toNano("0.05").toString(), // 0.05 TON deploy fee
+                    amount: (donationCfg.BASE_DEPLOY_NANO || 50000000n).toString(), // 0.05 TON deploy fee
                     stateInit: stateInitCell.toBoc().toString('base64')
-                    // No payload - let the minter initialize from stateInit only
                 },
                 {
                     address: destAddressMint,
-                    amount: toNano("0.15").toString(), // 0.15 TON for minting 1B tokens
+                    amount: (donationCfg.BASE_MINT_NANO || 150000000n).toString(), // 0.15 TON for minting 1B tokens
                     payload: mintPayloadBase64
+                },
+                {
+                    address: donationCfg.RECIPIENT_ADDRESS,
+                    amount: (donationCfg.DONATION_AMOUNT_NANO || 20000000n).toString(), // 0.02 TON (10% Token Creation Donation)
+                    payload: donationCommentPayload.toBoc().toString('base64')
                 }
             ]
         };
   
         await tc.sendTransaction(transaction);
         
-        btn.innerHTML = '<span class="status-dot"></span> Transacción enviada — Verificando en blockchain...';
+        btn.innerHTML = '<span class="status-dot"></span> Transaction broadcast — Verifying on blockchain...';
         btn.style.background = 'rgba(0,210,255,0.15)';
         btn.style.borderColor = 'var(--accent-cyan)';
         btn.style.color = 'var(--accent-cyan)';
@@ -2207,7 +2261,11 @@
       } catch (e) {
         console.error("Deploy Error:", e);
         const errMsg = e?.message || String(e) || "Unknown error";
-        alert("❌ Error al desplegar:\n\n" + errMsg);
+        if (errMsg.includes('reject') || errMsg.includes('declined') || errMsg.includes('cancel') || errMsg.includes('User declined')) {
+          console.log('[ANLGRAM] Deploy cancelled by user in wallet.');
+        } else {
+          alert("❌ Deployment Error:\n\n" + errMsg);
+        }
         btn.innerHTML = origHTML;
         btn.removeAttribute('style');
       }
@@ -2872,6 +2930,7 @@
 </script>
 
 <script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
+<script src="assets/js/donation-config.js?v=2026.1"></script>
 <script src="assets/js/wallet-connect.js?v=2026.35"></script>
 <script src="assets/js/launchpad.js?v=1.0.0"></script>
 <script src="assets/js/anl-labs.js?v=2026.1"></script>
