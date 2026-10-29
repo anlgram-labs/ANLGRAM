@@ -24,6 +24,7 @@ const readline = require('node:readline');
 
 const {
   TONCONNECT_SPEC,
+  validateTonConnectManifestConfig,
   SUPERVISED_BUDGET,
   buildDeploymentOperations,
   validateTonConnectSession,

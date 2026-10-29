@@ -1,20 +1,21 @@
 'use strict';
 
 /**
- * ANLGRAM MemeLabs — Supervised Testnet Execution Engine (Phase 3D.0)
+ * ANLGRAM MemeLabs — Supervised Testnet Execution Engine (Phase 3D.1)
  * File: minter-contract/supervised-execution-engine.js
  *
- * SAFETY INVARIANTS:
- * 1. Zero Private Keys or Seed Phrases: Never requests, stores, or handles private keys.
- * 2. Independent Human Approval: Every single transaction is presented individually for review and approval.
- * 3. TON Connect 2.0 Integration: Signatures are delegated to the user's external wallet.
- * 4. Strict Network Isolation: Exclusively operates on TON Testnet (global_id: -3). Rejects mainnet connections (-239).
- * 5. Manifest Blockade: Documents that TON Connect strictly requires an HTTPS-hosted tonconnect-manifest.json.
- *    Without an official HTTPS manifest, live wallet connection is blocked (no improvised tunnels or prod bypasses).
- * 6. Read-Only Pre-flight Verification: Prior to presenting any signature prompt, on-chain state, balances,
- *    and contract dependencies are strictly verified.
- * 7. Post-Execution Reconciliation: Prevents subsequent operations upon error, bounce, or timeout.
- * 8. Financial Invariants: Itemized gas budget distinguishes deployer gas from the 500 TON user liquidity graduation target.
+ * PHASE 3D.1 COMPLIANCE:
+ * 1. Strict Operation Separation: Separates minting (op == 21) and admin renunciation (op == 3)
+ *    into distinct, individually approved and on-chain verified operations.
+ * 2. Automatic Curve Activation: Documents and verifies that the Curve activates automatically
+ *    into STATE_ACTIVE (3) upon receiving op::admin_changed_notification from the Jetton Master.
+ *    No extraneous write transaction is created for activation; verification is read-only.
+ * 3. TON Connect Staging Manifest: Implements rigorous schema validation for staging manifest,
+ *    enforcing HTTPS, testnet origin isolation, and separation from production (anlgram.com).
+ * 4. Zero Secrets / Private Keys: Delegated external signing via TON Connect 2.0.
+ * 5. Single-Message Isolation: Exactly 1 message per transaction (messages.length === 1).
+ * 6. Fail-Closed On-Chain Gates: Blocks on rate limits (429), timeouts, bounces, or missing pre-requisites.
+ * 7. Tokenomics Invariant: 1B total supply, 800M curve, 200M DEX escrow, 500 TON user graduation liquidity.
  */
 
 const crypto = require('node:crypto');
@@ -35,7 +36,7 @@ const APPROVED_TESTNET_DEX = {
   version: 'STON.fi DEX v2.2 (Release)',
 };
 
-// Itemized gas and operational budget
+// Itemized gas and operational budget (8 discrete write transactions)
 const SUPERVISED_BUDGET = {
   items: [
     { step: 1, name: 'Deploy Launchpad Jetton Master', costTon: 0.08, costNano: 80000000n, note: 'StateInit deployment' },
@@ -44,8 +45,8 @@ const SUPERVISED_BUDGET = {
     { step: 4, name: 'Deploy Migration Router', costTon: 0.12, costNano: 120000000n, note: 'StateInit deployment + routing storage' },
     { step: 5, name: 'Bootstrap 1: Init LP Locker (0x414e4c39)', costTon: 0.05, costNano: 50000000n, note: 'One-time router binding' },
     { step: 6, name: 'Bootstrap 2: Init Launchpad (0x414e4c01)', costTon: 0.06, costNano: 60000000n, note: 'One-time curve setup' },
-    { step: 7, name: 'Bootstrap 3: Mint 1B Tokens & Renounce', costTon: 0.10, costNano: 100000000n, note: 'Mint 1B tokens to Curve + renounce admin' },
-    { step: 8, name: 'Bootstrap 4: Verify Admin Renounce & Activate', costTon: 0.05, costNano: 50000000n, note: 'Activation check / recovery gas' },
+    { step: 7, name: 'Bootstrap 3: Mint 1B Tokens (op == 21)', costTon: 0.10, costNano: 100000000n, note: 'Mint 1B tokens to Curve wallet' },
+    { step: 8, name: 'Bootstrap 4: Renounce Admin to addr_none (op == 3)', costTon: 0.05, costNano: 50000000n, note: 'Renounce admin + auto-activate Curve' },
   ],
   operationalReserveBuffer: 1.50, // Buffer for network fee fluctuations and storage across blocks
   minimumRequiredBalance: 2.71,   // Hard-stop floor: items sum (0.71) + reserve (1.50) + provision buffer (0.50)
@@ -53,19 +54,82 @@ const SUPERVISED_BUDGET = {
   graduationTargetTon: 500.0,    // 500 TON target liquidity provided solely by users during trading
 };
 
-// TON Connect 2.0 Protocol Specifications & Manifest Requirements
+// TON Connect 2.0 Protocol Specifications & Staging Manifest Requirements
 const TONCONNECT_SPEC = {
   protocolVersion: 2,
   requiredChain: EXPECTED_TESTNET_CHAIN,
   networkString: 'testnet',
+  forbiddenChains: [MAINNET_CHAIN],
   manifestRequirements: {
     protocol: 'https:',
     requiredFields: ['url', 'name', 'iconUrl'],
     allowLocalhost: false, // Disallowed by Tonkeeper & mobile wallets
-    status: 'BLOCKED_PENDING_HTTPS_HOSTING',
-    blockerReason: 'TON Connect strictly requires a public HTTPS URL hosting tonconnect-manifest.json on an approved domain. In accordance with security directives, no unreviewed production deployments or improvised public tunnels (e.g. ngrok) are permitted to bypass this restriction.',
+    recommendedStagingDomain: 'staging-launchpad.anlgram.io',
+    recommendedManifestUrl: 'https://staging-launchpad.anlgram.io/tonconnect-manifest.json',
+    productionManifestUrl: 'https://anlgram.com/tonconnect-manifest.json', // Production origin strictly separated
+    status: 'BLOCKED_NO_AUTHORIZED_STAGING_MANIFEST',
+    blockerReason: 'No authorized public HTTPS staging environment is currently active to host tonconnect-manifest.json. In accordance with security directives, production web (anlgram.com) cannot be used for testnet launchpad deployment, and no improvised tunnels (ngrok) are permitted.',
   },
 };
+
+/**
+ * Validates a TON Connect manifest URL and configuration schema.
+ * Enforces HTTPS, required fields, and strict separation between staging and production.
+ */
+function validateTonConnectManifestConfig(manifestUrl, manifestData = null) {
+  const errors = [];
+  const warnings = [];
+
+  if (!manifestUrl || typeof manifestUrl !== 'string') {
+    errors.push('Manifest URL is missing or invalid.');
+    return { ok: false, errors, warnings };
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(manifestUrl.trim());
+  } catch {
+    errors.push(`Malformed Manifest URL: '${manifestUrl}'.`);
+    return { ok: false, errors, warnings };
+  }
+
+  if (parsedUrl.protocol !== 'https:') {
+    errors.push(`SECURITY: Manifest URL must use HTTPS protocol (received: '${parsedUrl.protocol}').`);
+  }
+
+  const hostname = parsedUrl.hostname.toLowerCase();
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
+    errors.push(`SECURITY: Localhost or private IP '${hostname}' is rejected by TON Connect wallets (Tonkeeper, etc.).`);
+  }
+
+  if (hostname === 'anlgram.com') {
+    errors.push('ENVIRONMENT ISOLATION: Production domain (anlgram.com) manifest must not be used for Testnet launchpad deployment.');
+  }
+
+  if (manifestData && typeof manifestData === 'object') {
+    for (const field of TONCONNECT_SPEC.manifestRequirements.requiredFields) {
+      if (!manifestData[field] || typeof manifestData[field] !== 'string' || manifestData[field].trim() === '') {
+        errors.push(`Manifest schema error: required field '${field}' is missing or empty.`);
+      }
+    }
+
+    if (manifestData.url) {
+      try {
+        const appUrl = new URL(manifestData.url);
+        if (appUrl.protocol !== 'https:') {
+          errors.push('Manifest schema error: app url must use HTTPS.');
+        }
+        if (appUrl.hostname.toLowerCase() !== hostname) {
+          warnings.push(`Manifest domain mismatch: manifest hosted on '${hostname}' declares app url '${appUrl.hostname}'.`);
+        }
+      } catch {
+        errors.push(`Manifest schema error: invalid app url '${manifestData.url}'.`);
+      }
+    }
+  }
+
+  return { ok: errors.length === 0, errors, warnings };
+}
 
 /**
  * Derives the 4 deterministic launchpad contract addresses from compiled artifacts and operator wallet.
@@ -224,6 +288,7 @@ function deriveDeterministicAddresses(deployerAddress, artifacts, dexConfig = AP
 
 /**
  * Builds the comprehensive 8-step execution operations catalogue.
+ * Strictly separates minting (op == 21) from renunciation (op == 3).
  */
 function buildDeploymentOperations(deployerAddress, predictedAddresses, dexConfig = APPROVED_TESTNET_DEX) {
   const dexRouter = Address.parse(dexConfig.router);
@@ -254,7 +319,7 @@ function buildDeploymentOperations(deployerAddress, predictedAddresses, dexConfi
       },
       postcondition: {
         targetAccountState: 'ALREADY_ACTIVE',
-        description: 'Account transitions to active on-chain with verified code hash.',
+        description: 'Account transitions to active on-chain with verified code hash and total_supply == 0.',
       },
       irreversibleEffects: [
         'Permanent reservation of the deterministic Jetton Master address on TON testnet.',
@@ -441,8 +506,8 @@ function buildDeploymentOperations(deployerAddress, predictedAddresses, dexConfi
     },
     {
       step: 7,
-      id: 'OP_7_MINT_AND_RENOUNCE',
-      name: 'Bootstrap 3: Mint 1B Tokens & Renounce Admin',
+      id: 'OP_7_MINT_1B_TOKENS',
+      name: 'Bootstrap 3: Mint 1B Tokens to Curve Wallet (op == 21)',
       contractLabel: 'Launchpad Jetton Master',
       operationType: 'CONTRACT_CALL',
       targetKey: 'launchpadMinter',
@@ -452,60 +517,92 @@ function buildDeploymentOperations(deployerAddress, predictedAddresses, dexConfi
       amountNano: 100000000n,
       stateInitBocBase64: null,
       codeHash: null,
-      opcodeHex: '0x00000015 / 0x00000003',
-      opcodeName: 'op::mint & op::change_admin(addr_none)',
+      opcodeHex: '0x00000015',
+      opcodeName: 'op::mint',
       payloadBocBase64: (() => {
-        // Change admin to addr_none with custom_recipient = Curve
         const curveAddr = Address.parse(predictedAddresses.bondingCurve.address);
-        const cell = beginCell()
-          .storeUint(3, 32) // op == 3 (change_admin)
-          .storeUint(0x414e4c4752454e4fn, 64) // "ANLGRENO"
-          .storeUint(0, 2) // addr_none (new_admin)
-          .storeAddress(curveAddr) // custom_recipient
+        const depAddr = Address.parse(deployerAddress);
+        const total1B = 1000000000000000000n; // 1,000,000,000 * 10^9
+
+        // Master message: TEP-74 internal_transfer
+        const masterMsg = beginCell()
+          .storeUint(0x178d4519, 32) // op::internal_transfer
+          .storeUint(1, 64)          // query_id
+          .storeCoins(total1B)       // jetton_amount (1B tokens)
+          .storeAddress(depAddr)     // from_address
+          .storeAddress(depAddr)     // response_address
+          .storeCoins(20000000n)     // forward_ton_amount (0.02 TON to trigger transfer_notification)
+          .storeUint(0, 1)           // forward_payload in-slice (empty)
           .endCell();
-        return cell.toBoc().toString('base64');
+
+        // Outer mint message to Jetton Master
+        const mintMsg = beginCell()
+          .storeUint(21, 32)         // op::mint
+          .storeUint(1, 64)          // query_id
+          .storeAddress(curveAddr)   // to_address (the Curve)
+          .storeCoins(50000000n)     // amount forwarded for wallet creation & notification
+          .storeRef(masterMsg)
+          .endCell();
+
+        return mintMsg.toBoc().toString('base64');
       })(),
       dependencies: ['OP_6_INIT_LAUNCHPAD'],
       precondition: {
         targetAccountState: 'ALREADY_ACTIVE',
-        description: 'Curve in STATE_INITIALIZING (1); Minter admin is operator wallet.',
+        expectedStateEnum: 1, // Curve must be in STATE_INITIALIZING
+        description: 'Curve in STATE_INITIALIZING (1); Minter active; Minter admin is operator deployer; total_supply == 0.',
       },
       postcondition: {
         targetAccountState: 'ALREADY_ACTIVE',
-        description: 'Minter admin permanently renounced to addr_none; Curve receives renounce confirmation.',
+        expectedTotalSupply: 1000000000000000000n,
+        expectedCurveState: 2, // STATE_RENOUNCE_PENDING
+        description: 'Minter total_supply increases to exactly 1,000,000,000 tokens; Curve transitions to STATE_RENOUNCE_PENDING (2).',
       },
       irreversibleEffects: [
-        'PERMANENT AND IRREVERSIBLE: Admin rights permanently renounced to addr_none. No more tokens can ever be minted.',
+        'Mints 1,000,000,000 tokens (100% of maximum supply) directly to Curve custody. Admin remains operator deployer.',
       ],
     },
     {
       step: 8,
-      id: 'OP_8_ACTIVATE_CURVE',
-      name: 'Bootstrap 4: Verify Admin Renounce & Activate Curve',
-      contractLabel: 'Bonding Curve',
-      operationType: 'ONCHAIN_VERIFICATION',
-      targetKey: 'bondingCurve',
-      targetAddress: predictedAddresses.bondingCurve.address,
-      targetRawAddress: predictedAddresses.bondingCurve.rawAddress,
+      id: 'OP_8_RENOUNCE_ADMIN',
+      name: 'Bootstrap 4: Renounce Admin to addr_none (op == 3)',
+      contractLabel: 'Launchpad Jetton Master',
+      operationType: 'CONTRACT_CALL',
+      targetKey: 'launchpadMinter',
+      targetAddress: predictedAddresses.launchpadMinter.address,
+      targetRawAddress: predictedAddresses.launchpadMinter.rawAddress,
       amountTon: 0.05,
       amountNano: 50000000n,
       stateInitBocBase64: null,
       codeHash: null,
-      opcodeHex: '0x51c9d382',
-      opcodeName: 'op::check_renounce (optional recovery)',
-      payloadBocBase64: null,
-      dependencies: ['OP_7_MINT_AND_RENOUNCE'],
+      opcodeHex: '0x00000003',
+      opcodeName: 'op == 3 (change_admin to addr_none)',
+      payloadBocBase64: (() => {
+        const curveAddr = Address.parse(predictedAddresses.bondingCurve.address);
+        const cell = beginCell()
+          .storeUint(3, 32)                   // op == 3 (change_admin)
+          .storeUint(0x414e4c4752454e4fn, 64) // "ANLGRENO" RENOUNCE_QUERY_ID
+          .storeUint(0, 2)                    // addr_none (new_admin)
+          .storeAddress(curveAddr)            // custom_recipient (Curve)
+          .endCell();
+        return cell.toBoc().toString('base64');
+      })(),
+      dependencies: ['OP_7_MINT_1B_TOKENS'],
       precondition: {
         targetAccountState: 'ALREADY_ACTIVE',
-        description: 'Minter admin is addr_none; renounce notification received by Curve.',
+        expectedCurveState: 2, // Curve must be in STATE_RENOUNCE_PENDING
+        expectedTotalSupply: 1000000000000000000n,
+        description: 'Minter total_supply is 1B; admin is deployer; Curve is in STATE_RENOUNCE_PENDING (2).',
       },
       postcondition: {
         targetAccountState: 'ALREADY_ACTIVE',
-        expectedStateEnum: 3, // STATE_ACTIVE
-        description: 'Curve is live in STATE_ACTIVE (3); public trading is officially enabled.',
+        expectedAdminNone: true,
+        expectedCurveState: 3, // STATE_ACTIVE (Curve activates automatically upon receiving renounce notification)
+        description: 'Minter admin permanently renounced to addr_none; Master emits notification to Curve; Curve automatically activates into STATE_ACTIVE (3).',
       },
       irreversibleEffects: [
-        'Activates live trading on the bonding curve. Curve is permanently open for public buy/sell orders.',
+        'PERMANENT AND IRREVERSIBLE: Admin authority permanently renounced to addr_none. No more tokens can ever be minted.',
+        'Triggers automatic activation of the Bonding Curve into STATE_ACTIVE (3), enabling public trading.',
       ],
     },
   ];
@@ -584,10 +681,9 @@ function validateTonConnectSession(session, expectedDeployerAddress, artifacts =
   }
 
   // 4. Manifest Requirement Status
-  if (!session.manifestUrl || !session.manifestUrl.startsWith('https://')) {
-    result.warnings.push(
-      `TON Connect manifest URL is missing or non-HTTPS: ${result.manifestBlockedReason}`
-    );
+  const manifestCheck = validateTonConnectManifestConfig(session.manifestUrl, session.manifestData);
+  if (!manifestCheck.ok) {
+    result.warnings.push(...manifestCheck.errors);
   }
 
   result.valid = result.errors.length === 0;
@@ -785,14 +881,18 @@ function evaluatePostApprovalResult(operation, txReceipt, postOnchainState, gett
     };
   }
 
-  if (typeof operation.postcondition.expectedStateEnum === 'number') {
-    if (getterResult !== operation.postcondition.expectedStateEnum) {
+  const expectedState = typeof operation.postcondition.expectedStateEnum === 'number'
+    ? operation.postcondition.expectedStateEnum
+    : (typeof operation.postcondition.expectedCurveState === 'number' ? operation.postcondition.expectedCurveState : null);
+
+  if (typeof expectedState === 'number') {
+    if (getterResult !== expectedState) {
       return {
         status: 'GETTER_VERIFICATION_FAILED',
         success: false,
         mustHalt: true,
         canAutoRetry: false,
-        reason: `Contract state enum getter returned ${getterResult}, expected ${operation.postcondition.expectedStateEnum}.`,
+        reason: `Contract state enum getter returned ${getterResult}, expected ${expectedState}.`,
       };
     }
   }
@@ -832,6 +932,7 @@ module.exports = {
   APPROVED_TESTNET_DEX,
   SUPERVISED_BUDGET,
   TONCONNECT_SPEC,
+  validateTonConnectManifestConfig,
   deriveDeterministicAddresses,
   buildDeploymentOperations,
   validateTonConnectSession,
