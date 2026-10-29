@@ -378,6 +378,20 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
             return ();
         }
 
+        ;; SUB-FLOW C: Return of DEX Escrow Tokens from Migration Router upon Abort
+        if (equal_slices(from_address, migration_router_address)) {
+            dex_tokens_escrow += token_amount;
+            state = STATE_MIGRATION_FAILED;
+            save_data(
+                state, admin_address, creator_address, treasury_address,
+                jetton_master_address, curve_jetton_wallet, dex_router_address, lp_locker_address, migration_router_address,
+                real_ton_reserve, real_token_reserve, accrued_protocol_fees, pending_refunds_tokens,
+                virtual_ton_reserve, virtual_token_reserve, graduation_threshold_ton, dex_tokens_escrow,
+                pending_refunds_dict, jetton_wallet_code
+            );
+            return ();
+        }
+
         ;; Helper macro / closure for safe non-draining refund:
         ;; If incoming msg_value has enough gas (>= 0.035 TON), execute immediate refund using incoming gas.
         ;; If incoming msg_value is underfunded (< 0.035 TON), record pending refund in dictionary!
@@ -732,6 +746,24 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
         return ();
     }
 
+    ;; ------------------------------------------------------------------------
+    ;; 10. OP::DEPOSIT_TON_LIQUIDITY (Refund / Return of TON from Migration Router upon Abort)
+    ;; ------------------------------------------------------------------------
+    if (op == 0x414e4c36) {
+        throw_unless(ERROR_UNAUTHORIZED, equal_slices(sender_address, migration_router_address));
+        int returned_ton = in_msg_body~load_coins();
+        real_ton_reserve += returned_ton;
+        state = STATE_MIGRATION_FAILED;
+        save_data(
+            state, admin_address, creator_address, treasury_address,
+            jetton_master_address, curve_jetton_wallet, dex_router_address, lp_locker_address, migration_router_address,
+            real_ton_reserve, real_token_reserve, accrued_protocol_fees, pending_refunds_tokens,
+            virtual_ton_reserve, virtual_token_reserve, graduation_threshold_ton, dex_tokens_escrow,
+            pending_refunds_dict, jetton_wallet_code
+        );
+        return ();
+    }
+
     throw(error::unknown_op());
 }
 
@@ -829,4 +861,16 @@ int get_pending_refund(slice user_address) method_id {
         return val~load_coins();
     }
     return 0;
+}
+
+
+int get_dex_escrow() method_id {
+    (
+        _, _, _, _,
+        _, _, _, _, _,
+        _, _, _, _,
+        _, _, _, int dex_tokens_escrow,
+        _, _
+    ) = load_data();
+    return dex_tokens_escrow;
 }
