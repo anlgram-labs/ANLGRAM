@@ -116,7 +116,7 @@ async function runTests() {
   const fakeMintRes = await minterContract.sendInternalMessage(fakeMintMsg);
   assert(fakeMintRes.type === 'failed' && fakeMintRes.exit_code === 73, 'Unauthorized mint strictly rejected with exit code 73');
 
-  // 1.3 Renounce Admin: Admin sends op == 3 setting admin to addr_none
+  // 1.3 Renounce Admin: Admin sends op == 3 setting admin to addr_none with custom_recipient (Curve)
   const renounceMsg = new InternalMessage({
     to: masterAddr,
     from: adminAddr,
@@ -128,6 +128,7 @@ async function runTests() {
           .storeUint(3, 32)             // change_admin
           .storeUint(999, 64)           // query_id
           .storeUint(0, 2)              // addr_none
+          .storeAddress(mockCurveWallet)// custom_recipient (Curve)
           .endCell()
       )
     })
@@ -135,6 +136,7 @@ async function runTests() {
   const renounceRes = await minterContract.sendInternalMessage(renounceMsg);
   assert(renounceRes.type === 'success', 'Processes op == 3 to renounce admin to addr_none');
   assert(renounceRes.actionList && renounceRes.actionList.length === 1, 'Emits on-chain acknowledgement message back to Curve');
+  assert(renounceRes.actionList[0].message.info.dest.toFriendly() === mockCurveWallet.toFriendly(), 'Renounce notification routed directly to custom_recipient (Curve)');
 
   // 1.4 Adversarial Test: Minting after renunciation strictly rejected with exit code 73
   const postRenounceMintRes = await minterContract.sendInternalMessage(
@@ -266,6 +268,25 @@ async function runTests() {
   });
   const nullInitRouterRes = await lockerContract.sendInternalMessage(nullInitRouterMsg);
   assert(nullInitRouterRes.type === 'failed' && nullInitRouterRes.exit_code === 408, 'Initializing router with null address rejected with exit code 408');
+
+  // 2.3B Adversarial Test: Initializing router with curve address (role collision) rejected with exit code 408
+  const curveAsRouterMsg = new InternalMessage({
+    to: lockerAddr,
+    from: adminAddr,
+    value: new BN('30000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c39, 32)      // op::init_lp_locker
+          .storeUint(3, 64)
+          .storeAddress(mockCurveWallet)  // curve address
+          .endCell()
+      )
+    })
+  });
+  const curveAsRouterRes = await lockerContract.sendInternalMessage(curveAsRouterMsg);
+  assert(curveAsRouterRes.type === 'failed' && curveAsRouterRes.exit_code === 408, 'Initializing router with curve address rejected with exit code 408 (role collision)');
 
   // 2.4 Authorized initialization of router by deployer/admin
   const authInitRouterMsg = new InternalMessage({
@@ -459,7 +480,216 @@ async function runTests() {
   assert(curveStateRes.result[5].toString() === curveTokens.toString(), 'Initial real_token_reserve is 800M tokens');
   assert(curveStateRes.result[7].toString() === '0', 'Initial pending_refunds_tokens is 0');
 
-  // 3.2 Initialize Launchpad
+  // 3.1B Adversarial Test: Trading strictly disabled in STATE_UNINITIALIZED (0)
+  const uninitBuyMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: buyerAddr,
+    value: new BN((5n * ONE_TON).toString()),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(beginCell().storeUint(0x5fcc3d14, 32).storeUint(1, 64).storeCoins(0).endCell())
+    })
+  });
+  const uninitBuyRes = await curveContract.sendInternalMessage(uninitBuyMsg);
+  assert(uninitBuyRes.type === 'failed' && uninitBuyRes.exit_code === 402, 'Trading strictly disabled in STATE_UNINITIALIZED (exit code 402)');
+
+  // 3.1C Adversarial Test: Unauthorized caller cannot call op::init_launchpad
+  const unauthorizedInitMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: spamAttackerAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c01, 32)
+          .storeUint(1, 64)
+          .storeAddress(masterAddr)
+          .storeAddress(mockCurveWallet)
+          .storeRef(
+            beginCell()
+              .storeAddress(routerAddr)
+              .storeAddress(lockerAddr)
+              .storeAddress(migrationRouter)
+              .endCell()
+          )
+          .storeRef(mockWalletCode)
+          .endCell()
+      )
+    })
+  });
+  const unauthorizedInitRes = await curveContract.sendInternalMessage(unauthorizedInitMsg);
+  assert(unauthorizedInitRes.type === 'failed' && unauthorizedInitRes.exit_code === 401, 'Unauthorized caller cannot initialize launchpad (exit code 401)');
+
+  // 3.1C2 Adversarial Test: op::init_launchpad with null master rejected with 408
+  const nullMasterInitMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c01, 32)
+          .storeUint(1, 64)
+          .storeAddress(null)             // null master!
+          .storeAddress(mockCurveWallet)
+          .storeRef(
+            beginCell()
+              .storeAddress(routerAddr)
+              .storeAddress(lockerAddr)
+              .storeAddress(migrationRouter)
+              .endCell()
+          )
+          .storeRef(mockWalletCode)
+          .endCell()
+      )
+    })
+  });
+  const nullMasterInitRes = await curveContract.sendInternalMessage(nullMasterInitMsg);
+  assert(nullMasterInitRes.type === 'failed' && nullMasterInitRes.exit_code === 408, 'op::init_launchpad with null Jetton Master rejected with exit code 408');
+
+  // 3.1D Adversarial Test: op::init_launchpad with null DEX router rejected with 408
+  const nullRouterInitMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c01, 32)
+          .storeUint(1, 64)
+          .storeAddress(masterAddr)
+          .storeAddress(mockCurveWallet)
+          .storeRef(
+            beginCell()
+              .storeAddress(null)             // null DEX router!
+              .storeAddress(lockerAddr)
+              .storeAddress(migrationRouter)
+              .endCell()
+          )
+          .storeRef(mockWalletCode)
+          .endCell()
+      )
+    })
+  });
+  const nullRouterInitRes = await curveContract.sendInternalMessage(nullRouterInitMsg);
+  assert(nullRouterInitRes.type === 'failed' && nullRouterInitRes.exit_code === 408, 'op::init_launchpad with null DEX router rejected with exit code 408');
+
+  // 3.1E Adversarial Test: op::init_launchpad with null locker rejected with 408
+  const nullLockerInitMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c01, 32)
+          .storeUint(1, 64)
+          .storeAddress(masterAddr)
+          .storeAddress(mockCurveWallet)
+          .storeRef(
+            beginCell()
+              .storeAddress(routerAddr)
+              .storeAddress(null)             // null LP locker!
+              .storeAddress(migrationRouter)
+              .endCell()
+          )
+          .storeRef(mockWalletCode)
+          .endCell()
+      )
+    })
+  });
+  const nullLockerInitRes = await curveContract.sendInternalMessage(nullLockerInitMsg);
+  assert(nullLockerInitRes.type === 'failed' && nullLockerInitRes.exit_code === 408, 'op::init_launchpad with null LP locker rejected with exit code 408');
+
+  // 3.1E2 Adversarial Test: op::init_launchpad with null migration router rejected with 408
+  const nullMigInitMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c01, 32)
+          .storeUint(1, 64)
+          .storeAddress(masterAddr)
+          .storeAddress(mockCurveWallet)
+          .storeRef(
+            beginCell()
+              .storeAddress(routerAddr)
+              .storeAddress(lockerAddr)
+              .storeAddress(null)            // null migration router!
+              .endCell()
+          )
+          .storeRef(mockWalletCode)
+          .endCell()
+      )
+    })
+  });
+  const nullMigInitRes = await curveContract.sendInternalMessage(nullMigInitMsg);
+  assert(nullMigInitRes.type === 'failed' && nullMigInitRes.exit_code === 408, 'op::init_launchpad with null Migration Router rejected with exit code 408');
+
+  // 3.1F Adversarial Test: op::init_launchpad with master mismatch rejected with 408
+  const badMasterInitMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c01, 32)
+          .storeUint(1, 64)
+          .storeAddress(spamAttackerAddr)      // wrong master address!
+          .storeAddress(mockCurveWallet)
+          .storeRef(
+            beginCell()
+              .storeAddress(routerAddr)
+              .storeAddress(lockerAddr)
+              .storeAddress(migrationRouter)
+              .endCell()
+          )
+          .storeRef(mockWalletCode)
+          .endCell()
+      )
+    })
+  });
+  const badMasterInitRes = await curveContract.sendInternalMessage(badMasterInitMsg);
+  assert(badMasterInitRes.type === 'failed' && badMasterInitRes.exit_code === 408, 'op::init_launchpad with Jetton Master mismatch rejected with exit code 408');
+
+  // 3.1G Adversarial Test: op::init_launchpad with locker == migration_router collision rejected with 408
+  const collisionInitMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c01, 32)
+          .storeUint(1, 64)
+          .storeAddress(masterAddr)
+          .storeAddress(mockCurveWallet)
+          .storeRef(
+            beginCell()
+              .storeAddress(routerAddr)
+              .storeAddress(lockerAddr)
+              .storeAddress(lockerAddr)        // collision: locker == migration router!
+              .endCell()
+          )
+          .storeRef(mockWalletCode)
+          .endCell()
+      )
+    })
+  });
+  const collisionInitRes = await curveContract.sendInternalMessage(collisionInitMsg);
+  assert(collisionInitRes.type === 'failed' && collisionInitRes.exit_code === 408, 'op::init_launchpad with locker/router collision rejected with exit code 408');
+
+  // 3.2 Legitimate Launchpad Initialization
   const initMsg = new InternalMessage({
     to: mockCurveWallet,
     from: adminAddr,
@@ -486,6 +716,10 @@ async function runTests() {
   });
   const initRes = await curveContract.sendInternalMessage(initMsg);
   assert(initRes.type === 'success', 'op::init_launchpad transitions to STATE_INITIALIZING (1)');
+
+  // 3.2B Adversarial Test: Duplicate initialization strictly rejected with exit code 407 (INVALID_STATE)
+  const dupInitRes = await curveContract.sendInternalMessage(initMsg);
+  assert(dupInitRes.type === 'failed' && dupInitRes.exit_code === 407, 'Duplicate op::init_launchpad strictly rejected with exit code 407 (INVALID_STATE)');
 
   // 3.3 Receive 1 Billion Token Custody
   const total1B = curveTokens + dexEscrow;
@@ -932,6 +1166,35 @@ async function runTests() {
 
   const migInProgressState = await curveContract.invokeGetMethod('get_curve_state', []);
   assert(migInProgressState.result[0].toString() === '5', 'Curve transitions to STATE_MIGRATION_IN_PROGRESS (5) - NOT prematurely graduated');
+
+  // 3.14B Failure Recovery Test: Bounced message from Migration Router transitions to STATE_MIGRATION_FAILED (7)
+  const routerBounceMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: migrationRouter,
+    value: new BN('30000000'),
+    bounce: false,
+    bounced: true,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0xffffffff, 32)
+          .storeUint(0x414e4c36, 32)
+          .endCell()
+      )
+    })
+  });
+  const routerBounceRes = await curveContract.sendInternalMessage(routerBounceMsg);
+  assert(routerBounceRes.type === 'success', 'Bounced message from Migration Router accepted safely');
+
+  const failedState = await curveContract.invokeGetMethod('get_curve_state', []);
+  assert(failedState.result[0].toString() === '7', 'Curve safely transitions to STATE_MIGRATION_FAILED (7) on router bounce');
+
+  // 3.14C Recovery: Authorized retry of op::initiate_migration from STATE_MIGRATION_FAILED succeeds
+  const retryMigRes = await curveContract.sendInternalMessage(initiateMigMsg);
+  assert(retryMigRes.type === 'success', 'Authorized retry of op::initiate_migration succeeds from STATE_MIGRATION_FAILED');
+
+  const retryState = await curveContract.invokeGetMethod('get_curve_state', []);
+  assert(retryState.result[0].toString() === '5', 'Curve safely transitions back to STATE_MIGRATION_IN_PROGRESS (5)');
 
   // 3.15 Blocker 2 Remediation: Verified Graduation upon op::lp_locked_confirmation from LP Locker
   const lpConfirmMsg = new InternalMessage({

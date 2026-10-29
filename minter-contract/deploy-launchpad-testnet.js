@@ -24,7 +24,7 @@ const { spawnSync } = require('node:child_process');
 const SCRIPT_DIR = __dirname;
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '..');
 const BASELINE_COMMIT = '94b225587c9b55535df1d02716641b166271171d';
-const EXPECTED_BRANCH = 'feature/launchpad-engine';
+const EXPECTED_BRANCH = process.env.EXPECTED_BRANCH || 'feature/launchpad-engine';
 const EXPECTED_GLOBAL_ID = '-3';
 
 const CONTRACTS = [
@@ -511,8 +511,8 @@ async function main(argv = process.argv.slice(2), env = process.env) {
       console.log('\nPost-Deployment Bootstrap Sequence (One-Time Authorized Operations):');
       console.log('  Step 1: Deployer calls op::init_lp_locker (0x414e4c39) on LP Locker with Migration Router address.');
       console.log('  Step 2: Deployer calls op::init_launchpad (0x414e4c01) on Bonding Curve with Minter, Locker & Router addresses.');
-      console.log('  Step 3: Deployer mints 1,000,000,000 tokens from Minter to Curve, triggering automatic admin renounce to addr_none.');
-      console.log('  Step 4: Curve receives admin_changed_notification and transitions to STATE_ACTIVE (trading enabled).');
+      console.log('  Step 3: Deployer mints 1,000,000,000 tokens from Minter to Curve, and renounces admin to addr_none via op == 3 (specifying Curve custom_recipient).');
+      console.log('  Step 4: Curve queries/receives verified op::admin_changed_notification from Minter (query_id=RENOUNCE_QUERY_ID, admin=addr_none, supply=1B) and activates STATE_ACTIVE (trading enabled).');
       console.log('Funding estimate: Minimum ~2.5 TON testnet recommended for initial contract state storage rent and bootstrap messages.');
     } else {
       for (const c of CONTRACTS) console.log(`- ${c.label}: ${c.source} -> ${c.artifact}`);

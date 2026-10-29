@@ -259,6 +259,20 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
                 }
             }
         }
+
+        ;; Recovery: Bounced message from Migration Router
+        if (equal_slices(sender_address, migration_router_address)) {
+            if (state == STATE_MIGRATION_IN_PROGRESS) {
+                state = STATE_MIGRATION_FAILED;
+                save_data(
+                    state, admin_address, creator_address, treasury_address,
+                    jetton_master_address, curve_jetton_wallet, dex_router_address, lp_locker_address, migration_router_address,
+                    real_ton_reserve, real_token_reserve, accrued_protocol_fees, pending_refunds_tokens,
+                    virtual_ton_reserve, virtual_token_reserve, graduation_threshold_ton, dex_tokens_escrow,
+                    pending_refunds_dict, jetton_wallet_code
+                );
+            }
+        }
         return ();
     }
     slice sender_address = cs~load_msg_addr();
@@ -291,8 +305,19 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
         slice new_migration_router = s_ref1~load_msg_addr();
 
         throw_if(408, new_master.preload_uint(2) == 0);
+        throw_if(408, new_router.preload_uint(2) == 0);
         throw_if(408, new_locker.preload_uint(2) == 0);
         throw_if(408, new_migration_router.preload_uint(2) == 0);
+
+        ;; Anti-aliasing / cross-role collision guards
+        throw_if(408, equal_slices(new_locker, new_migration_router));
+        throw_if(408, equal_slices(new_locker, new_master));
+        throw_if(408, equal_slices(new_migration_router, new_master));
+
+        ;; Integrity check: if jetton_master_address was pre-configured in StateInit, enforce exact match
+        if (jetton_master_address.preload_uint(2) != 0) {
+            throw_unless(408, equal_slices(new_master, jetton_master_address));
+        }
 
         cell new_wallet_code = in_msg_body~load_ref();
 
@@ -327,11 +352,10 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
             int total_expected = real_token_reserve + dex_tokens_escrow;
             throw_unless(ERROR_TOTAL_SUPPLY_MISMATCH, token_amount == total_expected);
 
-            ;; Send op == 3 (change_admin) to Jetton Minter setting admin to addr_none
+            ;; Query Jetton Master on-chain admin status and supply
             var msg_body = begin_cell()
-                .store_uint(3, 32)
+                .store_uint(op::query_admin_status, 32)
                 .store_uint(RENOUNCE_QUERY_ID, 64)
-                .store_uint(0, 2)  ;; addr_none (permanent renounce)
                 .end_cell();
 
             var msg = begin_cell()
@@ -622,7 +646,7 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
     ;; ------------------------------------------------------------------------
     if (op == op::initiate_migration) {
         throw_unless(ERROR_UNAUTHORIZED, equal_slices(sender_address, admin_address) | equal_slices(sender_address, creator_address));
-        throw_unless(ERROR_INVALID_STATE, state == STATE_GRADUATION_PENDING);
+        throw_unless(ERROR_INVALID_STATE, (state == STATE_GRADUATION_PENDING) | (state == STATE_MIGRATION_FAILED));
         throw_unless(ERROR_INSUFFICIENT_GAS, msg_value >= 250000000); ;; 0.25 TON attached for migration gas
 
         state = STATE_MIGRATION_IN_PROGRESS;

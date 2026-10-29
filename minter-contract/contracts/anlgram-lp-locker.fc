@@ -126,6 +126,7 @@ const int op::lp_locked_confirmation = 0x414e4c33;
 
         slice new_router = in_msg_body~load_msg_addr();
         throw_if(ERROR_INVALID_ADDRESS, new_router.preload_uint(2) == 0);
+        throw_if(ERROR_INVALID_ADDRESS, equal_slices(new_router, curve_address));
         router_address = new_router;
         is_router_initialized = 1;
 
