@@ -9,8 +9,8 @@
 **Reported Initial Candidate Commit:** `d9d20be`  
 **Code & UI Remediation Commit:** `5892668`  
 **Intermediate Documentation Commit:** `1f4c475` (introduced 1,039 typo)  
-**Current Release Candidate HEAD Commit:** `dc2f233`  
-**Integrated Commits from Main:** `cd67eb4`, `8079a0d`, `d9d20be`, `5892668`, `1f4c475`, `dc2f233`  
+**Reviewed Code-Candidate Base Commit:** `f27a081`  
+**Integrated Commits from Main:** `cd67eb4`, `8079a0d`, `d9d20be`, `5892668`, `1f4c475`, `f27a081`  
 **Target Blockchain Environment:** TON Testnet (Chain ID: `-3`)  
 
 ---
@@ -261,10 +261,10 @@ This equals exactly $\mathbf{800,000,000.000000000 \text{ tokens}}$ (100.0000% o
 
 #### 6. Terminal Spot Price on Curve
 - **Theoretical Continuous Price (Unrounded Decimal Quotient):**
-  $$P_{terminal, unrounded} = \frac{X_{final} \times 10^9}{Y_{final}} = \frac{666,666,666,666 \times 10^9}{266,666,666,665,600,000} \approx \mathbf{2,500.00000000375 \text{ nanoTON/token}}$$
+  $$P_{terminal, unrounded} = \frac{X_{final} \times 10^9}{Y_{final}} = \frac{666,666,666,666 \times 10^9}{266,666,666,665,600,000} = \mathbf{2,500.0000000075 \text{ nanoTON/token}}$$
 - **Contract & Getter Spot Price (After Integer nanoTON Rounding):**
   In TVM assembly and FunC (`anlgram-bonding-curve.fc`), price getters and transaction math evaluate using integer floor division:
-  $$P_{terminal, integer} = \left\lfloor \frac{666,666,666,666 \times 10^9}{266,666,666,665,600,000} \right\rfloor = \mathbf{2,500 \text{ nanoTON/token}} = \mathbf{0.0000025 \text{ TON/token}}$$
+  $$P_{terminal, integer} = \left\lfloor \frac{666,666,666,666 \times 10^9}{266,666,666,665,600,000} \right\rfloor = \left\lfloor 2,500.0000000075 \right\rfloor = \mathbf{2,500 \text{ nanoTON/token}} = \mathbf{0.0000025 \text{ TON/token}}$$
 
 #### 7. Intended Opening Price of the STON.fi DEX Pool
 At graduation, `anlgram-bonding-curve.fc` migrates `real_ton_reserve` ($500 \text{ TON}$) and `dex_tokens_escrow` ($200,000,000 \text{ tokens}$) to the STON.fi v2.2 pool:
@@ -273,14 +273,18 @@ $$P_{DEX} = \frac{500 \text{ TON} \times 10^9}{200,000,000 \text{ tokens}} = \fr
 #### 8. Price Discontinuity, Rounding Error, and Mathematical Distinction
 - **Equality After Integer nanoTON Quote Rounding:**
   $$\lfloor P_{terminal} \rfloor - P_{DEX} = 2,500 - 2,500 = \mathbf{0 \text{ nanoTON/token}}$$
-  After integer nanoTON quote rounding, price continuity is **100% exact** ($0.000000\%$ deviation). Both the curve getter and the DEX pool opening rate are identical at 2,500 nanoTON/token ($0.0000025 \text{ TON/token}$).
-- **Continuous Mathematical Precision (Pre-Rounding):**
-  Because $V_{ton}$ is quantized to integer nanoTON ($166,666,666,666 \text{ nanoTON}$, truncating the periodic fraction $166 \frac{2}{3} \times 10^9$ by $\frac{2}{3} \text{ nanoTON}$) and $V_{token}$ is quantized to integer atomic units ($266,666,666,665,600,000$, truncating $266 \frac{2}{3}\text{M}$ by $1,066,666$ atomic units), the unrounded continuous quotient yields:
-  $$P_{terminal, unrounded} - P_{DEX} \approx 2,500.00000000375 - 2,500 = \mathbf{+0.00000000375 \text{ nanoTON/token}}$$
-  This infinitesimal rounding delta ($1.5 \times 10^{-10}\%$, or 15 parts per trillion) is sub-atomic ($< 10^{-8} \text{ nanoTON}$) and is absorbed by the standard 9-decimal integer quantization. The contract equations and approved tokenomics are strictly preserved without introducing ad-hoc decimals or altering contract behavior.
+  Under the documented integer quote calculation (using TVM floor division), both the bonding curve spot price and the DEX opening pool rate evaluate to exactly **2,500 nanoTON/token** ($0.0000025 \text{ TON/token}$), yielding an exact integer match with 0 deviation.
+- **Continuous Mathematical Precision (Pre-Rounding Real-Number Quotients):**
+  Because $V_{ton}$ is quantized to integer nanoTON ($166,666,666,666 \text{ nanoTON}$, which truncates the periodic fraction $166 \frac{2}{3} \times 10^9$ by $\frac{2}{3} \text{ nanoTON}$) and $V_{token}$ is quantized to integer atomic units ($266,666,666,665,600,000$, which truncates $266 \frac{2}{3}\text{M} \times 10^9$ by $1,066,666$ atomic units), the underlying unrounded real-number quotients are not exactly equal:
+  - **Unrounded Terminal Price:** $P_{terminal, unrounded} = \mathbf{2,500.0000000075 \text{ nanoTON/token}}$
+  - **Absolute Difference:** $P_{terminal, unrounded} - P_{DEX} = \mathbf{0.0000000075 \text{ nanoTON/token}}$
+  - **Relative Fractional Difference:** $\frac{0.0000000075}{2500} = \mathbf{3 \times 10^{-12}}$ ($3 \times 10^{-12}$ as a fraction)
+  - **Relative Percentage Difference:** $\mathbf{3 \times 10^{-10}\%}$
+  - **Relative Order of Magnitude:** $\mathbf{3 \text{ parts per trillion}}$
+  This infinitesimal difference ($7.5 \times 10^{-9} \text{ nanoTON/token}$) is far below the single atomic base unit ($1 \text{ nanoTON}$) and is absorbed entirely by integer quote rounding. Both prices floor to 2,500 nanoTON/token. The approved tokenomics, reserve values, supply, fees, and contract behavior are strictly preserved without introducing ad-hoc decimals.
 - **Remaining Inventory after Graduation:** $\mathbf{0 \text{ tokens}}$ ($0 \text{ nano-units}$).
-- **Alignment with Frontend Calculator:** In `memecoin-platform.html`, `window.updateCurveQuotes` uses these exact constants ($V_{TON} = 166.666666666$, $V_{TKN} = 266,666,666.6656$, $TOTAL\_CURVE = 800,000,000$, $K = 1.77777777777 \times 10^{11}$). For 1 TON gross input, it computes an output of `~6,298,568 TKN` after 1% fee, exactly matching FunC and TVM simulation results.
-- **TVM Test Coverage:** Group 1 (`test-bonding-curve-math.js`) and Group 3 (`test-bonding-curve-tvm.js`) assert `terminalCurveSpot - initialDexSpot === 0n` and `gradCurve.realTokens === 0n`, confirming that zero price discontinuity holds identically under blockchain integer execution.
+- **Alignment with Frontend Calculator:** In `memecoin-platform.html`, `window.updateCurveQuotes` uses these exact parameters ($V_{TON} = 166.666666666$, $V_{TKN} = 266,666,666.6656$, $TOTAL\_CURVE = 800,000,000$, $K = 1.77777777777 \times 10^{11}$). For 1 TON gross input, it computes an output of `~6,298,568 TKN` after 1% fee, exactly matching FunC and TVM simulation results.
+- **TVM Test Coverage:** Group 1 (`test-bonding-curve-math.js`) and Group 3 (`test-bonding-curve-tvm.js`) assert `terminalCurveSpot - initialDexSpot === 0n` and `gradCurve.realTokens === 0n`, confirming that price equality holds identically under blockchain integer execution.
 
 ---
 
@@ -332,54 +336,98 @@ To prevent accidental release, worktree collisions, or unintended history altera
 ### 7.1 Identification of Repositories & Worktrees
 - **Release Candidate Source Worktree:** `E:\anlgram-release-candidate`  
   - Current Checked-out Branch: `release/memelabs-production-candidate`  
-  - Current HEAD Commit: `dc2f233` (finalized upon documentation sign-off)  
-  - Lineage: Base commit `94b2255` -> Remediation `5892668` -> Final reconciliation
+  - Reviewed Code-Candidate Base: `f27a081ddf25765b511dd4b30c975c632a91b960` (`f27a081`)  
+  - Lineage: Base commit `94b2255` -> Code remediations `5892668` -> Intermediate docs `1f4c475` -> Test reconciliation `f27a081` -> Final sign-off corrections
+  - *Strict Isolation Rule:* Keep the existing release-candidate worktree and branch completely untouched. Never checkout `main`, merge, or push inside `E:\anlgram-release-candidate`.
 - **Primary Repository Worktree:** `E:\ANLGRAM`  
-  - Current Checked-out Branch: `feature/launchpad-engine` (contains local working development changes, ahead of origin by 1 commit)  
+  - Current Checked-out Branch: `feature/launchpad-engine` (contains uncommitted local development changes, including untracked documents and modified build outputs, ahead of `origin/feature/launchpad-engine` by 1 commit)  
   - Target Integration Branch: `main` (baseline at `94b2255` in Git repository database, not currently checked out in any worktree)  
-  - *Crucial Worktree Rule:* Never execute `git checkout main` inside `E:\anlgram-release-candidate`, as this would displace the release candidate worktree. Integration into `main` must take place in `E:\ANLGRAM` only after safely stashing or preserving any uncommitted changes on `feature/launchpad-engine`.
+  - *Integration Target:* Integration into `main` must take place in `E:\ANLGRAM` only after safely preserving all tracked and untracked local changes and verifying the working tree is completely clean.
 
-### 7.2 Pre-Publication Checklist & Isolation Verification
-Before performing any checkout or merge into `main`:
-1. Verify and stash working changes in `E:\ANLGRAM`:
+### 7.2 Pre-Publication Checklist & Safe Working Tree Preservation
+Before switching branches or performing any integration into `main`:
+
+1. **Inspect Working Tree & Current Branch:**
    ```powershell
    cd E:\ANLGRAM
    git branch --show-current
    # Confirms: feature/launchpad-engine (NOT main)
 
-   git status
-   # If uncommitted changes exist, stash them cleanly:
-   git stash push -m "WIP feature/launchpad-engine before release publication"
-   ```
-2. Verify remote synchronization:
-   ```powershell
-   git fetch origin
+   git status --short
+   # Displays both tracked modifications (M) and untracked files (??)
    ```
 
-### 7.3 Step-by-Step Publication Procedure (Manual Approval Required)
+2. **Preserve Tracked and Untracked Local Changes:**
+   > [!IMPORTANT]
+   > Standard `git stash push -m "..."` only captures tracked files, leaving untracked files (`??`) in the working tree. This risks cross-branch contamination or checkout collisions. You **must** include untracked files safely by passing `--include-untracked` (or `-u`):
+   ```powershell
+   git stash push --include-untracked -m "WIP feature/launchpad-engine before release publication"
+   ```
+
+3. **Verify Working Tree is 100% Clean:**
+   ```powershell
+   git status --short
+   # Must return EMPTY output.
+   # If any modified or untracked files remain, STOP and resolve before proceeding.
+   ```
+
+4. **Verify Stash Capture:**
+   ```powershell
+   git stash list -n 1
+   # Confirms top stash contains the saved working state
+   ```
+
+### 7.3 Step-by-Step Publication Procedure (Explicit Human Sign-Off Required)
+
+> [!CAUTION]
+> **STRICT SAFETY & APPROVAL GATES:**
+> - **Zero Destructive Commands:** Never run `git reset --hard`, `git push --force`, or `git push --force-with-lease`.
+> - **Human Approval Gates:** Require explicit human approval before merging, pushing to origin, deploying to production hosting, or executing any blockchain transaction.
+> - **Divergence Guard:** If `main` is no longer at the expected baseline (`94b2255`) or has diverged from `origin/main`, **STOP IMMEDIATELY**. Do not force-merge or pull. Require human investigation.
 
 ```powershell
 # Step 1: In the primary repository worktree, switch to production main
 cd E:\ANLGRAM
 git checkout main
-git pull origin main
 
-# Step 2: Verify that HEAD is exactly the expected baseline 94b2255
-git rev-parse --short HEAD
-# Expected output: 94b2255
+# Step 2: Fetch remote tracking references without modifying working directory
+git fetch origin
 
-# Step 3: Integrate the exact release candidate commit via fast-forward merge
+# Step 3: Verify local main and remote tracking HEAD baseline status
+git rev-parse HEAD
+# Expected output: 94b225587c9b55535df1d02716641b166271171d (94b2255)
+
+git rev-parse origin/main
+# Expected output: 94b225587c9b55535df1d02716641b166271171d (94b2255)
+
+git status --short --branch
+# Must report: ## main...origin/main (up to date, working tree clean)
+# IF NOT at 94b2255 or IF diverged from origin/main: STOP IMMEDIATELY and require human review.
+
+# Step 4: Fast-forward merge the verified release candidate commit
+# >>> REQUIRE EXPLICIT HUMAN APPROVAL BEFORE EXECUTING MERGE <<<
 git merge release/memelabs-production-candidate --ff-only
 
-# Step 4: Run immediate sanity regression checks on main
+# Step 5: Run immediate sanity regression checks on main
 node test-anl-labs-regression.js
 node test-wizard-comprehensive.js
 
-# Step 5: Push to remote main only after explicit human approval
+# Step 6: Push to remote main
+# >>> REQUIRE EXPLICIT HUMAN APPROVAL BEFORE PUSHING TO PRODUCTION <<<
 git push origin main
 ```
 
-### 7.4 Post-Publication Verification
+### 7.4 Restoring Local Feature Development State
+After publication is completed and verified, restore the feature development working state in `E:\ANLGRAM`:
+```powershell
+cd E:\ANLGRAM
+git checkout feature/launchpad-engine
+git stash pop
+git status --short
+# Confirms all tracked and untracked development work is fully restored
+```
+
+### 7.5 Post-Publication Verification
 After pushing to production:
 1. **HTTP 200 Verification:** Check that `https://anlgram.com/` returns HTTP 200.
 2. **Manifest Verification:** Fetch `https://anlgram.com/tonconnect-manifest.json` and verify `iconUrl` points to `https://anlgram.com/assets/images/icon-192.png`.
