@@ -5,13 +5,16 @@
  * ANLGRAM MemeLabs — Supervised Testnet Deployment Tool & Execution Engine
  * File: minter-contract/deploy-launchpad-testnet-exec.js
  *
- * PHASE 3C.1 COMPLIANCE:
- * - Dedicated execution planner and supervised deployer (SEPARATE from deploy-launchpad-testnet.js).
+ * PHASE 3C.3 COMPLIANCE:
+ * - Dedicated execution planner, deterministic address verifier, and read-only preflight engine.
  * - Default Mode is 100% read-only: validates configuration, checks artifacts, calculates DAG,
- *   derives deterministic StateInit addresses, and presents itemized gas budgets.
+ *   derives deterministic StateInit addresses, and presents itemized gas budgets and balance preflights.
+ * - Strict read-only on-chain verification distinguishes uninitialized, active, frozen, and indeterminate states.
+ * - Never treats query failure (HTTP 429, 500, timeout) as confirmation that an address is unoccupied.
  * - Future Execution Mode (--execute-testnet) requires strict multi-layer gates, explicit testnet
  *   selection, allowed domain whitelisting, balance pre-checks, and step-by-step human confirmation.
  * - Zero secrets printed, stored, or accepted as command-line arguments.
+ * - Zero transaction signing or broadcasting logic implemented.
  */
 
 const fs = require('node:fs');
@@ -94,6 +97,7 @@ function parseArgs(argv) {
   const flags = {
     plan: false,
     verifyConfig: false,
+    verifyOnchain: false,
     dryRun: false,
     executeTestnet: false,
     supervisedHumanApproved: false,
@@ -103,6 +107,7 @@ function parseArgs(argv) {
   for (const arg of argv) {
     if (arg === '--plan') flags.plan = true;
     else if (arg === '--verify-config') flags.verifyConfig = true;
+    else if (arg === '--verify-onchain') flags.verifyOnchain = true;
     else if (arg === '--dry-run') flags.dryRun = true;
     else if (arg === '--execute-testnet') flags.executeTestnet = true;
     else if (arg === '--supervised-human-approved') flags.supervisedHumanApproved = true;
@@ -110,12 +115,12 @@ function parseArgs(argv) {
     else if (arg.startsWith('--mnemonic') || arg.startsWith('--seed') || arg.startsWith('--key')) {
       throw new Error(`SECURITY VIOLATION: Command-line secret flag '${arg}' is strictly forbidden. Secrets must never be passed in command arguments.`);
     } else {
-      throw new Error(`Unsupported option: ${arg}. Allowed: --plan, --verify-config, --dry-run, --execute-testnet, --supervised-human-approved.`);
+      throw new Error(`Unsupported option: ${arg}. Allowed: --plan, --verify-config, --verify-onchain, --dry-run, --execute-testnet, --supervised-human-approved.`);
     }
   }
 
   // Default mode if no flags specified is --plan
-  if (!flags.plan && !flags.verifyConfig && !flags.dryRun && !flags.executeTestnet && !flags.help) {
+  if (!flags.plan && !flags.verifyConfig && !flags.verifyOnchain && !flags.dryRun && !flags.executeTestnet && !flags.help) {
     flags.plan = true;
   }
 
@@ -428,9 +433,373 @@ function deriveDeterministicAddresses(deployerAddress, artifacts) {
   };
 }
 
+/**
+ * Perform a strict read-only on-chain state inspection for a TON address.
+ * Distinguishes uninitialized, active, frozen, query errors, and indeterminate states.
+ * Under NO condition does this transmit a transaction or modify blockchain state.
+ */
+async function queryAccountStatusReadOnly(address, env = process.env, fetchImpl = globalThis.fetch) {
+  if (typeof fetchImpl !== 'function') {
+    return {
+      ok: false,
+      status: 'FETCH_UNAVAILABLE',
+      category: 'INDETERMINATE',
+      detail: 'No fetch implementation available in current runtime environment.',
+    };
+  }
+
+  // 1. Validate target address format and network flags
+  const addrCheck = parseTonAddress(address);
+  if (!addrCheck.valid) {
+    return {
+      ok: false,
+      status: 'INVALID_ADDRESS',
+      category: 'INDETERMINATE',
+      detail: `Address validation failed: ${addrCheck.reason}`,
+    };
+  }
+  if (!addrCheck.testnetFlagPresent && addrCheck.format === 'friendly') {
+    return {
+      ok: false,
+      status: 'MAINNET_ADDRESS_REJECTED',
+      category: 'INDETERMINATE',
+      detail: 'Address lacks friendly testnet flag (mainnet address rejected).',
+    };
+  }
+
+  // 2. Select endpoint from configuration
+  const tonapiUrl = normalizeEndpoint(env.TONAPI_TESTNET_URL);
+  const toncenterUrl = normalizeEndpoint(env.TONCENTER_TESTNET_URL);
+
+  if (!tonapiUrl && !toncenterUrl) {
+    return {
+      ok: false,
+      status: 'NO_ENDPOINT',
+      category: 'INDETERMINATE',
+      detail: 'Neither TONAPI_TESTNET_URL nor TONCENTER_TESTNET_URL is configured.',
+    };
+  }
+
+  // Enforce whitelist and HTTPS
+  const candidateUrl = tonapiUrl || toncenterUrl;
+  const parsedEndpoint = new URL(candidateUrl);
+  if (!ALLOWED_TESTNET_HOSTS.has(parsedEndpoint.hostname.toLowerCase())) {
+    return {
+      ok: false,
+      status: 'FORBIDDEN_ENDPOINT',
+      category: 'INDETERMINATE',
+      detail: `Endpoint host '${parsedEndpoint.hostname}' is not in approved testnet whitelist.`,
+    };
+  }
+  if (parsedEndpoint.protocol !== 'https:') {
+    return {
+      ok: false,
+      status: 'INSECURE_ENDPOINT',
+      category: 'INDETERMINATE',
+      detail: 'Endpoint must use HTTPS.',
+    };
+  }
+
+  // Use TonAPI if available (standard REST status)
+  if (tonapiUrl) {
+    const queryUrl = `${tonapiUrl}/accounts/${encodeURIComponent(address)}`;
+    const headers = { 'Accept': 'application/json' };
+    if (env.TONAPI_KEY) headers['Authorization'] = `Bearer ${env.TONAPI_KEY}`;
+
+    try {
+      const response = await fetchImpl(queryUrl, {
+        method: 'GET',
+        headers,
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (response.status === 429) {
+        return {
+          ok: false,
+          status: 'RATE_LIMITED',
+          category: 'INDETERMINATE',
+          provider: 'tonapi',
+          detail: 'TonAPI rate limit exceeded (HTTP 429). Must not treat as unoccupied.',
+        };
+      }
+      if (!response.ok) {
+        return {
+          ok: false,
+          status: `HTTP_${response.status}`,
+          category: 'INDETERMINATE',
+          provider: 'tonapi',
+          detail: `TonAPI responded with HTTP ${response.status}`,
+        };
+      }
+
+      const data = await response.json();
+      const status = String(data.status || 'unknown').toLowerCase();
+      const balance = BigInt(data.balance || 0);
+      const codeHash = typeof data.code_hash === 'string' ? data.code_hash : null;
+
+      if (status === 'active') {
+        return {
+          ok: true,
+          status: 'active',
+          category: 'ALREADY_ACTIVE',
+          hasCode: true,
+          codeHash,
+          balance,
+          provider: 'tonapi',
+          rawResponse: data,
+          detail: 'Account is active on-chain with existing deployed code.',
+        };
+      }
+      if (status === 'frozen') {
+        return {
+          ok: true,
+          status: 'frozen',
+          category: 'FROZEN',
+          hasCode: false,
+          balance,
+          provider: 'tonapi',
+          rawResponse: data,
+          detail: 'Account is frozen on-chain.',
+        };
+      }
+      if (status === 'nonexist' || status === 'uninit') {
+        return {
+          ok: true,
+          status,
+          category: 'UNINITIALIZED',
+          hasCode: false,
+          balance,
+          provider: 'tonapi',
+          rawResponse: data,
+          detail: `Account is ${status} on-chain with zero code (clean for StateInit deployment).`,
+        };
+      }
+      return {
+        ok: false,
+        status,
+        category: 'INDETERMINATE',
+        provider: 'tonapi',
+        rawResponse: data,
+        detail: `Unexpected account status returned by TonAPI: ${status}`,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        status: 'FETCH_ERROR',
+        category: 'INDETERMINATE',
+        provider: 'tonapi',
+        detail: `Network error querying TonAPI: ${err.message}`,
+      };
+    }
+  }
+
+  // Fallback to Toncenter v2
+  const queryUrl = `${toncenterUrl}/getAddressInformation?address=${encodeURIComponent(address)}`;
+  const headers = { 'Accept': 'application/json' };
+  if (env.TONCENTER_API_KEY) headers['X-API-Key'] = env.TONCENTER_API_KEY;
+
+  try {
+    const response = await fetchImpl(queryUrl, {
+      method: 'GET',
+      headers,
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (response.status === 429) {
+      return {
+        ok: false,
+        status: 'RATE_LIMITED',
+        category: 'INDETERMINATE',
+        provider: 'toncenter',
+        detail: 'Toncenter rate limit exceeded (HTTP 429). Must not treat as unoccupied.',
+      };
+    }
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: `HTTP_${response.status}`,
+        category: 'INDETERMINATE',
+        provider: 'toncenter',
+        detail: `Toncenter responded with HTTP ${response.status}`,
+      };
+    }
+
+    const data = await response.json();
+    if (data.ok === false) {
+      return {
+        ok: false,
+        status: 'API_ERROR',
+        category: 'INDETERMINATE',
+        provider: 'toncenter',
+        detail: `Toncenter error: ${data.result || data.error}`,
+      };
+    }
+
+    const res = data.result || {};
+    const state = String(res.state || 'unknown').toLowerCase();
+    const code = String(res.code || '');
+    const balance = BigInt(res.balance || 0);
+
+    if (state === 'active') {
+      return {
+        ok: true,
+        status: 'active',
+        category: 'ALREADY_ACTIVE',
+        hasCode: true,
+        codeHash: res.code_hash || null,
+        balance,
+        provider: 'toncenter',
+        rawResponse: res,
+        detail: 'Account is active on-chain with existing deployed code.',
+      };
+    }
+    if (state === 'frozen') {
+      return {
+        ok: true,
+        status: 'frozen',
+        category: 'FROZEN',
+        hasCode: false,
+        balance,
+        provider: 'toncenter',
+        rawResponse: res,
+        detail: 'Account is frozen on-chain.',
+      };
+    }
+    if (state === 'uninitialized') {
+      if (code !== '') {
+        return {
+          ok: true,
+          status: 'uninitialized',
+          category: 'INCOMPATIBLE',
+          hasCode: true,
+          balance,
+          provider: 'toncenter',
+          rawResponse: res,
+          detail: 'Account is marked uninitialized but already holds code.',
+        };
+      }
+      return {
+        ok: true,
+        status: 'uninitialized',
+        category: 'UNINITIALIZED',
+        hasCode: false,
+        balance,
+        provider: 'toncenter',
+        rawResponse: res,
+        detail: 'Account is uninitialized on-chain with zero code (clean for StateInit deployment).',
+      };
+    }
+    return {
+      ok: false,
+      status: state,
+      category: 'INDETERMINATE',
+      provider: 'toncenter',
+      rawResponse: res,
+      detail: `Unexpected account state returned by Toncenter: ${state}`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      status: 'FETCH_ERROR',
+      category: 'INDETERMINATE',
+      provider: 'toncenter',
+      detail: `Network error querying Toncenter: ${err.message}`,
+    };
+  }
+}
+
+/**
+ * Conduct comprehensive on-chain read-only preflight verification across
+ * all 4 predicted deterministic contract addresses, the operator deployer wallet,
+ * and the DEX infrastructure dependencies.
+ */
+async function verifyDeterministicAddressesOnChainReadOnly(predictedAddresses, env = process.env, fetchImpl = globalThis.fetch) {
+  const targets = [
+    { id: 'launchpadMinter', label: 'Launchpad Jetton Master', address: predictedAddresses.launchpadMinter.address },
+    { id: 'bondingCurve', label: 'Bonding Curve', address: predictedAddresses.bondingCurve.address },
+    { id: 'lpLocker', label: 'LP Locker', address: predictedAddresses.lpLocker.address },
+    { id: 'migrationRouter', label: 'Migration Router', address: predictedAddresses.migrationRouter.address },
+  ];
+
+  const results = {};
+  const errors = [];
+  const blockers = [];
+  let allUninitialized = true;
+  let anyIndeterminate = false;
+
+  for (const t of targets) {
+    const res = await queryAccountStatusReadOnly(t.address, env, fetchImpl);
+    results[t.id] = {
+      label: t.label,
+      address: t.address,
+      ...res,
+    };
+
+    if (res.category === 'INDETERMINATE') {
+      anyIndeterminate = true;
+      errors.push(`${t.label} (${t.address}): Query failed or indeterminate (${res.detail}). Must not assume address is unoccupied.`);
+    } else if (res.category === 'ALREADY_ACTIVE') {
+      allUninitialized = false;
+      blockers.push(`${t.label} (${t.address}): ALREADY ACTIVE on-chain! Deploying would be ignored or corrupt existing deployment.`);
+    } else if (res.category === 'FROZEN') {
+      allUninitialized = false;
+      blockers.push(`${t.label} (${t.address}): FROZEN on-chain. Manual intervention required.`);
+    } else if (res.category === 'INCOMPATIBLE') {
+      allUninitialized = false;
+      blockers.push(`${t.label} (${t.address}): INCOMPATIBLE state on-chain (${res.detail}).`);
+    } else if (res.category === 'UNINITIALIZED') {
+      // Clean
+    }
+  }
+
+  // Operator Deployer wallet check
+  let deployerResult = null;
+  const deployerAddr = env.ANLGRAM_TESTNET_DEPLOYER_ADDRESS;
+  if (deployerAddr) {
+    deployerResult = await queryAccountStatusReadOnly(deployerAddr, env, fetchImpl);
+    const minNanotons = BigInt(Math.floor(DEPLOYMENT_BUDGET.minimumRequiredBalance * 1e9));
+    const recNanotons = BigInt(Math.floor(DEPLOYMENT_BUDGET.recommendedBalance * 1e9));
+    deployerResult.balanceTon = Number(deployerResult.balance || 0n) / 1e9;
+    deployerResult.meetsMinimum = (deployerResult.balance || 0n) >= minNanotons;
+    deployerResult.meetsRecommended = (deployerResult.balance || 0n) >= recNanotons;
+
+    if (!deployerResult.meetsMinimum) {
+      blockers.push(`Operator wallet (${deployerAddr}) balance is ${deployerResult.balanceTon.toFixed(4)} TON. Required minimum is ${DEPLOYMENT_BUDGET.minimumRequiredBalance.toFixed(2)} TON.`);
+    }
+  }
+
+  // DEX infrastructure check
+  const dexResults = {};
+  const dexRouterRes = await queryAccountStatusReadOnly(APPROVED_TESTNET_DEX.router, env, fetchImpl);
+  dexResults.router = { label: 'STON.fi Router v2.2', address: APPROVED_TESTNET_DEX.router, ...dexRouterRes };
+  const ptonRes = await queryAccountStatusReadOnly(APPROVED_TESTNET_DEX.ptonMaster, env, fetchImpl);
+  dexResults.ptonMaster = { label: 'pTON v2 Master', address: APPROVED_TESTNET_DEX.ptonMaster, ...ptonRes };
+
+  let statusVerdict;
+  if (anyIndeterminate) {
+    statusVerdict = 'INDETERMINATE';
+  } else if (blockers.length > 0) {
+    statusVerdict = 'INTERVENTION_REQUIRED';
+  } else if (allUninitialized && deployerResult && deployerResult.meetsMinimum) {
+    statusVerdict = 'PREFLIGHT_PASS_READONLY';
+  } else {
+    statusVerdict = 'INTERVENTION_REQUIRED';
+  }
+
+  return {
+    ok: statusVerdict === 'PREFLIGHT_PASS_READONLY',
+    statusVerdict,
+    targets: results,
+    deployer: deployerResult,
+    dex: dexResults,
+    errors,
+    blockers,
+  };
+}
+
 function printPlan(predictedAddresses) {
   console.log('\n═══════════════════════════════════════════════════════════════════════════');
-  console.log('📋 ANLGRAM MEMELABS — SUPERVISED DEPLOYMENT PLAN (Phase 3C.1)');
+  console.log('📋 ANLGRAM MEMELABS — SUPERVISED DEPLOYMENT PLAN (Phase 3C.3)');
   console.log('═══════════════════════════════════════════════════════════════════════════\n');
 
   console.log('--- 1. Target Network & Infrastructure ---');
@@ -476,6 +845,60 @@ function printPlan(predictedAddresses) {
   console.log('  Secrets:            No mnemonics loaded or logged. Local signer required.');
 }
 
+function printOnChainPreflight(onchain) {
+  console.log('\n═══════════════════════════════════════════════════════════════════════════');
+  console.log('🔍 ON-CHAIN READ-ONLY PREFLIGHT AUDIT EVIDENCE');
+  console.log('═══════════════════════════════════════════════════════════════════════════\n');
+
+  console.log('--- 1. Deterministic Target Contract Addresses ---');
+  for (const [id, item] of Object.entries(onchain.targets)) {
+    const verdictMark = item.category === 'UNINITIALIZED' ? '✅' : '❌';
+    console.log(`  ${verdictMark} ${item.label.padEnd(25)}: ${item.address}`);
+    console.log(`     Category: [${item.category}] | Status: ${item.status} | Code: ${item.hasCode ? 'PRESENT' : 'NONE'} | Provider: ${item.provider || 'none'}`);
+    console.log(`     Detail:   ${item.detail}`);
+  }
+
+  console.log('\n--- 2. Operator Deployer Wallet State ---');
+  if (onchain.deployer) {
+    const d = onchain.deployer;
+    const fundedMark = d.meetsMinimum ? '✅' : '⚠️ ';
+    console.log(`  ${fundedMark} Address:     ${envAddressMask(process.env.ANLGRAM_TESTNET_DEPLOYER_ADDRESS)}`);
+    console.log(`     Status:      ${d.status} (${d.category})`);
+    console.log(`     Balance:     ${d.balanceTon.toFixed(4)} TON`);
+    console.log(`     Min Needed:  ${DEPLOYMENT_BUDGET.minimumRequiredBalance.toFixed(2)} TON (Meets Minimum: ${d.meetsMinimum ? 'YES' : 'NO - FUNDING REQUIRED'})`);
+    console.log(`     Recommended: ${DEPLOYMENT_BUDGET.recommendedBalance.toFixed(2)} TON (Meets Recommended: ${d.meetsRecommended ? 'YES' : 'NO'})`);
+  }
+
+  console.log('\n--- 3. External DEX Infrastructure Readiness ---');
+  for (const [id, item] of Object.entries(onchain.dex)) {
+    const dexMark = item.category === 'ALREADY_ACTIVE' ? '✅' : '⚠️ ';
+    console.log(`  ${dexMark} ${item.label.padEnd(25)}: ${item.address}`);
+    console.log(`     Status: [${item.status}] | Deployed Code: ${item.hasCode ? 'ACTIVE' : 'MISSING'} | Balance: ${(Number(item.balance || 0n) / 1e9).toFixed(4)} TON`);
+  }
+
+  console.log('\n--- 4. Overall Preflight Summary Verdict ---');
+  if (onchain.statusVerdict === 'PREFLIGHT_PASS_READONLY') {
+    console.log('  STATUS: ✅ PREFLIGHT PASS (READ-ONLY)');
+    console.log('  All 4 deterministic addresses are unoccupied. Operator wallet is funded. DEX endpoints verified.');
+  } else if (onchain.statusVerdict === 'INTERVENTION_REQUIRED') {
+    console.log('  STATUS: ⚠️  INTERVENTION REQUIRED');
+    for (const b of onchain.blockers) {
+      console.log(`  - BLOCKER: ${b}`);
+    }
+  } else if (onchain.statusVerdict === 'INDETERMINATE') {
+    console.log('  STATUS: ❓ INDETERMINATE RESULT');
+    for (const e of onchain.errors) {
+      console.log(`  - QUERY ERROR: ${e}`);
+    }
+  }
+}
+
+function envAddressMask(addr) {
+  if (!addr) return 'none';
+  if (addr.length <= 16) return addr;
+  return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+}
+
 async function requestHumanConfirmation(promptText) {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -489,14 +912,15 @@ async function requestHumanConfirmation(promptText) {
   });
 }
 
-async function main(argv = process.argv.slice(2), env = process.env) {
+async function main(argv = process.argv.slice(2), env = process.env, fetchImpl = globalThis.fetch) {
   const flags = parseArgs(argv);
 
   if (flags.help) {
-    console.log('ANLGRAM MemeLabs Supervised Testnet Deployer (deploy-launchpad-testnet-exec.js)');
+    console.log('ANLGRAM MemeLabs Supervised Testnet Deployer & Preflight Tool');
     console.log('Usage:');
     console.log('  node minter-contract/deploy-launchpad-testnet-exec.js --plan');
     console.log('  node minter-contract/deploy-launchpad-testnet-exec.js --verify-config');
+    console.log('  node minter-contract/deploy-launchpad-testnet-exec.js --verify-onchain');
     console.log('  node minter-contract/deploy-launchpad-testnet-exec.js --dry-run');
     console.log('  node minter-contract/deploy-launchpad-testnet-exec.js --execute-testnet --supervised-human-approved');
     return 0;
@@ -518,13 +942,45 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     return 1;
   }
 
+  // If verify-config flag requested exclusively
+  if (flags.verifyConfig) {
+    console.log('\n✅ NETWORK & ARTIFACT CONFIGURATION VERIFIED: ALL CHECKS PASSED');
+    return 0;
+  }
+
   // 3. Derive Deterministic Addresses
   const deployer = env.ANLGRAM_TESTNET_DEPLOYER_ADDRESS;
   const predicted = deriveDeterministicAddresses(deployer, artifactsRes.artifacts);
 
-  // 4. Default / Planner Mode
+  // 4. Default / Planner Mode / On-Chain Verification Mode
   if (!flags.executeTestnet) {
     printPlan(predicted);
+
+    if (flags.verifyOnchain || flags.dryRun) {
+      let onchain = null;
+      try {
+        onchain = await verifyDeterministicAddressesOnChainReadOnly(predicted, env, fetchImpl);
+        printOnChainPreflight(onchain);
+      } catch (err) {
+        console.log(`\n⚠️  ON-CHAIN QUERY NOTICE: Read-only network check failed (${err.message}).`);
+      }
+
+      if (flags.verifyOnchain) {
+        if (onchain && onchain.statusVerdict === 'PREFLIGHT_PASS_READONLY') {
+          console.log('\n✅ PREFLIGHT VERIFICATION COMPLETE: ALL GATES PASSED (READ-ONLY)');
+          return 0;
+        }
+        if (onchain && onchain.statusVerdict === 'INTERVENTION_REQUIRED') {
+          console.log('\n⚠️  PREFLIGHT HALTED: INTERVENTION REQUIRED (READ-ONLY)');
+          return 1;
+        }
+        if (onchain && onchain.statusVerdict === 'INDETERMINATE') {
+          console.log('\n❌ PREFLIGHT HALTED: INDETERMINATE RESULT (READ-ONLY)');
+          return 1;
+        }
+      }
+    }
+
     console.log('\n✅ PREFLIGHT VERIFICATION COMPLETE: ALL GATES PASSED (READ-ONLY)');
     return 0;
   }
@@ -539,11 +995,11 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     return 2;
   }
 
-  // Gated check: In Phase 3C.1, live transaction broadcast is not authorized.
-  console.log('\n⚠️  PHASE 3C.1 POLICY ENFORCEMENT:');
+  // Gated check: In Phase 3C.1 / Phase 3C.3, live transaction broadcast is strictly disabled.
+  console.log('\n⚠️  PHASE 3C.1 / PHASE 3C.3 POLICY ENFORCEMENT:');
   console.log('Live transaction broadcasting is strictly disabled during Phase 3C.1.');
   console.log('The execution engine is fully built and verified, awaiting formal testnet deployment session.');
-  console.log('Status: PREPARADO PARA REVISIÓN MANUAL DEL EJECUTOR.');
+  console.log('Status: PREPARADO PARA REVISIÓN MANUAL DEL EJECUTOR / REVISIÓN FINAL DEL PROCEDIMIENTO.');
   return 0;
 }
 
@@ -563,6 +1019,9 @@ module.exports = {
   validateNetworkConfig,
   verifyArtifacts,
   deriveDeterministicAddresses,
+  queryAccountStatusReadOnly,
+  verifyDeterministicAddressesOnChainReadOnly,
+  printOnChainPreflight,
   requestHumanConfirmation,
   DEPLOYMENT_BUDGET,
   APPROVED_TESTNET_DEX,

@@ -12,6 +12,9 @@ const {
   validateNetworkConfig,
   verifyArtifacts,
   deriveDeterministicAddresses,
+  queryAccountStatusReadOnly,
+  verifyDeterministicAddressesOnChainReadOnly,
+  printOnChainPreflight,
   DEPLOYMENT_BUDGET,
   APPROVED_TESTNET_DEX,
   CONTRACT_SPECS,
@@ -43,6 +46,7 @@ test('CLI parser: default mode defaults to read-only --plan', () => {
 test('CLI parser: accepts authorized safe operational flags', () => {
   assert.equal(parseArgs(['--plan']).plan, true);
   assert.equal(parseArgs(['--verify-config']).verifyConfig, true);
+  assert.equal(parseArgs(['--verify-onchain']).verifyOnchain, true);
   assert.equal(parseArgs(['--dry-run']).dryRun, true);
   assert.equal(parseArgs(['--execute-testnet', '--supervised-human-approved']).executeTestnet, true);
   assert.equal(parseArgs(['--execute-testnet', '--supervised-human-approved']).supervisedHumanApproved, true);
@@ -247,10 +251,9 @@ test('Budget: validates realistic gas breakdown, operational buffer, and user li
 });
 
 // ---------------------------------------------------------------------------
-// 8. Supervised Gating & Phase 3C.1 Policy Enforcement
+// 8. Supervised Gating & Phase 3C Policy Enforcement
 // ---------------------------------------------------------------------------
 test('Execution gate: rejects --execute-testnet when --supervised-human-approved is omitted', async () => {
-  // Capture stderr
   const origErr = console.error;
   let capturedErr = '';
   console.error = (msg) => { capturedErr += msg + '\n'; };
@@ -264,7 +267,7 @@ test('Execution gate: rejects --execute-testnet when --supervised-human-approved
   }
 });
 
-test('Execution gate: enforces Phase 3C.1 policy (broadcast disabled) when approved flag is passed', async () => {
+test('Execution gate: enforces Phase 3C policy (broadcast disabled) when approved flag is passed', async () => {
   const origLog = console.log;
   let capturedLog = '';
   console.log = (msg) => { capturedLog += msg + '\n'; };
@@ -272,7 +275,7 @@ test('Execution gate: enforces Phase 3C.1 policy (broadcast disabled) when appro
   try {
     const code = await main(['--execute-testnet', '--supervised-human-approved'], validTestnetEnv);
     assert.equal(code, 0);
-    assert.ok(capturedLog.includes('Live transaction broadcasting is strictly disabled during Phase 3C.1'));
+    assert.ok(capturedLog.includes('Live transaction broadcasting is strictly disabled'));
     assert.ok(capturedLog.includes('PREPARADO PARA REVISIÓN MANUAL DEL EJECUTOR'));
   } finally {
     console.log = origLog;
@@ -320,5 +323,261 @@ test('Secret isolation: deploy-launchpad-testnet-exec.js never imports private k
     assert.doesNotMatch(stdoutLogs, /WORD1_WORD2/);
   } finally {
     console.log = origLog;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 10. Phase 3C.3: Read-Only On-Chain Preflight & Error Handling Verification
+// ---------------------------------------------------------------------------
+test('On-chain preflight: rejects mainnet addresses in read-only query', async () => {
+  const mainnetAddr = 'EQBsGx9ArADUrREB34W-ghgsCgBShvfUr4Jvlu-0KGc33Rbt';
+  const res = await queryAccountStatusReadOnly(mainnetAddr, validTestnetEnv);
+  assert.equal(res.ok, false);
+  assert.equal(res.category, 'INDETERMINATE');
+  assert.equal(res.status, 'MAINNET_ADDRESS_REJECTED');
+  assert.match(res.detail, /mainnet address rejected/i);
+});
+
+test('On-chain preflight: rejects non-whitelisted or insecure endpoints in read-only query', async () => {
+  const rogueEnv = { ...validTestnetEnv, TONAPI_TESTNET_URL: 'https://evil-rpc.org/v2' };
+  const res = await queryAccountStatusReadOnly('kQAFpeGFJQA9KqiCxXZ8J4l__vSYAxFSirSOvPHn6SSX4ztn', rogueEnv);
+  assert.equal(res.ok, false);
+  assert.equal(res.category, 'INDETERMINATE');
+  assert.equal(res.status, 'FORBIDDEN_ENDPOINT');
+
+  const httpEnv = { ...validTestnetEnv, TONAPI_TESTNET_URL: 'http://testnet.tonapi.io/v2' };
+  const resHttp = await queryAccountStatusReadOnly('kQAFpeGFJQA9KqiCxXZ8J4l__vSYAxFSirSOvPHn6SSX4ztn', httpEnv);
+  assert.equal(resHttp.ok, false);
+  assert.equal(resHttp.status, 'INSECURE_ENDPOINT');
+});
+
+test('On-chain preflight: detects clean uninitialized / nonexist accounts', async () => {
+  const mockFetchTonApi = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ status: 'nonexist', balance: 0 }),
+  });
+
+  const res = await queryAccountStatusReadOnly('kQCUd7-PNHWoT2uihm-DGhHtUxLgwxX-ngdc9-P7g_pV0nV8', validTestnetEnv, mockFetchTonApi);
+  assert.equal(res.ok, true);
+  assert.equal(res.category, 'UNINITIALIZED');
+  assert.equal(res.status, 'nonexist');
+  assert.equal(res.hasCode, false);
+  assert.equal(res.balance, 0n);
+
+  const mockFetchToncenter = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      ok: true,
+      result: { state: 'uninitialized', code: '', data: '', balance: '0' },
+    }),
+  });
+  const envToncenterOnly = { ...validTestnetEnv, TONAPI_TESTNET_URL: '' };
+  const resCenter = await queryAccountStatusReadOnly('kQCUd7-PNHWoT2uihm-DGhHtUxLgwxX-ngdc9-P7g_pV0nV8', envToncenterOnly, mockFetchToncenter);
+  assert.equal(resCenter.ok, true);
+  assert.equal(resCenter.category, 'UNINITIALIZED');
+  assert.equal(resCenter.status, 'uninitialized');
+  assert.equal(resCenter.hasCode, false);
+});
+
+test('On-chain preflight: detects already active / initialized account and halts deployment', async () => {
+  const artifactsRes = verifyArtifacts();
+  const predicted = deriveDeterministicAddresses(validTestnetEnv.ANLGRAM_TESTNET_DEPLOYER_ADDRESS, artifactsRes.artifacts);
+
+  // Mock returning 'active' for the bonding curve address (simulating address collision)
+  const mockFetch = async (url) => {
+    if (url.includes(encodeURIComponent(predicted.bondingCurve.address))) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ status: 'active', balance: 5000000000, code_hash: 'abc123hash' }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'nonexist', balance: 0 }),
+    };
+  };
+
+  const onchain = await verifyDeterministicAddressesOnChainReadOnly(predicted, validTestnetEnv, mockFetch);
+  assert.equal(onchain.ok, false);
+  assert.equal(onchain.statusVerdict, 'INTERVENTION_REQUIRED');
+  assert.ok(onchain.blockers.some((b) => b.includes('ALREADY ACTIVE on-chain')));
+});
+
+test('On-chain preflight: detects frozen account and requires manual intervention', async () => {
+  const artifactsRes = verifyArtifacts();
+  const predicted = deriveDeterministicAddresses(validTestnetEnv.ANLGRAM_TESTNET_DEPLOYER_ADDRESS, artifactsRes.artifacts);
+
+  const mockFetch = async (url) => {
+    if (url.includes(encodeURIComponent(predicted.lpLocker.address))) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ status: 'frozen', balance: 1000 }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'nonexist', balance: 0 }),
+    };
+  };
+
+  const onchain = await verifyDeterministicAddressesOnChainReadOnly(predicted, validTestnetEnv, mockFetch);
+  assert.equal(onchain.ok, false);
+  assert.equal(onchain.statusVerdict, 'INTERVENTION_REQUIRED');
+  assert.ok(onchain.blockers.some((b) => b.includes('FROZEN on-chain')));
+});
+
+test('On-chain preflight: detects uninitialized account with rogue code and flags as incompatible', async () => {
+  const envToncenter = { ...validTestnetEnv, TONAPI_TESTNET_URL: '' };
+  const mockFetchToncenterIncompatible = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      ok: true,
+      result: { state: 'uninitialized', code: 'te6cckEBAQEAIwAIQgKEjR2p...', data: '', balance: '0' },
+    }),
+  });
+
+  const res = await queryAccountStatusReadOnly(
+    'kQCUd7-PNHWoT2uihm-DGhHtUxLgwxX-ngdc9-P7g_pV0nV8',
+    envToncenter,
+    mockFetchToncenterIncompatible
+  );
+  assert.equal(res.ok, true);
+  assert.equal(res.category, 'INCOMPATIBLE');
+  assert.equal(res.hasCode, true);
+});
+
+test('On-chain preflight: stops on indeterminate states (HTTP 500, network error, timeout) and does NOT assume unoccupied', async () => {
+  const artifactsRes = verifyArtifacts();
+  const predicted = deriveDeterministicAddresses(validTestnetEnv.ANLGRAM_TESTNET_DEPLOYER_ADDRESS, artifactsRes.artifacts);
+
+  // Mock network failure on Migration Router query
+  const mockFetchFails = async (url) => {
+    if (url.includes(encodeURIComponent(predicted.migrationRouter.address))) {
+      throw new Error('ETIMEDOUT: Connection timed out');
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'nonexist', balance: 0 }),
+    };
+  };
+
+  const onchain = await verifyDeterministicAddressesOnChainReadOnly(predicted, validTestnetEnv, mockFetchFails);
+  assert.equal(onchain.ok, false);
+  assert.equal(onchain.statusVerdict, 'INDETERMINATE');
+  assert.ok(onchain.errors.some((e) => e.includes('Must not assume address is unoccupied')));
+});
+
+test('On-chain preflight: stops on rate limit HTTP 429 and does NOT assume unoccupied', async () => {
+  const artifactsRes = verifyArtifacts();
+  const predicted = deriveDeterministicAddresses(validTestnetEnv.ANLGRAM_TESTNET_DEPLOYER_ADDRESS, artifactsRes.artifacts);
+
+  const mockFetch429 = async () => ({
+    ok: false,
+    status: 429,
+    json: async () => ({ ok: false, result: 'Ratelimit exceed' }),
+  });
+
+  const onchain = await verifyDeterministicAddressesOnChainReadOnly(predicted, validTestnetEnv, mockFetch429);
+  assert.equal(onchain.ok, false);
+  assert.equal(onchain.statusVerdict, 'INDETERMINATE');
+  assert.ok(onchain.errors.some((e) => e.includes('Must not assume address is unoccupied')));
+});
+
+test('On-chain preflight: detects operator wallet balance shortage and halts before execution', async () => {
+  const artifactsRes = verifyArtifacts();
+  const predicted = deriveDeterministicAddresses(validTestnetEnv.ANLGRAM_TESTNET_DEPLOYER_ADDRESS, artifactsRes.artifacts);
+
+  // 4 targets uninitialized, but operator has only 0.50 TON (below 2.71 TON)
+  const mockFetchUnderfunded = async (url) => {
+    if (url.includes(encodeURIComponent(validTestnetEnv.ANLGRAM_TESTNET_DEPLOYER_ADDRESS))) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ status: 'active', balance: 500000000 }), // 0.50 TON
+      };
+    }
+    if (url.includes(encodeURIComponent(APPROVED_TESTNET_DEX.router)) || url.includes(encodeURIComponent(APPROVED_TESTNET_DEX.ptonMaster))) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ status: 'active', balance: 2000000000 }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'nonexist', balance: 0 }),
+    };
+  };
+
+  const onchain = await verifyDeterministicAddressesOnChainReadOnly(predicted, validTestnetEnv, mockFetchUnderfunded);
+  assert.equal(onchain.ok, false);
+  assert.equal(onchain.statusVerdict, 'INTERVENTION_REQUIRED');
+  assert.ok(onchain.blockers.some((b) => b.includes('Required minimum is 2.71 TON')));
+});
+
+test('On-chain preflight: approves PREFLIGHT_PASS_READONLY when all 4 targets are clean and operator wallet is funded', async () => {
+  const artifactsRes = verifyArtifacts();
+  const predicted = deriveDeterministicAddresses(validTestnetEnv.ANLGRAM_TESTNET_DEPLOYER_ADDRESS, artifactsRes.artifacts);
+
+  // 4 targets uninitialized, operator has 3.50 TON, DEX active
+  const mockFetchFullyReady = async (url) => {
+    if (url.includes(encodeURIComponent(validTestnetEnv.ANLGRAM_TESTNET_DEPLOYER_ADDRESS))) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ status: 'active', balance: 3500000000 }), // 3.50 TON
+      };
+    }
+    if (url.includes(encodeURIComponent(APPROVED_TESTNET_DEX.router)) || url.includes(encodeURIComponent(APPROVED_TESTNET_DEX.ptonMaster))) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ status: 'active', balance: 2000000000 }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'nonexist', balance: 0 }),
+    };
+  };
+
+  const onchain = await verifyDeterministicAddressesOnChainReadOnly(predicted, validTestnetEnv, mockFetchFullyReady);
+  assert.equal(onchain.ok, true);
+  assert.equal(onchain.statusVerdict, 'PREFLIGHT_PASS_READONLY');
+  assert.equal(onchain.blockers.length, 0);
+  assert.equal(onchain.errors.length, 0);
+});
+
+test('Read-only compliance: strictly enforces zero signing, zero broadcasting, and GET-only queries', async () => {
+  const artifactsRes = verifyArtifacts();
+  const predicted = deriveDeterministicAddresses(validTestnetEnv.ANLGRAM_TESTNET_DEPLOYER_ADDRESS, artifactsRes.artifacts);
+
+  const queryLog = [];
+  const mockSpyFetch = async (url, options) => {
+    queryLog.push({ url, method: options.method, body: options.body });
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'nonexist', balance: 0 }),
+    };
+  };
+
+  await verifyDeterministicAddressesOnChainReadOnly(predicted, validTestnetEnv, mockSpyFetch);
+
+  // Verify all network requests were GET and had no payload
+  assert.ok(queryLog.length >= 6); // 4 contracts + 1 deployer + 2 DEX
+  for (const q of queryLog) {
+    assert.equal(q.method, 'GET', `Request to ${q.url} must use GET method`);
+    assert.equal(q.body, undefined, `Request to ${q.url} must not transmit a body`);
   }
 });
