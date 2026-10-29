@@ -64,6 +64,7 @@ const int op::claim_refund                  = 0x414e4c34;
 const int op::initiate_migration            = 0x414e4c35;
 const int op::lp_locked_confirmation        = 0x414e4c33;
 const int op::sweep_fees                    = 0x414e4c05;
+const int op::set_migration_router          = 0x414e4c37;
 
 ;; Gas & Financial Constants
 const int BPS_DENOMINATOR       = 10000;
@@ -764,6 +765,31 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
         return ();
     }
 
+    ;; ------------------------------------------------------------------------
+    ;; 11. OP::SET_MIGRATION_ROUTER (Configurable Migration Target for Safe Recovery)
+    ;; ------------------------------------------------------------------------
+    if (op == op::set_migration_router) {
+        throw_unless(ERROR_UNAUTHORIZED, equal_slices(sender_address, creator_address) | equal_slices(sender_address, admin_address));
+        throw_unless(ERROR_INVALID_STATE, (state == STATE_GRADUATION_PENDING) | (state == STATE_MIGRATION_FAILED));
+
+        slice new_migration_router = in_msg_body~load_msg_addr();
+        throw_if(408, new_migration_router.preload_uint(2) == 0);
+        throw_if(408, equal_slices(new_migration_router, my_address()));
+        throw_if(408, equal_slices(new_migration_router, lp_locker_address));
+        throw_if(408, equal_slices(new_migration_router, jetton_master_address));
+        throw_if(408, equal_slices(new_migration_router, curve_jetton_wallet));
+
+        migration_router_address = new_migration_router;
+        save_data(
+            state, admin_address, creator_address, treasury_address,
+            jetton_master_address, curve_jetton_wallet, dex_router_address, lp_locker_address, migration_router_address,
+            real_ton_reserve, real_token_reserve, accrued_protocol_fees, pending_refunds_tokens,
+            virtual_ton_reserve, virtual_token_reserve, graduation_threshold_ton, dex_tokens_escrow,
+            pending_refunds_dict, jetton_wallet_code
+        );
+        return ();
+    }
+
     throw(error::unknown_op());
 }
 
@@ -873,4 +899,26 @@ int get_dex_escrow() method_id {
         _, _
     ) = load_data();
     return dex_tokens_escrow;
+}
+
+slice get_migration_router() method_id {
+    (
+        _, _, _, _,
+        _, _, _, _, slice migration_router_address,
+        _, _, _, _,
+        _, _, _, _,
+        _, _
+    ) = load_data();
+    return migration_router_address;
+}
+
+slice get_lp_locker() method_id {
+    (
+        _, _, _, _,
+        _, _, _, slice lp_locker_address, _,
+        _, _, _, _,
+        _, _, _, _,
+        _, _
+    ) = load_data();
+    return lp_locker_address;
 }

@@ -1740,6 +1740,181 @@ async function runTests() {
   const curveStateAfterRetry = await curveContract.invokeGetMethod('get_curve_state', []);
   assert(curveStateAfterRetry.result[0].toString() === '5', 'Curve safely transitions back to STATE_MIGRATION_IN_PROGRESS (5)');
 
+  // -------------------------------------------------------------------------
+  // SECTION 6: PHASE 3B.2 ROUTER DISCOVERY & RECONFIGURABLE MIGRATION RECOVERY SUITE
+  // -------------------------------------------------------------------------
+  console.log('\n--- 6. Phase 3B.2 Router Discovery & Reconfigurable Migration Suite ---');
+
+  // 6.1 Verify get_migration_router and get_lp_locker getters
+  const currentMigRouterRes = await curveContract.invokeGetMethod('get_migration_router', []);
+  assert(currentMigRouterRes.result && currentMigRouterRes.result.length > 0, 'get_migration_router getter executes successfully');
+
+  const currentLpLockerRes = await curveContract.invokeGetMethod('get_lp_locker', []);
+  assert(currentLpLockerRes.result && currentLpLockerRes.result.length > 0, 'get_lp_locker getter executes successfully');
+
+  // Candidate B Router address (STON.fi v2.2 Constant Product Router)
+  const candidateBRouterAddr = new Address(0, Buffer.from('05a5e18525003d2aa882c5767c27897ffef4980311528ab48ebcf1e7e92497e3', 'hex'));
+
+  // 6.2 Adversarial: Call op::set_migration_router from STATE_MIGRATION_IN_PROGRESS (invalid state)
+  const invalidStateSetRouterMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c37, 32) // op::set_migration_router
+          .storeUint(20, 64)
+          .storeAddress(candidateBRouterAddr)
+          .endCell()
+      )
+    })
+  });
+  const invalidStateSetRouterRes = await curveContract.sendInternalMessage(invalidStateSetRouterMsg);
+  assert(invalidStateSetRouterRes.type === 'failed' && invalidStateSetRouterRes.exit_code === 407, 'op::set_migration_router in STATE_MIGRATION_IN_PROGRESS rejected with exit code 407 (INVALID_STATE)');
+
+  // Simulate authentic bounce from router to transition curve to STATE_MIGRATION_FAILED (7)
+  const bounceMsgAgain = new InternalMessage({
+    to: mockCurveWallet,
+    from: migrationRouter,
+    value: new BN('30000000'),
+    bounce: false,
+    bounced: true,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0xffffffff, 32)
+          .storeUint(0x414e4c36, 32)
+          .endCell()
+      )
+    })
+  });
+  const bounceRouterResAgain = await curveContract.sendInternalMessage(bounceMsgAgain);
+  assert(bounceRouterResAgain.type === 'success', 'Bounce from router accepted');
+  const curveStateFailed = await curveContract.invokeGetMethod('get_curve_state', []);
+  assert(curveStateFailed.result[0].toString() === '7', 'Curve in STATE_MIGRATION_FAILED (7)');
+
+  // 6.3 Adversarial: Unauthorized caller cannot set migration router
+  const unauthSetRouterMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: spamAttackerAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c37, 32)
+          .storeUint(21, 64)
+          .storeAddress(candidateBRouterAddr)
+          .endCell()
+      )
+    })
+  });
+  const unauthSetRouterRes = await curveContract.sendInternalMessage(unauthSetRouterMsg);
+  assert(unauthSetRouterRes.type === 'failed' && unauthSetRouterRes.exit_code === 401, 'Unauthorized op::set_migration_router strictly rejected with exit code 401');
+
+  // 6.4 Adversarial: set_migration_router with null address
+  const nullSetRouterMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c37, 32)
+          .storeUint(22, 64)
+          .storeUint(0, 2) // addr_none
+          .endCell()
+      )
+    })
+  });
+  const nullSetRouterRes = await curveContract.sendInternalMessage(nullSetRouterMsg);
+  assert(nullSetRouterRes.type === 'failed' && nullSetRouterRes.exit_code === 408, 'op::set_migration_router with null address rejected with exit code 408');
+
+  // 6.5 Adversarial: set_migration_router with colliding LP locker address
+  const collideLockerMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c37, 32)
+          .storeUint(23, 64)
+          .storeAddress(lockerAddr)
+          .endCell()
+      )
+    })
+  });
+  const collideLockerRes = await curveContract.sendInternalMessage(collideLockerMsg);
+  assert(collideLockerRes.type === 'failed' && collideLockerRes.exit_code === 408, 'op::set_migration_router with colliding LP locker rejected with exit code 408');
+
+  // 6.6 Adversarial: set_migration_router with colliding Jetton master address
+  const collideMasterMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c37, 32)
+          .storeUint(24, 64)
+          .storeAddress(masterAddr)
+          .endCell()
+      )
+    })
+  });
+  const collideMasterRes = await curveContract.sendInternalMessage(collideMasterMsg);
+  assert(collideMasterRes.type === 'failed' && collideMasterRes.exit_code === 408, 'op::set_migration_router with colliding Jetton master rejected with exit code 408');
+
+  // 6.7 Authorized reconfiguration of migration router by admin from STATE_MIGRATION_FAILED
+  const authSetRouterMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c37, 32)
+          .storeUint(25, 64)
+          .storeAddress(candidateBRouterAddr)
+          .endCell()
+      )
+    })
+  });
+  const authSetRouterRes = await curveContract.sendInternalMessage(authSetRouterMsg);
+  assert(authSetRouterRes.type === 'success', 'Authorized op::set_migration_router executes successfully');
+
+  // 6.8 Verify get_migration_router reflects new candidate router
+  const updatedMigRouterRes = await curveContract.invokeGetMethod('get_migration_router', []);
+  assert(updatedMigRouterRes.result && updatedMigRouterRes.result.length > 0, 'get_migration_router returns updated router address');
+
+  // 6.9 Authorized Retry dispatches graduation reserves to the NEW migration router
+  const retryNewRouterMsg = new InternalMessage({
+    to: mockCurveWallet,
+    from: adminAddr,
+    value: new BN('300000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c35, 32)
+          .storeUint(26, 64)
+          .endCell()
+      )
+    })
+  });
+  const retryNewRouterRes = await curveContract.sendInternalMessage(retryNewRouterMsg);
+  assert(retryNewRouterRes.type === 'success', 'op::initiate_migration re-dispatches reserves to new migration router');
+  assert(retryNewRouterRes.actionList && retryNewRouterRes.actionList.length === 2, 'Emits 2 outbound messages: 200M tokens + 500 TON liquidity');
+  const curveStateMigrating = await curveContract.invokeGetMethod('get_curve_state', []);
+  assert(curveStateMigrating.result[0].toString() === '5', 'Curve safely back in STATE_MIGRATION_IN_PROGRESS (5)');
+
   console.log('\n═══════════════════════════════════════════════════════════════════════════');
   console.log(`📊 TVM SIMULATION TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log('═══════════════════════════════════════════════════════════════════════════\n');
