@@ -184,18 +184,24 @@ async function runTests() {
   console.log('\n--- 2. AnlgramLpLocker TVM Verification (Anti-Front-Running Lock) ---');
 
   // Initial Locker Storage:
-  // is_locked: 0, unlock_timestamp: 0xFFFFFFFFFFFFFFFF (Permanent), lp_amount: 0, is_wallet_initialized: 0
+  // is_locked: 0, unlock_timestamp: 0xFFFFFFFFFFFFFFFF (Permanent), lp_amount: 0, is_wallet_initialized: 0, is_router_initialized: 0
   const initialLockerData = beginCell()
     .storeUint(0, 1)                      // is_locked
     .storeUint(0xFFFFFFFFFFFFFFFFn, 64)   // unlock_timestamp
     .storeCoins(0)                        // lp_amount_locked
     .storeUint(0, 1)                      // is_wallet_initialized = 0
+    .storeUint(0, 1)                      // is_router_initialized = 0
     .storeAddress(routerAddr)             // pool_address
-    .storeAddress(masterAddr)             // expected_lp_minter
+    .storeAddress(mockCurveWallet)        // curve_address
     .storeRef(
       beginCell()
         .storeAddress(null)               // lp_wallet_address (unbound)
-        .storeAddress(adminAddr)          // authorized_caller (Curve/Deployer)
+        .storeAddress(null)               // router_address (unbound, initialized via op::init_lp_locker)
+        .endCell()
+    )
+    .storeRef(
+      beginCell()
+        .storeAddress(adminAddr)          // admin_address (deployer)
         .endCell()
     )
     .endCell();
@@ -223,7 +229,72 @@ async function runTests() {
   const spamTransferRes = await lockerContract.sendInternalMessage(spamTransferMsg);
   assert(spamTransferRes.type === 'failed' && spamTransferRes.exit_code === 406, 'Spam token deposit before initialization strictly rejected with exit code 406');
 
-  // 2.2 Adversarial Test: Unauthorized caller cannot configure LP wallet
+  // 2.2 Adversarial Test: Unauthorized caller cannot initialize router on LP Locker
+  const fakeInitRouterMsg = new InternalMessage({
+    to: lockerAddr,
+    from: spamAttackerAddr,
+    value: new BN('30000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c39, 32)      // op::init_lp_locker
+          .storeUint(2, 64)
+          .storeAddress(spamAttackerAddr)
+          .endCell()
+      )
+    })
+  });
+  const fakeInitRouterRes = await lockerContract.sendInternalMessage(fakeInitRouterMsg);
+  assert(fakeInitRouterRes.type === 'failed' && fakeInitRouterRes.exit_code === 401, 'Unauthorized caller cannot initialize router on LP Locker (exit code 401)');
+
+  // 2.3 Adversarial Test: Initializing router with null address rejected with exit code 408
+  const nullInitRouterMsg = new InternalMessage({
+    to: lockerAddr,
+    from: adminAddr,
+    value: new BN('30000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c39, 32)      // op::init_lp_locker
+          .storeUint(3, 64)
+          .storeAddress(null)
+          .endCell()
+      )
+    })
+  });
+  const nullInitRouterRes = await lockerContract.sendInternalMessage(nullInitRouterMsg);
+  assert(nullInitRouterRes.type === 'failed' && nullInitRouterRes.exit_code === 408, 'Initializing router with null address rejected with exit code 408');
+
+  // 2.4 Authorized initialization of router by deployer/admin
+  const authInitRouterMsg = new InternalMessage({
+    to: lockerAddr,
+    from: adminAddr,
+    value: new BN('30000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c39, 32)      // op::init_lp_locker
+          .storeUint(4, 64)
+          .storeAddress(migrationRouter)  // authentic migration router
+          .endCell()
+      )
+    })
+  });
+  const authInitRouterRes = await lockerContract.sendInternalMessage(authInitRouterMsg);
+  assert(authInitRouterRes.type === 'success', 'Deployer successfully executes one-time router initialization on LP Locker');
+
+  // Verify router initialization getter
+  const isRouterInitRes = await lockerContract.invokeGetMethod('is_router_initialized', []);
+  assert(isRouterInitRes.result[0].toString() === '1', 'is_router_initialized getter returns 1');
+
+  // 2.5 Adversarial Test: Duplicate router initialization strictly rejected with exit code 405 (ALREADY_INITIALIZED)
+  const dupInitRouterRes = await lockerContract.sendInternalMessage(authInitRouterMsg);
+  assert(dupInitRouterRes.type === 'failed' && dupInitRouterRes.exit_code === 405, 'Duplicate router initialization strictly rejected with exit code 405 (ALREADY_INITIALIZED)');
+
+  // 2.6 Adversarial Test: Unauthorized caller cannot configure LP wallet
   const fakeConfigMsg = new InternalMessage({
     to: lockerAddr,
     from: spamAttackerAddr,
@@ -233,7 +304,7 @@ async function runTests() {
       body: new CellMessage(
         beginCell()
           .storeUint(0x414e4c31, 32)      // op::set_lp_wallet
-          .storeUint(2, 64)
+          .storeUint(5, 64)
           .storeAddress(spamTokenWallet)
           .endCell()
       )
@@ -242,17 +313,17 @@ async function runTests() {
   const fakeConfigRes = await lockerContract.sendInternalMessage(fakeConfigMsg);
   assert(fakeConfigRes.type === 'failed' && fakeConfigRes.exit_code === 401, 'Unauthorized LP wallet configuration rejected with exit code 401');
 
-  // 2.3 Authorized configuration of LP wallet
+  // 2.7 Authorized configuration of LP wallet by Migration Router
   const authConfigMsg = new InternalMessage({
     to: lockerAddr,
-    from: adminAddr,
+    from: migrationRouter,
     value: new BN('30000000'),
     bounce: false,
     body: new CommonMessageInfo({
       body: new CellMessage(
         beginCell()
           .storeUint(0x414e4c31, 32)      // op::set_lp_wallet
-          .storeUint(3, 64)
+          .storeUint(6, 64)
           .storeAddress(lpWalletMock)
           .endCell()
       )
@@ -265,15 +336,15 @@ async function runTests() {
   const isInitRes = await lockerContract.invokeGetMethod('is_wallet_initialized', []);
   assert(isInitRes.result[0].toString() === '1', 'is_wallet_initialized getter returns 1');
 
-  // 2.4 Adversarial Test: Reconfiguration attempt rejected with exit code 405
+  // 2.8 Adversarial Test: Reconfiguration attempt rejected with exit code 405
   const reconfigRes = await lockerContract.sendInternalMessage(authConfigMsg);
   assert(reconfigRes.type === 'failed' && reconfigRes.exit_code === 405, 'Reconfiguration attempt strictly rejected with exit code 405 (ALREADY_INITIALIZED)');
 
-  // 2.5 Adversarial Test: Transfer from wrong wallet after initialization rejected with 401
+  // 2.9 Adversarial Test: Transfer from wrong wallet after initialization rejected with 401
   const wrongWalletTransferRes = await lockerContract.sendInternalMessage(spamTransferMsg);
   assert(wrongWalletTransferRes.type === 'failed' && wrongWalletTransferRes.exit_code === 401, 'Deposit from unauthorized wallet strictly rejected with exit code 401');
 
-  // 2.6 Legitimate LP token transfer from authentic configured LP wallet
+  // 2.10 Legitimate LP token transfer from authentic configured LP wallet
   const lpTokensAmount = 1000000000n;
   const legitLpTransferMsg = new InternalMessage({
     to: lockerAddr,
@@ -302,7 +373,7 @@ async function runTests() {
   const lockedAmountRes = await lockerContract.invokeGetMethod('get_locked_lp_amount', []);
   assert(lockedAmountRes.result[0].toString() === lpTokensAmount.toString(), 'get_locked_lp_amount reports exact deposited LP balance');
 
-  // 2.7 Withdrawal attempt strictly rejected with exit code 403
+  // 2.11 Withdrawal attempt strictly rejected with exit code 403
   const withdrawMsg = new InternalMessage({
     to: lockerAddr,
     from: adminAddr,
@@ -925,6 +996,7 @@ async function runTests() {
         .storeAddress(ptonMinterAddr)     // pton_minter_address
         .storeCoins(0)                    // ton_liquidity
         .storeCoins(0)                    // tokens_liquidity
+        .storeAddress(adminAddr)          // admin_address
         .endCell()
     )
     .endCell();

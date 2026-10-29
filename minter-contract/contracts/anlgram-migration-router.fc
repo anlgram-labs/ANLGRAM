@@ -40,7 +40,7 @@ const int op::abort_migration        = 0x414e4c38;
 ;; ton_liquidity:Coins
 ;; tokens_liquidity:Coins
 
-(int, slice, slice, slice, slice, slice, int, int) load_data() inline {
+(int, slice, slice, slice, slice, slice, int, int, slice) load_data() inline {
     slice ds = get_data().begin_parse();
     int is_initialized = ds~load_uint(1);
     slice curve_address = ds~load_msg_addr();
@@ -53,14 +53,15 @@ const int op::abort_migration        = 0x414e4c38;
     slice pton_minter_address = s2~load_msg_addr();
     int ton_liquidity = s2~load_coins();
     int tokens_liquidity = s2~load_coins();
+    slice admin_address = (s2.slice_bits() >= 2) ? s2~load_msg_addr() : curve_address;
 
     return (
         is_initialized, curve_address, lp_locker_address, dex_router_address,
-        token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity
+        token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address
     );
 }
 
-() save_data(int is_initialized, slice curve_address, slice lp_locker_address, slice dex_router_address, slice token_minter_address, slice pton_minter_address, int ton_liquidity, int tokens_liquidity) impure inline {
+() save_data(int is_initialized, slice curve_address, slice lp_locker_address, slice dex_router_address, slice token_minter_address, slice pton_minter_address, int ton_liquidity, int tokens_liquidity, slice admin_address) impure inline {
     set_data(begin_cell()
         .store_uint(is_initialized, 1)
         .store_slice(curve_address)
@@ -72,6 +73,7 @@ const int op::abort_migration        = 0x414e4c38;
                 .store_slice(pton_minter_address)
                 .store_coins(ton_liquidity)
                 .store_coins(tokens_liquidity)
+                .store_slice(admin_address)
                 .end_cell()
         )
         .end_cell()
@@ -95,7 +97,8 @@ const int op::abort_migration        = 0x414e4c38;
 
     (
         int is_initialized, slice curve_address, slice lp_locker_address, slice dex_router_address,
-        slice token_minter_address, slice pton_minter_address, int ton_liquidity, int tokens_liquidity
+        slice token_minter_address, slice pton_minter_address, int ton_liquidity, int tokens_liquidity,
+        slice admin_address
     ) = load_data();
 
     ;; ------------------------------------------------------------------------
@@ -105,7 +108,7 @@ const int op::abort_migration        = 0x414e4c38;
         throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, curve_address));
         int deposit_ton = in_msg_body~load_coins();
         ton_liquidity += deposit_ton;
-        save_data(is_initialized, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity);
+        save_data(is_initialized, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address);
         return ();
     }
 
@@ -115,7 +118,7 @@ const int op::abort_migration        = 0x414e4c38;
     if (op == op::transfer_notification()) {
         int token_amount = in_msg_body~load_coins();
         tokens_liquidity += token_amount;
-        save_data(is_initialized, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity);
+        save_data(is_initialized, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address);
         return ();
     }
 
@@ -123,7 +126,7 @@ const int op::abort_migration        = 0x414e4c38;
     ;; 3. EXECUTE DEX LIQUIDITY PROVISION (STON.fi v2.1 Routing with Exact TL-B)
     ;; ------------------------------------------------------------------------
     if (op == op::execute_dex_provision) {
-        throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, curve_address));
+        throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, curve_address) | equal_slices(sender_address, admin_address));
         throw_unless(410, ton_liquidity > 0);
         throw_unless(411, tokens_liquidity > 0);
 
@@ -213,7 +216,7 @@ const int op::abort_migration        = 0x414e4c38;
 
         ton_liquidity = 0;
         tokens_liquidity = 0;
-        save_data(1, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity);
+        save_data(1, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address);
         return ();
     }
 
@@ -221,7 +224,7 @@ const int op::abort_migration        = 0x414e4c38;
     ;; 4. OP::ABORT_MIGRATION (Emergency / Failure Refund to Curve)
     ;; ------------------------------------------------------------------------
     if (op == op::abort_migration) {
-        throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, curve_address));
+        throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, curve_address) | equal_slices(sender_address, admin_address));
 
         if (ton_liquidity > 0) {
             var ret_ton = begin_cell()
@@ -236,7 +239,7 @@ const int op::abort_migration        = 0x414e4c38;
             ton_liquidity = 0;
         }
 
-        save_data(is_initialized, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity);
+        save_data(is_initialized, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address);
         return ();
     }
 
@@ -245,5 +248,9 @@ const int op::abort_migration        = 0x414e4c38;
 
 ;; Get Methods
 (int, slice, slice, slice, slice, slice, int, int) get_migration_data() method_id {
-    return load_data();
+    (int is_initialized, slice curve_address, slice lp_locker_address, slice dex_router_address, slice token_minter_address, slice pton_minter_address, int ton_liquidity, int tokens_liquidity, _) = load_data();
+    return (
+        is_initialized, curve_address, lp_locker_address, dex_router_address,
+        token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity
+    );
 }

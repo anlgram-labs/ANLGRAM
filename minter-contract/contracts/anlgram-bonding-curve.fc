@@ -290,6 +290,10 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
         slice new_locker = s_ref1~load_msg_addr();
         slice new_migration_router = s_ref1~load_msg_addr();
 
+        throw_if(408, new_master.preload_uint(2) == 0);
+        throw_if(408, new_locker.preload_uint(2) == 0);
+        throw_if(408, new_migration_router.preload_uint(2) == 0);
+
         cell new_wallet_code = in_msg_body~load_ref();
 
         if (new_curve_wallet.preload_uint(2) == 0) {
