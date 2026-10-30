@@ -2088,7 +2088,12 @@
           throw new Error('Wallet or network changed before the signing request.');
         }
         walletRequestStarted = true;
-        await tc.sendTransaction(transaction);
+        const walletResult = await tc.sendTransaction(transaction);
+        let submission = null;
+        try {
+          submission = window.AnlgramTransactionReceipt.create(walletResult.boc, walletAddressAtStart, walletChain, window.TON_CORE);
+          localStorage.setItem(pendingKey, JSON.stringify({ address: destAddressMint, submission }));
+        } catch (_) { /* Missing signed-message evidence stays unverified. */ }
         
         btn.innerHTML = '<span class="status-dot"></span> Transacción enviada — Verificando en blockchain...';
         btn.style.background = 'rgba(0,210,255,0.15)';
@@ -2096,9 +2101,9 @@
         btn.style.color = 'var(--accent-cyan)';
 
         window.dispatchEvent(new CustomEvent('anlgramJettonDeployed', {
-          detail: { destAddress, destAddressMint, name, symbol, btn, origHTML, wizardInitiated: Boolean(event.wizardInitiated) }
+          detail: { destAddress, destAddressMint, name, symbol, btn, origHTML, submission, wizardInitiated: Boolean(event.wizardInitiated) }
         }));
-        return { submitted: true, destAddressMint };
+        return { submitted: true, destAddressMint, submission };
         
       } catch (e) {
         console.error("Deploy Error:", e);
@@ -2752,13 +2757,14 @@
 </script>
 
 <script type="module">
-  import { beginCell, toNano, Address, storeStateInit, Dictionary, Cell, contractAddress } from 'https://esm.sh/@ton/core';
-  window.TON_CORE = { beginCell, toNano, Address, storeStateInit, Dictionary, Cell, contractAddress };
+  import { beginCell, toNano, Address, storeStateInit, Dictionary, Cell, contractAddress, loadMessage } from 'https://esm.sh/@ton/core';
+  window.TON_CORE = { beginCell, toNano, Address, storeStateInit, Dictionary, Cell, contractAddress, loadMessage };
 </script>
 
 <script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
 <script src="assets/js/wallet-connect.js?v=2026.35"></script>
 <script src="assets/js/launchpad.js?v=1.0.0"></script>
+<script src="assets/js/transaction-receipt.js?v=1"></script>
 <script src="assets/js/anl-labs.js?v=2026.1"></script>
 </body>
 </html>

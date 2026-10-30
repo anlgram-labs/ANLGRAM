@@ -1,5 +1,94 @@
 # MemeLabs isolated sprint: review notes
 
+## Remaining integration iteration — latest status
+
+Base commit `9f34102` and all preceding commits are preserved. This iteration
+changes no contract source, BOC, storage, interfaces or financial parameters.
+The curve cell hash remains `9059d4a1ca1acc5d8e0d2e64648e7eb894fc2b3bf6dd39fdefa849897837de34`;
+its reproducible compiler `--check` passes. Deterministic addresses do not
+change in this iteration; the address implications of `9f34102` still apply.
+
+### Implemented
+
+- A source-compiled TVM integration test routes actual output messages through
+  minter mint, curve Jetton wallet credit, custody notification, operator
+  renounce, permissionless status query, minter response and Curve activation.
+  It checks unauthorized/duplicate initialization, unauthorized mint/renounce,
+  trading disabled before activation, duplicate ack rejection and permanent
+  mint disablement. No fabricated confirmation is injected.
+- The deployment plan now describes the compatible manual recovery sequence:
+  after custody/state 2, the minter admin renounces via existing op 3, then
+  `check_renounce` causes an authenticated status reply and activation. The
+  original automatic attempt is still rejected (73); it is not advertised as
+  working. Live deployment remains blocked.
+- The browser captures a TON Connect message identity without persisting its
+  signed BOC, and queries the exact normalized message hash through the
+  read-only `/blockchain/messages/{hash}/transaction` endpoint. Both backend
+  allowlists admit only a 64-character hex hash for this route.
+- Receipt verification checks wallet, network, inbound body/hash identity,
+  compute/action status and skipped actions. Missing, mismatched, failed,
+  emulated or incomplete evidence cannot confirm a deployment. The creator
+  still requires its existing state/supply/admin/balance checks as well.
+  A wallet receipt establishes wallet execution only, not downstream token
+  delivery or LP custody. Testnet state confirmation remains incomplete.
+
+The normalization and response fields follow the official
+[TonAPI transaction tracking documentation](https://docs.tonconsole.com/tonapi/cookbook/transaction-tracking/)
+and [OpenAPI schema](https://raw.githubusercontent.com/tonkeeper/opentonapi/master/api/openapi.yml).
+
+### New blocker reproduced; no silent economic change
+
+`test-launchpad-activation-flow.js` has **1 passing activation scenario and
+1 failing settlement scenario**. After activation, a real Curve output is
+routed into its actual Jetton wallet. The wallet rejects transfer with 709:
+the Curve attaches exactly 40,000,000 nanoTON and requests forwarding
+10,000,000 nanoTON, while `jetton-wallet.fc` requires strictly more than the
+forward amount + forwarding fees + twice its gas allowance + storage.
+The test does not top up that output or alter the expected result to pass.
+Its later sell, graduation and migration assertions are not reached.
+
+Fixing this requires an explicit funding decision: increase the operational
+trade overhead/attachment, reduce the owner-notification forward amount, or
+provide an explicitly accounted operational buffer. Each affects existing
+financial execution; no choice was silently made. The preflight reports the
+demonstrated failure and keeps trading blocked.
+
+LP outsider configuration rejection remains tested, but authorized binding
+still does not prove pool/master authenticity. A complete authenticated LP
+binding needs reviewed STON.fi wallet derivation/code identity and potentially
+a new contract validation exchange. No invented pool address or ABI is used.
+Actual STON.fi provision, LP issuance/custody and failure recovery remain
+unverified as a complete external-contract flow. No live transaction was sent.
+
+### Tests executed this iteration
+
+| Suite | Passed | Failed |
+| --- | ---: | ---: |
+| Routed activation and settlement | 1 | 1 (709 blocker above) |
+| Normalized receipt + preflight/bootstrap/LP boundary | 25 | 0 |
+| Creator wallet outcomes (mocked) | 8 | 0 |
+| Wizard receipt/state confirmation (mocked) | 11 | 0 |
+| Worker security regression | 22 | 0 |
+| Artifact TVM regression | 135 | 0 |
+| Source TVM regression | 135 | 0 |
+| Financial regressions | 3 | 0 |
+| Wizard existing regression | 50 | 0 |
+
+All results are local TVM, unit or mocked integration tests. There is no new
+on-chain verification evidence. `git diff --check` and compiler `--check` pass.
+
+Files changed: `assets/js/transaction-receipt.js`, `assets/js/anl-labs.js`,
+`memecoin-platform.html`, `server.js`, `cloudflare-worker/worker.js`,
+`minter-contract/deploy-launchpad-testnet.js`, its test,
+`test-transaction-receipt.js`, `test-jetton-wizard-confirmation.js`,
+`test-launchpad-activation-flow.js`, and this document.
+
+Review the isolated commits and the explicit failing test before integration.
+Recompare Antigravity's current work without replacing files wholesale.
+Deploying the backend allowlist or website requires separate approval; local
+changes alone do not update the existing production Worker. No merge, push,
+deployment or modification of `E:\ANLGRAM` was performed. Mainnet remains blocked.
+
 ## Authorized financial correction — latest status (2026-10-29)
 
 This section supersedes the historical failures and source/artifact mismatch

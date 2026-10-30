@@ -639,6 +639,7 @@
       }
       if (!result.destAddressMint) throw new Error('Wallet request returned without the expected contract address.');
       wizardState.deployment.minterAddress = result.destAddressMint;
+      wizardState.deployment.submission = result.submission || null;
 
       // Check if deployment resulted in contract address calculation
       if (statusText) {
@@ -666,10 +667,11 @@
   };
 
   window.addEventListener('anlgramJettonDeployed', (e) => {
-    const { destAddressMint, wizardInitiated } = e.detail || {};
+    const { destAddressMint, wizardInitiated, submission } = e.detail || {};
     if (wizardInitiated) return; // The wizard polls the exact returned address itself.
     if (destAddressMint) {
       wizardState.deployment.minterAddress = destAddressMint;
+      wizardState.deployment.submission = submission || null;
       wizardState.deployment.status = 'verifying';
       labsPollDeploymentConfirmation(destAddressMint);
     }
@@ -691,6 +693,10 @@
 
     let confirmed = false;
     let foundMinter = explicitMinter || wizardState.deployment.minterAddress || '';
+    let submission = wizardState.deployment.submission;
+    if (!submission && foundMinter) {
+      try { submission = JSON.parse(localStorage.getItem(`anlgram_jetton_deploy_pending_v1:${tc?.account?.chain}:${foundMinter}`) || 'null')?.submission; } catch (_) {}
+    }
 
     // Poll using institutional TokenVerificationEngine
     let verificationReport = null;
@@ -704,6 +710,11 @@
       if (!sameWalletAndNetwork()) break;
 
       try {
+        const receipt = window.AnlgramTransactionReceipt
+          ? await window.AnlgramTransactionReceipt.lookup(submission, String(tc?.account?.chain), labsFetchTonApi, window.TON_CORE)
+          : { status: 'PENDING' };
+        wizardState.deployment.walletReceipt = receipt;
+        if (receipt.status !== 'INCLUDED') continue;
         const targetMinter = foundMinter;
         if (targetMinter) {
           const verifier = window.TokenVerificationEngine;

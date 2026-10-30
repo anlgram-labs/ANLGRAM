@@ -21,6 +21,7 @@ function setup({ result, chain = '-239', report, balance = '1000000000000000000'
   const wizardState = { deployment: { status: 'idle', minterAddress: '', reviewedWallet: 'sender', reviewedChain: chain }, tokenDraft: { name: 'Example', symbol: 'EXM' } };
   const tc = { connected: true, account: { address: 'sender', chain } };
   const window = { tonConnectUI: tc, TON_CORE: { Address: { parse: x => ({ equals: y => x === y.value, value: x }) } },
+    AnlgramTransactionReceipt: { lookup: async () => ({ status: 'INCLUDED', scope: 'wallet_transaction_only' }) },
     deployJettonWeb3: async () => result,
     addEventListener: (type, fn) => { listeners[type] = fn; }, dispatchEvent() {},
     TokenVerificationEngine: { verifyToken: async address => { calls.push(address); return report; } } };
@@ -84,6 +85,12 @@ const validReport = { target: { network: 'TON Mainnet' }, claims: {
     t.context.alert = () => {}; t.context.window.tonConnectUI.account.chain = '-3';
     await t.context.window.labsExecuteDeployFromWizard();
     assert.strictEqual(t.wizardState.deployment.status, 'idle'); assert.strictEqual(t.calls.length, 0);
+  });
+  await check('missing transaction receipt cannot confirm deployment from balances alone', async () => {
+    const t = setup({ result: { submitted: true, destAddressMint: 'expected' }, report: validReport });
+    t.context.window.AnlgramTransactionReceipt.lookup = async () => ({ status: 'PENDING' });
+    await t.context.window.labsExecuteDeployFromWizard();
+    assert.notStrictEqual(t.wizardState.deployment.status, 'confirmed'); assert.equal(t.calls.length, 0);
   });
   console.log(`${passed} mocked wizard checks passed`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

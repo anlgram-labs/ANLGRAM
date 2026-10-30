@@ -40,6 +40,7 @@ export const ALLOWED_ROUTES = [
   /^\/jettons\/[a-zA-Z0-9_\-\:]+\/holders$/,
   // Low level blockchain inspection & TVM getters (SEC-02 & ALTO-01 hardened)
   /^\/blockchain\/transactions\/[a-fA-F0-9]+$/,
+  /^\/blockchain\/messages\/[a-fA-F0-9]{64}\/transaction$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/methods\/[a-zA-Z0-9_]{1,64}$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/transactions$/,
