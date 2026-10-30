@@ -87,6 +87,11 @@ const DEPENDENCY_GRAPH = {
 
 const RESOLVED_BOOTSTRAP_MECHANISMS = [
   {
+    id: 'RESOLVED_OPERATOR_RENOUNCE_AND_QUERY',
+    nodes: ['launchpadMinter', 'bondingCurve'],
+    message: 'Local source-compiled TVM routing validates mint -> Jetton wallet custody -> pending Curve, operator change_admin(addr_none), then permissionless check_renounce -> Minter query -> authenticated Curve activation. The automatic Curve change_admin attempt remains unauthorized and is not the activation mechanism.',
+  },
+  {
     id: 'RESOLVED_CURVE_MIGRATION_ROUTER',
     nodes: ['bondingCurve', 'migrationRouter'],
     message: 'Curve initial StateInit sets lp_locker and migration_router to addr_none. Post-deployment, authorized one-time op::init_launchpad (0x414e4c01) configures authentic addresses, verifies deterministic curve_jetton_wallet derivation, and transitions state from STATE_UNINITIALIZED to STATE_INITIALIZING.',
@@ -100,9 +105,9 @@ const RESOLVED_BOOTSTRAP_MECHANISMS = [
 
 const KNOWN_BOOTSTRAP_BLOCKERS = [
   {
-    id: 'MINTER_RENOUNCE_AUTHORITY_MISMATCH',
+    id: 'BOOTSTRAP_LIVE_DELIVERY_UNVERIFIED',
     nodes: ['launchpadMinter', 'bondingCurve'],
-    message: 'The configured Minter admin is the operator, but the Curve sends change_admin as the Curve. The Minter rejects that call when those addresses differ. The full renounce and activation sequence must be validated before deployment.',
+    message: 'The operator-renounce and query recovery sequence passes local TVM routing. Real deployment, action-phase fee sufficiency and asynchronous delivery still require supervised verification; automatic Curve renounce is not supported.',
   },
   {
     id: 'LP_CUSTODY_WALLET_UNVERIFIED',
@@ -112,7 +117,7 @@ const KNOWN_BOOTSTRAP_BLOCKERS = [
   {
     id: 'CURVE_SETTLEMENT_END_TO_END_UNVERIFIED',
     nodes: ['bondingCurve'],
-    message: 'Capped accounting, TON refunds and malformed sell recovery pass local regressions. Complete asynchronous settlement, action-phase fee sufficiency and wallet delivery still require end-to-end verification before deployment.',
+    message: 'Capped accounting, TON refunds and malformed sell recovery pass local regressions. Routed TVM buy delivery fails at the Jetton wallet with exit 709: the existing 0.04 TON attachment does not exceed its forwarding plus gas/storage requirement. Funding allocation must be explicitly reviewed; do not enable trading. Full asynchronous settlement remains unverified.',
   },
 ];
 
@@ -848,7 +853,8 @@ async function main(argv = process.argv.slice(2), env = process.env) {
       console.log('  Step 2: Deployer calls op::init_launchpad (0x414e4c01) on Bonding Curve with Minter, Locker & Router addresses.');
       console.log('  Step 3: Deployer mints 1,000,000,000 tokens from Minter to Curve.');
       console.log('  BLOCKER: With a distinct deployer as Minter admin, the Curve cannot automatically renounce that admin: its change_admin request is rejected by the Minter.');
-      console.log('  Step 4: The renounce and Curve activation sequence requires separate end-to-end validation before any deployment.');
+      console.log('  Step 4a: After confirmed custody and state 2, the Minter admin explicitly calls change_admin (op 3) with addr_none.');
+      console.log('  Step 4b: Call check_renounce (0x51c9d382) on Curve; route its query to Minter and verify authenticated reply activates state 3. This sequence passes local TVM routing, not live deployment verification.');
       console.log('  Step 5 (At Graduation): Authorized caller invokes op::initiate_migration (0x414e4c35) on Curve (>= 0.25 TON gas), delivering 500 TON and 200M Jettons to Migration Router.');
       console.log('  Step 6 (DEX Provision): Authorized caller invokes op::execute_dex_provision (0x414e4c37) on Migration Router (>= 0.40 TON gas), sending TEP-74 op::transfer to Migration Router Jetton Wallet and pTON ton_transfer to pTON Wallet.');
       console.log('Funding estimate: Minimum ~2.5 TON testnet recommended for initial contract state storage rent and bootstrap messages.');
