@@ -150,3 +150,14 @@ rejects repository writes with HTTP 403 for `mdlabs1`. Reauthenticate an account
 with write permission through the existing GitHub CLI/keyring mechanism, fetch
 and recheck concurrent work, then push without force. No credentials were placed
 in source or reports. PR #1 must not be described as updated until verified.
+
+## Financial integration V2.1 follow-up
+
+The dedicated financial-integration branch adds authenticated project custody
+observations and explicit funded queries plus a new immutable destination-binding
+component. Locker data shape stays compatible, but code and addresses change; old
+V2 at `15d9143` remains preserved on its own branch. See
+[the newer protocol](financial-integration-v2.md) and source/hash evidence. This
+component is not a DEX executor, does not complete foreign withdrawal receipts,
+and always denies migration authorization. Existing permanent/timed/replay tests
+remain passing; no on-chain upgrade or production enable occurred.

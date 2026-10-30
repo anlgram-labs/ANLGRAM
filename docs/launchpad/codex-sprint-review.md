@@ -1,5 +1,108 @@
 # MemeLabs isolated sprint: review notes
 
+## Financial integration V2 — latest verified development checkpoint
+
+Based on preserved `15d9143`; dedicated branch `codex/financial-integration-v2`.
+Implementation commit `ab043cf`. Existing LP V2 and settlement branches stay at
+`15d9143` and `04a5e8a` respectively; no automatic PR #1 or production integration.
+
+Implemented locally:
+
+- Curve authentic cumulative wallet-credit confirmation against recorded original
+  principal, actual reported custody, peer/epoch/query and duplicate protection.
+  Native returns require actual attached principal and replay/cap checks.
+- Curve-to-migrator cumulative bookkeeping acknowledgment with idempotent delta
+  application, independently tracked from principal bounced to the migrator.
+  Lost notification/acknowledgment recovers through explicitly funded queries.
+  Stage8 is Curve principal booked, **not migration finalized**.
+- Locker V2.1 authenticated custody observations and replayable queries. The new
+  immutable migration V2 **binding component** independently derives the entire
+  Locker StateInit and authentic LP destinations from creator settings. It checks
+  balances/rounding and rejects stale observations by logical time. No DEX
+  executor, successful migration or financial authorization is manufactured.
+- Regenerated source/artifact pins, baseline addresses and blocked unsigned plan;
+  new offline component candidate explicitly has no live account-state evidence.
+
+Actual final execution: **130/130 Sandbox**, **38/38 root regression suites**,
+**68/68 executor tests**, **46/46 mathematical tests** (12,000 cycles), **5/5 legacy
+minter tests**, **139/139 financial assertions in each source/artifact path**,
+and **six compiler consistency checks**. Eight new Sandbox tests cover actual
+project-wallet principal delivery, partial/frozen failure, lost hints/acks,
+replay-safe bookkeeping and canonical LP settings/custody observations. Timed,
+expired, permanent and partial-lock tests from the prior sprint remain passing.
+
+Initial full regression had three failing suites: source/artifact financial paths
+were135/139 because the new ID rule unintentionally restricted legacy re-dispatch;
+scoping it to the opt-in protocol restored both139/139 without changing tests.
+The public TonAPI live-GET test initially received429 and later passed unchanged
+(33/33). Local return tests deliberately seed a dispatch obligation because actual
+settlement dispatch still rejects414. LP fixture mint-origin messages are controlled
+Sandbox inputs; captured wallet code really executes locally. The live TonAPI
+read is not ANLGRAM deployment or settlement evidence.
+
+[Detailed protocol and exact blockers](financial-integration-v2.md).
+[Machine evidence, source hashes and modified files](verified-financial-integration-v2-2026-10-30.json).
+
+| Contract | Code-cell SHA-256 | Serialized BOC SHA-256 |
+| --- | --- | --- |
+| anlgram-settlement-wallet | `e21136c0ea3074a48addec49215af2d8d20125b4cc61a564a1a37d37667b58a2` | `b8283a205b69b9cb9a3a5f3de6df7f03ce739b75f9b3c03839a0ff42a6b6f472` |
+| anlgram-bonding-curve | `34de15f7c023cc9633094bddfa8e3fba1b3b81d812b60e0ff5305fbf6d9b821f` | `b16e360f9ce47a69dc3758231020df21a1b6edb7bca3ee8a30b4b8dc0787665e` |
+| anlgram-migration-router | `e28d138eaf8e0fe29c87f5ec07fbfbf20241f76a6a588660fbf313ad25bd1d08` | `5ac3ea6fda84512855b19002e9a84c87ac6f2a0b3e3f29af236aa6c715fe416d` |
+| anlgram-lp-auth-guard | `857cd8b4159400a46d0c16fe50906f386abbfd29318ceaaab16a50c64ee436da` | `eb77062d371353074a2f4e60dd0d116e7513bb7df3350d19725b6d28a11e2705` |
+| anlgram-lp-locker-v2 | `69ec47a343d3ddd48632d4c6e2b2ec689ba898be77d32e385f1116bc7d5f6780` | `b9366baaaa09da1b7a559c362585bcc8feef6d62bc1da7e80315b0eba953472d` |
+| anlgram-migration-v2-plan | `df7ed8453b8681ee1ddbee6e97573cca0250fb21405b428b5aacbb709175c755` | `385c8c3f910ded5fbed9bff05b22d75946c1ade46b2ac68c6dbf6389724daec4` |
+
+Compatibility: Curve dictionary gains versioned return records and new opcodes;
+legacy canonical retry behavior remains intact. Migrator gains cumulative Curve
+receipt records and stage8. Locker V2.1 adds query/observation messages without
+changing data layout, but its code/address differs from V2 at15d9143. The binding
+component is new. Curve/Migrator/Guard/Locker bytecodes and dependent addresses
+change; the standard settlement wallet and minter code do not. Hash pins must be
+reviewed together; no deployed storage or contract is upgraded automatically.
+Compile Wallet->Curve->Migrator->Guard and LockerV2->V2Binding. Do not reuse old
+candidate addresses or old provider account observations after bytecode changes.
+
+Original source/design/tokenomics/donation and TON Center, TonAPI, Cloudflare and
+Telegram integrations are preserved. Mandatory creation remains .20+.02 TON.
+No UI source or production credential changed; no financial gate was weakened.
+Approved STON.fi Router administration trust remains **development only**;
+foreign upgrades can affect contracts and reserves, and code identity is not an
+independent audit. No new off-chain attestor trust was added.
+
+Remaining blockers and next implementation:
+
+1. Implement reviewed versioned dispatch/DEX/abort ID correlation and receiving
+   wallet epoch readiness before tokens arrive. Current full return tests do not
+   establish a fresh ungated dispatch lifecycle. Mixed bounced/returned principal
+   needs an explicit correlated retry protocol before enabling it.
+2. Foreign LP wallet final withdrawal receipts remain unavailable. Downstream
+   frozen-recipient restoration never automatically restores a claim; it remains
+   pending and cannot be spent twice. Need a reviewed foreign protocol extension
+   or authenticated on-chain proof mechanism. No silence/excess/snapshot fallback.
+3. Frozen locker missing initial LP notification still cannot reconstruct custody.
+   Lost project observations after an existing receipt are now query-recoverable.
+4. Binding V2 needs authenticated pair-master discovery and an actual reviewed
+   DEX executor/refund lifecycle, final LP accounting, custody/lock proof and
+   independent source/build/current-code/non-upgradability review.
+5. Review storage rent/growth and network gas; add the V2 custody adapter and
+   existing-style UI only after evidence gates pass. No automatic production enable.
+
+**Not ready for a complete supervised Testnet migration deployment plan.**
+The [V2 component candidate](migration-v2-component-candidate-2026-10-30.json)
+contains deterministic addresses and explicit assumptions; no signer, funding,
+current-state verification or exact live sequence is authorized. Baseline
+[testnet candidate](testnet-candidate-2026-10-30.json) and
+[unsigned smoke plan](financial-testnet-plan-2026-10-30.json) are regenerated but
+remain blocked and do not deploy the V2 binding/locker. Operator control,
+Testnet funding, metadata, donation recipient and the complete reviewed lifecycle
+are still required. Mainnet remains blocked; no signing, deployment, blockchain
+broadcast, TON spending, merge or production modification occurred.
+
+Antigravity: inspect `ab043cf` and its documentation on this dedicated branch.
+Reproduce the complete suites before any integration and reconcile concurrent
+financial/storage changes manually. Keep PR #1 draft and PR #2 unchanged; never
+replace canonical production contracts/assets with these development artifacts.
+
 ## Configurable LP locker V2 — latest local checkpoint
 
 Branch `codex/lp-locker-v2` preserves `04a5e8a` and every previous unpushed commit.

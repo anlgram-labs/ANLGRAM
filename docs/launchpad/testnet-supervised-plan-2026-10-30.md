@@ -1,5 +1,11 @@
 # Supervised Testnet candidate — blocked pending verification and review
 
+> Financial integration V2 checkpoint: read [the current protocol boundaries](financial-integration-v2.md)
+> and [offline V2 component candidate](migration-v2-component-candidate-2026-10-30.json).
+> Full migration is not ready for a supervised deployment sequence. The baseline
+> smoke templates below do not deploy the new V2 binding/locker or authorize any
+> transaction. Contract/address changes invalidate old account observations.
+
 > Current checkpoint: superseded candidate addresses and hashes below must not be reused.
 > Use [the regenerated candidate](testnet-candidate-2026-10-30.json) and
 > [the unsigned exact-message plan](financial-testnet-plan-2026-10-30.json).
