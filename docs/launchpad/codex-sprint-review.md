@@ -1,5 +1,78 @@
 # MemeLabs isolated sprint: review notes
 
+## Configurable LP locker V2 — latest local checkpoint
+
+Branch `codex/lp-locker-v2` preserves `04a5e8a` and every previous unpushed commit.
+Implementation `7e172d4` adds an isolated immutable V2 locker, compiler/artifact,
+offline constructor/disclosure/preview and 13 real Sandbox tests. No existing
+financial contract or production asset was changed. All existing migration and
+LP-authentication gates remain closed. See the full
+[versioned design and compatibility plan](lp-locker-v2-proposal.md).
+
+Implemented: integer 50..100% lock selection; 180/365-day or permanent duration;
+default 100% permanent; immutable beneficiary and unlocked controller; separate
+locked/available/pending ledgers; exact on-chain time enforcement; replay-safe
+LP observation and per-request direct-bounce recovery; authenticated withdrawal
+and no admin/upgrade/emergency path. Cumulative allocation rounds toward the lock.
+Subsequent receipts extend all remaining timed principal. A prior unlocked
+withdrawal cannot strand a distinct legitimate matured locked withdrawal.
+
+**Current actual results: 122/122 local Sandbox tests, including 13 V2 tests;
+38/38 root regression suites; all five compiler consistency checks pass.**
+Direct tests inspect actual captured LP-wallet balances, verify exact unlock,
+unauthorized/premature/permanent withdrawal rejection, partial custody, repeated
+claims, insufficient gas, out-of-order bounces and frozen downstream recipients.
+Mint-origin and state fault injection are labeled Sandbox fixtures, never real
+STON.fi migration or live settlement. Historical executor/math counts below are
+previous runs, not newly rerun in this V2-only change.
+
+V2 code-cell hash: `7b94ee626c686c3fc71ed65b26dc9c55d5f40efd7e9c61be8e8ceb5f434962c0`.
+V2 BOC SHA-256: `ca17850ba9970584a732633ab2175352471c330f0b17af68ba91cfc3ffd7e747`.
+[Machine-readable evidence](verified-lp-locker-v2-2026-10-30.json) records source
+hashes, changed files and unchanged old contract hashes. V2 creates new addresses
+for each immutable configuration; V1 artifacts and candidate addresses remain
+unchanged. V2 is not a storage-compatible replacement or migration destination.
+
+Explicit limitations: creator controls are not wired into the normal website;
+the offline preview displays exact terms and pending/unverified custody instead.
+The old custody verifier cannot validate the V2 storage. No pending/getter-only
+LP is described as verified locking. Add a reviewed V2 adapter before UI activation.
+
+The frozen-recipient test demonstrates the remaining foreign-wallet receipt
+blocker: the sender wallet restores LP after a downstream bounce, but V2 receives
+no authenticated final-failure receipt. It keeps the debited request pending,
+never restores an available claim from absent notifications or excess TON. Actual
+successful delivery also remains pending inside V2 until authenticated evidence
+exists. New independent requests can spend only their own remaining available
+buckets. This is fail-closed accounting, not complete claim settlement.
+
+Other financial blockers remain: Curve final-return acknowledgment/query and
+accounting; frozen locker missing its original LP notification; independent
+STON.fi review; versioned migration binding of exact V2 terms and pair; verified
+LP custody/permanent or timed policy; full migration final reconciliation. No
+new attestor trust was introduced. Storage rent/growth and real-network gas need
+review. Withdrawal gas is explicitly supplied by the claimant (development
+minimum .10 TON), without changing existing buyer gas/fees or liquidity reserves.
+
+GitHub diagnosis supersedes the older missing-credential note below: approved
+GitHub CLI has a valid keyring session for `mdlabs1`, while Git requests
+`vasquezminor23`. A command-local username override retrieves the existing
+credential without exposing/storing it. Writes then fail HTTP 403: this account
+has no repository write permission. Atomic push of prior `04a5e8a` and a separate
+V2 branch push were both rejected. Public API confirms PR #1 remains draft at
+`91b3b63` and PR #2 remains non-draft at `8cbda34`; no new work is claimed remote.
+Restore a write-authorized CLI/keyring session, fetch and recheck concurrency,
+push the preserved settlement checkpoint to PR #1 without force, and push the
+V2 branch separately for review. Do not mix this prototype into the production PR.
+
+Next implementation: independently review a versioned authenticated final-return
+protocol for Curve/migrator and final LP request outcomes, then a migration V2
+binding the immutable lock terms and intended pair. Retain V1 gates, donation
+(.20 TON base + mandatory .02 TON), design and Antigravity integrations. Genuine
+supervised Testnet deployment still requires an approved exact V2 transaction
+plan. No signing, deployment, broadcast, merge, production modification or TON
+spending occurred; Mainnet remains blocked.
+
 ## October 30 critical financial completion — current checkpoint
 
 Preserves all history through `91b3b63`. Implementation commits: `a800c7b` and
