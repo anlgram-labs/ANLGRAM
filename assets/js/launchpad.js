@@ -207,11 +207,9 @@
       showProgress(btn, 2, 'Confirm in your wallet — ONE transaction...');
       await tc.sendTransaction(tx);
 
-      showProgress(btn, 3, 'Waiting for blockchain confirmation...');
-      const txHash = await waitForConfirmation(creatorWallet, quote.factoryAddress, 60000);
-
-      showProgress(btn, 4, '✅ Token Created!');
-      showSuccessScreen(quote, formData, txHash);
+      // A wallet response and a recent transaction to the factory do not prove
+      // that this particular token was created. Keep the result unconfirmed.
+      showProgress(btn, 3, 'Transaction submitted; token creation is not yet verified. Check your wallet and the blockchain.');
 
     } catch (e) {
       console.error('[Launchpad] Error:', e);
@@ -235,76 +233,26 @@
   // ══════════════════════════════════════════════════════════
 
   async function directDeploy(btn, origHTML, tc, name, symbol, desc, logo) {
-    const { beginCell, toNano, storeStateInit, Dictionary, Cell, contractAddress, Address } =
-      window.TON_CORE || {};
-    if (!beginCell) {
-      alert('TON Core not ready.'); btn.innerHTML = origHTML; btn.removeAttribute('style'); return;
+    // Reuse the canonical creator: bytecode, network, intent persistence and
+    // exact-address verification must not be bypassed by this entry point.
+    if (typeof window.deployJettonWeb3 !== 'function') {
+      throw new Error('Verified Jetton creator is unavailable. No wallet request was sent.');
     }
-
-    const adminAddress = Address.parse(tc.account.address);
-    const hexToBytes   = (hex) => Uint8Array.from(hex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
-    const sha256Big    = async (s) => {
-      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-      return BigInt('0x' + Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join(''));
-    };
-
-    showProgress(btn, 1, 'Fetching Jetton code...');
-    try {
-      const metadata = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell());
-      const entries  = [['name',name],['symbol',symbol],['description',desc||''],['image',logo||''],['decimals','9']];
-      for (const [k,v] of entries) {
-        if (!v) continue;
-        metadata.set(await sha256Big(k), beginCell().storeUint(0,8).storeStringTail(v).endCell());
-      }
-      const metaCell = beginCell().storeUint(0,8).storeDict(metadata).endCell();
-
-      const res = await fetch(`https://tonapi.io/v2/blockchain/accounts/${ANLGRAM_CONFIG.CLONE_SOURCE}`);
-      const d   = await res.json();
-      if (!d.code || !d.data) throw new Error('Cannot fetch Jetton code');
-
-      const minterCode = Cell.fromBoc(hexToBytes(d.code))[0];
-      const sp = Cell.fromBoc(hexToBytes(d.data))[0].beginParse();
-      sp.loadCoins(); sp.loadAddress(); sp.loadRef();
-      const walletCode = sp.loadRef();
-
-      const minterData = beginCell().storeCoins(0n).storeAddress(adminAddress)
-        .storeRef(metaCell).storeRef(walletCode).endCell();
-
-      const si       = { code: minterCode, data: minterData };
-      const siCell   = beginCell().store(storeStateInit(si)).endCell();
-      const dest     = contractAddress(0, si).toString({ bounceable: false });
-      const destBnc  = contractAddress(0, si).toString({ bounceable: true });
-
-      const fwd   = beginCell().storeUint(0,32).storeStringTail('ANLGRAM Launchpad').endCell();
-      const itr   = beginCell().storeUint(0x178d4519,32).storeUint(0n,64)
-        .storeCoins(toNano('1000000000')).storeAddress(null)
-        .storeAddress(adminAddress).storeCoins(toNano('0.02'))
-        .storeBit(1).storeRef(fwd).endCell();
-      const mint  = beginCell().storeUint(21,32).storeUint(0n,64)
-        .storeAddress(adminAddress).storeCoins(toNano('0.08')).storeRef(itr).endCell();
-
-      showProgress(btn, 2, 'Confirm 2 transactions in wallet...');
-      await tc.sendTransaction({
-        validUntil: Math.floor(Date.now()/1000)+600,
-        messages: [
-          { address: dest,    amount: toNano('0.05').toString(), stateInit: siCell.toBoc().toString('base64') },
-          { address: destBnc, amount: toNano('0.15').toString(), payload:   mint.toBoc().toString('base64') },
-        ],
-      });
-
-      btn.innerHTML = '✅ Jetton Deployed (Direct — Factory coming soon)';
-      btn.style.background = 'rgba(255,165,0,0.15)';
-      btn.style.color = '#ffa500';
-      setTimeout(() => { btn.innerHTML = origHTML; btn.removeAttribute('style'); }, 6000);
-
-    } catch (e) {
-      console.error('[Launchpad] Direct deploy error:', e);
-      alert('❌ Error:\n\n' + (e?.message || e));
+    const result = await window.deployJettonWeb3({ currentTarget: btn });
+    if (!result?.submitted) {
       btn.innerHTML = origHTML;
       btn.removeAttribute('style');
+      if (result?.uncertain) {
+        btn.textContent = 'Deployment outcome pending — check wallet and contract';
+        return result;
+      }
+      throw new Error(result?.reason || 'Jetton creation was not submitted.');
     }
+    // The creator emits its existing event to start exact-address state checks.
+    // Wallet acceptance alone is never displayed as completed deployment.
+    btn.textContent = 'Transaction submitted — deployment not yet verified';
+    return result;
   }
-
   // ══════════════════════════════════════════════════════════
   // TX MONITORING  (best-effort, no backend)
   // ══════════════════════════════════════════════════════════

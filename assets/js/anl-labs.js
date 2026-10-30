@@ -513,7 +513,8 @@
     if (rSymbol) rSymbol.textContent = draft.symbol ? `$${draft.symbol}` : '---';
     if (rSupply) rSupply.textContent = formatNumber(draft.supply);
     if (rDecimals) rDecimals.textContent = draft.decimals || '9';
-    if (rNetwork) rNetwork.textContent = 'TON Mainnet';
+    const reviewChain = tc?.account?.chain == null ? '' : String(tc.account.chain);
+    if (rNetwork) rNetwork.textContent = reviewChain === '-239' ? 'TON Mainnet' : reviewChain === '-3' ? 'TON Testnet' : 'Network not verified';
 
     if (rWallet) {
       if (tc && tc.account && tc.account.address) {
@@ -543,6 +544,15 @@
       if (tc) tc.openModal();
       return;
     }
+    const reviewChain = tc.account?.chain == null ? '' : String(tc.account.chain);
+    if (!tc.account?.address || (reviewChain !== '-3' && reviewChain !== '-239') ||
+        (tc.wallet?.account?.chain != null && String(tc.wallet.account.chain) !== reviewChain) ||
+        getNetworkContext().chainId !== reviewChain) {
+      alert('⚠️ The wallet network could not be verified. Check the wallet and page settings.');
+      return;
+    }
+    wizardState.deployment.reviewedWallet = tc.account.address;
+    wizardState.deployment.reviewedChain = reviewChain;
 
     const draft = wizardState.tokenDraft;
     if (!draft.name || !draft.symbol) {
@@ -558,14 +568,26 @@
     if (modalName) modalName.textContent = draft.name;
     if (modalSymbol) modalSymbol.textContent = `$${draft.symbol}`;
     if (modalSupply) modalSupply.textContent = formatNumber(draft.supply);
+    const modalNetwork = document.getElementById('deploy-confirm-network');
+    if (modalNetwork) modalNetwork.textContent = reviewChain === '-3' ? 'TON Testnet' : 'TON Mainnet';
+    const deployCheck = document.getElementById('deploy-confirm-checkbox');
+    if (deployCheck) deployCheck.checked = false;
 
     labsOpenModal('deploy-confirm-modal');
   };
 
   window.labsExecuteDeployFromWizard = async function () {
+    if (wizardState.deployment.status === 'signing' || wizardState.deployment.status === 'verifying') return;
     const deployCheck = document.getElementById('deploy-confirm-checkbox');
-    if (deployCheck && !deployCheck.checked) {
+    if (!deployCheck || !deployCheck.checked) {
       alert('⚠️ You must review and check the deployment authorization box before broadcasting.');
+      return;
+    }
+    const reviewedWallet = window.tonConnectUI;
+    if (!reviewedWallet?.connected || reviewedWallet.account?.address !== wizardState.deployment.reviewedWallet ||
+        String(reviewedWallet.account?.chain) !== wizardState.deployment.reviewedChain ||
+        getNetworkContext().chainId !== wizardState.deployment.reviewedChain) {
+      alert('⚠️ The wallet or network changed. Review the deployment details again before signing.');
       return;
     }
     labsCloseModal('deploy-confirm-modal');
@@ -587,6 +609,7 @@
     try {
       // Use existing verified deployJettonWeb3 logic
       const fakeEvent = {
+        wizardInitiated: true,
         currentTarget: {
           innerHTML: '',
           style: {},
@@ -595,20 +618,36 @@
       };
 
       // Call the existing window.deployJettonWeb3
-      if (typeof window.deployJettonWeb3 === 'function') {
-        await window.deployJettonWeb3(fakeEvent);
-      } else {
+      if (typeof window.deployJettonWeb3 !== 'function') {
         throw new Error('deployJettonWeb3 function not found.');
       }
+      const result = await window.deployJettonWeb3(fakeEvent);
+      if (!result || !result.submitted) {
+        if (result?.uncertain) {
+          wizardState.deployment.status = 'verifying';
+          wizardState.deployment.minterAddress = result.destAddressMint || '';
+          if (statusText) statusText.textContent = 'Wallet request outcome is uncertain. Check your wallet and blockchain before retrying.';
+          if (deployBtn) {
+            deployBtn.disabled = !result.destAddressMint;
+            deployBtn.style.pointerEvents = result.destAddressMint ? 'auto' : 'none';
+            deployBtn.textContent = 'Check Deployment Status Again';
+            if (result.destAddressMint) deployBtn.onclick = () => labsPollDeploymentConfirmation(result.destAddressMint);
+          }
+          return;
+        }
+        throw new Error(result?.reason || 'Wallet request was not submitted.');
+      }
+      if (!result.destAddressMint) throw new Error('Wallet request returned without the expected contract address.');
+      wizardState.deployment.minterAddress = result.destAddressMint;
 
       // Check if deployment resulted in contract address calculation
       if (statusText) {
-        statusText.innerHTML = '<span class="status-dot"></span> Transaction broadcast! Verifying contract state on TON blockchain...';
+        statusText.innerHTML = '<span class="status-dot"></span> Wallet request accepted. Checking the expected contract state...';
       }
       wizardState.deployment.status = 'verifying';
 
       // Poll TonAPI to reliably verify on-chain deployment
-      await labsPollDeploymentConfirmation();
+      await labsPollDeploymentConfirmation(result.destAddressMint);
 
     } catch (err) {
       console.error('Wizard Deployment Error:', err);
@@ -616,7 +655,7 @@
       wizardState.deployment.error = err.message || String(err);
 
       if (statusText) {
-        statusText.innerHTML = `<span style="color:#ff4444;">❌ Deployment failed or cancelled: ${err.message || 'Signature rejected'}</span>`;
+        statusText.textContent = `Deployment failed or cancelled: ${err.message || 'Signature rejected'}`;
       }
       if (deployBtn) {
         deployBtn.disabled = false;
@@ -627,7 +666,8 @@
   };
 
   window.addEventListener('anlgramJettonDeployed', (e) => {
-    const { destAddressMint, name, symbol } = e.detail || {};
+    const { destAddressMint, wizardInitiated } = e.detail || {};
+    if (wizardInitiated) return; // The wizard polls the exact returned address itself.
     if (destAddressMint) {
       wizardState.deployment.minterAddress = destAddressMint;
       wizardState.deployment.status = 'verifying';
@@ -636,6 +676,9 @@
   });
 
   async function labsPollDeploymentConfirmation(explicitMinter) {
+    if (wizardState.deployment.polling) return;
+    wizardState.deployment.polling = true;
+    try {
     const statusText = document.getElementById('wizard-deploy-status-text');
     const successArea = document.getElementById('wizard-deploy-success-area');
     const deployBtn = document.getElementById('wizard-step2-deploy-btn');
@@ -643,37 +686,41 @@
 
     const tc = window.tonConnectUI;
     const sender = tc && tc.account ? tc.account.address : '';
+    const sameWalletAndNetwork = () => window.tonConnectUI === tc && tc?.account?.address === sender &&
+      String(tc?.account?.chain) === '-239' && getNetworkContext().chainId === '-239';
 
     let confirmed = false;
-    let foundMinter = '';
+    let foundMinter = explicitMinter || wizardState.deployment.minterAddress || '';
 
     // Poll using institutional TokenVerificationEngine
     let verificationReport = null;
-    for (let attempt = 1; attempt <= 15; attempt++) {
+    // TokenVerificationEngine is Mainnet-only. Never use it as testnet evidence.
+    const canVerify = foundMinter && sender && sameWalletAndNetwork();
+    for (let attempt = 1; canVerify && attempt <= 15; attempt++) {
       if (statusText) {
         statusText.innerHTML = `<span class="status-dot"></span> Verifying on-chain state via TokenVerificationEngine (Attempt ${attempt}/15)...`;
       }
       await new Promise((r) => setTimeout(r, 3500));
+      if (!sameWalletAndNetwork()) break;
 
       try {
-        if (!foundMinter && sender) {
-          const res = await labsFetchTonApi(`/accounts/${encodeURIComponent(sender)}/jettons`);
-          if (res.ok) {
-            const jData = await res.json();
-            const balances = jData.balances || [];
-            const match = balances.find((b) => b.jetton.symbol === wizardState.tokenDraft.symbol);
-            if (match) {
-              foundMinter = match.jetton.address;
-            }
-          }
-        }
-
-        const targetMinter = explicitMinter || foundMinter;
+        const targetMinter = foundMinter;
         if (targetMinter) {
           const verifier = window.TokenVerificationEngine;
           if (verifier && typeof verifier.verifyToken === 'function') {
             const rep = await verifier.verifyToken(targetMinter, { viewerWallet: sender, forceFresh: true });
-            if (rep && rep.claims && rep.claims.account_status && rep.claims.account_status.status === 'VERIFIED') {
+            const claims = rep?.claims || {};
+            const supply = claims.total_supply?.evidence;
+            const balancesResponse = await labsFetchTonApi(`/accounts/${encodeURIComponent(sender)}/jettons`);
+            const balancesData = balancesResponse.ok ? await balancesResponse.json() : {};
+            const Address = window.TON_CORE?.Address;
+            const balance = Address && (balancesData.balances || []).find((entry) => {
+              try { return Address.parse(entry.jetton.address).equals(Address.parse(targetMinter)); } catch (_) { return false; }
+            });
+            if (sameWalletAndNetwork() && rep?.target?.network === 'TON Mainnet' && claims.account_status?.status === 'VERIFIED' &&
+                claims.total_supply?.status === 'VERIFIED' && supply?.rawSupply === '1000000000000000000' &&
+                Number(supply?.decimals) === 9 && claims.admin_status?.status === 'VERIFIED' &&
+                claims.admin_status?.evidence?.isUserAdmin === true && balance?.balance === '1000000000000000000') {
               confirmed = true;
               foundMinter = targetMinter;
               verificationReport = rep;
@@ -691,7 +738,8 @@
       wizardState.deployment.status = 'confirmed';
       wizardState.deployment.minterAddress = foundMinter;
       wizardState.deployment.minterFriendly = friendlyMinter;
-      const deployedImg = wizardState.tokenDraft.logoUrl || wizardState.tokenDraft.logoDataUrl || localStorage.getItem('anlgram_last_uploaded_logo') || '';
+      let deployedImg = wizardState.tokenDraft.logoUrl || wizardState.tokenDraft.logoDataUrl || '';
+      try { deployedImg = deployedImg || localStorage.getItem('anlgram_last_uploaded_logo') || ''; } catch (_) {}
       wizardState.activeToken = {
         address: foundMinter,
         name: wizardState.tokenDraft.name,
@@ -706,7 +754,7 @@
       } catch (e) {}
 
       if (statusText) {
-        statusText.innerHTML = '✅ <strong style="color:var(--labs-green);">Jetton Contract Verified On-Chain!</strong>';
+        statusText.innerHTML = '✅ <strong style="color:var(--labs-green);">Contract, supply and creator balance verified.</strong>';
       }
       if (successArea) successArea.style.display = 'block';
       if (contractLink) {
@@ -738,8 +786,8 @@
       if (statusText) {
         statusText.innerHTML = `
           <div style="color:#ffa500; font-size:12px; line-height:1.5;">
-            ⏳ <strong>Transaction submitted to TON validators.</strong><br>
-            Blockchain indexing may take up to a minute. Check your wallet activity or inspect your account on TonScan.
+            ⏳ <strong>Deployment is not yet verified.</strong><br>
+            Check your wallet and the expected contract on the correct network before retrying.
           </div>
         `;
       }
@@ -748,14 +796,87 @@
         deployBtn.style.opacity = '1';
         deployBtn.style.pointerEvents = 'auto';
         deployBtn.textContent = 'Check Deployment Status Again';
-        deployBtn.onclick = () => labsPollDeploymentConfirmation();
+        deployBtn.onclick = () => labsPollDeploymentConfirmation(foundMinter);
       }
+    }
+    } catch (error) {
+      console.error('Deployment verification error:', error);
+      wizardState.deployment.status = 'verifying';
+      const statusText = document.getElementById('wizard-deploy-status-text');
+      const deployBtn = document.getElementById('wizard-step2-deploy-btn');
+      if (statusText) statusText.textContent = 'Deployment is not yet verified. Check your wallet and the expected contract before retrying.';
+      if (deployBtn) {
+        deployBtn.disabled = false;
+        deployBtn.style.opacity = '1';
+        deployBtn.style.pointerEvents = 'auto';
+        deployBtn.textContent = 'Check Deployment Status Again';
+        deployBtn.onclick = () => labsPollDeploymentConfirmation(explicitMinter);
+      }
+    } finally {
+      wizardState.deployment.polling = false;
     }
   }
 
   // ═══════════════════════════════════════════════════════════════════
   // 5. STEP 3: MULTI-WALLET DISTRIBUTOR (CSV & TEP-74 BATCH SENDER)
   // ═══════════════════════════════════════════════════════════════════
+
+  // A wallet submission is not evidence of token delivery. Keep an unresolved
+  // submission across reloads so a retry cannot silently send the same batch.
+  const DISTRIBUTION_PENDING_KEY = 'anlgram_distribution_pending_v1';
+  // Keep sending disabled until transaction-linked, per-recipient trace
+  // verification and safe partial-batch reconciliation are implemented.
+  const DISTRIBUTION_VERIFICATION_AVAILABLE = false;
+
+  function labsGetPendingDistribution() {
+    try {
+      const value = window.localStorage.getItem(DISTRIBUTION_PENDING_KEY);
+      return value ? JSON.parse(value) : null;
+    } catch (e) {
+      // If storage cannot be read, fail closed instead of risking a duplicate.
+      return { storageUnavailable: true };
+    }
+  }
+
+  function labsShowPendingDistribution() {
+    wizardState.distributor.status = 'pending';
+    labsSetDistributionUiState('pending');
+  }
+
+  function labsDistributionAmountUnits(amountText, decimals) {
+    // Parse the original input text, never an IEEE-754 number. Coins are
+    // serialized as VarUInteger 16, whose maximum is 2^120 - 1.
+    if (typeof amountText !== 'string' || amountText.length > 128 || !/^\d+(?:\.\d+)?$/.test(amountText)) {
+      throw new Error('Enter each distribution amount as a plain positive decimal number.');
+    }
+    if (!Number.isInteger(decimals) || decimals < 0 || decimals > 255) {
+      throw new Error('The Jetton decimals could not be verified. Distribution is disabled.');
+    }
+    const [whole, fraction = ''] = amountText.split('.');
+    const significantFraction = fraction.replace(/0+$/, '');
+    if (significantFraction.length > decimals) {
+      throw new Error('A distribution amount has more precision than this Jetton supports.');
+    }
+    const units = BigInt(whole) * (10n ** BigInt(decimals)) + BigInt((significantFraction.padEnd(decimals, '0')) || '0');
+    if (units <= 0n || units >= (1n << 120n)) {
+      throw new Error('A distribution amount is zero or exceeds the supported Jetton transfer range.');
+    }
+    return units;
+  }
+
+  function labsDistributionTotalText(recipients) {
+    if (!recipients.length) return '0';
+    const decimals = recipients.reduce((max, r) => Math.max(max, (r.amountText.split('.')[1] || '').length), 0);
+    let total = 0n;
+    for (const recipient of recipients) {
+      const [whole, fraction = ''] = recipient.amountText.split('.');
+      total += BigInt(whole) * (10n ** BigInt(decimals)) + BigInt(fraction.padEnd(decimals, '0') || '0');
+    }
+    const digits = total.toString().padStart(decimals + 1, '0');
+    if (!decimals) return digits;
+    const frac = digits.slice(-decimals).replace(/0+$/, '');
+    return digits.slice(0, -decimals) + (frac ? '.' + frac : '');
+  }
 
   window.labsSetDistributorMode = function (mode) {
     wizardState.distributor.mode = mode;
@@ -797,14 +918,16 @@
     const lines = (rawText || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     const recipients = [];
     const seen = new Set();
-    const defaultAmount = parseFloat(document.getElementById('labs-dist-amount')?.value || '1000') || 1000;
+    const defaultAmountText = document.getElementById('labs-dist-amount')?.value ?? '1000';
     const distType = wizardState.distributor.distributionType;
 
     for (const line of lines) {
       const parts = line.split(/[,;\t\s]+/).filter(Boolean);
       if (parts.length === 0) continue;
       const addr = parts[0];
-      const customAmt = parts[1] ? parseFloat(parts[1]) : defaultAmount;
+      const amountText = distType === 'custom' && parts.length > 1 ? parts[1] : defaultAmountText;
+      const isValidAmount = typeof amountText === 'string' && amountText.length <= 128 &&
+        /^\d+(?:\.\d+)?$/.test(amountText) && /[1-9]/.test(amountText);
 
       const isValid = isValidTonAddress(addr);
       const isDuplicate = seen.has(addr);
@@ -812,9 +935,10 @@
 
       recipients.push({
         address: addr,
-        amount: distType === 'custom' && !isNaN(customAmt) ? customAmt : defaultAmount,
-        valid: isValid && !isDuplicate,
-        error: !isValid ? 'Invalid address' : (isDuplicate ? 'Duplicate address' : null)
+        amount: isValidAmount ? Number(amountText) : 0,
+        amountText,
+        valid: isValid && !isDuplicate && isValidAmount,
+        error: !isValid ? 'Invalid address' : (isDuplicate ? 'Duplicate address' : (!isValidAmount ? 'Invalid amount' : null))
       });
     }
 
@@ -827,6 +951,8 @@
     const validRecs = recs.filter((r) => r.valid);
     const totalTokens = validRecs.reduce((sum, r) => sum + r.amount, 0);
     wizardState.distributor.totalAmount = totalTokens;
+    const totalAmountText = labsDistributionTotalText(validRecs);
+    wizardState.distributor.totalAmountText = totalAmountText;
 
     const batches = Math.ceil(validRecs.length / 4) || 0;
     const estimatedGasTon = (batches * 0.05).toFixed(2);
@@ -837,7 +963,7 @@
         statusEl.innerHTML = 'Enter recipient addresses or drag and drop a CSV file to begin.';
         statusEl.style.color = 'var(--labs-text-muted)';
       } else {
-        statusEl.innerHTML = `<strong>${validRecs.length}</strong> valid recipients | <strong>${formatNumber(totalTokens)}</strong> tokens required | Est. Gas: ~${estimatedGasTon} TON (${batches} batch${batches > 1 ? 'es' : ''})`;
+        statusEl.innerHTML = `<strong>${validRecs.length}</strong> valid recipients | <strong>${totalAmountText}</strong> tokens required | Est. Gas: ~${estimatedGasTon} TON (${batches} batch${batches > 1 ? 'es' : ''})`;
         statusEl.style.color = 'var(--labs-cyan)';
       }
     }
@@ -851,8 +977,8 @@
         modalTable.innerHTML = recs.slice(0, 100).map((r, i) => `
           <tr style="${r.valid ? '' : 'color:#ff6b6b;background:rgba(255,0,0,0.05);'}">
             <td>${i + 1}</td>
-            <td style="font-family:var(--font-mono); font-size:11px;">${r.address}</td>
-            <td style="font-family:var(--font-mono);">${r.amount.toLocaleString()}</td>
+            <td style="font-family:var(--font-mono); font-size:11px;">${escapeHtml(r.address)}</td>
+            <td style="font-family:var(--font-mono);">${escapeHtml(r.amountText ?? '')}</td>
             <td>${r.valid ? '<span style="color:#00ff88;">✔ Valid</span>' : `<span style="color:#ff4444;">✖ ${r.error}</span>`}</td>
           </tr>
         `).join('');
@@ -861,6 +987,11 @@
   };
 
   window.labsReviewAndSendDistribution = function () {
+    if (labsGetPendingDistribution()) {
+      labsShowPendingDistribution();
+      alert('A distribution may already have been submitted. Check wallet and blockchain activity before sending again. Automatic retry is disabled until this can be reconciled.');
+      return;
+    }
     // Prevent opening modal while distribution is already transmitting
     if (wizardState.distributor.isSending) {
       console.warn('Distribution is already running in background.');
@@ -898,10 +1029,31 @@
 
     labsOpenModal('distributor-modal');
     labsUpdateDistributorPreview();
+    if (!DISTRIBUTION_VERIFICATION_AVAILABLE) {
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.pointerEvents = 'none';
+        submitBtn.textContent = 'Distribution temporarily unavailable';
+      }
+      const banner = document.getElementById('labs-dist-modal-status-banner');
+      if (banner) {
+        banner.style.display = 'block';
+        banner.textContent = 'Distribution is temporarily unavailable while reliable transaction verification is completed. No wallet request will be sent.';
+      }
+    }
   };
 
   // Safe On-Chain Batch Execution via TonConnect (TEP-74 OP 0x0f8a7ea5)
   window.labsExecuteDistributionBatch = async function () {
+    if (!DISTRIBUTION_VERIFICATION_AVAILABLE) {
+      alert('Distribution is temporarily unavailable while reliable transaction verification is completed. No wallet request was sent.');
+      return;
+    }
+    if (labsGetPendingDistribution()) {
+      labsShowPendingDistribution();
+      alert('A distribution may already have been submitted. Check wallet and blockchain activity before sending again. Automatic retry is disabled until this can be reconciled.');
+      return;
+    }
     // 1. Concurrent submission guard
     if (wizardState.distributor.isSending) {
       console.warn('Distribution transaction already in flight.');
@@ -915,9 +1067,25 @@
       return;
     }
 
+    // Require the selected RPC network to match the connected wallet. In
+    // particular, a ?testnet URL must not override a mainnet wallet session.
+    const walletChain = String(tc.account?.chain ?? tc.wallet?.account?.chain ?? '');
+    const secondaryChain = tc.wallet?.account?.chain;
+    if (!['-3', '-239'].includes(walletChain) ||
+        (secondaryChain != null && String(secondaryChain) !== walletChain) ||
+        getNetworkContext().chainId !== walletChain) {
+      alert('Wallet network is missing or does not match the selected blockchain network. Reconnect your wallet on the correct network.');
+      return;
+    }
+
     const validRecs = wizardState.distributor.recipients.filter((r) => r.valid);
     if (validRecs.length === 0) {
       alert('No valid recipients to distribute to.');
+      return;
+    }
+    if (validRecs.some((r) => typeof r.amountText !== 'string' || r.amountText.length > 128 ||
+      !/^\d+(?:\.\d+)?$/.test(r.amountText) || !/[1-9]/.test(r.amountText))) {
+      alert('Distribution amounts must be entered as positive decimal text. Review the recipients before sending.');
       return;
     }
 
@@ -948,14 +1116,14 @@
     const remainingBatches = totalBatches - startIndex;
     const confirmMsg = (startIndex === 0)
       ? `Confirm Multi-Wallet Distribution:\n\n` +
-        `• Total Tokens: ${formatNumber(wizardState.distributor.totalAmount)}\n` +
+        `• Total Tokens: ${wizardState.distributor.totalAmountText || labsDistributionTotalText(validRecs)}\n` +
         `• Total Recipients: ${validRecs.length}\n` +
         `• Transaction Batches: ${totalBatches} (up to 4 transfers per tx)\n\n` +
-        `You will be prompted to sign each batch with your connected TON wallet. Proceed?`
+        `Only the first batch can be submitted. Automatic confirmation and continuation are unavailable; the request will remain pending and retries will be blocked. Proceed?`
       : `Resume Multi-Wallet Distribution:\n\n` +
         `• Completed Batches: ${startIndex} of ${totalBatches}\n` +
         `• Remaining Batches: ${remainingBatches}\n\n` +
-        `Confirmed batches will NOT be resent. Proceed to sign remaining batches?`;
+        `Automatic confirmation and continuation are unavailable; the next request will remain pending and retries will be blocked. Proceed?`;
 
     if (!confirm(confirmMsg)) return;
 
@@ -989,6 +1157,28 @@
       const userJettonWalletAddr = jData.wallet_address?.address;
       if (!userJettonWalletAddr) throw new Error('You do not have a deployed wallet for this Jetton.');
 
+      // This sender only constructs standard TEP-74 transfers. Never guess at
+      // custom payloads, locked balances, or scaled display-unit conversions.
+      if ((Array.isArray(jData.extensions) && jData.extensions.length > 0) ||
+          jData.jetton?.scaled_ui != null || jData.lock != null) {
+        throw new Error('This Jetton requires transfer or display features that distribution does not support.');
+      }
+
+      const decimalsValue = jData.jetton?.decimals;
+      if ((typeof decimalsValue !== 'string' && typeof decimalsValue !== 'number') ||
+          !/^\d+$/.test(String(decimalsValue))) {
+        throw new Error('The Jetton decimals could not be verified. Distribution is disabled.');
+      }
+      const jettonDecimals = Number(decimalsValue);
+      // Validate every batch before the first wallet request to avoid partial
+      // distribution when a later amount cannot be represented exactly.
+      const recipientUnits = new Map(validRecs.map((r) => [r, labsDistributionAmountUnits(r.amountText, jettonDecimals)]));
+      if (typeof jData.balance !== 'string' || !/^\d+$/.test(jData.balance)) {
+        throw new Error('The Jetton wallet balance could not be verified.');
+      }
+      const totalUnits = [...recipientUnits.values()].reduce((sum, amount) => sum + amount, 0n);
+      if (totalUnits > BigInt(jData.balance)) throw new Error('Insufficient Jetton balance for this distribution.');
+
       for (let bIndex = startIndex; bIndex < totalBatches; bIndex++) {
         const batch = batches[bIndex];
         const batchNum = bIndex + 1;
@@ -1008,8 +1198,7 @@
         for (const recipient of batch) {
           const recAddress = Address.parse(recipient.address);
           const responseAddress = Address.parse(senderAddr);
-          const jettonDecimals = 9;
-          const jettonAmountNano = BigInt(Math.floor(recipient.amount * Math.pow(10, jettonDecimals)));
+          const jettonAmountNano = recipientUnits.get(recipient);
 
           const forwardPayload = beginCell().storeUint(0, 32).storeStringTail('ANL Labs Distribution').endCell();
 
@@ -1035,48 +1224,54 @@
 
         const tx = {
           validUntil: Math.floor(Date.now() / 1000) + 300,
+          network: walletChain,
           messages: messages
         };
 
-        const txStartTimestamp = Math.floor(Date.now() / 1000) - 10;
-        let sendResult;
+        if (!tc.connected || tc.account?.address !== senderAddr ||
+            String(tc.account?.chain ?? tc.wallet?.account?.chain ?? '') !== walletChain ||
+            getNetworkContext().chainId !== walletChain) {
+          throw new Error('The connected wallet or network changed. No distribution request was sent.');
+        }
+
+        // Persist the intent BEFORE invoking the wallet. A timeout, page reload,
+        // or bridge error cannot then cause the same batch to be resent.
+        const pending = {
+          wallet: senderAddr,
+          jetton: jettonMinter,
+          jettonWallet: userJettonWalletAddr,
+          batchIndex: bIndex,
+          totalBatches,
+          recipients: batch.map((r) => ({ address: r.address, amount: r.amountText })),
+          validUntil: tx.validUntil,
+          createdAt: Date.now()
+        };
         try {
-          sendResult = await tc.sendTransaction(tx);
+          window.localStorage.setItem(DISTRIBUTION_PENDING_KEY, JSON.stringify(pending));
+          if (!window.localStorage.getItem(DISTRIBUTION_PENDING_KEY)) throw new Error('Storage unavailable');
+        } catch (storageError) {
+          throw new Error('Cannot safely record this distribution locally. No wallet request was sent.');
+        }
+        try {
+          await tc.sendTransaction(tx);
         } catch (signErr) {
-          const isRejected = /reject|cancel|declined|denied/i.test(signErr.message || String(signErr));
+          // Only the wallet's explicit rejection error establishes that the
+          // user refused the request; other errors may occur after submission.
+          const isRejected = signErr && signErr.name === 'UserRejectsError';
+          if (isRejected) {
+            try { window.localStorage.removeItem(DISTRIBUTION_PENDING_KEY); } catch (e) {}
+            if (labsGetPendingDistribution()) throw { type: 'CONFIRMATION_PENDING', batchIndex: bIndex };
+          }
           throw {
-            type: isRejected ? 'SIGNATURE_REJECTED' : 'SUBMIT_ERROR',
+            type: isRejected ? 'SIGNATURE_REJECTED' : 'CONFIRMATION_PENDING',
             batchIndex: bIndex,
             originalError: signErr
           };
         }
 
-        // Successfully broadcast
-        if (btn) {
-          btn.innerHTML = `<span class="status-dot"></span> Batch ${batchNum} broadcast. Verifying on-chain...`;
-        }
-
-        const verified = await labsVerifyBatchOnChain(senderAddr, userJettonWalletAddr, txStartTimestamp);
-
-        // Record successful batch
-        wizardState.distributor.successfulBatches.push({
-          batchIndex: bIndex,
-          recipientCount: batch.length,
-          verifiedOnChain: verified,
-          timestamp: Date.now()
-        });
-
-        if (modalStatusBanner) {
-          modalStatusBanner.style.background = 'rgba(0, 229, 153, 0.15)';
-          modalStatusBanner.style.border = '1px solid rgba(0, 229, 153, 0.3)';
-          modalStatusBanner.style.color = 'var(--labs-green)';
-          modalStatusBanner.innerHTML = `✔ Batch ${batchNum} of ${totalBatches} completed (${batch.length} transfers)!`;
-        }
-
-        // Delay between batches to prevent nonce race condition
-        if (bIndex < totalBatches - 1) {
-          await new Promise((r) => setTimeout(r, 2000));
-        }
+        // The existing recent-event lookup cannot link this request to all
+        // recipients and amounts. Stop until reliable reconciliation exists.
+        throw { type: 'CONFIRMATION_PENDING', batchIndex: bIndex };
       }
 
       // ALL BATCHES COMPLETED
@@ -1094,6 +1289,25 @@
     } catch (err) {
       console.error('Distribution Error:', err);
       wizardState.distributor.isSending = false;
+      if (err.type === 'CONFIRMATION_PENDING') {
+        labsShowPendingDistribution();
+        if (modalStatusBanner) {
+          modalStatusBanner.style.display = 'block';
+          modalStatusBanner.style.color = '#ffa500';
+          modalStatusBanner.textContent = 'Transaction outcome is unverified. Check wallet and blockchain activity; do not resend this batch.';
+        }
+        if (btn) {
+          btn.disabled = true;
+          btn.style.pointerEvents = 'none';
+          btn.textContent = 'Awaiting verification';
+        }
+        if (cancelBtn) {
+          cancelBtn.disabled = false;
+          cancelBtn.style.pointerEvents = 'auto';
+        }
+        alert('Distribution paused: the wallet request may have been submitted, but token delivery is not verified. Check wallet and blockchain activity before taking any further action.');
+        return;
+      }
       wizardState.distributor.status = 'failed';
       wizardState.distributor.lastError = err;
 
@@ -1133,26 +1347,6 @@
       alert(`❌ Distribution paused:\n\n${userMsg}\n\n${completedCount > 0 ? `${completedCount} batch(es) were already sent safely and will NOT be resent when retrying.` : 'No tokens were transferred.'}`);
     }
   };
-
-  async function labsVerifyBatchOnChain(senderAddr, jettonWalletAddr, startTimestamp) {
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      await new Promise((r) => setTimeout(r, 2000));
-      try {
-        const res = await labsFetchTonApi(`/accounts/${encodeURIComponent(senderAddr)}/events?limit=3`);
-        if (res.ok) {
-          const data = await res.json();
-          const events = data.events || [];
-          const recentEvent = events.find((e) => (e.timestamp || 0) >= startTimestamp - 5);
-          if (recentEvent && recentEvent.in_progress === false) {
-            return true;
-          }
-        }
-      } catch (e) {
-        // Continue
-      }
-    }
-    return true; // Broadcast confirmed by wallet RPC
-  }
 
   function labsOnDistributionComplete(recipientCount, totalAmount, totalBatches) {
     // 1. Mark Step 3 as completed in Stepper
@@ -1203,7 +1397,21 @@
     const successBanner = document.getElementById('labs-dist-success-banner');
     const errorBanner = document.getElementById('labs-dist-error-banner');
 
-    if (state === 'in_progress') {
+    if (state === 'pending') {
+      if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.style.pointerEvents = 'none';
+        sendBtn.style.display = 'inline-block';
+        sendBtn.textContent = 'Distribution awaiting verification';
+      }
+      if (skipBtn) skipBtn.style.display = 'inline-block';
+      if (continueBtn) continueBtn.style.display = 'none';
+      if (successBanner) successBanner.style.display = 'none';
+      if (errorBanner) {
+        errorBanner.style.display = 'block';
+        errorBanner.textContent = 'A distribution may have been submitted, but delivery is not verified. Check wallet and blockchain activity. Automatic retry is disabled.';
+      }
+    } else if (state === 'in_progress') {
       if (sendBtn) {
         sendBtn.disabled = true;
         sendBtn.style.pointerEvents = 'none';
@@ -1352,8 +1560,7 @@
     if (!submitBtn) return;
 
     const tc = window.tonConnectUI || window.TonConnectUIInstance;
-    const isTestnet = (tc && tc.account && tc.account.chain === '-3') ||
-                      (typeof window !== 'undefined' && window.location.search.includes('testnet'));
+    const isTestnet = tc?.connected && String(tc.account?.chain) === '-3';
 
     if (isTestnet || window.__allowMainnetVesting) {
       submitBtn.disabled = false;
@@ -1382,8 +1589,24 @@
 
   window.labsSubmitVesting = async function (forceMainnet = false) {
     const tc = window.tonConnectUI || window.TonConnectUIInstance;
-    const isTestnet = (tc && tc.account && tc.account.chain === '-3') ||
-                      (typeof window !== 'undefined' && window.location.search.includes('testnet'));
+    const walletChain = tc?.account?.chain == null ? '' : String(tc.account.chain);
+    const isTestnet = walletChain === '-3';
+
+    if (!tc || !tc.connected || !tc.account?.address) {
+      alert('Please connect your TON wallet first to deploy and fund a vesting contract.');
+      return;
+    }
+    const connectedAddress = tc.account.address;
+
+    // A URL or stored preference cannot establish the connected wallet's network.
+    // Reject unknown or conflicting networks before asking the wallet to sign.
+    const walletInfoChain = tc.wallet?.account?.chain;
+    if ((walletChain !== '-3' && walletChain !== '-239') ||
+        (walletInfoChain != null && String(walletInfoChain) !== walletChain) ||
+        getNetworkContext().chainId !== walletChain) {
+      alert('The connected wallet network could not be verified. Check the wallet network and page settings before continuing.');
+      return;
+    }
 
     // Mandatory Condition: Mainnet safety guard
     if (!isTestnet && !forceMainnet && !window.__allowMainnetVesting) {
@@ -1393,11 +1616,6 @@
         "To protect user assets, on-chain token locks cannot be executed on Mainnet until the smart contract audit is completed and verified.\n\n" +
         "You may configure schedule parameters in Step 4 for planning purposes, but no on-chain lock transaction will be simulated or executed."
       );
-      return;
-    }
-
-    if (!tc || !tc.connected || !tc.account?.address) {
-      alert('Please connect your TON wallet first to deploy and fund a vesting contract.');
       return;
     }
 
@@ -1411,7 +1629,7 @@
     const submitBtn = document.getElementById('labs-vesting-submit-btn');
 
     const beneficiary = beneficiaryInput ? beneficiaryInput.value.trim() : '';
-    const amount = amountInput ? parseFloat(amountInput.value) : 0;
+    const amountText = amountInput ? String(amountInput.value).trim() : '';
     const cliffMonths = cliffSelect ? parseInt(cliffSelect.value) : 3;
     const periodMonths = periodSelect ? parseInt(periodSelect.value) : 12;
     const startDateVal = dateInput ? dateInput.value : '';
@@ -1424,7 +1642,7 @@
       return;
     }
 
-    if (!amount || amount <= 0) {
+    if (!/^\d+(?:\.\d+)?$/.test(amountText) || !/[1-9]/.test(amountText)) {
       if (errBox) {
         errBox.textContent = '⚠️ Please enter a positive token amount to lock.';
         errBox.style.display = 'block';
@@ -1454,13 +1672,36 @@
       return;
     }
 
+    // Resolve decimals from the selected token on the connected network. Do
+    // not fall back to 9: some tokens have zero decimals, and a guessed value
+    // can transfer an entirely different amount than the user entered.
+    let lockedUnits;
+    try {
+      const metaRes = await labsFetchTonApi(`/jettons/${encodeURIComponent(activeToken.address)}`);
+      if (!metaRes.ok) throw new Error('Could not read Jetton metadata.');
+      const metadata = await metaRes.json();
+      const rawDecimals = metadata?.metadata?.decimals;
+      if (rawDecimals == null || !/^\d{1,3}$/.test(String(rawDecimals))) {
+        throw new Error('The Jetton decimals could not be verified.');
+      }
+      lockedUnits = labsDistributionAmountUnits(amountText, Number(rawDecimals));
+    } catch (err) {
+      if (errBox) {
+        errBox.textContent = `⚠️ ${String(err.message || 'Token amount could not be verified.').replace(/distribution/gi, 'vesting')}`;
+        errBox.style.display = 'block';
+      } else {
+        alert('The token amount or decimals could not be verified.');
+      }
+      return;
+    }
+
     const netName = isTestnet ? 'Testnet' : 'Mainnet';
     const confirmed = confirm(
       `🔒 Confirm ${netName} Vesting Deployment & Token Lock:\n\n` +
       `• Network: TON ${netName}\n` +
       `• Token: ${activeToken.name || 'Token'} (${activeToken.symbol || 'TOK'})\n` +
       `• Beneficiary: ${beneficiary}\n` +
-      `• Amount to Lock: ${amount.toLocaleString()} ${activeToken.symbol || 'TOK'}\n` +
+      `• Amount to Lock: ${amountText} ${activeToken.symbol || 'TOK'}\n` +
       `• Cliff Period: ${cliffMonths} month(s)\n` +
       `• Total Duration: ${periodMonths} month(s)\n` +
       `• Start Date: ${startDateVal}\n` +
@@ -1479,6 +1720,7 @@
       submitBtn.innerHTML = '<span class="status-dot"></span> Preparing Transaction...';
     }
 
+    let vestingRequestStarted = false;
     try {
       const { beginCell, toNano, Address, Cell, contractAddress, storeStateInit } = window.TON_CORE || {};
       if (!beginCell || !Address || !contractAddress) {
@@ -1510,8 +1752,6 @@
       const startTimestamp = Math.floor(new Date(startDateVal).getTime() / 1000);
       const cliffSecs = cliffMonths * 30 * 24 * 3600;
       const totalSecs = periodMonths * 30 * 24 * 3600;
-      const tokenDecimals = activeToken.decimals || 9;
-      const lockedUnits = BigInt(Math.floor(amount * (10 ** tokenDecimals)));
 
       // 4. Construct Initial Data Cell for Vesting Contract (two-cell ref layout)
       const scheduleCell = beginCell()
@@ -1535,6 +1775,24 @@
       const stateInitCell = beginCell().store(storeStateInit(stateInitObj)).endCell();
       const vestingAddress = contractAddress(0, stateInitObj);
       const vestingAddressFriendly = vestingAddress.toString({ bounceable: true, testOnly: isTestnet });
+      const explorerUrl = `${netCtx.tonscanBase}/address/${vestingAddressFriendly}`;
+
+      // Retain a per-network, per-creator, per-contract intent across reloads.
+      // Repeating this same deposit can strand tokens if the first request landed.
+      const vestingIntentKey = `anlgram_vesting_pending_v1:${walletChain}:${creator.toRawString()}:${vestingAddress.toRawString()}`;
+      let pendingVestingIntent;
+      try {
+        pendingVestingIntent = localStorage.getItem(vestingIntentKey);
+      } catch (e) {
+        throw new Error('Cannot safely store the vesting request. Enable local storage before continuing.');
+      }
+      if (pendingVestingIntent) {
+        if (statusDiv) {
+          statusDiv.innerHTML = `⏳ A previous vesting request for this contract is pending or unconfirmed. Check <a href="${explorerUrl}" target="_blank" rel="noopener noreferrer">the contract on the explorer</a> and the wallet transaction before attempting another deposit.`;
+        }
+        if (submitBtn) submitBtn.innerHTML = '⏳ Vesting Verification Pending';
+        return;
+      }
 
       if (statusDiv) {
         statusDiv.innerHTML = `<span class="status-dot"></span> ⏳ Contract address: <code>${vestingAddressFriendly.slice(0,8)}...${vestingAddressFriendly.slice(-6)}</code>. Fetching your Jetton Wallet...`;
@@ -1563,6 +1821,7 @@
       // 7. Bundle Deploy + Deposit into 1 TonConnect transaction!
       const tx = {
         validUntil: Math.floor(Date.now() / 1000) + 600,
+        network: walletChain,
         messages: [
           {
             address: vestingAddress.toString({ bounceable: false, testOnly: isTestnet }),
@@ -1582,54 +1841,91 @@
         statusDiv.innerHTML = '<span class="status-dot"></span> ⏳ Awaiting wallet approval in Tonkeeper... Please confirm the transaction on your phone.';
       }
 
-      await tc.sendTransaction(tx);
-
-      if (statusDiv) {
-        statusDiv.innerHTML = `🚀 <strong>Transaction Broadcast:</strong> Vesting contract deployed & tokens transferred! Verifying on ${netCtx.explorerName}... <span class="status-dot"></span>`;
+      // RPC preparation takes time; refuse to sign if the account or network
+      // changed while constructing the transaction.
+      if (tc !== (window.tonConnectUI || window.TonConnectUIInstance) || !tc.connected ||
+          tc.account?.address !== connectedAddress || String(tc.account?.chain) !== walletChain ||
+          (tc.wallet?.account?.chain != null && String(tc.wallet.account.chain) !== walletChain) ||
+          getNetworkContext().chainId !== walletChain) {
+        throw new Error('Wallet account or network changed while preparing vesting. Review the details and try again.');
+      }
+      try {
+        // Another invocation may have finished preparation since the first
+        // check above. Recheck synchronously before creating the intent.
+        if (localStorage.getItem(vestingIntentKey)) {
+          if (statusDiv) statusDiv.innerHTML = `⏳ A previous vesting request for this contract is pending or unconfirmed. Check <a href="${explorerUrl}" target="_blank" rel="noopener noreferrer">the contract on the explorer</a> and your wallet history before retrying.`;
+          if (submitBtn) submitBtn.innerHTML = '⏳ Vesting Verification Pending';
+          return;
+        }
+        localStorage.setItem(vestingIntentKey, JSON.stringify({
+          address: vestingAddress.toRawString(), network: walletChain, submittedAt: Date.now()
+        }));
+      } catch (e) {
+        throw new Error('Cannot safely store the vesting request. Enable local storage before continuing.');
+      }
+      vestingRequestStarted = true;
+      try {
+        await tc.sendTransaction(tx);
+      } catch (sendError) {
+        // Wallet/bridge errors can occur after broadcast. Do not treat them as
+        // proof that no transaction was sent or silently allow a retry.
+        if (statusDiv) {
+          statusDiv.innerHTML = `⏳ Wallet request outcome is unknown. The token deposit is not confirmed. Check <a href="${explorerUrl}" target="_blank" rel="noopener noreferrer">the contract on the explorer</a> and your wallet history before retrying.`;
+        }
+        if (submitBtn) submitBtn.innerHTML = '⏳ Vesting Verification Pending';
+        return;
       }
 
-      // 8. Poll TonAPI to verify contract deployment and initialization
-      let verified = false;
+      if (statusDiv) {
+        statusDiv.innerHTML = '⏳ Wallet request submitted. Checking the contract; token deposit has not yet been verified. <span class="status-dot"></span>';
+      }
+
+      // 8. An active account does not prove the Jetton deposit succeeded. Until
+      // custody and initialization can both be verified, report a pending result.
+      let deploymentObserved = false;
       for (let i = 0; i < 20; i++) {
         await new Promise(r => setTimeout(r, 3000));
+        if (!tc.connected || tc.account?.address !== connectedAddress ||
+            String(tc.account?.chain) !== walletChain || getNetworkContext().chainId !== walletChain) break;
         try {
           const vRes = await labsFetchTonApi(`/accounts/${encodeURIComponent(vestingAddress.toRawString())}`);
           if (vRes.ok) {
             const vData = await vRes.json();
             if (vData.status === 'active') {
-              verified = true;
+              deploymentObserved = true;
               break;
             }
           }
         } catch (e) {}
       }
 
-      const explorerUrl = `${netCtx.tonscanBase}/address/${vestingAddressFriendly}`;
       if (statusDiv) {
         statusDiv.innerHTML = `
-          <div style="background:rgba(0,255,100,0.1); border:1px solid #00e676; border-radius:8px; padding:12px; color:#00e676;">
-            <strong>✅ Vesting Contract Deployed & Verified On-Chain!</strong><br>
+          <div style="background:rgba(255,170,0,0.1); border:1px solid #ffaa00; border-radius:8px; padding:12px; color:#ffaa00;">
+            <strong>⏳ Vesting transaction requires verification</strong><br>
             <div style="font-size:12px; color:#fff; margin-top:6px; word-break:break-all;">
               Contract Address: <a href="${explorerUrl}" target="_blank" style="color:var(--labs-cyan); text-decoration:underline;">${vestingAddressFriendly}</a>
             </div>
             <div style="font-size:12px; color:#94a3b8; margin-top:4px;">
-              Locked: <strong>${amount.toLocaleString()} ${activeToken.symbol || 'tokens'}</strong> under non-custodial linear vesting rules.
+              ${deploymentObserved ? 'The account is active.' : 'Contract activation has not been confirmed.'}
+              The token deposit and lock have not been verified. Check the transaction and Jetton balance before retrying.
             </div>
           </div>
         `;
       }
       if (submitBtn) {
-        submitBtn.innerHTML = '✅ Tokens Locked in Vesting Contract';
-        submitBtn.style.background = 'rgba(0,255,100,0.2)';
+        submitBtn.innerHTML = '⏳ Vesting Verification Pending';
       }
     } catch (err) {
       console.error('Vesting deployment error:', err);
       if (statusDiv) {
-        statusDiv.innerHTML = `<span style="color:#ff5555;">❌ Error: ${escapeHtml(err.message || 'Transaction cancelled or failed.')}</span>`;
+        statusDiv.innerHTML = vestingRequestStarted
+          ? '⏳ Vesting request outcome is unknown. Check your wallet and the contract on-chain before retrying.'
+          : `<span style="color:#ff5555;">❌ Error: ${escapeHtml(err.message || 'Transaction cancelled or failed.')}</span>`;
       }
       if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '🔒 Lock Tokens (Vesting)';
+        submitBtn.disabled = vestingRequestStarted;
+        submitBtn.innerHTML = vestingRequestStarted ? '⏳ Vesting Verification Pending' : '🔒 Lock Tokens (Vesting)';
       }
     }
   };
