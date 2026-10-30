@@ -65,6 +65,10 @@ const int query_lp_receipt = 0x414c5004;
   cell profile = c.slice_refs() ? c~load_ref() : null();c.end_parse();
   throw_unless(408,(router.preload_uint(2) == 2) & (m0.preload_uint(2) == 2) & (m1.preload_uint(2) == 2) & (admin.preload_uint(2) == 2));
   throw_if(408,equal_slices(m0,m1));
+  if(op == 0x414e5701) {
+    throw_unless(401,equal_slices(sender,expected_curve));body.end_parse();
+    forward_query(sender,begin_cell().store_uint(0x414e5702,32).store_uint(q,64).store_uint(0,1).end_cell(),balance - value);return ();
+  }
   if(op == start_auth) {
     throw_unless(401,equal_slices(sender,admin));throw_unless(405,value >= 150000000);
     ifnot (cell_null?(profile)) { stonfi_profile_codes(profile); }

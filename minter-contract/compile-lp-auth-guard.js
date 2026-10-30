@@ -20,5 +20,8 @@ const { Cell } = require('@ton/core');
  if(process.argv.includes('--check')) {
   if(fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n')!==content) throw new Error('Source/artifact mismatch');
  } else fs.writeFileSync(file,content);
+ const pinFile=path.join(__dirname,'contracts/imports/lp-auth-guard-code.fc');
+ const pin=';; Generated development guard identity; authorization remains denied.\nconst int LP_AUTH_GUARD_CODE_HASH = 0x'+cell.hash().toString('hex')+';\n';
+ if(process.argv.includes('--check')) { if(fs.readFileSync(pinFile,'utf8').replace(/\r\n/g,'\n')!==pin)throw Error('Guard pin mismatch'); }else fs.writeFileSync(pinFile,pin);
  console.log('LP guard cell:',cell.hash().toString('hex'));
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -6,10 +6,17 @@ int curve_return_key(int id) inline {
 builder curve_return_record(int ot,int oj,int rt,int rj,int epoch,cell seen) inline {
     return begin_cell().store_coins(ot).store_coins(oj).store_coins(rt).store_coins(rj).store_uint(epoch,64).store_dict(seen);
 }
+int curve_funding_bounce_key(int q) inline { return cell_hash(begin_cell().store_uint(0x46423333,32).store_uint(q,64).end_cell()); }
 () curve_return_ack(slice migrator,int id,int ot,int oj,int rt,int rj,int previous) impure inline {
     raw_reserve(previous,0);
-    cell body = begin_cell().store_uint(0x414e4833,32).store_uint(id,64)
-        .store_coins(ot).store_coins(oj).store_coins(rt).store_coins(rj).end_cell();
+    (_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,cell records,_) = load_data();
+    int key = cell_hash(begin_cell().store_uint(0x43555233,32).store_uint(id,64).end_cell());(_,int v3) = records.udict_get?(256,key);
+    builder reply = begin_cell().store_uint(v3 ? 0x414e5905 : 0x414e4833,32).store_uint(id,64).store_coins(ot).store_coins(oj).store_coins(rt).store_coins(rj);
+    if(v3) { (slice initial,int found) = records.udict_get?(256,curve_funding_bounce_key(id));
+        int it = 0;int ij = 0;if(found) { it = initial~load_coins();ij = initial~load_coins(); }
+        reply = reply.store_coins(it).store_coins(ij);
+    }
+    cell body = reply.end_cell();
     ;; Losing this receipt cannot undo booked custody. Explicit sync can replay it.
     send_raw_message(begin_cell().store_uint(0x10,6).store_slice(migrator).store_coins(0)
         .store_uint(1,107).store_ref(body).end_cell(),128 + 2);
@@ -19,6 +26,10 @@ int handle_curve_return(int op,int id,slice body,slice sender,int value,int bala
     ifnot((op == 0x414e4831) | (op == sop::credit_receipt) | (op == op::deposit_ton_liquidity)) { return 0; }
     (int state,slice admin,slice creator,slice treasury,slice master,slice wallet,slice dex,slice locker,slice migrator,
         int ton,int tokens,int fees,int claims,int vt,int vj,int threshold,int escrow,cell records,cell code) = load_data();
+    if((op == sop::credit_receipt) & (id >= (1 << 62)) & (id < (1 << 63))) {
+        int root = id - (1 << 62);int key = cell_hash(begin_cell().store_uint(0x43555233,32).store_uint(root,64).end_cell());
+        (_,int v3) = records.udict_get?(256,key);if(v3) { id = root; }
+    }
     (slice r,int found) = records.udict_get?(256,curve_return_key(id));
     throw_unless(409,found);
     int ot = r~load_coins();int oj = r~load_coins();int rt = r~load_coins();int rj = r~load_coins();
@@ -27,8 +38,10 @@ int handle_curve_return(int op,int id,slice body,slice sender,int value,int bala
         body.end_parse();
         throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,migrator));
         throw_unless(407,value >= 40000000);
-        cell query = begin_cell().store_uint(epoch ? sop::credit_query : sop::credit_open,32).store_uint(id,64).end_cell();
-        ifnot(epoch) { query = begin_cell().store_uint(sop::credit_open,32).store_uint(id,64).store_slice(migrator).end_cell(); }
+        int key = cell_hash(begin_cell().store_uint(0x43555233,32).store_uint(id,64).end_cell());(_,int v3) = records.udict_get?(256,key);
+        int wire = v3 ? id + (1 << 62) : id;
+        cell query = begin_cell().store_uint(epoch ? sop::credit_query : sop::credit_open,32).store_uint(wire,64).end_cell();
+        ifnot(epoch) { query = begin_cell().store_uint(sop::credit_open,32).store_uint(wire,64).store_slice(migrator).end_cell(); }
         raw_reserve(balance - value,0);
         send_raw_message(begin_cell().store_uint(0x18,6).store_slice(wallet).store_coins(20000000)
             .store_uint(1,107).store_ref(query).end_cell(),1);
@@ -41,6 +54,8 @@ int handle_curve_return(int op,int id,slice body,slice sender,int value,int bala
         throw_unless(401,equal_slices(sender,wallet));
         int observed_epoch = body~load_uint(64);slice peer = body~load_msg_addr();
         int cumulative = body~load_coins();int actual = body~load_coins();body.end_parse();
+        (slice initial,int found_initial) = records.udict_get?(256,curve_funding_bounce_key(id));
+        if(found_initial) { initial~load_coins();cumulative += initial~load_coins(); }
         throw_unless(409,equal_slices(peer,migrator) & (observed_epoch > 0));
         if(epoch) { throw_unless(409,epoch == observed_epoch); }
         throw_unless(409,(cumulative >= rj) & (cumulative <= oj));

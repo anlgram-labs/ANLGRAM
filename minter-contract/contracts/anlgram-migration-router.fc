@@ -254,6 +254,8 @@ int consume_native_receipt(cell full_message) impure inline {
     set_data(root.end_cell());
 }
 
+#include "imports/migration-lifecycle-v3.fc";
+
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) {
         return ();
@@ -272,6 +274,8 @@ int consume_native_receipt(cell full_message) impure inline {
     slice my_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), token_minter_address, jetton_wallet_code);
     slice dex_router_token_wallet = calculate_user_jetton_wallet_address(dex_router_address, token_minter_address, jetton_wallet_code);
     (int flight_id,int recovery_nonce,int recovery_phase,slice recovery_pool,slice recovery_account,cell used_ids) = load_flight();
+
+    if(handle_migration_life(my_balance,msg_value,in_msg_full,in_msg_body)) { return (); }
 
     ;; ------------------------------------------------------------------------
     ;; 0. BOUNCED MESSAGE RECOVERY (flags & 1)
@@ -752,6 +756,7 @@ int consume_native_receipt(cell full_message) impure inline {
         save_flight(query_id,0,0,none,none,used_ids);
         (int stage,int opened,int epoch,int ot,int oj,_,_,int cumulative) = load_reconciliation();
         if(opened) { save_reconciliation(3,opened,epoch,ot,oj,0,0,cumulative); }
+        mark_life_deposit(query_id);
         return ();
     }
 
