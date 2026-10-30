@@ -1,0 +1,92 @@
+;; STON.fi v2 address authentication guard. DEVELOPMENT ONLY.
+;; Official TEP-89 and Router getter_pool_address wire messages.
+;; Address/pair/owner binding is NOT foreign code or custody proof.
+;; No migration authorization, withdrawal, burn or upgrade entry point exists.
+#include "imports/stdlib.fc";
+#include "imports/params.fc";
+#include "imports/constants.fc";
+#include "imports/op-codes.fc";
+#include "imports/discovery-params.fc";
+#include "imports/utils.fc";
+#pragma version >=0.2.0;
+const int start_auth  =  0x414c5001;
+const int pool_query  =  0x2993ade0;
+
+;; root: phase:uint8 nonce:uint64 ^config ^wallets ^result
+;; config: router master0 master1 ^admin; wallets: wallet0 wallet1;
+;; result: pool lp_wallet. All endpoints are immutable genesis configuration.
+(int,int,cell,slice,slice,slice,slice) load_auth() inline {
+  slice ds = get_data().begin_parse(); int phase = ds~load_uint(8); int nonce = ds~load_uint(64);
+  cell cfg = ds~load_ref();slice w = ds~load_ref().begin_parse();slice r = ds~load_ref().begin_parse();ds.end_parse();
+  slice w0 = w~load_msg_addr();slice w1 = w~load_msg_addr();w.end_parse();
+  slice pool = r~load_msg_addr();slice lp = r~load_msg_addr();r.end_parse();
+  return(phase,nonce,cfg,w0,w1,pool,lp);
+}
+() save_auth(int phase,int nonce,cell cfg,slice w0,slice w1,slice pool,slice lp) impure inline {
+  set_data(begin_cell().store_uint(phase,8).store_uint(nonce,64).store_ref(cfg)
+    .store_ref(begin_cell().store_slice(w0).store_slice(w1).end_cell())
+    .store_ref(begin_cell().store_slice(pool).store_slice(lp).end_cell()).end_cell());
+}
+() forward_query(slice destination,cell body,int previous) impure inline {
+  raw_reserve(max(previous,10000000),0);
+  send_raw_message(begin_cell().store_uint(0x18,6).store_slice(destination).store_coins(0)
+    .store_uint(1,1 + 4 + 4 + 64 + 32 + 1 + 1).store_ref(body).end_cell(),128);
+}
+() query_wallet(slice master,slice owner,int nonce,int previous) impure inline {
+  forward_query(master,begin_cell().store_uint(op::provide_wallet_address(),32).store_uint(nonce,64)
+    .store_slice(owner).store_uint(1,1).end_cell(),previous);
+}
+() recv_internal(int balance,int value,cell full,slice body) impure {
+  if(body.slice_empty?()) { return(); }
+  slice msg = full.begin_parse();int flags = msg~load_uint(4);if(flags  &  1) { return(); }
+  slice sender = msg~load_msg_addr();int op = body~load_uint(32);int q = body~load_uint(64);
+  (int phase,int nonce,cell cfg,slice w0,slice w1,slice pool,slice lp) = load_auth();
+  slice c = cfg.begin_parse();slice router = c~load_msg_addr();slice m0 = c~load_msg_addr();slice m1 = c~load_msg_addr();
+  slice sa = c~load_ref().begin_parse();slice admin = sa~load_msg_addr();sa.end_parse();c.end_parse();
+  throw_unless(408,(router.preload_uint(2) == 2) & (m0.preload_uint(2) == 2) & (m1.preload_uint(2) == 2) & (admin.preload_uint(2) == 2));
+  throw_if(408,equal_slices(m0,m1));
+  if(op == start_auth) {
+    throw_unless(401,equal_slices(sender,admin));throw_unless(405,value >= 150000000);
+    ;; Starting/retrying establishes a fresh nonce; stale replies cannot advance it.
+    nonce = cur_lt();slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
+    save_auth(1,nonce,cfg,none,none,none,none);
+    query_wallet(m0,router,nonce,balance - value);return();
+  }
+  ;; A notification alone is not custody/code proof. Accept its gas without
+  ;; claiming a lock, rebinding an address, authorizing migration or bouncing
+  ;; an actual LP-wallet notification back into its unrelated bounce handler.
+  if(op == op::transfer_notification()) { return(); }
+  throw_unless(407,(q == nonce) & (phase > 0) & (phase < 5));
+  if(op == op::take_wallet_address()) {
+    slice expected = (phase == 1) ? m0 : ((phase == 2) ? m1 : pool);
+    throw_unless(407,(phase == 1) | (phase == 2) | (phase == 4));
+    throw_unless(401,equal_slices(sender,expected));
+    slice wallet = body~load_msg_addr();throw_unless(408,wallet.preload_uint(2) == 2);force_chain(wallet);
+    cell included = body~load_dict();body.end_parse();throw_if(408,cell_null?(included));
+    slice owner = included.begin_parse();slice reported_owner = owner~load_msg_addr();owner.end_parse();
+    throw_unless(408,equal_slices(reported_owner,(phase == 4) ? my_address() : router));
+    if(phase == 1) {
+      save_auth(2,nonce,cfg,wallet,w1,pool,lp);query_wallet(m1,router,nonce,balance - value);return();
+    }
+    if(phase == 2) {
+      throw_if(408,equal_slices(wallet,w0));save_auth(3,nonce,cfg,w0,wallet,pool,lp);
+      forward_query(router,begin_cell().store_uint(pool_query,32).store_uint(nonce,64)
+        .store_slice(w0).store_slice(wallet).end_cell(),balance - value);return();
+    }
+    ;; Address binding complete, but authorization remains false (no code/custody proof).
+    save_auth(5,nonce,cfg,w0,w1,pool,wallet);
+    forward_query(admin,begin_cell().store_uint(op::excesses(),32).store_uint(nonce,64).end_cell(),balance - value);
+    return();
+  }
+  if(op == pool_query) {
+    throw_unless(407,phase == 3);throw_unless(401,equal_slices(sender,router));
+    slice found = body~load_msg_addr();body.end_parse();throw_unless(408,found.preload_uint(2) == 2);force_chain(found);
+    throw_if(408,equal_slices(found,router) | equal_slices(found,my_address()));
+    save_auth(4,nonce,cfg,w0,w1,found,lp);query_wallet(found,my_address(),nonce,balance - value);return();
+  }
+  throw(404);
+}
+(int,int,slice,slice,slice,slice) get_auth_state() method_id {
+ (int phase,int nonce,_,slice w0,slice w1,slice pool,slice lp) = load_auth();return(phase,nonce,w0,w1,pool,lp);
+}
+int is_migration_authorized() method_id { return 0; }

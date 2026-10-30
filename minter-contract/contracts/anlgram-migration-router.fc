@@ -47,7 +47,7 @@ const int op::execute_dex_provision  = 0x414e4c37;
 const int op::abort_migration        = 0x414e4c38;
 const int op::init_migration_wallets = 0x414e4c3b;
 
-;; Minimum operational gas for execute_dex_provision (0.40 TON > 0.02 + 0.15 + 0.15 TON + fwd fees)
+;; Minimum operational gas for execute_dex_provision (0.40 TON > 0.02 + 0.20 + 0.15 TON + fwd fees)
 const int MIN_PROVISION_GAS          = 400000000;
 ;; Minimum operational gas for abort_migration when returning Jettons (0.08 TON)
 const int MIN_ABORT_TOKEN_GAS        = 80000000;
@@ -414,7 +414,7 @@ const int MIN_ABORT_TOKEN_GAS        = 80000000;
             .store_slice(dex_router_address)    ;; destination: STON.fi DEX Router
             .store_slice(my_address())          ;; response_destination: Migration Router
             .store_uint(0, 1)                   ;; null custom payload
-            .store_coins(100000000)             ;; forward 0.10 TON so receiver wallet sends transfer_notification to DEX Router
+            .store_coins(150000000)             ;; 0.15 TON: captured v2.2 Router refunds the former 0.10 TON leg
             .store_uint(1, 1)                   ;; forward payload in ref cell
             .store_ref(token_dex_payload)
             .end_cell();
@@ -422,7 +422,7 @@ const int MIN_ABORT_TOKEN_GAS        = 80000000;
         var jetton_msg = begin_cell()
             .store_uint(0x18, 6)
             .store_slice(my_jetton_wallet)      ;; TEP-74 sender's own Jetton wallet (NOT router_token_wallet!)
-            .store_coins(150000000)             ;; 0.15 TON attached gas
+            .store_coins(200000000)             ;; 0.20 TON funds 0.15 TON forward + wallet/deployment gas
             .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
             .store_ref(jetton_msg_body);
         send_raw_message(jetton_msg.end_cell(), 1);

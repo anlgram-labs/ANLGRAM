@@ -21,7 +21,7 @@ async function worker() {
       child.stdout.on('data', d => { text += d; }); child.stderr.on('data', d => { text += d; });
       child.on('error', e => { text += e.message; });
       child.on('close', code => { clearTimeout(timer); fs.writeFileSync(path.join(output,file+'.log'),text);
-        resolve({ file, code, timedOut, summary: text.split(/\r?\n/).filter(l => /(?:SUMMARY|RESULTS|Results:|passed|passing|failed|fail |pass |tests )/i.test(l)).slice(-6) }); });
+        resolve({ file, code, timedOut, summary: text.split(/\r?\n/).filter(l => /(?:SUMMARY|RESULTS|Results:|passed|passing|failed|fail |pass |tests |PASARON|FALLARON)/i.test(l)).slice(-6) }); });
     });
     results.push(result); console.log(JSON.stringify(result));
   }

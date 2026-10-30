@@ -29,7 +29,7 @@ test('actual migration output matches pinned official v2.1 SDK cells',async()=>{
   const ownWallet=core.contractAddress(0,{code:wallet,data:core.beginCell().storeCoins(0).storeAddress(migrator).storeAddress(master).storeRef(wallet).endCell()});
   const token=out.find(m=>m.info.dest.equals(ownWallet)).body.beginParse();
   assert.equal(token.loadUint(32),0x0f8a7ea5);assert.equal(token.loadUintBig(64),1n);assert.equal(token.loadCoins(),200000000000000000n);
-  assert(token.loadAddress().equals(dex));assert(token.loadAddress().equals(migrator));assert.equal(token.loadBit(),false);assert.equal(token.loadCoins(),100000000n);assert.equal(token.loadBit(),true);
+  assert(token.loadAddress().equals(dex));assert(token.loadAddress().equals(migrator));assert.equal(token.loadBit(),false);assert.equal(token.loadCoins(),150000000n);assert.equal(token.loadBit(),true);
   const tokenPayload=token.loadRef();
   const tonPayload=out.find(m=>m.info.dest.equals(ptonWallet)).body;
   if(process.env.ANLGRAM_GENERATE_SDK_FIXTURE==='1'){

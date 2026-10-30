@@ -13,6 +13,7 @@ async function compileMigrationRouter() {
   const { Cell } = require('@ton/core');
 
   const contractsDir = path.join(__dirname, 'contracts');
+  const sourceHashes = {};
   const sources = (filePath) => {
     let absPath;
     if (filePath.startsWith('/') || filePath.includes(':')) {
@@ -23,7 +24,9 @@ async function compileMigrationRouter() {
     if (!fs.existsSync(absPath)) {
       throw new Error(`Source file not found: ${absPath}`);
     }
-    return fs.readFileSync(absPath, 'utf-8');
+    const source = fs.readFileSync(absPath, 'utf-8').replace(/\r\n/g, '\n');
+    sourceHashes[path.relative(contractsDir, absPath).replace(/\\/g, '/')] = crypto.createHash('sha256').update(source).digest('hex');
+    return source;
   };
 
   console.log('Compiling anlgram-migration-router.fc ...');
@@ -47,7 +50,7 @@ async function compileMigrationRouter() {
 
   const outputPath = path.join(__dirname, 'build', 'anlgram-migration-router.compiled.json');
   fs.mkdirSync(path.join(__dirname, 'build'), { recursive: true });
-  fs.writeFileSync(outputPath, JSON.stringify({
+  const serialized = JSON.stringify({
     contract: 'anlgram-migration-router.fc',
     codeBocBase64: result.codeBoc,
     codeHex: codeHex,
@@ -55,8 +58,15 @@ async function compileMigrationRouter() {
     codeHash: codeCellHash,
     bocFileSha256: bocFileSha256,
     bocSizeBytes: bocSizeBytes,
-    compiledAt: new Date().toISOString(),
-  }, null, 2), 'utf-8');
+    compilerPackageVersion: require('@ton-community/func-js/package.json').version,
+    sourceFilesSha256: Object.fromEntries(Object.entries(sourceHashes).sort(([a],[b]) => a.localeCompare(b))),
+  }, null, 2);
+  if (process.argv.includes('--check')) {
+    if (fs.readFileSync(outputPath,'utf8').replace(/\r\n/g,'\n') !== serialized) throw new Error('Migration source/artifact mismatch');
+    console.log('CHECK PASSED: migration source, artifact and provenance match.');
+    return;
+  }
+  fs.writeFileSync(outputPath,serialized,'utf8');
 
   console.log('SUCCESS! Compiled to:', outputPath);
   console.log('TON code cell representation hash:', codeCellHash);
