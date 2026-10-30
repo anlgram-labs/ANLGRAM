@@ -1,0 +1,80 @@
+{
+  "network": "-3",
+  "status": "BLOCKED_NOT_AUTHORIZED",
+  "operatorInput": "UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd",
+  "operatorRaw": "0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d",
+  "operatorTestnetRepresentation": "0QDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbZ2X",
+  "warning": "A Testnet tag is not proof of control. Match the connected wallet account and chain before any signature.",
+  "proposedMetadata": {
+    "name": "ANLGRAM Testnet Settlement",
+    "symbol": "ANLTEST",
+    "decimals": 9
+  },
+  "metadataApproved": false,
+  "accounts": {
+    "minter": {
+      "address": "kQBnKDajI7s7UhzvriQVcMz6QkTsA51nwSC4CdTUAzaJdwJU",
+      "raw": "0:672836a323bb3b521cefae241570ccfa4244ec039d67c120b809d4d403368977",
+      "codeHash": "90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec",
+      "dataHash": "b7be541e5e7f1d90470e1b94304d15529593e7ee0691a79435b1106a4e90963c"
+    },
+    "curve": {
+      "address": "kQAF3fXn5AtOlQ4sjcxBAmmG8_GCvoTjBrx08gatuFdONV7-",
+      "raw": "0:05ddf5e7e40b4e950e2c8dcc41026986f3f182be84e306bc74f206adb8574e35",
+      "codeHash": "7852dadcdd0d54ff387a23da271ccb1bf5214215c1ec586f1622115204c70cb6",
+      "dataHash": "95ec10d931acd0392d175676bb02650f53d2e5e980de4cf013b33d1ad7c32db7"
+    },
+    "guard": {
+      "address": "kQCqKmNSwTtu9Spo7DIHtXK5U_cIUwjC5TERShrqz9zawtaE",
+      "raw": "0:aa2a6352c13b6ef52a68ec3207b572b953f7085308c2e531114a1aeacfdcdac2",
+      "codeHash": "58cad0f20c79bee067e14c3ffdf5c66567d7f43ebb7fba6f8230c49a2a12e939",
+      "dataHash": "c04882174e70ce6f552d75df172b6652fe2f02ddecf93d8a142a430d61792965"
+    },
+    "migration": {
+      "address": "kQCtw1tyAGoJdn_ub93eHobcEICtRWMrsYF4oMON4SdMtmE_",
+      "raw": "0:adc35b72006a09767fee6fddde1e86dc1080ad45632bb18178a0c38de1274cb6",
+      "codeHash": "9f7239356e8e03f4e5cf993a25f51e31f226b834ad5f51dc6afa515ec1039233",
+      "dataHash": "973405caaa2746a11c8529d7ab425efd691b9ee32faa1ce72ee087fcf3cc3f91"
+    }
+  },
+  "curveWallet": "kQAQBftZUp8R1iudIlaoT_puUqeHDfgctdqpQmXWmLb2PBV7",
+  "settlementWalletCodeHash": "25e655468995229fc540e9f34cf7b826a68294eb5ab766b7040858c57a73d36c",
+  "dexRouter": "kQAFpeGFJQA9KqiCxXZ8J4l__vSYAxFSirSOvPHn6SSX4ztn",
+  "ptonMinter": "kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px",
+  "blockers": [
+    "Operator Testnet account control/funding/activation must be verified.",
+    "Test metadata requires review.",
+    "LP address binding is not foreign code/custody proof; opt-in migration and graduation finalization reject 414.",
+    "Migration pending balances and interrupted DEX recovery are not fully reconciled.",
+    "Testnet donation recipient is not approved; production donation remains mainnet-only.",
+    "No deployment or transaction is authorized."
+  ],
+  "operatorReadOnlyObservation": {
+    "network": "-3",
+    "endpoint": "https://testnet.tonapi.io/v2/blockchain/accounts/0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d",
+    "status": "uninit",
+    "balanceNano": "3500000",
+    "controlVerified": false,
+    "observedDate": "2026-10-30",
+    "scope": "Public provider observation, not a cryptographic state proof"
+  },
+  "predictedDex": {
+    "scope": "Offline deterministic getters using captured code; these are not deployed/verified project accounts",
+    "routerTokenWallet": "kQCcZYwFKgiGmNvvx3bwMtF3cFraBE37vIv-9VRV6k-u-hju",
+    "routerPtonWallet": "kQDYnMBdovx2Ot3r0-Pe7HJFRzOLZW9Ot90WTySXeGf5CPSg",
+    "pool": "kQCl_NTrsWdzFO112kTUJ4ciRM1UU9p7JTDDXphtLbByMwK-",
+    "lockerLpWallet": null,
+    "blocker": "LP wallet and code/custody authentication remain blocked before verified Pool initialization."
+  },
+  "mainnetSpendingAuthorization": {
+    "maximumNanoTon": "5000000000",
+    "includesNetworkFees": true,
+    "userClarification": "Use real Mainnet TON, maximum 5 TON including fees.",
+    "fundsSpentNanoTon": "0",
+    "executionBlockedBy": [
+      "No connected signer or verified execution set",
+      "No real Testnet verification of the new contracts",
+      "Unresolved LP custody/code trust and partial migration recovery"
+    ]
+  }
+}

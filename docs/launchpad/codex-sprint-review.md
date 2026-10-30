@@ -1,5 +1,121 @@
 # MemeLabs isolated sprint: review notes
 
+## October 30: authenticated settlement and real-code local DEX execution
+
+Review commits: `1d7a018`, `ea2fdbd`, `9e4097e`, descendants of preserved
+`e286eed`. Changes remain isolated in `codex/memelabs-settlement-1030` for
+PR #1 (`codex/memelabs-sprint`). PR #1 must remain a draft; PR #2 and the
+production-safe worktree remain at `8cbda34`. No UI, CSS, donation recipient,
+production gate, pricing, fee percentage, supply, allocation or threshold changed.
+Main remains `781e1db`; remote Antigravity remains `caf2c70` after final fetch.
+The original E: checkout was not modified. Existing Antigravity working changes
+are outside this sprint and must not be overwritten during integration.
+
+Implemented an **opt-in new Jetton wallet protocol**, preserving the canonical
+standard wallet and standard transfer handlers. Persistent owner/wire operation
+IDs authenticate delivery and bounced failure, deduplicate requests and receipts,
+and permit funded retries without assuming that a missing notification means
+failure. Frozen-recipient recovery restores sender custody before a failure
+receipt; Curve records a single token entitlement, without refunding booked TON
+or making the same inventory available for resale. An additional fee-schedule
+fault reproduction found that an unfunded receipt action could roll back token
+credit/restoration: retryable receipt actions now preserve the authoritative
+ledger even if the outgoing receipt is skipped. Tests cover both success and
+failure outcomes, lost acknowledgements, delayed/replayed messages and reserve
+conservation. Initialization cannot downgrade the pinned wallet code (408).
+
+The new LP guard verifies an asynchronous chain of authenticated TEP-89 and
+STON.fi Router replies, binding masters, Router-owned token wallets, the pair's
+Pool and its guard-owned LP wallet. This proves an address relationship, not
+foreign code integrity or a custody balance. `is_migration_authorized()` remains
+zero; new-protocol Curve migration/finalization reject 414. The guard is a
+development contract with no withdrawal, burn or upgrade entry point.
+
+Public Testnet Router/pTON code, data and libraries were captured through GETs
+and executed **locally** in Sandbox. The old migration's 0.10 TON token forward
+is refunded by the actual captured Router: no LP is issued despite successful
+intermediate transactions. Increasing that forward to 0.15 TON and its wallet
+attachment from 0.15 to 0.20 TON, within the existing caller's 0.40 TON provision,
+allows the local 500 TON / 200M token deposit and authentic LP issuance. The
+guard refuses the old router's unverified LP metadata. Pending migration
+principal is deliberately not claimed reconciled or finalized. No live pool or
+liquidity was created. Snapshot provenance is provider testimony, not a state
+proof; its foreign code and upgrade assumptions remain unresolved.
+
+### Verified results (final code `9e4097e`)
+
+| Check | Actual result | Scope |
+| --- | --- | --- |
+| Root regression runner | 36 suites passed, 0 failed | Includes source/artifact TVM and immutable historical main baseline |
+| Settlement runtime | 77 passed, 0 failed, 0 skipped | Local Sandbox; 15 authenticated-settlement tests, 8 LP handshake tests, real captured DEX execution and fresh genesis |
+| Supervised executor/planner | 68 passed, 0 failed | Local tests, no signing or broadcast |
+| Curve math | 46 passed, 0 failed | Includes 12,000 deterministic buy/sell cycles |
+| Legacy minter Mocha | 5 passed | Local contract execution |
+| Wallet / Curve / guard / migration compilation | All four `--check` commands passed | Source, compiled code and recorded provenance agree |
+
+Counts use each suite's own assertion/test granularity; they are not summed into
+a misleading single blockchain-test total. Machine-readable details, source
+hashes and the complete root suite list are in
+[`verified-local-results-2026-10-30.json`](verified-local-results-2026-10-30.json).
+
+| Contract | Final code-cell SHA-256 |
+| --- | --- |
+| Settlement wallet | `25e655468995229fc540e9f34cf7b826a68294eb5ab766b7040858c57a73d36c` |
+| Curve | `7852dadcdd0d54ff387a23da271ccb1bf5214215c1ec586f1622115204c70cb6` |
+| LP authentication guard | `58cad0f20c79bee067e14c3ffdf5c66567d7f43ebb7fba6f8230c49a2a12e939` |
+| Migration router | `9f7239356e8e03f4e5cf993a25f51e31f226b834ad5f51dc6afa515ec1039233` |
+
+### Compatibility, integration and remaining blockers
+
+The new wallet has additional opcodes and an optional persistent dictionary;
+its code and every dependent deterministic address change. This is a separate
+deployment candidate, not an upgrade for existing wallets. Curve's root layout
+is unchanged, but dictionary namespaces and accepted messages extend. The
+legacy LP locker, standard wallet, frontend embedded artifacts and mainnet
+donation configuration are unchanged. Do not copy these new artifacts into the
+production creator, interchange wallet families, or enable legacy migration as
+a shortcut around the new gate. Detailed wire/storage rules are in
+[`settlement-protocol-v1.md`](settlement-protocol-v1.md).
+
+Remaining critical work, in order:
+
+1. Establish a reviewed on-chain foreign-code/custody proof or explicitly
+   approved trust model, including STON.fi Router upgrade authority. Address
+   discovery alone cannot authorize migration. Review pre-deposit Pool/LP
+   bootstrap identity; the real-code test authenticates an already-created Pool.
+2. Replace legacy unverified LP binding with the reviewed authenticated protocol;
+   implement migration result correlation, LP custody confirmation, final reserve
+   reconciliation and recovery when only one DEX deposit leg succeeds. The
+   reproduced token refund can leave pTON in an LP account. A general recovery
+   implementation and verified refund procedure are still missing.
+3. Review persistent-record rent/growth and retry liveness. A frozen account may
+   retain forwarded native TON as operational balance; there is no general
+   recovery/sweep for every such balance. Do not promise full gas refunds.
+4. Wire the reviewed candidate protocol into existing frontend transaction
+   confirmation without changing its design. Current production financial gates
+   stay closed; existing transaction checks are not evidence of live ANLGRAM
+   settlement. Conduct an independent review and supervised Testnet traces.
+
+The supplied operator address is recorded in the offline candidate manifest.
+A public Testnet observation found it uninitialized with 0.0035 TON; neither
+control nor funding is verified. The user subsequently authorized spending up
+to **5 real Mainnet TON including fees**. This budget is recorded, but no Mainnet
+transaction set is sufficiently verified, no signer is connected, and no funds
+were spent. Do not treat this budget as proof of contract safety or as approval
+to bypass outstanding Testnet verification. Testnet metadata, recipient and
+individual supervised deployment plan still require review.
+
+Use [`testnet-supervised-plan-2026-10-30.md`](testnet-supervised-plan-2026-10-30.md)
+and the matching candidate JSON; do not use the older planner's placeholder
+wallet/truncated migration StateInit for actual deployment. Recompute addresses
+after any code, metadata, operator or genesis change. No deployment, blockchain
+transaction, merge or publication occurred in this sprint. **Mainnet readiness:
+blocked.** Antigravity should review the three focused code commits separately,
+rerun the commands below, and integrate only with an explicit review of new
+storage/opcodes and trust assumptions; no automated conflict resolution of
+financial code. The exact file list is available through
+`git diff --name-status e286eed..9e4097e`.
+
 ## PR #1 conflict resolution — isolated integration, 2026-10-29
 
 Integration branch: `codex/memelabs-integration`, preserving `51a101c` and all
