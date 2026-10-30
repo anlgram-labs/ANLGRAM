@@ -1,0 +1,492 @@
+{
+  "date": "2026-10-30",
+  "baseline": "ce72cc8",
+  "verifiedCodeCommits": [
+    "11f7d22",
+    "a019482",
+    "2560906"
+  ],
+  "scope": "Local tests and TVM/Sandbox simulations. Public TON Center GET observations are third-party Testnet data, not ANLGRAM deployment. No signing, broadcast, deployment or spending.",
+  "root": {
+    "passedSuites": 37,
+    "failedSuites": 0,
+    "results": [
+      {
+        "file": "test-anl-labs-regression.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 SUMMARY: 33 Passed, 0 Failed"
+        ]
+      },
+      {
+        "file": "test-blockchain-provider.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 BLOCKCHAIN PROVIDER TEST RESULTS: 25 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-distribution-pending-safety.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "PASS network query override cannot make a mainnet wallet use testnet data",
+          "PASS unknown wallet network is rejected",
+          "PASS unsupported special token transfers are rejected",
+          "PASS scaled token displays cannot be mistaken for raw decimal units",
+          "PASS insufficient token balance is rejected before wallet signing",
+          "Distribution pending safety: 30 passed; 0 failed"
+        ]
+      },
+      {
+        "file": "test-distribution-wizard-flow.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "--- 3. Distribution Lifecycle Behavioral Tests ---",
+          "  ✅ [PASS] Failed state displays error banner, preserves completed batch count, and offers Resume/Retry",
+          "📊 DISTRIBUTION SUITE: 21 Passed, 0 Failed",
+          "🎉 All Step 3 Distribution Completion & Step 4 Transition tests PASSED!"
+        ]
+      },
+      {
+        "file": "test-explorer-regression.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 TEST SUITE SUMMARY: 148 Passed, 0 Failed",
+          "🎉 All regression tests passed successfully!"
+        ]
+      },
+      {
+        "file": "test-antigravity-contract-baseline.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "  ✅ [PASS] Migration Router marks is_failed == 1 upon bounce",
+          "  ✅ [PASS] Curve state remains STATE_MIGRATION_FAILED (7)",
+          "  ✅ [PASS] Authorized retry of op::initiate_migration succeeds from STATE_MIGRATION_FAILED",
+          "  ✅ [PASS] Curve in STATE_MIGRATION_FAILED (7)",
+          "  ✅ [PASS] op::set_migration_router in STATE_MIGRATION_FAILED strictly rejected with exit code 407 (ANTI-RUG-PULL)",
+          "📊 TVM SIMULATION TEST RESULTS: 154 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-bonding-curve-tvm.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 TVM SIMULATION TEST RESULTS: 139 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-homepage-truthfulness-and-address.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "Results: 19 / 19 tests passed."
+        ]
+      },
+      {
+        "file": "test-intel-exchange-regression.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 RESULTADO: 73 PASARON | 0 FALLARON"
+        ]
+      },
+      {
+        "file": "test-graduation-accounting-known-issues.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "ℹ tests 3",
+          "ℹ pass 3",
+          "ℹ fail 0"
+        ]
+      },
+      {
+        "file": "test-jetton-deploy-outcomes.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "PASS wallet rejection does not emit deployment event",
+          "PASS wallet acceptance returns exact address but does not assert on-chain success",
+          "PASS unknown wallet chain does not submit",
+          "PASS unexpected Jetton wallet code cannot reach signing",
+          "PASS production pool preview is opt-in and cannot remove liquidity",
+          "13 mocked wallet checks passed"
+        ]
+      },
+      {
+        "file": "test-integration-preservation.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "ℹ tests 4",
+          "ℹ pass 4",
+          "ℹ fail 0"
+        ]
+      },
+      {
+        "file": "test-jetton-wizard-confirmation.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "PASS changing wallet during verification prevents confirmation",
+          "PASS matching state and balance verifies only the expected address",
+          "PASS wizard deployment event does not launch a second poll",
+          "PASS a changed network invalidates the reviewed authorization",
+          "PASS missing transaction receipt cannot confirm deployment from balances alone",
+          "12 mocked wizard checks passed"
+        ]
+      },
+      {
+        "file": "test-launchpad-direct-delegation.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "ℹ tests 4",
+          "ℹ pass 4",
+          "ℹ fail 0"
+        ]
+      },
+      {
+        "file": "test-bonding-curve-source-tvm.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 TVM SIMULATION TEST RESULTS: 139 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-launchpad-bootstrap-authority.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "ℹ tests 1",
+          "ℹ pass 1",
+          "ℹ fail 0"
+        ]
+      },
+      {
+        "file": "test-onchain-security-and-burn.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "  ✓ ALTO-02 Scenario 4 (DOM): Failed Getter renders NOT VERIFIED for supply, admin, minting, and renounce status",
+          "  ✓ MEDIO-04 (explorer.html): Badge priority distinguishes Renounced, Active Admin, Failed Checks, Unverified, and Network Error",
+          "SUMMARY: 33 / 33 tests passed (100%)",
+          "🎉 ALL SECURITY AUDIT & BURN TESTS PASSED SUCCESSFULLY!"
+        ]
+      },
+      {
+        "file": "test-profit-calculator-regression.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "  ✅ [PASS] DOM ID exists in markup: #coinSearchResults",
+          "  ✅ [PASS] DOM ID exists in markup: #resultStatusBox",
+          "  ✅ [PASS] DOM ID exists in markup: #resultStatusBadge",
+          "📊 RESULTADO: 65 PASARON | 0 FALLARON"
+        ]
+      },
+      {
+        "file": "test-router-candidates-tvm.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 CANDIDATE VERIFICATION TEST RESULTS: 11 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-launchpad-activation-flow.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "ℹ tests 2",
+          "ℹ pass 2",
+          "ℹ fail 0"
+        ]
+      },
+      {
+        "file": "test-search-explorer.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "  ✅ [PASS] Markup contains element: #search-results-dropdown",
+          "  ✅ [PASS] CSS definition exists: .search-results-dropdown",
+          "  ✅ [PASS] Defines function renderSearchResultsDropdown",
+          "📊 TEST RESULTS: 47 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-master-security-audit.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "  ✅ PASS: Engine returns immediate FAILED status for Excessive 5000-char string without external RPC",
+          "  ✅ PASS: Engine returns immediate FAILED status for Malformed length (47 chars) without external RPC",
+          "  ✅ PASS: Engine returns immediate FAILED status for Invalid workchain (workchain 2) without external RPC",
+          "  ✅ PASS: MEDIO-01: Mutation attempts on AUDITED_BYTECODE_REGISTRY and STATUS fail to alter canonical hashes",
+          "  ✅ PASS: BAJO-02: auditVestingContract returns FAILED when vesting contract belongs to a different Jetton Master",
+          "AUDIT TEST RESULTS: 51 PASSED | 0 FAILED | 0 SKIPPED"
+        ]
+      },
+      {
+        "file": "test-lp-locker-trust-boundary.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "ℹ tests 1",
+          "ℹ pass 1",
+          "ℹ fail 0"
+        ]
+      },
+      {
+        "file": "test-stake-vault-comprehensive.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 RESULTADO FINAL STAKEVAULT: 72 PASARON | 0 FALLARON"
+        ]
+      },
+      {
+        "file": "test-tma-integration.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 TMA TEST SUITE SUMMARY: 64 Passed, 0 Failed",
+          "🎉 All Telegram Mini App integration tests passed successfully!"
+        ]
+      },
+      {
+        "file": "test-token-creation-donation.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "Results: 26 / 26 tests passed."
+        ]
+      },
+      {
+        "file": "test-token-drawer-intelligence.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 TEST RESULTS: 60 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-step4-vesting-comprehensive.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 STEP 4 VESTING SUITE: 50 / 50 Tests Passed (100%)"
+        ]
+      },
+      {
+        "file": "test-tonapi-backend-proxy.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "--- 1. NFT Image Resolution & IPFS Sanitization Tests ---",
+          "--- 2. Proxy Security & Route Whitelisting Tests ---",
+          "📊 TEST SUITE SUMMARY: 12 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-vesting-confirmation-regression.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "PASS fractional units are converted without floating point rounding",
+          "PASS values above the token precision are rejected before signing",
+          "PASS zero and exponential amounts are rejected before signing",
+          "PASS missing decimal metadata is rejected before signing",
+          "PASS Coins upper bound is enforced exactly",
+          "Vesting confirmation unit tests: 18 passed"
+        ]
+      },
+      {
+        "file": "test-staking-comprehensive.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 RESULTADO FINAL: 101 PASARON | 0 FALLARON"
+        ]
+      },
+      {
+        "file": "test-toncenter-settlement-evidence.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "✔ unknown schema, network error, rate limiting and oversized data fail closed without upstream details (14.4557ms)",
+          "ℹ tests 8",
+          "ℹ pass 8",
+          "ℹ fail 0"
+        ]
+      },
+      {
+        "file": "test-transaction-receipt.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "✔ failed transaction is not accepted (4.239ms)",
+          "ℹ tests 11",
+          "ℹ pass 11",
+          "ℹ fail 0"
+        ]
+      },
+      {
+        "file": "test-wallet-pnl-accounting.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 SUITE COMPLETED: 22 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-wizard-comprehensive.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 MULTI-STEP WIZARD SUMMARY: 50 Passed, 0 Failed",
+          "🎉 All Progressive Multi-Step Token Wizard verifications PASSED!"
+        ]
+      },
+      {
+        "file": "test-wizard-ui-centering.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "📊 UI CENTERING SUITE: 28 Passed, 0 Failed",
+          "🎉 Centered Full-Screen Token Wizard UI verification PASSED with 100% success!"
+        ]
+      },
+      {
+        "file": "test-worker-deep-audit.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "WORKER AUDIT RESULTS: 22 PASSED | 0 FAILED"
+        ]
+      }
+    ]
+  },
+  "runtime": {
+    "passed": 87,
+    "failed": 0,
+    "skipped": 0
+  },
+  "sourceFinancialTvm": {
+    "passedAssertions": 139,
+    "failed": 0
+  },
+  "artifactFinancialTvm": {
+    "passedAssertions": 139,
+    "failed": 0
+  },
+  "toncenterEvidence": {
+    "passed": 8,
+    "failed": 0,
+    "includedInRoot": true
+  },
+  "supervisedExecutor": {
+    "passed": 68,
+    "failed": 0
+  },
+  "math": {
+    "passed": 46,
+    "failed": 0,
+    "deterministicTradeCycles": 12000
+  },
+  "legacyMinter": {
+    "passed": 5,
+    "failed": 0
+  },
+  "rentSample": {
+    "operations": 40,
+    "days": 30,
+    "modeledStorageFeesNano": "2199817",
+    "initialWalletDataBocBytes": 2938,
+    "finalWalletDataBocBytes": 8409
+  },
+  "foreignCodeProfile": {
+    "routerAdmin": "0:a9a7352d98648c83714846514bce14e8a9b682d318e68f33a7d28ec7e0cf00b9",
+    "upgradeCellHash": "18a11ca854a1ef8049810b9fa973f7174ee6e5c043cbaca105b90bd972de5ece",
+    "poolCode": "ec614ea4aaea3f7768606f1c1632b3374d3de096a1e7c4ba43c8009c487fee9d",
+    "lpWalletCode": "bf13041750f2beeb688859c75689e2c18b9c90bd78e97b197aad7ad6bc520c84",
+    "lpAccountCode": "3f1bb3192caaaa1ab7ae7474de50e2e3625fe2757aed4be4f4e9c3fc85ac0b9a",
+    "sourceAuditVerified": false
+  },
+  "compilation": {
+    "wallet": true,
+    "curve": true,
+    "guard": true,
+    "migration": true,
+    "mode": "--check; artifacts match source and provenance"
+  },
+  "contracts": {
+    "anlgram-settlement-wallet": {
+      "codeCellHash": "25e655468995229fc540e9f34cf7b826a68294eb5ab766b7040858c57a73d36c",
+      "bocFileSha256": "825b991f69091f3fcea9c0692db9036d1f7537fea7b62420fc876355d2c4a5fb",
+      "compilerPackageVersion": "0.11.0",
+      "sourceFilesSha256": {
+        "anlgram-settlement-wallet.fc": "8335d09091fba959d6bf23d882c68650680d995aee427bef16fbea4681506b87",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/settlement-protocol.fc": "0c0cecd231a7b9dc7d4b0738121e392c1b99ee92b36d505be720a6a03a5a5b8b",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+      }
+    },
+    "anlgram-bonding-curve": {
+      "codeCellHash": "7852dadcdd0d54ff387a23da271ccb1bf5214215c1ec586f1622115204c70cb6",
+      "bocFileSha256": "6e95c57e2e17f048d1ff308fab3745e8218f26e210b222af376491b1d6eb6d7a",
+      "compilerPackageVersion": "0.11.0",
+      "sourceFilesSha256": {
+        "anlgram-bonding-curve.fc": "5b509d4b7beb908646ac601661fb6c45e2299c74842fcf597100c8eb2a7aaa0c",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/settlement-protocol.fc": "0c0cecd231a7b9dc7d4b0738121e392c1b99ee92b36d505be720a6a03a5a5b8b",
+        "imports/settlement-wallet-code.fc": "4875fb7b1f4b5dcd07a2ac7d8f4ff54de8ce459613ae18a3d9e75c6536d78248",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+      }
+    },
+    "anlgram-lp-auth-guard": {
+      "codeCellHash": "58cad0f20c79bee067e14c3ffdf5c66567d7f43ebb7fba6f8230c49a2a12e939",
+      "bocFileSha256": "4272ea5b11000cda3cfdc2706740bf12038016bb5ef73241f91637e8cbeefe6c",
+      "compilerPackageVersion": "0.11.0",
+      "sourceFilesSha256": {
+        "anlgram-lp-auth-guard.fc": "47e99ed8af898d5dc89f0a2c0992b12f1ca41093877c36a1b1859c9d53edd53d",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/discovery-params.fc": "215e8d75ed135cb2a3ac0b6c33c3d99d7bfb370d2834f3b09e5e4566a2fce31b",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+      }
+    },
+    "anlgram-migration-router": {
+      "codeCellHash": "a8a0b3487d1a5f4dcc0dffb6ffc56532919fd5294796e2196818686a86e02d36",
+      "bocFileSha256": "634ee1b9cf6e234ca83ce0c91e57e0375c41e8ef2ddb7469649c94febd551918",
+      "compilerPackageVersion": "0.11.0",
+      "sourceFilesSha256": {
+        "anlgram-migration-router.fc": "5b9a79f7eabc4568313349264b26bda87765ff5aec874d85c82ed5fee8855622",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+      }
+    }
+  }
+}

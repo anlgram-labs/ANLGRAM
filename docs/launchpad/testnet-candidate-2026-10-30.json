@@ -31,9 +31,9 @@
       "dataHash": "c04882174e70ce6f552d75df172b6652fe2f02ddecf93d8a142a430d61792965"
     },
     "migration": {
-      "address": "kQCtw1tyAGoJdn_ub93eHobcEICtRWMrsYF4oMON4SdMtmE_",
-      "raw": "0:adc35b72006a09767fee6fddde1e86dc1080ad45632bb18178a0c38de1274cb6",
-      "codeHash": "9f7239356e8e03f4e5cf993a25f51e31f226b834ad5f51dc6afa515ec1039233",
+      "address": "kQDwDbNIuf6DXoVS-Rt61qUV8LS8bjryBQzBaqFhFm4EbVPJ",
+      "raw": "0:f00db348b9fe835e8552f91b7ad6a515f0b4bc6e3af2050cc16aa161166e046d",
+      "codeHash": "a8a0b3487d1a5f4dcc0dffb6ffc56532919fd5294796e2196818686a86e02d36",
       "dataHash": "973405caaa2746a11c8529d7ab425efd691b9ee32faa1ce72ee087fcf3cc3f91"
     }
   },
@@ -47,15 +47,16 @@
     "LP address binding is not foreign code/custody proof; opt-in migration and graduation finalization reject 414.",
     "Migration pending balances and interrupted DEX recovery are not fully reconciled.",
     "Testnet donation recipient is not approved; production donation remains mainnet-only.",
-    "No deployment or transaction is authorized."
+    "No deployment or transaction is authorized.",
+    "Zero-forward Jetton refund custody and Curve handoff delivery receipts remain incomplete; pending liabilities cannot be cleared by snapshots."
   ],
   "operatorReadOnlyObservation": {
     "network": "-3",
-    "endpoint": "https://testnet.tonapi.io/v2/blockchain/accounts/0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d",
-    "status": "uninit",
+    "provider": "toncenter",
+    "status": "uninitialized",
     "balanceNano": "3500000",
     "controlVerified": false,
-    "observedDate": "2026-10-30",
+    "observedUtc": "2026-10-30T10:56:26.580Z",
     "scope": "Public provider observation, not a cryptographic state proof"
   },
   "predictedDex": {

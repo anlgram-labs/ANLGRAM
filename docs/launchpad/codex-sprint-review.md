@@ -1,5 +1,171 @@
 # MemeLabs isolated sprint: review notes
 
+## October 30 critical-integration follow-up — current verified state
+
+Preserved baseline `ce72cc8`; new code commits `11f7d22` (migration recovery),
+`a019482` (TON Center evidence) and `2560906` (abort handoff obligations).
+All are isolated descendants on
+`codex/memelabs-settlement-1030`, for PR #1. No production merge, deployment,
+signature, blockchain transaction or TON spending occurred. PR #2 remains
+untouched. UI, CSS, navigation, tokenomics and the validated 0.20 + 0.02 TON
+mandatory creation donation remain unchanged. No secret values were printed,
+recorded in these reports or added to Git.
+
+### Financial defects corrected and limits verified
+
+- Actual captured pTON code unwraps an LP-account refund through `ton_transfer`
+  (`0x01f3835d`), which the previous migrator rejected with 404. The new handler
+  requires the exact pTON wallet, Router origin, active provision ID, positive
+  amount within pending principal and at least that much actual incoming TON.
+- Bounces previously credited the declared amount even if only 0.05 TON arrived
+  for a claimed 500 TON refund. The regression now preserves that negative case
+  and separately tests a fully funded bounce. In-flight state remains set until
+  both legs are resolved; duplicate/stale bounces cannot create another credit.
+- New caller-funded recovery follows authenticated Router -> pair Pool -> own
+  LP account -> account-data replies, with fresh nonce/phase checks, before the
+  actual SDK `refund_me` message. The SDK includes two Maybe payload references
+  absent from the prose table: omitting them reproduces exit 9 against real code.
+  Only the migrator's own assets are requested back; no general sweep or arbitrary
+  recipient was introduced. Funding is explicit, at least 0.90 TON in tests, and
+  prior native balance is reserved through the query chain.
+- Persistent used provision IDs block repeated deposits even after refunds.
+  A pending asset leg blocks redispatch and abort. Correlated principal receipts
+  are required; an ordinary excess does not clear the new protocol's liabilities.
+- Abort return dispatch also records a distinct used ID and pending obligations
+  (recovery phase 5). An authenticated first-hop Jetton bounce or Curve native
+  bounce restores only that obligation once. Native return attaches 0.01 TON of
+  caller-funded gas beyond the unchanged principal; minimum abort funding is
+  0.08 TON for tokens plus 0.02 for native TON (0.10 for both). Prior non-principal
+  balance is reserved. This is optional operator recovery gas, not a buyer fee or
+  a tokenomics change. Full local dual-bounce recovery and replay tests pass.
+  Successful outgoing return messages still do not clear obligations without
+  delivery receipts. The DEX-account recovery path cannot act on phase 5.
+- Local pTON-only deposits recover the full 500 TON and reconcile both legs when
+  the Jetton first hop failed. Token-only and delayed-counterpart deposits recover
+  actual 200M-token custody, but the real DEX refund uses zero notification gas.
+  Its owner receives no authenticated credit receipt: pending token accounting
+  remains blocked. This is an unfinished recovery step, not successful final
+  migration. LP-already-issued queries likewise cannot restore dispatched assets
+  or declare graduation complete.
+
+The captured Router also refunds a token leg arriving after its real 1800-second
+deadline; that additional test verifies zero LP issuance, native principal
+recovery, actual returned token custody and unchanged blocked token liability.
+
+### LP authenticity and settlement reliability
+
+The bootstrap test executes the actual captured foreign contracts. Before a
+first deposit, Pool discovery reaches a known but undeployed address and the
+guard stalls at phase 4. After one deposit, phase 5 can be reached while the LP
+wallet still does not exist: address binding is demonstrably insufficient. The
+instantiated Pool/LP-account/LP-wallet code cells match Router-advertised cells;
+actual LP wallet owner/master and positive custody are checked after both legs.
+Independent source/build verification remains absent. Authorization stays zero,
+and Curve dispatch/finalization remain blocked with 414.
+
+The explicit external trust and deterministic authentication model is proposed
+in [`lp-verification-model-proposal.md`](lp-verification-model-proposal.md).
+Acceptance of STON.fi's Router upgrade administration is a required user
+decision, not something the implementation silently assumes is trustless.
+
+Forty persistent settlements and 30 modeled days of storage rent preserve token
+custody and duplicate protection through funded receipt retries. The test supplies
+measured deduplicated StateInit cell usage because injected Sandbox accounts
+start with zero usage counters. Sample wallet data BOC grows from 2938 to 8409
+bytes; total modeled retry-trace storage fees are 2199817 nanoTON. This is a bounded
+local sample, not a future rent quote or proof of unlimited liveness. No general
+withdrawal/sweep or record pruning was added; frozen operational TON can remain
+stranded and old records must remain available for replay protection.
+
+### Reused APIs and real read-only observations
+
+The new server-only adapter reuses Antigravity's
+`queryAccountStatusReadOnly` and `TONCENTER_API_KEY` support. Existing TonAPI
+functionality, browser provider defaults and Cloudflare Worker are unchanged.
+New backend routes are GET-only, Testnet-pinned, rate-limited and non-cacheable;
+there is no arbitrary upstream, credential query parameter or browser API key.
+Trace responses are size-limited, redirects rejected, errors sanitized, and
+transaction/message hash selectors kept distinct. A provider observation is
+always `financialOutcome: NOT_VERIFIED`, including complete indexed traces.
+Financial confirmation still requires authenticated operation/custody outcomes.
+
+Public TON Center reads actually succeeded without a key: Router and pTON code
+references match the earlier TonAPI snapshot, and an unrelated existing Router
+transaction trace was returned. This is third-party Testnet observation, not an
+ANLGRAM deployment, a validator proof or a simulated result presented as live.
+Details are in
+[`toncenter-independent-observations-2026-10-30.json`](toncenter-independent-observations-2026-10-30.json).
+The supplied operator was re-observed uninitialized with 0.0035 Testnet TON;
+control is unverified. The updated offline manifest preserves the user's
+5-Mainnet-TON ceiling and records zero spent; no transaction plan is approved.
+
+The isolated process has no `TONCENTER_API_KEY` or `TONAPI_KEY`, and this worktree
+has no `.env` or Worker `.dev.vars`. A targeted read-only check found the existing
+`TONCENTER_API_KEY` in the original checkout's environment file. Used only in
+memory, its protected-header Testnet account request returned HTTP 200 with the
+matching Router code hash. The key was not copied, printed or committed. The
+server adapter continues to obtain it through the existing runtime environment
+variable; do not hardcode an original-checkout path or move secrets into Git.
+Cloudflare deployment/account authentication and Telegram Bot API authorization
+were not verified. Telegram Mini App code exists, but no Bot-token environment reference
+or token literal was found in the inspected application files; do not invent a
+replacement integration or claim that Bot API access has been tested. No Telegram
+messages were sent, no Cloudflare configuration/credentials were changed.
+
+### Final tests and artifact implications
+
+| Check | Actual final result |
+| --- | --- |
+| Root regression runner | 37 suites passed, 0 failed |
+| Local TVM/Sandbox integration | 87 passed, 0 failed, 0 skipped |
+| Source/artifact financial TVM suite | 139 assertions passed in each runner path |
+| TON Center evidence/backend suite | 8 passed, included in the root runner |
+| Supervised planner/executor | 68 passed, 0 failed |
+| Math | 46 passed, 0 failed, including 12,000 deterministic cycles |
+| Legacy minter Mocha | 5 passed |
+| Four source/artifact compiler checks | All passed without rewriting artifacts |
+
+Full suite details, normalized source hashes and sampled rent/code-profile
+evidence: [`verified-critical-integration-2026-10-30.json`](verified-critical-integration-2026-10-30.json).
+The single-contract TVM harness does not accumulate prior transfers into its C7
+balance. It now preserves an insolvent negative abort case and explicitly supplies
+recovered principal for the positive case. Sandbox independently executes the
+actual full balance flow; tests were not weakened to accept an unfunded refund.
+
+Current migration code-cell SHA-256:
+`a8a0b3487d1a5f4dcc0dffb6ffc56532919fd5294796e2196818686a86e02d36`.
+Serialized BOC SHA-256:
+`634ee1b9cf6e234ca83ce0c91e57e0375c41e8ef2ddb7469649c94febd551918`.
+Wallet, Curve, LP guard and minter bytecode are unchanged from `ce72cc8`.
+The migrator accepts old genesis root cells but persists an optional third root
+reference after first dispatch: provision ID, recovery nonce/phase/Pool/account
+and a used-ID dictionary, including abort handoffs. Original fields/getters remain; new recovery opcode
+`0x414e4c3c`, official query/refund replies and `get_migration_recovery` extend the
+interface. This is a new deployment candidate, not an in-place upgrade promise.
+Only the migration candidate address changes in the acyclic manifest; do not use
+the old `kQCtw1...` migration address. The new raw address is
+`0:f00db348b9fe835e8552f91b7ad6a515f0b4bc6e3af2050cc16aa161166e046d`.
+
+### Integration and next steps
+
+Antigravity should review `11f7d22`, `a019482` and `2560906` separately. Shared integration
+points are the migration source/artifact, `server.js`, the TVM suite and runtime
+test package. New helper/test files are isolated. Before integration fetch and
+compare current Antigravity work; do not automatically resolve financial changes.
+A read-only status check of E: observed the existing deleted `token123.mp4` and
+untracked work directories; they were not modified, restored or deleted.
+The exact code/test file list is `git diff --name-status ce72cc8..2560906`;
+documentation-only changes follow in a separate commit. PR #2 stays isolated.
+
+Next: approve/review the LP trust model, establish independently verified foreign
+source/code and deterministic bootstrap, add authenticated zero-notification DEX
+refund custody receipts with cumulative/replay-safe accounting, then finish
+Curve/migrator handoff and LP final reconciliation. Preserve pending liabilities
+until those proofs exist. Update the transaction-specific Testnet plan with
+reviewed addresses, gas estimates and failure procedures before any signature.
+Independent review and actual Testnet transactions remain required. **Mainnet
+readiness remains blocked; zero real TON spent.**
+
 ## October 30: authenticated settlement and real-code local DEX execution
 
 Review commits: `1d7a018`, `ea2fdbd`, `9e4097e`, descendants of preserved

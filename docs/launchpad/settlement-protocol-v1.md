@@ -114,3 +114,36 @@ From `minter-contract`, run `node compile-settlement-wallet.js --check`,
 and `node compile-migration-router.js --check`. New compiler writes require wallet
 first, then Curve (generated wallet hash pin), then guard and migration.
 Use existing dependencies without installing through the shared E: junction.
+
+## Migration recovery extension (October 30 follow-up)
+
+The new migration artifact persists an optional third root reference after first
+dispatch. It contains provision/handoff ID, recovery nonce, uint3 phase, Pool and
+LP-account addresses, and a used-operation-ID dictionary. Old genesis cells remain
+readable; this is a new code/deployment candidate, not an existing-account upgrade.
+Original economic fields and public getters are preserved.
+
+`0x414e4c3c` (ANLGRAM, followed by a uint64 request ID) starts an authorized
+admin/Curve request with at least 0.90 TON of caller funding. A fresh internal
+nonce correlates the official Router pair query, Pool LP-account query and
+LP-account owner/Pool/balance query. Only then is the SDK `refund_me` body sent,
+with original provision ID and two empty Maybe references. These foreign messages
+are proven against captured real code, not invented responses. `get_migration_recovery`
+exposes ID, nonce, phase, Pool and account. Phase 4 denotes a refund request,
+not completed custody. Actual pTON returns require authenticated wallet/Router,
+matching ID, pending limits and actual incoming native value at least principal.
+
+Phase 5 denotes a separate abort handoff to Curve. Its unique ID and both pending
+amounts survive dispatch. Native return adds 0.01 TON of caller-funded gas so a
+bounce can restore principal without fees silently reducing it. Caller funding
+is at least 0.08 TON for Jettons plus 0.02 for native TON; prior non-principal
+balance is reserved. Authentic bounded first-hop/token and native Curve bounces
+restore once. There is no DEX-account recovery query for a phase-5 handoff.
+
+Zero-forward standard DEX Jetton refunds can restore the migration wallet's real
+balance without notifying its owner. Contract accounting remains pending until
+the authenticated custody receipt protocol is extended and reviewed. Successful
+outgoing abort messages also need actual delivery receipts before completion.
+Provider getter snapshots must not clear either obligation. New execution and
+abort cannot reuse unresolved balances or used IDs. LP authorization stays zero;
+none of these recovery additions completes or enables financial migration.

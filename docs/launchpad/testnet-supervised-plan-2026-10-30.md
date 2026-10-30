@@ -1,5 +1,44 @@
 # Supervised Testnet candidate — blocked pending verification and review
 
+## Critical-integration follow-up
+
+The current migration code hash is
+`a8a0b3487d1a5f4dcc0dffb6ffc56532919fd5294796e2196818686a86e02d36`.
+Its candidate address is now
+`kQDwDbNIuf6DXoVS-Rt61qUV8LS8bjryBQzBaqFhFm4EbVPJ`.
+Master, Curve, guard, wallet family and metadata are unchanged. Recomputed values
+are in the adjacent candidate JSON. No address here is a deployment claim.
+
+Optional recovery operation `0x414e4c3c` is caller-funded with at least 0.90 TON
+in the tested configuration (foreign SDK refund budget 0.80 plus query-chain
+headroom). It is not part of the earlier 2.5 Testnet TON smoke budget; submit a
+revised transaction-specific budget before any real recovery test. The owner
+cannot override the refund destination. Trace Router/Pool/LP-account replies,
+nonce, original provision ID and actual native principal in the pTON response.
+Aborting recovered funds back to Curve is another correlated operation, not an
+atomic undo: 0.10 TON of explicit caller funding is required when both assets
+return (0.08 for tokens + 0.02 for native TON). Native principal carries an extra
+0.01 TON of caller-funded execution/bounce gas. Account for this in any approved
+plan. Phase 5 return obligations remain pending until authentic return receipts
+exist; do not use the DEX refund query to clear a Curve handoff.
+
+Local recovery returns pTON principal and can recover actual Jetton custody, but
+zero-forward DEX Jetton refunds do not notify their owner. Those liabilities
+remain pending. Never use a getter observation to clear them, and never abort or
+redispatch while either original asset leg remains unresolved. LP issuance alone
+also does not clear pending principal. The LP trust model in
+`lp-verification-model-proposal.md` requires approval and independent code review.
+
+Use the existing backend's new read-only Testnet routes for account and trace
+evidence: `/api/toncenter-testnet/account/:address` and
+`/api/toncenter-testnet/traces/:exact-message-hash`. They reuse the existing
+`TONCENTER_API_KEY` environment variable. Raw addresses are scoped explicitly to
+Testnet; mainnet-tagged friendly addresses are rejected. The standalone
+`scripts/verify-toncenter-testnet-evidence.js --read-only` also tests transaction-
+hash lookup separately. No API result automatically establishes settlement.
+Existing TonAPI and Cloudflare routes are preserved; the new route has not been
+deployed to the Worker or any website.
+
 No signer, secret, deployment or transaction is used by the offline builder.
 `testnet-candidate-2026-10-30.json` records actual StateInit-derived candidate
 addresses, current code/data hashes and proposed metadata. They are not deployed
