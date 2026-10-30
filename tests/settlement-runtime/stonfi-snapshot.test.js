@@ -13,4 +13,3 @@ test('public STON.fi Router and pTON library/code snapshots load and execute rea
  const pton=(await chain.runGetMethod(core.Address.parse(snap.accounts.pton.address),'get_jetton_data')).stackReader;
  assert(pton.readBigNumber()>=0n);
 });
-

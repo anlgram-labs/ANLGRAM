@@ -222,3 +222,40 @@ test('sender wallet rejects insufficient gas and malformed referenced payload be
   assert.equal((await chain.runGetMethod(address,'get_settlement',[{type:'int',value:500n}])).stackReader.readBigNumber(),0n);
  }
 });
+
+function expensiveForwarding(chain){
+ // Explicit local gas-schedule fault between messages, not a claim about live fees.
+ const old=chain.config,dict=require('@ton/core').Dictionary.loadDirect(require('@ton/core').Dictionary.Keys.Int(32),require('@ton/core').Dictionary.Values.Cell(),old);
+ const field=dict.get(25).beginParse();assert.equal(field.loadUint(8),0xea);field.loadUintBig(64);
+ dict.set(25,beginCell().storeUint(0xea,8).storeUint(50000000n,64).storeSlice(field).endCell());
+ chain.setConfig(beginCell().storeDictDirect(dict).endCell());return old;
+}
+for(const stage of['recipient acknowledgement','owner receipt'])test(`${stage} action funding failure preserves authoritative token outcome and supports funded retry`,async()=>{
+ const [curve,wallet]=await codes;const s=await setup(curve,wallet);let original;
+ const r=await controlledBuy(s,async tx=>{
+  const wanted=stage==='recipient acknowledgement'?OP.transfer:OP.internal;
+  if(!original&&opcode(tx.inMessage)===wanted)original=expensiveForwarding(s.chain);
+ });
+ assert(original);const id=operation(r,s);
+ const expected=stage==='owner receipt'?2n:1n;
+ assert.equal((await state(s,id)).readBigNumber(),expected,'outgoing receipt action failure must not roll back ownership/outcome');
+ const amount=await tokens(s,s.buyerWallet);assert(amount>0n);
+ assert.equal(await tokens(s,s.curveWallet),supply-amount);assert.equal(await escrow(s),0n);
+ assert(r.transactions.some(t=>(t.description.actionPhase?.skippedActions||0)>0),'receipt action was genuinely skipped for insufficient funding');
+ s.chain.setConfig(original);await retry(s,id);
+ assert.equal((await state(s,id)).readBigNumber(),2n);assert.equal(await tokens(s,s.buyerWallet),amount);assert.equal(await escrow(s),0n);
+});
+
+test('failure receipt action funding failure preserves restored sender tokens and the final failure record',async()=>{
+ const [curve,wallet]=await codes;const s=await setup(curve,wallet);await s.buy();await sellAll(s);
+ const recipient=await freeze(s,s.buyerWallet);let original;
+ const r=await controlledBuy(s,async tx=>{
+  if(!original&&tx.inMessage?.info.dest?.equals(s.buyerWallet)&&opcode(tx.inMessage)===OP.internal)original=expensiveForwarding(s.chain);
+ });
+ const id=operation(r,s),outcome=await state(s,id);assert.equal(outcome.readBigNumber(),3n);outcome.readBigNumber();const amount=outcome.readBigNumber();
+ assert.equal(await tokens(s,s.curveWallet),supply);assert.equal(await escrow(s),0n);
+ assert(r.transactions.some(t=>(t.description.actionPhase?.skippedActions||0)>0));
+ s.chain.setConfig(original);await retry(s,id);await retry(s,id);assert.equal(await escrow(s),amount);
+ await restore(s,s.buyerWallet,recipient);await claim(s);
+ assert.equal(await tokens(s,s.buyerWallet),amount);assert.equal(await tokens(s,s.curveWallet),supply-amount);assert.equal(await escrow(s),0n);
+});

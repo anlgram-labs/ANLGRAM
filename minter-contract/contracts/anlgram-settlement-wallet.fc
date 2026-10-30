@@ -62,9 +62,16 @@ int incoming_key(slice peer, int id) inline {
   send_raw_message(begin_cell().store_uint(bounce ? 0x18 : 0x10, 6).store_slice(recipient).store_coins(0)
     .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1).store_ref(body).end_cell(), 128);
 }
+() receipt_remaining(slice recipient, cell body, int previous_balance) impure inline {
+  ;; Receipt delivery is retryable. An unfunded outgoing action must NEVER
+  ;; roll back already restored/credited Jettons or the authoritative ledger.
+  raw_reserve(max(previous_balance,10000000),2);
+  send_raw_message(begin_cell().store_uint(0x10,6).store_slice(recipient).store_coins(0)
+    .store_uint(1,1 + 4 + 4 + 64 + 32 + 1 + 1).store_ref(body).end_cell(),128 + 2);
+}
 () owner_receipt(slice owner, int owner_id, int wire_id, int amount, int status, int previous_balance) impure inline {
-  send_remaining(owner, begin_cell().store_uint(sop::receipt,32).store_uint(owner_id,64)
-    .store_uint(wire_id,64).store_coins(amount).store_uint(status,2).end_cell(), previous_balance, 0);
+  receipt_remaining(owner, begin_cell().store_uint(sop::receipt,32).store_uint(owner_id,64)
+    .store_uint(wire_id,64).store_coins(amount).store_uint(status,2).end_cell(), previous_balance);
 }
 
 () settled_send(slice body, slice sender, int value, int fwd_fee, int ton_balance) impure {
@@ -106,7 +113,7 @@ int incoming_key(slice peer, int id) inline {
     .store_uint(7,1 + 4 + 4 + 64 + 32 + 1 + 1 + 1).store_ref(init).store_ref(payload).end_cell(),128);
 }
 
-() settled_receive(slice body, slice sender, int value, int ton_balance) impure {
+() settled_receive(slice body, slice sender, int value, int ton_balance, int fwd_fee) impure {
   int wire_id = body~load_uint(64); int amount = body~load_coins();
   slice from = body~load_msg_addr(); int forward = body~load_coins();
   throw_unless(708, body.slice_bits() >= 1);
@@ -114,6 +121,7 @@ int incoming_key(slice peer, int id) inline {
   (int balance, slice owner, slice master, cell code) = load_data();
   throw_unless(707, equal_slices(sender,calculate_user_jetton_wallet_address(from,master,code)));
   throw_unless(706, amount > 0);
+  throw_unless(709,value > forward + max(10000000 - (ton_balance - value),0) + gas_consumption + 2 * fwd_fee);
   cell records = settlement_records(); int key = incoming_key(sender,wire_id);
   (slice prior, int duplicate) = records.udict_get?(256,key);
   if (duplicate) { throw_unless(708, prior~load_coins() == amount); }
@@ -124,11 +132,12 @@ int incoming_key(slice peer, int id) inline {
       cell notification = begin_cell().store_uint(op::transfer_notification(),32).store_uint(wire_id,64)
         .store_coins(amount).store_slice(from).store_slice(body).end_cell();
       send_raw_message(begin_cell().store_uint(0x10,6).store_slice(owner).store_coins(forward)
-        .store_uint(1,1 + 4 + 4 + 64 + 32 + 1 + 1).store_ref(notification).end_cell(),1);
+        .store_uint(1,1 + 4 + 4 + 64 + 32 + 1 + 1).store_ref(notification).end_cell(),1 + 2);
     }
   }
-  ;; No ignored action failures: failed ack construction/action rolls back credit.
-  send_remaining(sender,begin_cell().store_uint(sop::ack,32).store_uint(wire_id,64).store_coins(amount).end_cell(),max(ton_balance - value,10000000),0);
+  ;; Ack/owner notification failures are not failed token delivery. Preserve
+  ;; credited ownership and its record; a funded query can regenerate the ack.
+  receipt_remaining(sender,begin_cell().store_uint(sop::ack,32).store_uint(wire_id,64).store_coins(amount).end_cell(),ton_balance - value);
 }
 
 () settled_outcome(slice body, slice sender, int value, int ton_balance, int failed) impure {
@@ -376,7 +385,7 @@ int incoming_key(slice peer, int id) inline {
   int op = in_msg_body~load_uint(32);
 
   if (op == sop::transfer) { settled_send(in_msg_body,sender_address,msg_value,fwd_fee,my_balance); return (); }
-  if (op == sop::internal) { settled_receive(in_msg_body,sender_address,msg_value,my_balance); return (); }
+  if (op == sop::internal) { settled_receive(in_msg_body,sender_address,msg_value,my_balance,fwd_fee); return (); }
   if (op == sop::ack) { settled_outcome(in_msg_body,sender_address,msg_value,my_balance,0); return (); }
   if (op == sop::retry) { settled_retry(in_msg_body,msg_value,my_balance,0); return (); }
   if (op == sop::query) { settled_query(in_msg_body,sender_address,msg_value,my_balance); return (); }
