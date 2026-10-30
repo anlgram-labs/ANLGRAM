@@ -38,6 +38,7 @@ const ALLOWED_PROXY_ROUTES = [
   /^\/jettons\/[a-zA-Z0-9_\-\:]+$/,
   /^\/jettons\/[a-zA-Z0-9_\-\:]+\/holders$/,
   /^\/blockchain\/transactions\/[a-fA-F0-9]+$/,
+  /^\/blockchain\/messages\/[a-fA-F0-9]{64}\/transaction$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/methods\/[a-zA-Z0-9_]{1,64}$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/transactions$/,
