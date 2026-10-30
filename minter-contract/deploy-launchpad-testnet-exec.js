@@ -279,17 +279,32 @@ function verifyArtifacts() {
         errors.push(`Artifact ${spec.artifact} is missing codeBocBase64.`);
         continue;
       }
+      // Hex/base64 may use different valid index/CRC serialization options.
+      // Compare decoded cells, and hash the serialization recorded by compiler.
+      const { Cell } = require('@ton/core');
+      const codeCells = Cell.fromBoc(Buffer.from(data.codeBocBase64, 'base64'));
       const bocBuffer = data.codeHex ? Buffer.from(data.codeHex, 'hex') : Buffer.from(data.codeBocBase64, 'base64');
+      const cells = Cell.fromBoc(bocBuffer);
+      if (cells.length !== 1 || codeCells.length !== 1 || !cells[0].hash().equals(codeCells[0].hash())) {
+        errors.push(`Conflicting BOC encodings in ${spec.artifact}.`);
+        continue;
+      }
       const sha256 = crypto.createHash('sha256').update(bocBuffer).digest('hex');
       if (data.bocFileSha256 && data.bocFileSha256.toLowerCase() !== sha256.toLowerCase()) {
         errors.push(`Checksum mismatch in ${spec.artifact}: recorded ${data.bocFileSha256} != calculated ${sha256}`);
         continue;
       }
+      const actualCodeHash = cells[0].hash().toString('hex');
+      if ([data.codeCellHash, data.codeHash].some(hash => hash && hash.toLowerCase() !== actualCodeHash)) {
+        errors.push(`Code cell hash mismatch in ${spec.artifact}.`);
+        continue;
+      }
+      // Internal consistency is not deployment approval or source verification.
       artifacts[spec.id] = {
         id: spec.id,
         label: spec.label,
         codeBocBase64: data.codeBocBase64,
-        codeCellHash: data.codeCellHash || data.codeHash,
+        codeCellHash: actualCodeHash,
         bocSha256: sha256,
         sizeBytes: bocBuffer.length,
       };

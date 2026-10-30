@@ -617,12 +617,12 @@
                 <span style="font-family:var(--font-mono); color:#fff;">~0.20 TON</span>
               </div>
               <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; color:var(--labs-cyan); font-weight:600;">
-                <span>10% Token Creation Donation (Required):</span>
+                <span>Mandatory Donation (10%):</span>
                 <span style="font-family:var(--font-mono);">0.02 TON</span>
               </div>
               <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:11px; color:var(--labs-text-muted);">
-                <span>Donation Recipient:</span>
-                <span style="font-family:var(--font-mono); word-break:break-all;">UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd</span>
+                <span>Transaction recipients:</span>
+                <span style="font-family:var(--font-mono); word-break:break-all;">Shown in your wallet confirmation</span>
               </div>
               <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px; display:flex; justify-content:space-between; font-weight:700;">
                 <span style="color:#fff;">Total Estimated Transaction Cost:</span>
@@ -1215,12 +1215,12 @@
               <strong style="color:#fff;">~0.20 TON (0.05 deploy + 0.15 mint)</strong>
             </div>
             <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px;">
-              <span style="color:var(--labs-cyan); font-weight:600;">10% Token Creation Donation:</span>
+              <span style="color:var(--labs-cyan); font-weight:600;">Mandatory Donation (10%):</span>
               <strong style="color:var(--labs-cyan);">0.02 TON</strong>
             </div>
             <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:11px;">
-              <span style="color:var(--labs-text-muted);">Donation Recipient:</span>
-              <span style="font-family:var(--font-mono); color:var(--labs-text-sub); font-size:11px; word-break:break-all;">UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd</span>
+              <span style="color:var(--labs-text-muted);">Transaction recipients:</span>
+              <span style="font-family:var(--font-mono); color:var(--labs-text-sub); font-size:11px; word-break:break-all;">Shown in your wallet confirmation</span>
             </div>
             <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:6px; margin-top:6px; display:flex; justify-content:space-between; font-size:14px; font-weight:700;">
               <span style="color:#fff;">Total Transaction to Authorize:</span>
@@ -1232,7 +1232,7 @@
           </p>
           <label style="display:flex; align-items:flex-start; gap:10px; font-size:12px; color:#fff; cursor:pointer; margin-bottom:16px;">
             <input type="checkbox" id="deploy-confirm-checkbox" style="margin-top:2px; accent-color:#00f0ff;"/>
-            <span>I understand that a 10% Token Creation Donation (0.02 TON), calculated from the displayed 0.20 TON execution base, will be sent to the displayed recipient wallet (UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd) as part of this token-creation flow.</span>
+            <span>I authorize creation on <span id="deploy-confirm-network">TON Mainnet</span>, including Mandatory Donation (10%): 0.02 TON on the 0.20 TON execution base. Total 0.22 TON before wallet network fees.</span>
           </label>
           <p style="font-size:12px; color:var(--labs-text-muted); line-height:1.4;">
             Your connected TON wallet (Tonkeeper / Telegram Wallet) will prompt you to review and sign the transaction.
@@ -1594,7 +1594,7 @@
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="background:rgba(0,210,255,0.12); color:var(--accent-cyan); border:1px solid rgba(0,210,255,0.3); padding:4px 10px; border-radius:12px; font-size:11px; font-family:var(--font-mono);">TON Testnet (-3)</span>
-            <span style="background:rgba(0,255,100,0.1); color:#00ff66; border:1px solid rgba(0,255,100,0.3); padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600;">Architecture Verified (TON Testnet -3)</span>
+            <span style="background:rgba(0,255,100,0.1); color:#00ff66; border:1px solid rgba(0,255,100,0.3); padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600;">Local verification — deployment pending</span>
           </div>
         </div>
 
@@ -2038,65 +2038,90 @@
   }
 
     async function deployJettonWeb3(event) {
+      // Production enablement requires an explicit reviewed source change.
+      const CREATION_MAINNET_APPROVED = false;
       const btn = event.currentTarget;
       const origHTML = btn.innerHTML;
       
       const tc = window.tonConnectUI;
       if (!tc) {
          alert("Wallet connection system is initializing. Please try again in a moment.");
-         return;
+         return { submitted: false, reason: 'Wallet connection system is initializing.' };
       }
       if (!tc.connected) {
-        alert("Please connect your TON wallet first using the 'Connect Wallet' button!");
+        alert("¡Conecta tu wallet de TON primero usando el botón 'Connect Wallet'!");
         tc.openModal();
-        return;
+        return { submitted: false, reason: 'Connect your TON wallet first.' };
       }
   
       const { beginCell, toNano, storeStateInit, Dictionary, Cell, contractAddress, Address } = window.TON_CORE || {};
       if(!beginCell) {
-         alert("TON Web3 core libraries are still loading. Please retry in a few seconds.");
-         return;
+         alert("Las librerías Web3 de TON (core) aún están cargando. Intenta de nuevo en unos segundos.");
+         return { submitted: false, reason: 'TON libraries are still loading.' };
       }
 
-      // 🛡️ User Consent & 10% Token Creation Donation Acknowledgement Guard
-      const deployCheckbox = document.getElementById('deploy-confirm-checkbox');
-      if (deployCheckbox && !deployCheckbox.checked) {
-        if (typeof window.labsOpenDeployConfirmModal === 'function') {
-          window.labsOpenDeployConfirmModal();
-        } else {
-          alert("⚠️ Please review and check the acknowledgement box confirming the 10% Token Creation Donation (0.02 TON) before deploying.");
-        }
-        return;
+      const walletChain = tc.account?.chain == null ? '' : String(tc.account.chain);
+      const walletAddressAtStart = tc.account?.address;
+      const walletInfoChain = tc.wallet?.account?.chain;
+      if ((walletChain !== '-3' && walletChain !== '-239') ||
+          (walletInfoChain != null && String(walletInfoChain) !== walletChain) ||
+          (window.location?.search?.includes('testnet') && walletChain !== '-3')) {
+        alert('No se pudo verificar la red de la wallet. Comprueba la conexión antes de continuar.');
+        return { submitted: false, reason: 'Wallet network could not be verified.' };
+      }
+      if (walletChain === '-239' && !CREATION_MAINNET_APPROVED) {
+        alert('Token creation is awaiting production approval. No wallet request was sent.');
+        return { submitted: false, reason: 'Token creation is awaiting production approval.' };
+      }
+      if (walletChain !== '-239') return { submitted: false, reason: 'No approved testnet donation recipient is configured.' };
+      const donation = window.ANLGRAM_DONATION_CONFIG;
+      if (!donation || donation.RECIPIENT_ADDRESS !== 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd' ||
+          donation.DONATION_AMOUNT_NANO !== 20000000n || donation.BASE_EXECUTION_NANO !== 200000000n) {
+        return { submitted: false, reason: 'Mandatory donation configuration could not be verified.' };
+      }
+      if (!document.getElementById('deploy-confirm-checkbox')?.checked) {
+        return { submitted: false, reason: 'Review and authorize the Mandatory Donation (10%) before signing.' };
       }
   
-      const name = (document.getElementById('labs-card1-name')?.value || document.getElementById('lp-name')?.value || window.wizardState?.tokenDraft?.name || 'Memecoin').trim();
-      const symbol = (document.getElementById('labs-card1-symbol')?.value || document.getElementById('lp-symbol')?.value || window.wizardState?.tokenDraft?.symbol || 'MEME').trim().toUpperCase();
+      const name = String(event.wizardInitiated
+        ? (document.getElementById('labs-card1-name')?.value ?? window.wizardState?.tokenDraft?.name ?? '')
+        : (document.getElementById('lp-name')?.value ?? '')).trim();
+      const symbol = String(event.wizardInitiated
+        ? (document.getElementById('labs-card1-symbol')?.value ?? window.wizardState?.tokenDraft?.symbol ?? '')
+        : (document.getElementById('lp-symbol')?.value ?? '')).trim().toUpperCase();
+      if (!name || !symbol) {
+        alert('Introduce el nombre y el símbolo del token antes de desplegar.');
+        return { submitted: false, reason: 'Token name and symbol are required.' };
+      }
       const desc = (document.getElementById('lp-desc')?.value || window.wizardState?.tokenDraft?.description || 'A new Jetton on TON.').trim();
       const rawLogo = (document.getElementById('lp-logo')?.value || window.wizardState?.tokenDraft?.logoUrl || window.wizardState?.tokenDraft?.logoDataUrl || localStorage.getItem('anlgram_last_uploaded_logo') || 'https://anlgram.com/assets/images/icon-192.png').trim();
       let logo = typeof sanitizeUrl === 'function' ? sanitizeUrl(rawLogo, 'https://anlgram.com/assets/images/icon-192.png') : rawLogo;
 
-      // 🛡️ DEX & Wallet Compatibility Check (TEP-64 standard for STON.fi, DeDust, Tonkeeper, TonViewer)
-      if (logo.startsWith('data:') || (!logo.startsWith('http://') && !logo.startsWith('https://') && !logo.startsWith('ipfs://'))) {
-        const userConfirm = confirm(
-          '⚠️ DEX & WALLET COMPATIBILITY NOTICE (TEP-64):\n\n' +
-          'The selected image is in local format (data:URI).\n' +
-          'For your logo to index correctly in Tonkeeper, STON.fi, DeDust, MyTonWallet, and explorers, a public URL (HTTPS or IPFS) is required.\n\n' +
-          '• Press OK to continue using the official public logo (https://anlgram.com/assets/images/icon-192.png).\n' +
-          '• Press Cancel to enter or upload a public HTTPS image URL.'
-        );
-        if (!userConfirm) {
-          btn.innerHTML = origHTML;
-          btn.style.pointerEvents = 'auto';
-          const urlContainer = document.getElementById('logo-url-container');
-          if (urlContainer) urlContainer.style.display = 'block';
-          document.getElementById('lp-logo')?.focus();
-          return;
-        }
-        logo = 'https://anlgram.com/assets/images/icon-192.png';
+    // 🛡️ DEX & Wallet Compatibility Check (TEP-64 standard for STON.fi, DeDust, Tonkeeper, TonViewer)
+    if (logo.startsWith('data:') || (!logo.startsWith('http://') && !logo.startsWith('https://') && !logo.startsWith('ipfs://'))) {
+      const userConfirm = confirm(
+        '\u26a0\ufe0f AVISO DE COMPATIBILIDAD DEX Y WALLETS (TEP-64):\n\n' +
+        'La imagen seleccionada est\u00e1 en formato local (data:URI).\n' +
+        'Para que el logo aparezca correctamente indexado en Tonkeeper, STON.fi, DeDust, MyTonWallet y Exploradores, se requiere una URL p\u00fablica (HTTPS o IPFS).\n\n' +
+        '\u2022 Presiona \'Aceptar\' para continuar usando el logo oficial p\u00fablico (https://anlgram.com/assets/images/icon-192.png).\n' +
+        '\u2022 Presiona \'Cancelar\' para ingresar o subir una URL p\u00fablica HTTPS.'
+      );
+      if (!userConfirm) {
+        btn.innerHTML = origHTML;
+        btn.style.pointerEvents = 'auto';
+        const urlContainer = document.getElementById('logo-url-container');
+        if (urlContainer) urlContainer.style.display = 'block';
+        document.getElementById('lp-logo')?.focus();
+        return { submitted: false, reason: 'Deployment cancelled while choosing a public logo.' };
       }
+      logo = 'https://anlgram.com/assets/images/icon-192.png';
+    }
   
-      btn.innerHTML = '<span class="status-dot"></span> Building TEP-64 Metadata...';
+      btn.innerHTML = '<span class="status-dot"></span> Construyendo Metadatos (TEP-64)...';
       btn.style.pointerEvents = 'none';
+      let pendingKey = '';
+      let walletRequestStarted = false;
+      let pendingAddress = '';
   
       try {
         const hexToBytes = (hex) => Uint8Array.from(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
@@ -2125,11 +2150,12 @@
         
         const metadataCell = beginCell().storeUint(0, 8).storeDict(metadata).endCell();
   
-        btn.innerHTML = '<span class="status-dot"></span> Preparing Verified Base Bytecode...';
+        btn.innerHTML = '<span class="status-dot"></span> Preparando Códigos Base Verificados...';
         
         // 2. Canonical Pinned Minter & Wallet Bytecode (TEP-74 Standard)
         // Hash: 9a0f98dd6fbf225eef8165e4e64417ee931f7eea000653439e7b5dcdc0644cd6
         const CANONICAL_MINTER_HASH = "9a0f98dd6fbf225eef8165e4e64417ee931f7eea000653439e7b5dcdc0644cd6";
+        const CANONICAL_WALLET_HASH = "beb0683ebeb8927fe9fc8ec0a18bc7dd17899689825a121eab46c5a3a860d0ce";
         let minterCode = null;
         let walletCodeCell = null;
 
@@ -2169,6 +2195,9 @@
         if (computedMinterHash !== CANONICAL_MINTER_HASH.toLowerCase()) {
           throw new Error("SECURITY FAULT: Minter bytecode hash does not match canonical audited standard!");
         }
+        if (walletCodeCell.hash().toString('hex').toLowerCase() !== CANONICAL_WALLET_HASH) {
+          throw new Error("SECURITY FAULT: Jetton wallet bytecode hash does not match the canonical standard!");
+        }
   
         // 3. Construct Initial Minter Data
         const minterData = beginCell()
@@ -2182,11 +2211,14 @@
         const stateInitCell = beginCell().store(storeStateInit(stateInitObj)).endCell();
         const destAddress = contractAddress(0, stateInitObj).toString({bounceable: false});
         const destAddressMint = contractAddress(0, stateInitObj).toString({bounceable: true});
+        pendingAddress = destAddressMint;
 
-        btn.innerHTML = '<span class="status-dot"></span> Awaiting Signature in TON Wallet...';
+        btn.innerHTML = '<span class="status-dot"></span> Firmando en Tonkeeper...';
         
         // 4. Construct Deploy & Mint Payloads
         const INITIAL_SUPPLY = toNano("1000000000"); // 1 Billion tokens (9 decimals)
+        
+        // No deploy payload - standard minter initializes from stateInit data only
         
         // Mint Payload
         const forwardPayload = beginCell().storeUint(0, 32).storeStringTail("Initial mint").endCell();
@@ -2210,64 +2242,79 @@
             .endCell();
         
         const mintPayloadBase64 = mintPayload.toBoc().toString('base64');
-
-        // Centralized Token Creation Donation configuration
-        const donationCfg = window.ANLGRAM_DONATION_CONFIG || {
-          RECIPIENT_ADDRESS: 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd',
-          DONATION_AMOUNT_NANO: 20000000n,
-          BASE_DEPLOY_NANO: 50000000n,
-          BASE_MINT_NANO: 150000000n,
-          PAYLOAD_COMMENT: 'ANLGRAM 10% Token Creation Donation'
-        };
-
-        const donationCommentPayload = beginCell()
-          .storeUint(0, 32)
-          .storeStringTail(donationCfg.PAYLOAD_COMMENT)
-          .endCell();
+        const donationMessage = donation.createMessage(window.TON_CORE, walletChain);
+        if (donationMessage.address !== 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd' || donationMessage.amount !== '20000000') {
+          throw new Error('Mandatory donation recipient or amount was changed.');
+        }
         
-        // 5. Send Transaction request (Deploy + Mint + 10% Token Creation Donation bundled into ONE atomic transaction)
+        // 5. Send Transaction request (Deploy + Mint bundled)
         const transaction = {
             validUntil: Math.floor(Date.now() / 1000) + 600,
+            network: walletChain,
             messages: [
                 {
                     address: destAddress,
-                    amount: (donationCfg.BASE_DEPLOY_NANO || 50000000n).toString(), // 0.05 TON deploy fee
+                    amount: toNano("0.05").toString(), // 0.05 TON deploy fee
                     stateInit: stateInitCell.toBoc().toString('base64')
+                    // No payload - let the minter initialize from stateInit only
                 },
                 {
                     address: destAddressMint,
-                    amount: (donationCfg.BASE_MINT_NANO || 150000000n).toString(), // 0.15 TON for minting 1B tokens
+                    amount: toNano("0.15").toString(), // 0.15 TON for minting 1B tokens
                     payload: mintPayloadBase64
                 },
-                {
-                    address: donationCfg.RECIPIENT_ADDRESS,
-                    amount: (donationCfg.DONATION_AMOUNT_NANO || 20000000n).toString(), // 0.02 TON (10% Token Creation Donation)
-                    payload: donationCommentPayload.toBoc().toString('base64')
-                }
+                donationMessage
             ]
         };
   
-        await tc.sendTransaction(transaction);
+        // The same StateInit resolves to the same address. Persist the intent
+        // before invoking the wallet so an uncertain result cannot be resent.
+        pendingKey = `anlgram_jetton_deploy_pending_v1:${walletChain}:${destAddressMint}`;
+        if (localStorage.getItem(pendingKey)) {
+          btn.innerHTML = origHTML;
+          btn.removeAttribute('style');
+          return { submitted: false, uncertain: true, destAddressMint, reason: 'A deployment for this address may already have been submitted. Check wallet and chain activity.' };
+        }
+        localStorage.setItem(pendingKey, JSON.stringify({ address: destAddressMint, wallet: tc.account.address, chain: walletChain, createdAt: Date.now() }));
+        if (!localStorage.getItem(pendingKey)) throw new Error('Cannot safely record deployment intent. No wallet request was sent.');
+        if (!tc.connected || tc.account?.address !== walletAddressAtStart || String(tc.account?.chain) !== walletChain ||
+            (tc.wallet?.account?.chain != null && String(tc.wallet.account.chain) !== walletChain)) {
+          localStorage.removeItem(pendingKey);
+          throw new Error('Wallet or network changed before the signing request.');
+        }
+        walletRequestStarted = true;
+        const walletResult = await tc.sendTransaction(transaction);
+        let submission = null;
+        try {
+          submission = window.AnlgramTransactionReceipt.create(walletResult.boc, walletAddressAtStart, walletChain, window.TON_CORE);
+          localStorage.setItem(pendingKey, JSON.stringify({ address: destAddressMint, submission }));
+        } catch (_) { /* Missing signed-message evidence stays unverified. */ }
         
-        btn.innerHTML = '<span class="status-dot"></span> Transaction broadcast — Verifying on blockchain...';
+        btn.innerHTML = '<span class="status-dot"></span> Transacción enviada — Verificando en blockchain...';
         btn.style.background = 'rgba(0,210,255,0.15)';
         btn.style.borderColor = 'var(--accent-cyan)';
         btn.style.color = 'var(--accent-cyan)';
 
         window.dispatchEvent(new CustomEvent('anlgramJettonDeployed', {
-          detail: { destAddress, destAddressMint, name, symbol, btn, origHTML }
+          detail: { destAddress, destAddressMint, name, symbol, btn, origHTML, submission, wizardInitiated: Boolean(event.wizardInitiated) }
         }));
+        return { submitted: true, destAddressMint, submission };
         
       } catch (e) {
         console.error("Deploy Error:", e);
         const errMsg = e?.message || String(e) || "Unknown error";
-        if (errMsg.includes('reject') || errMsg.includes('declined') || errMsg.includes('cancel') || errMsg.includes('User declined')) {
-          console.log('[ANLGRAM] Deploy cancelled by user in wallet.');
-        } else {
-          alert("❌ Deployment Error:\n\n" + errMsg);
+        const explicitlyRejected = e?.name === 'UserRejectsError';
+        if (walletRequestStarted && explicitlyRejected && pendingKey) {
+          try { localStorage.removeItem(pendingKey); } catch (_) {}
         }
+        let uncertain = walletRequestStarted;
+        if (walletRequestStarted && explicitlyRejected) {
+          try { uncertain = Boolean(localStorage.getItem(pendingKey)); } catch (_) { uncertain = true; }
+        }
+        alert(uncertain ? 'El resultado de la solicitud es incierto. Comprueba la wallet y la cadena antes de volver a intentarlo.' : "❌ Error al desplegar:\n\n" + errMsg);
         btn.innerHTML = origHTML;
         btn.removeAttribute('style');
+        return { submitted: false, uncertain, destAddressMint: pendingAddress, reason: errMsg };
       }
     }
   
@@ -2925,14 +2972,15 @@
 </script>
 
 <script type="module">
-  import { beginCell, toNano, Address, storeStateInit, Dictionary, Cell, contractAddress } from 'https://esm.sh/@ton/core';
-  window.TON_CORE = { beginCell, toNano, Address, storeStateInit, Dictionary, Cell, contractAddress };
+  import { beginCell, toNano, Address, storeStateInit, Dictionary, Cell, contractAddress, loadMessage } from 'https://esm.sh/@ton/core';
+  window.TON_CORE = { beginCell, toNano, Address, storeStateInit, Dictionary, Cell, contractAddress, loadMessage };
 </script>
 
 <script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
-<script src="assets/js/donation-config.js?v=2026.51"></script>
+<script src="assets/js/donation-config.js?v=2026.54"></script>
 <script src="assets/js/wallet-connect.js?v=2026.51"></script>
-<script src="assets/js/launchpad.js?v=2026.51"></script>
-<script src="assets/js/anl-labs.js?v=2026.51"></script>
+<script src="assets/js/launchpad.js?v=2026.54"></script>
+<script src="assets/js/transaction-receipt.js?v=2026.54"></script>
+<script src="assets/js/anl-labs.js?v=2026.54"></script>
 </body>
 </html>

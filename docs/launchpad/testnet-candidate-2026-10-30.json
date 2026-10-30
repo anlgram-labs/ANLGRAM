@@ -1,0 +1,172 @@
+{
+  "network": "-3",
+  "status": "BLOCKED_NOT_AUTHORIZED",
+  "operatorInput": "UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd",
+  "operatorRaw": "0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d",
+  "operatorTestnetRepresentation": "0QDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbZ2X",
+  "warning": "A Testnet tag is not proof of control. Match the connected wallet account and chain before any signature.",
+  "proposedMetadata": {
+    "name": "ANLGRAM Testnet Settlement",
+    "symbol": "ANLTEST",
+    "decimals": 9
+  },
+  "metadataApproved": false,
+  "lpDevelopmentProfile": {
+    "codeIdentityPinned": true,
+    "trustModelAcceptedForDevelopment": true,
+    "sourceAuditVerified": false,
+    "migrationAuthorized": false
+  },
+  "accounts": {
+    "minter": {
+      "address": "kQDzVA3j1ue-cB_ZeBZgXVYSiPIbE6F57nzH0KwhbEoTgBQD",
+      "raw": "0:f3540de3d6e7be701fd97816605d561288f21b13a179ee7cc7d0ac216c4a1380",
+      "codeHash": "90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec",
+      "dataHash": "3666bbbf42ec3244c104663ac951a905a26186474fea2343643a4e612af52498"
+    },
+    "curve": {
+      "address": "kQAP6K4I-4Z2Dk-zS0YVc0AaeCUylMfGJOeJ9GmCaJ2reQT7",
+      "raw": "0:0fe8ae08fb86760e4fb34b461573401a78253294c7c624e789f46982689dab79",
+      "codeHash": "90f92a9ab2ef46a7bc2c0a3c296547cd5e552a52e2cb4d9facdcfc94cdabf811",
+      "dataHash": "e407231ce93a78000c22b3c650364d42761140bf88764dbff995a619278ae83e"
+    },
+    "guard": {
+      "address": "kQDIDGSjqsQhBpmJTE0FTsJhWC_XRqn7ArbYc88giqZUr6JR",
+      "raw": "0:c80c64a3aac4210699894c4d054ec261582fd746a9fb02b6d873cf208aa654af",
+      "codeHash": "d4a76916d44c5a1b36c347137d5234036e2c56f784bf218cdf7b89d78de3e4e8",
+      "dataHash": "c8491d29e9f8f42f28964ed689023c3f2f99a6e14e740f7cc940908da4cf5a9d"
+    },
+    "migration": {
+      "address": "kQB0Kuch7MFdEDwFoeTClCvISOfdhTU73bjSSJ2nsZQxf5uB",
+      "raw": "0:742ae721ecc15d103c05a1e4c2942bc848e7dd85353bddb8d2489da7b194317f",
+      "codeHash": "190a9e5d06a400cdd02afdd15970662077ac73970ef9750cdb36b933964bc4e1",
+      "dataHash": "58bdc205b13bd074f37cd90f4fb02f3e3017a98271bf874a2eb6d5126ddb5879"
+    }
+  },
+  "curveWallet": "kQAdweDuthx7d-t6NtpOgf3CgeT39Vp0yCtbO9yMRdAOvjx-",
+  "settlementWalletCodeHash": "e21136c0ea3074a48addec49215af2d8d20125b4cc61a564a1a37d37667b58a2",
+  "dexRouter": "kQAFpeGFJQA9KqiCxXZ8J4l__vSYAxFSirSOvPHn6SSX4ztn",
+  "ptonMinter": "kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px",
+  "blockers": [
+    "Operator Testnet account control/funding/activation must be verified.",
+    "Test metadata requires review.",
+    "LP address binding is not foreign code/custody proof; opt-in migration and graduation finalization reject 414.",
+    "Migration pending balances and interrupted DEX recovery are not fully reconciled.",
+    "Testnet donation recipient is not approved; production donation remains mainnet-only.",
+    "No deployment or transaction is authorized.",
+    "Zero-forward refunds now reconcile at the migrator; Curve handoff confirmations and lost-before-execution LP notifications remain unresolved."
+  ],
+  "mainnetSpendingAuthorization": {
+    "maximumNanoTon": "5000000000",
+    "includesNetworkFees": true,
+    "userClarification": "Use real Mainnet TON, maximum 5 TON including fees.",
+    "fundsSpentNanoTon": "0",
+    "executionBlockedBy": [
+      "No connected signer or verified execution set",
+      "No real Testnet verification of the new contracts",
+      "Unresolved LP custody/code trust and partial migration recovery"
+    ]
+  },
+  "predictedDex": {
+    "scope": "Offline deterministic derivation only; no deployment or independently reviewed custody proof",
+    "routerTokenWallet": "kQDsXZc-DmrQOC7Mm1pL_HuG-isssOICy1EvpsPrkhPZ2d_3",
+    "routerPtonWallet": "kQDYnMBdovx2Ot3r0-Pe7HJFRzOLZW9Ot90WTySXeGf5CPSg",
+    "pool": "kQB-0SBcWoSNQyRAA4qwqX6wIb5Ut-alRE_AacE4TsQSwkFf",
+    "lockerLpWallet": "kQBFyjplbetme36H6PMIMj3jzy4iTOdfY4g5WoLFFOIjaojq",
+    "sourceAuditVerified": false,
+    "custodyVerified": false,
+    "migrationAuthorized": false
+  },
+  "operatorReadOnlyObservation": {
+    "role": "operator",
+    "address": "0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d",
+    "provider": "toncenter",
+    "network": "testnet",
+    "verification": "PROVIDER_OBSERVATION",
+    "financialOutcome": "NOT_VERIFIED",
+    "status": "uninitialized",
+    "balanceNano": "3500000",
+    "codeHash": null,
+    "dataHash": null,
+    "lastTransaction": {
+      "lt": "104982217000020",
+      "hash": "bPsgOxafymo7JsJMj633lweaDwkq/wjM3bFV48juutE="
+    },
+    "observedUtc": "2026-10-30T16:01:47.231Z",
+    "controlVerified": false
+  },
+  "candidateReadOnlyObservations": [
+    {
+      "role": "minter",
+      "address": "0:f3540de3d6e7be701fd97816605d561288f21b13a179ee7cc7d0ac216c4a1380",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      },
+      "observedUtc": "2026-10-30T16:01:48.509Z",
+      "controlVerified": false
+    },
+    {
+      "role": "curve",
+      "address": "0:0fe8ae08fb86760e4fb34b461573401a78253294c7c624e789f46982689dab79",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      },
+      "observedUtc": "2026-10-30T16:01:49.777Z",
+      "controlVerified": false
+    },
+    {
+      "role": "guard",
+      "address": "0:c80c64a3aac4210699894c4d054ec261582fd746a9fb02b6d873cf208aa654af",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      },
+      "observedUtc": "2026-10-30T16:01:51.061Z",
+      "controlVerified": false
+    },
+    {
+      "role": "migration",
+      "address": "0:742ae721ecc15d103c05a1e4c2942bc848e7dd85353bddb8d2489da7b194317f",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      },
+      "observedUtc": "2026-10-30T16:01:52.539Z",
+      "controlVerified": false
+    }
+  ]
+}

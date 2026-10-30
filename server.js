@@ -38,6 +38,7 @@ const ALLOWED_PROXY_ROUTES = [
   /^\/jettons\/[a-zA-Z0-9_\-\:]+$/,
   /^\/jettons\/[a-zA-Z0-9_\-\:]+\/holders$/,
   /^\/blockchain\/transactions\/[a-fA-F0-9]+$/,
+  /^\/blockchain\/messages\/[a-fA-F0-9]{64}\/transaction$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/methods\/[a-zA-Z0-9_]{1,64}$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/transactions$/,
@@ -336,6 +337,27 @@ const server = http.createServer((req, res) => {
       });
       return;
     }
+  }
+
+  // Read-only Testnet evidence through the existing protected TON Center key.
+  // No provider replacement, configurable upstream, signatures or financial gate.
+  if (cleanUrl.startsWith('/api/toncenter-testnet/')) {
+    const reply = (status, data) => {
+      res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
+      res.end(JSON.stringify(data));
+    };
+    if (req.method !== 'GET') { reply(405, { error: 'GET required' }); return; }
+    if (!checkClientRateLimit(req.socket.remoteAddress || 'local')) { reply(429, { error: 'Rate limited' }); return; }
+    const match = cleanUrl.match(/^\/api\/toncenter-testnet\/(account|traces)\/([A-Za-z0-9_:\-]+)$/);
+    if (!match || new URL(req.url, 'http://localhost').search) { reply(400, { error: 'Invalid evidence request' }); return; }
+    if ((match[1] === 'account' && !isValidTonAddress(match[2])) ||
+        (match[1] === 'traces' && !/^[a-fA-F0-9]{64}$/.test(match[2]))) {
+      reply(400, { error: 'Invalid evidence identifier' }); return;
+    }
+    const evidence = require('./lib/toncenter-evidence');
+    evidence[match[1]](match[2]).then(data => reply(data.status === 'UNAVAILABLE' ? 503 : 200, data))
+      .catch(() => reply(400, { error: 'Evidence unavailable or invalid identifier' }));
+    return;
   }
 
   // Handle secure TonAPI proxy endpoint to keep API keys server-side

@@ -5,6 +5,8 @@
 
 const http = require('http');
 const assert = require('assert');
+const { server } = require('./server');
+let proxyPort;
 
 // 1. Unit Test for NFT Image Resolver logic
 function resolveNftImageUrlTest(nft) {
@@ -36,8 +38,8 @@ function resolveNftImageUrlTest(nft) {
 function requestProxy(method, path, headers = {}) {
   return new Promise((resolve, reject) => {
     const options = {
-      hostname: 'localhost',
-      port: 8080,
+      hostname: '127.0.0.1',
+      port: proxyPort,
       path: path,
       method: method,
       headers: headers
@@ -181,7 +183,20 @@ async function runSuite() {
   if (failed > 0) process.exit(1);
 }
 
-runSuite().catch(err => {
-  console.error('Fatal test error:', err);
-  process.exit(1);
-});
+// Exercise the real HTTP proxy on an ephemeral local port. Upstream responses
+// are explicit fixtures; this is not evidence of external account balances.
+const originalFetch = global.fetch;
+global.fetch = async url => {
+  const target = new URL(url);
+  assert.strictEqual(target.hostname, 'tonapi.io');
+  const fixture = target.pathname.endsWith('/nfts') ? { nft_items: [] }
+    : target.pathname.endsWith('/rates') ? { rates: { TON: { prices: { USD: 1 } } } }
+    : { balance: '123456789' };
+  return new Response(JSON.stringify(fixture), { status: 200, headers: { 'Content-Type': 'application/json' } });
+};
+(async () => {
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  proxyPort = server.address().port;
+  try { await runSuite(); }
+  finally { global.fetch = originalFetch; await new Promise(resolve => server.close(resolve)); }
+})().catch(err => { console.error('Fatal test error:', err); process.exitCode = 1; });

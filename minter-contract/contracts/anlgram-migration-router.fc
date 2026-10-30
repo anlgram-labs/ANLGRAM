@@ -1,36 +1,44 @@
-;; ANLGRAM Launchpad — STON.fi v2.1 Migration Router Smart Contract (Remediated)
+;; ANLGRAM Launchpad — STON.fi v2.1 Migration Router Smart Contract (Remediated TEP-74 & Recovery)
 ;; File: minter-contract/contracts/anlgram-migration-router.fc
-;; 
+;;
 ;; Features:
-;; 1. Receives graduation reserves (TON + 200M DEX tokens) strictly from the authorized Curve.
+;; 1. Receives graduation reserves (TON + 200M DEX tokens) strictly from the authorized Curve:
+;;    - TON via op::deposit_ton_liquidity (0x414e4c36) with msg_value >= deposit_ton.
+;;    - Jettons via op::transfer_notification (0x7362d09c) strictly from the Migration Router's
+;;      own deterministically derived TEP-74 Jetton wallet (owner = my_address(), master = token_minter_address)
+;;      with from_address == curve_address.
 ;; 2. Configures the immutable LP Locker via op::set_lp_wallet (0x414e4c31).
-;; 3. Formats official STON.fi v2.1 CPI Router messages using exact TL-B schema:
+;; 3. Sends TEP-74 op::transfer (0x0f8a7ea5) to the Migration Router's own Jetton wallet
+;;    (my_jetton_wallet) with destination = dex_router_address and forward_payload = token_dex_payload.
+;; 4. Formats official STON.fi v2.1 CPI Router messages using exact TL-B schema:
 ;;    provide_lp#37c096df token_wallet1:MsgAddress refund_address:MsgAddress excesses_address:MsgAddress
 ;;      tx_deadline:uint64 cross_provide_lp_body:^[min_lp_out:Coins to_address:MsgAddress both_positive:uint1 fwd_amount:Coins custom_payload:(Maybe ^Cell)]
-;; 4. Formats pTON v2 ton_transfer#01f3835d forwarding the matched provide_lp payload.
-;; 5. Directs all minted LP tokens directly to the immutable LP Locker (anlgram-lp-locker.fc).
-;; 6. TEP-74 Strict Compliance: Dispatches Jettons to its own authentic Jetton wallet (my_token_wallet),
-;;    eliminating exit code 705.
-;; 7. Anti-Deficit Gas Budgeting: Demands >= 0.50 TON on execute_dex_provision to cover all outbound legs,
-;;    eliminating TVM Action Phase error 37.
-;; 8. Resilient Bounce & Abort Flow: op::abort_migration (0x414e4c38) and bounced message handling
-;;    guarantee return of unspent TON and Jettons back to Curve without double refund.
+;; 5. Formats pTON v2.1 ton_transfer#01f3835d forwarding the matched provide_lp payload with
+;;    token_wallet1 set to the deterministically derived STON.fi Router ANLGRAM Jetton wallet.
+;; 6. Preserves pending_ton and pending_tokens accounting during in-flight provision, handles bounced
+;;    messages (flags & 1) and DEX refunds to restore balances, and returns BOTH TON and Jettons to
+;;    the Bonding Curve upon op::abort_migration (0x414e4c38).
 
 #include "imports/stdlib.fc";
 #include "imports/params.fc";
 #include "imports/constants.fc";
 #include "imports/op-codes.fc";
 #include "imports/utils.fc";
+#include "imports/jetton-utils.fc";
+#include "imports/settlement-protocol.fc";
+#include "imports/settlement-wallet-code.fc";
 #pragma version >=0.2.0;
 
 const int ERROR_UNAUTHORIZED_SENDER = 401;
 const int ERROR_INVALID_STATE       = 402;
 const int ERROR_UNKNOWN_OP          = 404;
-const int ERROR_ALREADY_INITIALIZED = 405;
-const int ERROR_NOT_INITIALIZED     = 406;
+const int ERROR_INSUFFICIENT_GAS    = 405;
+const int ERROR_ZERO_AMOUNT         = 406;
+const int ERROR_ALREADY_INITIALIZED = 407;
 const int ERROR_INVALID_ADDRESS     = 408;
-const int ERROR_INSUFFICIENT_GAS    = 409;
-const int ERROR_INSUFFICIENT_FUNDS  = 410;
+const int ERROR_NO_TON_LIQUIDITY    = 410;
+const int ERROR_NO_TOKEN_LIQUIDITY  = 411;
+const int ERROR_NOTHING_TO_ABORT    = 412;
 
 ;; Protocol Opcodes
 const int op::provide_lp             = 0x37c096df;
@@ -39,23 +47,139 @@ const int op::set_lp_wallet          = 0x414e4c31;
 const int op::deposit_ton_liquidity  = 0x414e4c36;
 const int op::execute_dex_provision  = 0x414e4c37;
 const int op::abort_migration        = 0x414e4c38;
+const int op::init_migration_wallets = 0x414e4c3b;
+const int op::recover_lp_account     = 0x414e4c3c; ;; ANLGRAM: caller-funded, no withdrawal target
+const int op::getter_pool_address    = 0x2993ade0;
+const int op::getter_lp_account      = 0x15fbca95;
+const int op::getter_lp_account_data = 0x24cfc100;
+const int op::refund_me              = 0x132b9a2c;
+const int op::prime_refund_receipts   = 0x414e4c3d;
+const int op::sync_refund_receipts    = 0x414e4c3e;
+const int op::finalize_migration      = 0x414e4c43;
+const int op::lp_custody_receipt      = 0x414c5005;
+
+;; Minimum operational gas for execute_dex_provision (0.40 TON > 0.02 + 0.20 + 0.15 TON + fwd fees)
+const int MIN_PROVISION_GAS          = 400000000;
+;; Minimum operational gas for abort_migration when returning Jettons (0.08 TON)
+const int MIN_ABORT_TOKEN_GAS        = 80000000;
+
+;; Optional third root reference. New deployments only; original genesis cells
+;; load without it. Correlation and used IDs survive every save and retry.
+cell flight_cell() inline {
+    slice s = get_data().begin_parse(); s~load_uint(1);
+    s~load_msg_addr(); s~load_msg_addr(); s~load_msg_addr(); s~load_ref(); s~load_ref();
+    return s.slice_refs() ? s~load_ref() : null();
+}
+cell reconciliation_cell() inline {
+    cell f = flight_cell();if(cell_null?(f)) { return null(); }
+    slice s = f.begin_parse();s~skip_bits(131);s~load_msg_addr();s~load_msg_addr();s~load_dict();
+    return s.slice_refs() ? s~load_ref() : null();
+}
+(int,int,int,int,int,int,int,int) load_reconciliation() inline {
+    cell r = reconciliation_cell();if(cell_null?(r)) { return (0,0,0,0,0,0,0,0); }
+    slice s = r.begin_parse();int stage = s~load_uint(8);int opened = s~load_uint(1);int epoch = s~load_uint(64);
+    int ot = s~load_coins();int oj = s~load_coins();int rt = s~load_coins();int rj = s~load_coins();int cumulative = s~load_coins();
+    if(s.slice_bits()) { s~load_dict(); } if(s.slice_bits()) { s~load_dict(); } s.end_parse();
+    return (stage,opened,epoch,ot,oj,rt,rj,cumulative);
+}
+cell native_receipts() inline {
+    cell r = reconciliation_cell();if(cell_null?(r)) { return null(); }
+    slice s = r.begin_parse();s~skip_bits(73);s~load_coins();s~load_coins();s~load_coins();s~load_coins();s~load_coins();
+    return s.slice_bits() ? s~load_dict() : null();
+}
+cell lp_evidence() inline {
+    cell r = reconciliation_cell();if(cell_null?(r)) { return null(); }
+    slice s = r.begin_parse();s~skip_bits(73);s~load_coins();s~load_coins();s~load_coins();s~load_coins();s~load_coins();
+    if(s.slice_bits()) { s~load_dict(); } return s.slice_bits() ? s~load_dict() : null();
+}
+(int,int,int,slice,slice,cell) load_flight() inline {
+    cell c = flight_cell();
+    if (cell_null?(c)) {
+        slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
+        return (0,0,0,none,none,null());
+    }
+    slice s = c.begin_parse();
+    int id = s~load_uint(64);int nonce = s~load_uint(64);int phase = s~load_uint(3);
+    slice pool = s~load_msg_addr();slice account = s~load_msg_addr();cell used = s~load_dict();
+    if(s.slice_refs()) { s~load_ref(); } s.end_parse();
+    return (id,nonce,phase,pool,account,used);
+}
+() replace_flight(cell flight) impure inline {
+    slice s = get_data().begin_parse();
+    int initialized = s~load_uint(1);slice curve = s~load_msg_addr();slice locker = s~load_msg_addr();slice router = s~load_msg_addr();
+    cell c2 = s~load_ref();cell c3 = s~load_ref();
+    builder b = begin_cell().store_uint(initialized,1).store_slice(curve).store_slice(locker).store_slice(router).store_ref(c2).store_ref(c3);
+    set_data(b.store_ref(flight).end_cell());
+}
+() save_flight(int id,int nonce,int phase,slice pool,slice account,cell used) impure inline {
+    cell r = reconciliation_cell();
+    builder b = begin_cell().store_uint(id,64).store_uint(nonce,64).store_uint(phase,3).store_slice(pool).store_slice(account).store_dict(used);
+    ifnot(cell_null?(r)) { b = b.store_ref(r); }
+    replace_flight(b.end_cell());
+}
+() save_reconciliation_with_receipts(int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative,cell native_seen,cell lp) impure inline {
+    cell r = begin_cell().store_uint(stage,8).store_uint(opened ? 1 : 0,1).store_uint(epoch,64)
+        .store_coins(ot).store_coins(oj).store_coins(rt).store_coins(rj).store_coins(cumulative).store_dict(native_seen).store_dict(lp).end_cell();
+    (int id,int nonce,int phase,slice pool,slice account,cell used) = load_flight();
+    (_,int found) = used.udict_get?(64,id);
+    if(found) { used~udict_set_builder(64,id,begin_cell().store_uint(1,1).store_ref(r)); }
+    replace_flight(begin_cell().store_uint(id,64).store_uint(nonce,64).store_uint(phase,3).store_slice(pool).store_slice(account).store_dict(used).store_ref(r).end_cell());
+}
+() save_reconciliation(int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) impure inline {
+    cell seen = ((stage == 1) | (stage == 6)) ? null() : native_receipts();
+    cell lp = ((stage == 1) | (stage == 6)) ? null() : lp_evidence();
+    save_reconciliation_with_receipts(stage,opened,epoch,ot,oj,rt,rj,cumulative,seen,lp);
+}
+int consume_native_receipt(cell full_message) impure inline {
+    cell seen = native_receipts();int key = cell_hash(full_message);(_,int found) = seen.udict_get?(256,key);
+    if(found) { return 0; }
+    seen~udict_set_builder(256,key,begin_cell().store_uint(1,1));
+    (int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) = load_reconciliation();
+    save_reconciliation_with_receipts(stage,opened,epoch,ot,oj,rt,rj,cumulative,seen,lp_evidence());return -1;
+}
+() record_refund(int native,int tokens,int pending_native,int pending_tokens) impure inline {
+    (int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) = load_reconciliation();
+    if(stage >= 3) {
+        throw_unless(ERROR_INVALID_STATE,(rt + native <= ot) & (rj + tokens <= oj));
+        save_reconciliation(((pending_native == 0) & (pending_tokens == 0)) ? 5 : 4,opened,epoch,ot,oj,rt + native,rj + tokens,cumulative);
+    }
+}
+() return_receipt_gas(slice admin,int previous,int id) impure inline {
+    raw_reserve(previous,0);
+    send_raw_message(begin_cell().store_uint(0x10,6).store_slice(admin).store_coins(0)
+        .store_uint(0,1 + 4 + 4 + 64 + 32 + 1 + 1).store_uint(op::excesses(),32).store_uint(id,64).end_cell(),128 + 2);
+}
+() recovery_query(slice destination,cell body,int previous) impure inline {
+    ;; Only forward this request's funding, never native principal or storage.
+    raw_reserve(previous,0);
+    send_raw_message(begin_cell().store_uint(0x18,6).store_slice(destination).store_coins(0)
+        .store_uint(1,1 + 4 + 4 + 64 + 32 + 1 + 1).store_ref(body).end_cell(),128);
+}
 
 ;; Storage Layout:
-;; is_initialized:uint1
-;; curve_address:MsgAddress
-;; lp_locker_address:MsgAddress
-;; dex_router_address:MsgAddress
-;; ref c2:
-;;   token_minter_address:MsgAddress
-;;   pton_minter_address:MsgAddress
-;;   ton_liquidity:Coins
-;;   tokens_liquidity:Coins
-;;   admin_address:MsgAddress
-;; ref c3 (optional / runtime bound):
-;;   my_token_wallet:MsgAddress
-;;   is_failed:uint1
+;; Root cell:
+;;   is_initialized:uint1 (0 = accumulating/ready, 1 = provision in-flight)
+;;   curve_address:MsgAddress (addr_std)
+;;   lp_locker_address:MsgAddress (addr_std)
+;;   dex_router_address:MsgAddress (addr_std)
+;;   ref c2:
+;;     token_minter_address:MsgAddress (addr_std)
+;;     pton_minter_address:MsgAddress (addr_std)
+;;     ton_liquidity:Coins
+;;     tokens_liquidity:Coins
+;;     admin_address:MsgAddress (addr_std, strictly required — no fallback to curve_address)
+;;   ref c3:
+;;     expected_lp_wallet:MsgAddress (addr_none or addr_std)
+;;     expected_pton_wallet:MsgAddress (addr_none or addr_std)
+;;     pending_ton:Coins
+;;     pending_tokens:Coins
+;;     ref jetton_wallet_code:^Cell
 
-(int, slice, slice, slice, slice, slice, int, int, slice, slice, int) load_data() inline {
+(
+    int, slice, slice, slice,
+    slice, slice, int, int, slice,
+    slice, slice, int, int, cell
+) load_data() inline {
     slice ds = get_data().begin_parse();
     int is_initialized = ds~load_uint(1);
     slice curve_address = ds~load_msg_addr();
@@ -68,29 +192,42 @@ const int op::abort_migration        = 0x414e4c38;
     slice pton_minter_address = s2~load_msg_addr();
     int ton_liquidity = s2~load_coins();
     int tokens_liquidity = s2~load_coins();
-    slice admin_address = (s2.slice_bits() >= 2) ? s2~load_msg_addr() : curve_address;
+    slice admin_address = s2~load_msg_addr();
+    s2.end_parse();
 
-    slice my_token_wallet = begin_cell().store_uint(0, 2).end_cell().begin_parse();
-    int is_failed = 0;
-    if (ds.slice_refs() > 0) {
-        cell c3 = ds~load_ref();
-        slice s3 = c3.begin_parse();
-        my_token_wallet = s3~load_msg_addr();
-        if (s3.slice_bits() >= 1) {
-            is_failed = s3~load_uint(1);
-        }
-    }
+    cell c3 = ds~load_ref();
+    slice s3 = c3.begin_parse();
+    slice expected_lp_wallet = s3~load_msg_addr();
+    slice expected_pton_wallet = s3~load_msg_addr();
+    int pending_ton = s3~load_coins();
+    int pending_tokens = s3~load_coins();
+    cell jetton_wallet_code = s3~load_ref();
+    s3.end_parse();
+    if (ds.slice_refs()) { ds~load_ref(); } ;; optional correlated-flight extension
+    ds.end_parse();
+
+    throw_unless(ERROR_INVALID_ADDRESS, curve_address.preload_uint(2) == 2);
+    throw_unless(ERROR_INVALID_ADDRESS, lp_locker_address.preload_uint(2) == 2);
+    throw_unless(ERROR_INVALID_ADDRESS, dex_router_address.preload_uint(2) == 2);
+    throw_unless(ERROR_INVALID_ADDRESS, token_minter_address.preload_uint(2) == 2);
+    throw_unless(ERROR_INVALID_ADDRESS, pton_minter_address.preload_uint(2) == 2);
+    throw_unless(ERROR_INVALID_ADDRESS, admin_address.preload_uint(2) == 2);
 
     return (
         is_initialized, curve_address, lp_locker_address, dex_router_address,
-        token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity,
-        admin_address, my_token_wallet, is_failed
+        token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address,
+        expected_lp_wallet, expected_pton_wallet, pending_ton, pending_tokens, jetton_wallet_code
     );
 }
 
-() save_data(int is_initialized, slice curve_address, slice lp_locker_address, slice dex_router_address, slice token_minter_address, slice pton_minter_address, int ton_liquidity, int tokens_liquidity, slice admin_address, slice my_token_wallet, int is_failed) impure inline {
-    set_data(begin_cell()
-        .store_uint(is_initialized, 1)
+() save_data(
+    int is_initialized, slice curve_address, slice lp_locker_address, slice dex_router_address,
+    slice token_minter_address, slice pton_minter_address, int ton_liquidity, int tokens_liquidity, slice admin_address,
+    slice expected_lp_wallet, slice expected_pton_wallet, int pending_ton, int pending_tokens, cell jetton_wallet_code
+) impure inline {
+    cell flight = flight_cell();
+    builder root = begin_cell()
+        .store_uint(is_initialized ? 1 : 0, 1)
         .store_slice(curve_address)
         .store_slice(lp_locker_address)
         .store_slice(dex_router_address)
@@ -105,12 +242,16 @@ const int op::abort_migration        = 0x414e4c38;
         )
         .store_ref(
             begin_cell()
-                .store_slice(my_token_wallet)
-                .store_uint(is_failed, 1)
+                .store_slice(expected_lp_wallet)
+                .store_slice(expected_pton_wallet)
+                .store_coins(pending_ton)
+                .store_coins(pending_tokens)
+                .store_ref(jetton_wallet_code)
                 .end_cell()
         )
-        .end_cell()
-    );
+        ;
+    ifnot (cell_null?(flight)) { root = root.store_ref(flight); }
+    set_data(root.end_cell());
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
@@ -120,66 +261,338 @@ const int op::abort_migration        = 0x414e4c38;
 
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_uint(4);
+    slice sender_address = cs~load_msg_addr();
+
+    (
+        int is_initialized, slice curve_address, slice lp_locker_address, slice dex_router_address,
+        slice token_minter_address, slice pton_minter_address, int ton_liquidity, int tokens_liquidity, slice admin_address,
+        slice expected_lp_wallet, slice expected_pton_wallet, int pending_ton, int pending_tokens, cell jetton_wallet_code
+    ) = load_data();
+
+    slice my_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), token_minter_address, jetton_wallet_code);
+    slice dex_router_token_wallet = calculate_user_jetton_wallet_address(dex_router_address, token_minter_address, jetton_wallet_code);
+    (int flight_id,int recovery_nonce,int recovery_phase,slice recovery_pool,slice recovery_account,cell used_ids) = load_flight();
+
+    ;; ------------------------------------------------------------------------
+    ;; 0. BOUNCED MESSAGE RECOVERY (flags & 1)
+    ;; ------------------------------------------------------------------------
     if (flags & 1) {
-        ;; --------------------------------------------------------------------
-        ;; BOUNCED MESSAGE HANDLER (Recovery of funds upon DEX failure)
-        ;; --------------------------------------------------------------------
-        (
-            int is_initialized, slice curve_address, slice lp_locker_address, slice dex_router_address,
-            slice token_minter_address, slice pton_minter_address, int ton_liquidity, int tokens_liquidity,
-            slice admin_address, slice my_token_wallet, int is_failed
-        ) = load_data();
-
-        ;; Mark failure state and restore unspent coins for recovery
-        is_failed = 1;
-        is_initialized = 0; ;; Allow abort / recovery flow
-        if (msg_value >= 1000000000) { ;; > 1 TON bounced
-            ton_liquidity = msg_value;
+        if (in_msg_body.slice_bits() < 32) {
+            return ();
         }
+        in_msg_body~skip_bits(32); ;; 0xffffffff bounce prefix
+        slice body_slice = in_msg_body;
+        if ((body_slice.slice_bits() < 32) & (body_slice.slice_refs() > 0)) {
+            body_slice = body_slice~load_ref().begin_parse();
+        }
+        if (body_slice.slice_bits() >= 32 + 64) {
+            int orig_op = body_slice~load_uint(32);
+            int bounced_id = body_slice~load_uint(64);
+            if ((~ cell_null?(flight_cell())) & (bounced_id != flight_id)) { return (); }
 
-        save_data(is_initialized, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address, my_token_wallet, is_failed);
+            ;; Case A: Bounced TEP-74 op::transfer from Migration Router's own Jetton Wallet
+            if (equal_slices(sender_address, my_jetton_wallet) & (orig_op == op::transfer())) {
+                int bounced_tokens = body_slice~load_coins();
+                if ((bounced_tokens <= 0) | (bounced_tokens > pending_tokens)) { return (); }
+                tokens_liquidity += bounced_tokens;
+                pending_tokens -= bounced_tokens;
+                is_initialized = (pending_tokens > 0) | (pending_ton > 0);
+                save_data(
+                    is_initialized, curve_address, lp_locker_address, dex_router_address,
+                    token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address,
+                    expected_lp_wallet, expected_pton_wallet, pending_ton, pending_tokens, jetton_wallet_code
+                );
+                record_refund(0,bounced_tokens,pending_ton,pending_tokens);
+                return ();
+            }
+
+            ;; Case B: Bounced pTON op::ton_transfer from authenticated pTON Wallet
+            if ((expected_pton_wallet.preload_uint(2) == 2) & equal_slices(sender_address, expected_pton_wallet) & (orig_op == op::ton_transfer)) {
+                int bounced_ton = body_slice~load_coins();
+                if ((bounced_ton <= 0) | (bounced_ton > pending_ton) | (msg_value < bounced_ton)) { return (); }
+                ton_liquidity += bounced_ton;
+                pending_ton -= bounced_ton;
+                is_initialized = (pending_tokens > 0) | (pending_ton > 0);
+                save_data(
+                    is_initialized, curve_address, lp_locker_address, dex_router_address,
+                    token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address,
+                    expected_lp_wallet, expected_pton_wallet, pending_ton, pending_tokens, jetton_wallet_code
+                );
+                record_refund(bounced_ton,0,pending_ton,pending_tokens);
+                return ();
+            }
+            ;; Aborted native handoff can itself bounce. Keep a distinct
+            ;; correlated operation and restore only principal actually returned.
+            if ((recovery_phase == 5) & equal_slices(sender_address,curve_address) & (orig_op == op::deposit_ton_liquidity)) {
+                int amount = body_slice~load_coins();
+                if ((amount <= 0) | (amount > pending_ton) | (msg_value < amount)) { return (); }
+                ton_liquidity += amount;pending_ton -= amount;
+                save_data((pending_ton > 0) | (pending_tokens > 0),curve_address,lp_locker_address,dex_router_address,
+                    token_minter_address,pton_minter_address,ton_liquidity,tokens_liquidity,admin_address,
+                    expected_lp_wallet,expected_pton_wallet,pending_ton,pending_tokens,jetton_wallet_code);
+                record_refund(amount,0,pending_ton,pending_tokens);
+                return ();
+            }
+        }
         return ();
     }
-    slice sender_address = cs~load_msg_addr();
 
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
 
-    (
-        int is_initialized, slice curve_address, slice lp_locker_address, slice dex_router_address,
-        slice token_minter_address, slice pton_minter_address, int ton_liquidity, int tokens_liquidity,
-        slice admin_address, slice my_token_wallet, int is_failed
-    ) = load_data();
+    if(op == op::finalize_migration) {
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,admin_address) | equal_slices(sender_address,curve_address));
+        ;; LP_VERIFIED -> LOCKED -> FINALIZED requires independently reviewed
+        ;; foreign code/custody and final deposit evidence, not just this receipt.
+        throw(414);
+    }
+    if(op == op::lp_custody_receipt) {
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,lp_locker_address));
+        throw_unless(ERROR_INVALID_STATE,(cell_hash(jetton_wallet_code) == SETTLEMENT_WALLET_CODE_HASH) & (query_id == flight_id));
+        slice pool = in_msg_body~load_msg_addr();slice wallet = in_msg_body~load_msg_addr();int amount = in_msg_body~load_coins();int reviewed = in_msg_body~load_uint(1);in_msg_body.end_parse();
+        throw_unless(ERROR_INVALID_ADDRESS,(pool.preload_uint(2) == 2) & equal_slices(wallet,expected_lp_wallet));
+        throw_unless(ERROR_INVALID_STATE,(amount > 0) & (reviewed == 0));
+        (int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) = load_reconciliation();
+        throw_unless(ERROR_INVALID_STATE,opened & ((stage == 3) | (stage == 4) | (stage == 7)));
+        cell old = lp_evidence();
+        ifnot(cell_null?(old)) { slice s = old.begin_parse();slice previous_pool = s~load_msg_addr();slice previous_wallet = s~load_msg_addr();int previous = s~load_coins();
+            throw_unless(ERROR_INVALID_STATE,equal_slices(pool,previous_pool) & equal_slices(wallet,previous_wallet) & (amount >= previous)); }
+        cell lp = begin_cell().store_slice(pool).store_slice(wallet).store_coins(amount).end_cell();
+        save_reconciliation_with_receipts(7,opened,epoch,ot,oj,rt,rj,cumulative,native_receipts(),lp);
+        return (); ;; principal remains pending; no financial completion inferred
+    }
+
+    if ((op == op::prime_refund_receipts) | (op == op::sync_refund_receipts)) {
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,admin_address));
+        throw_unless(ERROR_INVALID_STATE,cell_hash(jetton_wallet_code) == SETTLEMENT_WALLET_CODE_HASH);
+        int wallet_gas = in_msg_body.slice_empty?() ? 20000000 : in_msg_body~load_coins();in_msg_body.end_parse();
+        throw_unless(ERROR_INSUFFICIENT_GAS,(wallet_gas >= 20000000) & (msg_value >= wallet_gas + 20000000));
+        (int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) = load_reconciliation();
+        if(op == op::prime_refund_receipts) {
+            throw_unless(ERROR_INVALID_STATE,(pending_ton == 0) & (pending_tokens == 0) & (is_initialized == 0));
+            throw_unless(ERROR_NO_TON_LIQUIDITY,ton_liquidity > 0);throw_unless(ERROR_NO_TOKEN_LIQUIDITY,tokens_liquidity > 0);
+            (_,int used) = used_ids.udict_get?(64,query_id);throw_if(ERROR_ALREADY_INITIALIZED,used);
+            if((stage == 1) | (stage == 2)) { throw_unless(ERROR_INVALID_STATE,query_id == flight_id); }
+            else {
+                slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
+                save_flight(query_id,0,0,none,none,used_ids);
+                save_reconciliation(1,0,0,ton_liquidity,tokens_liquidity,0,0,0);
+            }
+        } else {
+            throw_unless(ERROR_INVALID_STATE,(query_id == flight_id) & opened & (stage >= 2) & (stage <= 5) & (recovery_phase != 5));
+        }
+        builder body = begin_cell().store_uint(op == op::prime_refund_receipts ? sop::credit_open : sop::credit_query,32).store_uint(query_id,64);
+        if(op == op::prime_refund_receipts) { body = body.store_slice(dex_router_address); }
+        send_raw_message(begin_cell().store_uint(0x18,6).store_slice(my_jetton_wallet).store_coins(wallet_gas)
+            .store_uint(1,1 + 4 + 4 + 64 + 32 + 1 + 1).store_ref(body.end_cell()).end_cell(),1);
+        return_receipt_gas(admin_address,my_balance - msg_value,query_id);return ();
+    }
+    if(op == sop::credit_receipt) {
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,(cell_hash(jetton_wallet_code) == SETTLEMENT_WALLET_CODE_HASH) & equal_slices(sender_address,my_jetton_wallet));
+        throw_unless(ERROR_INVALID_STATE,query_id == flight_id);
+        int observed_epoch = in_msg_body~load_uint(64);slice origin = in_msg_body~load_msg_addr();int observed = in_msg_body~load_coins();int wallet_balance = in_msg_body~load_coins();in_msg_body.end_parse();
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(origin,dex_router_address));
+        (int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) = load_reconciliation();
+        throw_unless(ERROR_INVALID_STATE,(observed_epoch > 0) & ((~ opened) | (observed_epoch == epoch)) & (observed >= cumulative));
+        throw_unless(ERROR_INVALID_STATE,(stage >= 1) & (stage <= 5) & (recovery_phase != 5));
+        if(stage <= 2) { throw_unless(ERROR_INVALID_STATE,wallet_balance >= tokens_liquidity);save_reconciliation(2,1,observed_epoch,ot,oj,0,0,observed); }
+        else {
+            int delta = observed - cumulative;
+            throw_unless(ERROR_INVALID_STATE,(delta <= pending_tokens) & (rj + delta <= oj) & (wallet_balance >= tokens_liquidity + delta));
+            tokens_liquidity += delta;pending_tokens -= delta;
+            save_data((pending_ton > 0) | (pending_tokens > 0),curve_address,lp_locker_address,dex_router_address,
+                token_minter_address,pton_minter_address,ton_liquidity,tokens_liquidity,admin_address,
+                expected_lp_wallet,expected_pton_wallet,pending_ton,pending_tokens,jetton_wallet_code);
+            save_reconciliation(((pending_ton == 0) & (pending_tokens == 0)) ? 5 : 4,1,epoch,ot,oj,rt,rj + delta,observed);
+        }
+        return_receipt_gas(admin_address,my_balance - msg_value,query_id);return ();
+    }
+
+    ;; Recover only through the configured Router -> pair Pool -> own LP
+    ;; account chain. These replies do NOT authorize migration or prove code.
+    if (op == op::recover_lp_account) {
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,admin_address) | equal_slices(sender_address,curve_address));
+        throw_unless(ERROR_INVALID_STATE,(pending_ton > 0) | (pending_tokens > 0));
+        throw_if(ERROR_INVALID_STATE,recovery_phase == 5); ;; handoff receipts, not a DEX-account refund
+        throw_unless(ERROR_INVALID_STATE,~ cell_null?(flight_cell()));
+        throw_unless(ERROR_INSUFFICIENT_GAS,msg_value >= 900000000); ;; 0.8 SDK refund + query chain budget
+        in_msg_body.end_parse();
+        slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
+        recovery_nonce = cur_lt();
+        save_flight(flight_id,recovery_nonce,1,none,none,used_ids);
+        recovery_query(dex_router_address,begin_cell().store_uint(op::getter_pool_address,32).store_uint(recovery_nonce,64)
+            .store_slice(dex_router_token_wallet).store_slice(expected_pton_wallet).end_cell(),my_balance - msg_value);
+        return ();
+    }
+    if ((op == op::getter_pool_address) | (op == op::getter_lp_account) | (op == op::getter_lp_account_data)) {
+        throw_unless(ERROR_INVALID_STATE,(query_id == recovery_nonce) & (recovery_phase > 0) & (recovery_phase < 4));
+        if (op == op::getter_pool_address) {
+            throw_unless(ERROR_INVALID_STATE,recovery_phase == 1);
+            throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,dex_router_address));
+            slice pool = in_msg_body~load_msg_addr();in_msg_body.end_parse();force_chain(pool);
+            throw_unless(ERROR_INVALID_ADDRESS,pool.preload_uint(2) == 2);
+            save_flight(flight_id,recovery_nonce,2,pool,recovery_account,used_ids);
+            recovery_query(pool,begin_cell().store_uint(op::getter_lp_account,32).store_uint(recovery_nonce,64).store_slice(my_address()).end_cell(),my_balance - msg_value);
+            return ();
+        }
+        if (op == op::getter_lp_account) {
+            throw_unless(ERROR_INVALID_STATE,recovery_phase == 2);
+            throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,recovery_pool));
+            slice account = in_msg_body~load_msg_addr();in_msg_body.end_parse();force_chain(account);
+            throw_unless(ERROR_INVALID_ADDRESS,account.preload_uint(2) == 2);
+            save_flight(flight_id,recovery_nonce,3,recovery_pool,account,used_ids);
+            recovery_query(account,begin_cell().store_uint(op::getter_lp_account_data,32).store_uint(recovery_nonce,64).end_cell(),my_balance - msg_value);
+            return ();
+        }
+        throw_unless(ERROR_INVALID_STATE,recovery_phase == 3);
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,recovery_account));
+        slice owner = in_msg_body~load_msg_addr();slice pool = in_msg_body~load_msg_addr();
+        int a0 = in_msg_body~load_coins();int a1 = in_msg_body~load_coins();in_msg_body.end_parse();
+        throw_unless(ERROR_INVALID_ADDRESS,equal_slices(owner,my_address()) & equal_slices(pool,recovery_pool));
+        throw_unless(ERROR_INVALID_STATE,(a0 > 0) | (a1 > 0));
+        save_flight(flight_id,recovery_nonce,4,recovery_pool,recovery_account,used_ids);
+        ;; SDK v2.1/v2.2 wire includes TWO Maybe refs, absent in prose table.
+        recovery_query(recovery_account,begin_cell().store_uint(op::refund_me,32).store_uint(flight_id,64)
+            .store_uint(0,2).end_cell(),my_balance - msg_value);
+        return ();
+    }
+
+    ;; ------------------------------------------------------------------------
+    ;; 0B. ONE-TIME ADMIN WALLET BINDING (op::init_migration_wallets)
+    ;; ------------------------------------------------------------------------
+    if (op == op::init_migration_wallets) {
+        throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, admin_address));
+        throw_if(ERROR_ALREADY_INITIALIZED, (expected_lp_wallet.preload_uint(2) != 0) | (expected_pton_wallet.preload_uint(2) != 0));
+
+        slice new_lp_wallet = in_msg_body~load_msg_addr();
+        slice new_pton_wallet = in_msg_body~load_msg_addr();
+        throw_unless(ERROR_INVALID_ADDRESS, new_lp_wallet.preload_uint(2) == 2);
+        throw_unless(ERROR_INVALID_ADDRESS, new_pton_wallet.preload_uint(2) == 2);
+        force_chain(new_lp_wallet);
+        force_chain(new_pton_wallet);
+
+        throw_if(ERROR_INVALID_ADDRESS,
+            equal_slices(new_lp_wallet, new_pton_wallet) |
+            equal_slices(new_lp_wallet, my_address()) |
+            equal_slices(new_lp_wallet, my_jetton_wallet) |
+            equal_slices(new_lp_wallet, dex_router_token_wallet) |
+            equal_slices(new_lp_wallet, curve_address) |
+            equal_slices(new_lp_wallet, lp_locker_address) |
+            equal_slices(new_lp_wallet, dex_router_address) |
+            equal_slices(new_pton_wallet, my_address()) |
+            equal_slices(new_pton_wallet, my_jetton_wallet) |
+            equal_slices(new_pton_wallet, dex_router_token_wallet) |
+            equal_slices(new_pton_wallet, curve_address) |
+            equal_slices(new_pton_wallet, lp_locker_address) |
+            equal_slices(new_pton_wallet, dex_router_address)
+        );
+
+        expected_lp_wallet = new_lp_wallet;
+        expected_pton_wallet = new_pton_wallet;
+        save_data(
+            is_initialized, curve_address, lp_locker_address, dex_router_address,
+            token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address,
+            expected_lp_wallet, expected_pton_wallet, pending_ton, pending_tokens, jetton_wallet_code
+        );
+        return ();
+    }
 
     ;; ------------------------------------------------------------------------
     ;; 1. RECEIVE TON LIQUIDITY FROM CURVE
     ;; ------------------------------------------------------------------------
     if (op == op::deposit_ton_liquidity) {
         throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, curve_address));
+        throw_unless(ERROR_INVALID_STATE, is_initialized == 0);
         int deposit_ton = in_msg_body~load_coins();
+        throw_unless(ERROR_ZERO_AMOUNT, deposit_ton > 0);
+        throw_unless(ERROR_INSUFFICIENT_GAS, msg_value >= deposit_ton);
+
         ton_liquidity += deposit_ton;
-        save_data(is_initialized, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address, my_token_wallet, is_failed);
+        save_data(
+            is_initialized, curve_address, lp_locker_address, dex_router_address,
+            token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address,
+            expected_lp_wallet, expected_pton_wallet, pending_ton, pending_tokens, jetton_wallet_code
+        );
         return ();
     }
 
     ;; ------------------------------------------------------------------------
-    ;; 2. RECEIVE JETTON LIQUIDITY VIA TRANSFER NOTIFICATION
+    ;; 2. RECEIVE JETTON LIQUIDITY VIA AUTHENTICATED TRANSFER NOTIFICATION
     ;; ------------------------------------------------------------------------
     if (op == op::transfer_notification()) {
+        ;; Gate 1: Sender MUST be the Migration Router's own TEP-74 Jetton Wallet for token_minter_address
+        throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, my_jetton_wallet));
+
         int token_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
 
-        ;; Security Gate 1: Must originate from Curve
-        throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(from_address, curve_address));
-        ;; Security Gate 2: Positive token amount
-        throw_unless(ERROR_INSUFFICIENT_FUNDS, token_amount > 0);
+        ;; Validate forward_payload structure (Either Cell ^Cell)
+        throw_unless(ERROR_INVALID_ADDRESS, in_msg_body.slice_bits() >= 1);
+        int has_ref = in_msg_body~load_uint(1);
+        if (has_ref) {
+            in_msg_body~load_ref();
+        }
 
-        ;; Capture sender_address as our authentic Jetton wallet for outbound transfers
-        my_token_wallet = sender_address;
-        tokens_liquidity += token_amount;
-        is_failed = 0;
+        ;; Gate 2: Positive token amount
+        throw_unless(ERROR_ZERO_AMOUNT, token_amount > 0);
 
-        save_data(is_initialized, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address, my_token_wallet, is_failed);
+        ;; Gate 3: Previous owner (from_address) and contract state authentication
+        if (is_initialized == 0) {
+            ;; Initial graduation deposit must come strictly from the Bonding Curve
+            throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(from_address, curve_address));
+            tokens_liquidity += token_amount;
+        } else {
+            ;; When is_initialized == 1, accept token refund strictly from STON.fi DEX Router
+            throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(from_address, dex_router_address));
+            ifnot (cell_null?(flight_cell())) { throw_unless(ERROR_INVALID_STATE,query_id == flight_id); }
+            (_,int opened,_,_,_,_,_,_) = load_reconciliation();
+            if(opened) { return_receipt_gas(admin_address,my_balance - msg_value,query_id);return (); } ;; notification is only a hint; query authenticated cumulative custody
+            throw_unless(ERROR_INVALID_STATE,token_amount <= pending_tokens);
+            tokens_liquidity += token_amount;
+            pending_tokens -= token_amount;
+            is_initialized = (pending_tokens > 0) | (pending_ton > 0);
+        }
+
+        save_data(
+            is_initialized, curve_address, lp_locker_address, dex_router_address,
+            token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address,
+            expected_lp_wallet, expected_pton_wallet, pending_ton, pending_tokens, jetton_wallet_code
+        );
+        return ();
+    }
+
+    ;; ------------------------------------------------------------------------
+    ;; 2B. RECEIVE PTON / EXCESSES REFUND
+    ;; ------------------------------------------------------------------------
+    if (op == op::excesses()) {
+        ;; An excess is gas evidence, not a correlated principal refund.
+        ifnot (cell_null?(flight_cell())) { return (); }
+        if ((is_initialized == 1) & (expected_pton_wallet.preload_uint(2) == 2) & equal_slices(sender_address, expected_pton_wallet) & (pending_ton > 0) & (msg_value >= pending_ton)) {
+            ton_liquidity += pending_ton;
+            pending_ton = 0;
+            is_initialized = 0;
+            save_data(
+                is_initialized, curve_address, lp_locker_address, dex_router_address,
+                token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address,
+                expected_lp_wallet, expected_pton_wallet, pending_ton, pending_tokens, jetton_wallet_code
+            );
+        }
+        return ();
+    }
+
+    ;; Actual pTON v2 unwrap/refund, observed executing captured bytecode.
+    if (op == op::ton_transfer) {
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,expected_pton_wallet));
+        throw_unless(ERROR_INVALID_STATE,(~ cell_null?(flight_cell())) & (query_id == flight_id));
+        int amount = in_msg_body~load_coins();slice origin = in_msg_body~load_msg_addr();
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(origin,dex_router_address));
+        throw_unless(ERROR_INVALID_STATE,(amount > 0) & (amount <= pending_ton) & (msg_value >= amount));
+        ifnot(cell_null?(reconciliation_cell())) { ifnot(consume_native_receipt(in_msg_full)) { return (); } }
+        ton_liquidity += amount;pending_ton -= amount;
+        is_initialized = (pending_tokens > 0) | (pending_ton > 0);
+        save_data(is_initialized,curve_address,lp_locker_address,dex_router_address,token_minter_address,pton_minter_address,
+            ton_liquidity,tokens_liquidity,admin_address,expected_lp_wallet,expected_pton_wallet,pending_ton,pending_tokens,jetton_wallet_code);
+        record_refund(amount,0,pending_ton,pending_tokens);
         return ();
     }
 
@@ -189,20 +602,35 @@ const int op::abort_migration        = 0x414e4c38;
     if (op == op::execute_dex_provision) {
         throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, curve_address) | equal_slices(sender_address, admin_address));
         throw_if(ERROR_ALREADY_INITIALIZED, is_initialized == 1);
-        throw_unless(ERROR_INSUFFICIENT_FUNDS, ton_liquidity > 0);
-        throw_unless(ERROR_INSUFFICIENT_FUNDS, tokens_liquidity > 0);
-        throw_if(ERROR_NOT_INITIALIZED, my_token_wallet.preload_uint(2) == 0);
-
-        ;; Anti-Deficit Gas Budget Guard: Require >= 0.50 TON attached gas to cover all 3 legs
-        throw_unless(ERROR_INSUFFICIENT_GAS, msg_value >= 500000000);
+        throw_unless(ERROR_INVALID_STATE,(pending_ton == 0) & (pending_tokens == 0));
+        (_,int used) = used_ids.udict_get?(64,query_id);
+        throw_if(ERROR_ALREADY_INITIALIZED,used);
+        throw_unless(ERROR_NO_TON_LIQUIDITY, ton_liquidity > 0);
+        throw_unless(ERROR_NO_TOKEN_LIQUIDITY, tokens_liquidity > 0);
+        throw_unless(ERROR_INSUFFICIENT_GAS, msg_value >= MIN_PROVISION_GAS);
+        if(cell_hash(jetton_wallet_code) == SETTLEMENT_WALLET_CODE_HASH) {
+            (int stage,int opened,_,int ot,int oj,_,_,_) = load_reconciliation();
+            throw_unless(ERROR_INVALID_STATE,(stage == 2) & opened & (query_id == flight_id) & (ot == ton_liquidity) & (oj == tokens_liquidity));
+        }
 
         slice router_token_wallet = in_msg_body~load_msg_addr();
         slice lp_token_wallet     = in_msg_body~load_msg_addr();
         slice pton_wallet         = in_msg_body~load_msg_addr();
 
-        throw_if(ERROR_INVALID_ADDRESS, router_token_wallet.preload_uint(2) == 0);
-        throw_if(ERROR_INVALID_ADDRESS, lp_token_wallet.preload_uint(2) == 0);
-        throw_if(ERROR_INVALID_ADDRESS, pton_wallet.preload_uint(2) == 0);
+        ;; Authenticate all 3 DEX/LP wallet addresses:
+        ;; 1. router_token_wallet MUST equal the deterministically derived TEP-74 Jetton wallet of dex_router_address
+        throw_unless(ERROR_INVALID_ADDRESS, equal_slices(router_token_wallet, dex_router_token_wallet));
+        ;; 2. lp_token_wallet and pton_wallet MUST match the pre-authenticated wallet addresses in storage
+        throw_unless(ERROR_INVALID_ADDRESS, (expected_lp_wallet.preload_uint(2) == 2) & (expected_pton_wallet.preload_uint(2) == 2));
+        throw_unless(ERROR_INVALID_ADDRESS, equal_slices(lp_token_wallet, expected_lp_wallet));
+        throw_unless(ERROR_INVALID_ADDRESS, equal_slices(pton_wallet, expected_pton_wallet));
+        throw_if(ERROR_INVALID_ADDRESS,
+            equal_slices(lp_token_wallet, pton_wallet) |
+            equal_slices(lp_token_wallet, my_jetton_wallet) |
+            equal_slices(lp_token_wallet, dex_router_token_wallet) |
+            equal_slices(pton_wallet, my_jetton_wallet) |
+            equal_slices(pton_wallet, dex_router_token_wallet)
+        );
 
         ;; Step A: Configure LP Locker with verified LP token wallet
         var set_lp_msg = begin_cell()
@@ -217,43 +645,45 @@ const int op::abort_migration        = 0x414e4c38;
 
         ;; Step B: Construct exact STON.fi v2.1 cross_provide_lp_body
         ;; cross_provide_lp_body:^[min_lp_out:Coins to_address:MsgAddress both_positive:uint1 fwd_amount:Coins custom_payload:(Maybe ^Cell)]
-        cell cross_body = begin_cell()
+        builder cross_builder = begin_cell()
             .store_coins(1)                     ;; min_lp_out: 1 unit minimum
             .store_slice(lp_locker_address)     ;; to_address: LP Locker receives all minted LP tokens!
             .store_uint(1, 1)                   ;; both_positive: true (both Token and TON > 0)
-            .store_coins(20000000)              ;; fwd_amount: 0.02 TON
-            .store_uint(0, 1)                   ;; null custom_payload
-            .end_cell();
+            .store_coins(20000000);             ;; existing fwd_amount: 0.02 TON
+        if(cell_hash(jetton_wallet_code) == SETTLEMENT_WALLET_CODE_HASH) {
+            cross_builder = cross_builder.store_uint(1,1).store_ref(begin_cell().store_uint(0x414c5003,32).store_uint(query_id,64).end_cell());
+        } else { cross_builder = cross_builder.store_uint(0,1); }
+        cell cross_body = cross_builder.end_cell();
 
         ;; Step C: Construct DexPayload for Token Deposit
         ;; provide_lp#37c096df token_wallet1:MsgAddress refund_address:MsgAddress excesses_address:MsgAddress tx_deadline:uint64 cross_provide_lp_body:^Cell
         cell token_dex_payload = begin_cell()
             .store_uint(op::provide_lp, 32)
-            .store_slice(pton_wallet)           ;; token_wallet1 (the paired pTON wallet)
-            .store_slice(curve_address)         ;; refund_address
-            .store_slice(curve_address)         ;; excesses_address
+            .store_slice(pton_wallet)           ;; token_wallet1 (the paired STON.fi Router pTON wallet)
+            .store_slice(my_address())          ;; refund_address: Migration Router for structured recovery
+            .store_slice(my_address())          ;; excesses_address: Migration Router
             .store_uint(now() + 1800, 64)       ;; tx_deadline: 30 minutes
             .store_ref(cross_body)
             .end_cell();
 
-        ;; Outbound Jetton Transfer of 200M Tokens to STON.fi Router Token Wallet
-        ;; TEP-74 Strict Compliance: Send to OUR Jetton wallet (my_token_wallet), NOT router_token_wallet!
+        ;; Outbound TEP-74 Jetton Transfer of 200M Tokens:
+        ;; Sent to my_jetton_wallet (Migration Router's own Jetton Wallet), with destination = dex_router_address!
         var jetton_msg_body = begin_cell()
             .store_uint(op::transfer(), 32)
             .store_uint(query_id, 64)
             .store_coins(tokens_liquidity)
             .store_slice(dex_router_address)    ;; destination: STON.fi DEX Router
-            .store_slice(curve_address)         ;; response_destination: Curve
+            .store_slice(my_address())          ;; response_destination: Migration Router
             .store_uint(0, 1)                   ;; null custom payload
-            .store_coins(100000000)             ;; forward 0.10 TON with forward payload
+            .store_coins(150000000)             ;; 0.15 TON: captured v2.2 Router refunds the former 0.10 TON leg
             .store_uint(1, 1)                   ;; forward payload in ref cell
             .store_ref(token_dex_payload)
             .end_cell();
 
         var jetton_msg = begin_cell()
             .store_uint(0x18, 6)
-            .store_slice(my_token_wallet)       ;; TEP-74: sender == owner, avoids exit 705!
-            .store_coins(200000000)             ;; 0.20 TON attached gas
+            .store_slice(my_jetton_wallet)      ;; TEP-74 sender's own Jetton wallet (NOT router_token_wallet!)
+            .store_coins(200000000)             ;; 0.20 TON funds 0.15 TON forward + wallet/deployment gas
             .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
             .store_ref(jetton_msg_body);
         send_raw_message(jetton_msg.end_cell(), 1);
@@ -261,10 +691,10 @@ const int op::abort_migration        = 0x414e4c38;
         ;; Step D: Outbound pTON ton_transfer#01f3835d to pTON Wallet / Vault
         cell pton_dex_payload = begin_cell()
             .store_uint(op::provide_lp, 32)
-            .store_slice(router_token_wallet)   ;; token_wallet1 (the paired Token wallet)
-            .store_slice(curve_address)         ;; refund_address
-            .store_slice(curve_address)         ;; excesses_address
-            .store_uint(now() + 1800, 64)       ;; tx_deadline: 30 minutes
+            .store_slice(dex_router_token_wallet) ;; token_wallet1 (the paired STON.fi Router ANLGRAM Jetton wallet)
+            .store_slice(my_address())            ;; refund_address: Migration Router
+            .store_slice(my_address())            ;; excesses_address: Migration Router
+            .store_uint(now() + 1800, 64)         ;; tx_deadline: 30 minutes
             .store_ref(cross_body)
             .end_cell();
 
@@ -272,7 +702,7 @@ const int op::abort_migration        = 0x414e4c38;
             .store_uint(op::ton_transfer, 32)   ;; 0x01f3835d
             .store_uint(query_id, 64)
             .store_coins(ton_liquidity)
-            .store_slice(curve_address)         ;; refund_address
+            .store_slice(my_address())          ;; refund_address: Migration Router
             .store_uint(1, 1)                   ;; forward_payload as reference
             .store_ref(pton_dex_payload)
             .end_cell();
@@ -285,25 +715,67 @@ const int op::abort_migration        = 0x414e4c38;
             .store_ref(ton_msg_body);
         send_raw_message(ton_msg.end_cell(), 1);
 
+        ;; Preserve dispatched amounts in pending_ton / pending_tokens for bounce/refund recovery
+        pending_ton += ton_liquidity;
+        pending_tokens += tokens_liquidity;
         ton_liquidity = 0;
         tokens_liquidity = 0;
-        is_initialized = 1;
-        save_data(is_initialized, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address, my_token_wallet, is_failed);
+        save_data(
+            1, curve_address, lp_locker_address, dex_router_address,
+            token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address,
+            expected_lp_wallet, expected_pton_wallet, pending_ton, pending_tokens, jetton_wallet_code
+        );
+        used_ids~udict_set_builder(64,query_id,begin_cell().store_uint(1,1));
+        slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
+        save_flight(query_id,0,0,none,none,used_ids);
+        (int stage,int opened,int epoch,int ot,int oj,_,_,int cumulative) = load_reconciliation();
+        if(opened) { save_reconciliation(3,opened,epoch,ot,oj,0,0,cumulative); }
         return ();
     }
 
     ;; ------------------------------------------------------------------------
-    ;; 4. OP::ABORT_MIGRATION (Emergency / Failure Refund to Curve)
+    ;; 4. OP::ABORT_MIGRATION (Emergency / Failure Refund of TON + Jettons to Curve)
     ;; ------------------------------------------------------------------------
     if (op == op::abort_migration) {
         throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, curve_address) | equal_slices(sender_address, admin_address));
+        throw_unless(ERROR_INVALID_STATE,(pending_ton == 0) & (pending_tokens == 0));
+        throw_unless(ERROR_NOTHING_TO_ABORT, (ton_liquidity > 0) | (tokens_liquidity > 0));
+        (_,int used) = used_ids.udict_get?(64,query_id);throw_if(ERROR_ALREADY_INITIALIZED,used);
+        int returning_ton = ton_liquidity;int returning_tokens = tokens_liquidity;
+        int required_gas = (tokens_liquidity > 0 ? MIN_ABORT_TOKEN_GAS : 0) + (ton_liquidity > 0 ? 20000000 : 0);
+        throw_unless(ERROR_INSUFFICIENT_GAS,msg_value >= required_gas);
+        throw_unless(ERROR_INVALID_STATE,my_balance - msg_value >= returning_ton);
+        raw_reserve(my_balance - msg_value - returning_ton,0);
 
-        ;; 1. Refund TON back to Curve
+        if (tokens_liquidity > 0) {
+            throw_unless(ERROR_INSUFFICIENT_GAS, msg_value >= MIN_ABORT_TOKEN_GAS);
+
+            var ret_jetton_body = begin_cell()
+                .store_uint(op::transfer(), 32)
+                .store_uint(query_id, 64)
+                .store_coins(tokens_liquidity)
+                .store_slice(curve_address)     ;; destination: Bonding Curve
+                .store_slice(curve_address)     ;; response_destination: Bonding Curve
+                .store_uint(0, 1)               ;; null custom_payload
+                .store_coins(20000000)          ;; 0.02 TON forward amount so Curve receives transfer_notification
+                .store_uint(0, 1)               ;; inline empty forward_payload
+                .end_cell();
+
+            var ret_jetton_msg = begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(my_jetton_wallet)
+                .store_coins(60000000)          ;; 0.06 TON attached gas
+                .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .store_ref(ret_jetton_body);
+            send_raw_message(ret_jetton_msg.end_cell(), 1);
+            tokens_liquidity = 0;
+        }
+
         if (ton_liquidity > 0) {
             var ret_ton = begin_cell()
                 .store_uint(0x18, 6)
                 .store_slice(curve_address)
-                .store_coins(ton_liquidity)
+                .store_coins(ton_liquidity + 10000000) ;; caller-funded bounce/execution gas; principal unchanged
                 .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
                 .store_uint(op::deposit_ton_liquidity, 32)
                 .store_uint(query_id, 64)
@@ -312,48 +784,68 @@ const int op::abort_migration        = 0x414e4c38;
             ton_liquidity = 0;
         }
 
-        ;; 2. Refund Jettons back to Curve (if held in my_token_wallet)
-        if ((tokens_liquidity > 0) & (my_token_wallet.preload_uint(2) != 0)) {
-            var ret_jetton_body = begin_cell()
-                .store_uint(op::transfer(), 32)
-                .store_uint(query_id, 64)
-                .store_coins(tokens_liquidity)
-                .store_slice(curve_address)     ;; destination: Curve
-                .store_slice(curve_address)     ;; response_destination: Curve
-                .store_uint(0, 1)               ;; null custom payload
-                .store_coins(10000000)          ;; 0.01 TON forward
-                .store_uint(0, 1)               ;; empty forward payload
-                .end_cell();
-
-            var ret_jetton_msg = begin_cell()
-                .store_uint(0x18, 6)
-                .store_slice(my_token_wallet)
-                .store_coins(50000000)          ;; 0.05 TON attached gas
-                .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-                .store_ref(ret_jetton_body);
-            send_raw_message(ret_jetton_msg.end_cell(), 1);
-            tokens_liquidity = 0;
-        }
-
-        is_failed = 1;
-        is_initialized = 0;
-        save_data(is_initialized, curve_address, lp_locker_address, dex_router_address, token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address, my_token_wallet, is_failed);
+        ;; Dispatch is not delivery. Keep return obligations until authenticated
+        ;; custody/receipts prove completion or a correlated bounce restores it.
+        pending_ton = returning_ton;pending_tokens = returning_tokens;
+        is_initialized = (pending_ton > 0) | (pending_tokens > 0);
+        save_data(
+            is_initialized, curve_address, lp_locker_address, dex_router_address,
+            token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address,
+            expected_lp_wallet, expected_pton_wallet, pending_ton, pending_tokens, jetton_wallet_code
+        );
+        used_ids~udict_set_builder(64,query_id,begin_cell().store_uint(1,1));
+        slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
+        save_flight(query_id,0,5,none,none,used_ids);
+        ifnot(cell_null?(reconciliation_cell())) { save_reconciliation(6,0,0,returning_ton,returning_tokens,0,0,0); }
         return ();
     }
 
     throw(ERROR_UNKNOWN_OP);
 }
 
+(int,int,int,slice,slice) get_migration_recovery() method_id {
+    (int id,int nonce,int phase,slice pool,slice account,_) = load_flight();
+    return (id,nonce,phase,pool,account);
+}
+(int,int,int,int,int,int,int,int) get_migration_settlement() method_id { return load_reconciliation(); }
+(int,int,int,int,int,int,int,int) get_migration_operation(int id) method_id {
+    (_,_,_,_,_,cell used) = load_flight();
+    (slice entry,int found) = used.udict_get?(64,id);
+    ifnot(found) { return (0,0,0,0,0,0,0,0); }
+    entry~load_uint(1);ifnot(entry.slice_refs()) { return (0,0,0,0,0,0,0,0); }
+    slice s = entry~load_ref().begin_parse();int stage = s~load_uint(8);int opened = s~load_uint(1);int epoch = s~load_uint(64);
+    int ot = s~load_coins();int oj = s~load_coins();int rt = s~load_coins();int rj = s~load_coins();int cumulative = s~load_coins();
+    if(s.slice_bits()) { s~load_dict(); } if(s.slice_bits()) { s~load_dict(); } s.end_parse();
+    return (stage,opened,epoch,ot,oj,rt,rj,cumulative);
+}
+(slice,slice,int,int) get_migration_lp_receipt() method_id {
+    cell lp = lp_evidence();if(cell_null?(lp)) { slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();return(none,none,0,0); }
+    slice s = lp.begin_parse();slice pool = s~load_msg_addr();slice wallet = s~load_msg_addr();int amount = s~load_coins();return(pool,wallet,amount,0);
+}
+
 ;; Get Methods
 (int, slice, slice, slice, slice, slice, int, int) get_migration_data() method_id {
-    (int is_initialized, slice curve_address, slice lp_locker_address, slice dex_router_address, slice token_minter_address, slice pton_minter_address, int ton_liquidity, int tokens_liquidity, _, _, _) = load_data();
+    (
+        int is_initialized, slice curve_address, slice lp_locker_address, slice dex_router_address,
+        slice token_minter_address, slice pton_minter_address, int ton_liquidity, int tokens_liquidity, _,
+        _, _, _, _, _
+    ) = load_data();
     return (
         is_initialized, curve_address, lp_locker_address, dex_router_address,
         token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity
     );
 }
 
-(slice, int) get_wallet_and_failure_status() method_id {
-    (_, _, _, _, _, _, _, _, _, slice my_token_wallet, int is_failed) = load_data();
-    return (my_token_wallet, is_failed);
+(int, slice, slice, slice, int, int, slice, slice) get_migration_extended_data() method_id {
+    (
+        int is_initialized, _, _, slice dex_router_address,
+        slice token_minter_address, _, _, _, slice admin_address,
+        slice expected_lp_wallet, slice expected_pton_wallet, int pending_ton, int pending_tokens, cell jetton_wallet_code
+    ) = load_data();
+    slice my_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), token_minter_address, jetton_wallet_code);
+    slice dex_router_token_wallet = calculate_user_jetton_wallet_address(dex_router_address, token_minter_address, jetton_wallet_code);
+    return (
+        is_initialized, admin_address, expected_lp_wallet, expected_pton_wallet,
+        pending_ton, pending_tokens, my_jetton_wallet, dex_router_token_wallet
+    );
 }
