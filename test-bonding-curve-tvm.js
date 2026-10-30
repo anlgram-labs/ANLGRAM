@@ -1661,13 +1661,21 @@ async function runTests() {
       body: new CellMessage(beginCell().storeUint(0x414e4c38, 32).storeUint(7, 64).endCell())
     })
   });
+  // This single-contract executor does not apply preceding transfers to C7
+  // balances. Preserve an insolvent negative case, then supply the actually
+  // recovered principal explicitly. Sandbox tests verify full balance flow.
+  const insolventAbortRes = await migratorContract.sendInternalMessage(authAbortMsg);
+  assert(insolventAbortRes.type === 'failed' && insolventAbortRes.exit_code === 402, 'Abort cannot pay principal from an unfunded synthetic executor balance');
+  migratorContract.setBalance(new BN('500010000000'));
   const authAbortRes = await migratorContract.sendInternalMessage(authAbortMsg);
   assert(authAbortRes.type === 'success', 'Authorized abort_migration executes successfully');
-  assert(authAbortRes.actionList && authAbortRes.actionList.length === 2, 'Emits 2 outbound refund messages: token refund via my_jetton_wallet and TON refund to Curve');
+  assert(authAbortRes.actionList && authAbortRes.actionList.filter(a => a.type === 'send_msg').length === 2 && authAbortRes.actionList.some(a => a.type === 'reserve_currency'), 'Dispatches 2 refund messages and reserves prior non-principal balance');
 
   const abortFinal = await migratorContract.invokeGetMethod('get_migration_data', []);
-  assert(abortFinal.result[6].toString() === '0', 'ton_liquidity reset to 0 following successful abort refund');
-  assert(abortFinal.result[7].toString() === '0', 'tokens_liquidity reset to 0 following successful abort refund');
+  assert(abortFinal.result[6].toString() === '0', 'ton_liquidity moves out of available funds following abort dispatch');
+  assert(abortFinal.result[7].toString() === '0', 'tokens_liquidity moves out of available funds following abort dispatch');
+  const abortPending = await migratorContract.invokeGetMethod('get_migration_extended_data', []);
+  assert(abortPending.result[4].toString() === (500n * ONE_TON).toString() && abortPending.result[5].toString() === dexTokenDeposit.toString(), 'Both abort obligations remain pending: dispatch is not authenticated return delivery');
 
   // 4.9 Storage Serialization Integrity Verification
   // Missing admin_address (truncated storage) MUST fail on load

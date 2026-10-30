@@ -253,6 +253,17 @@ cell flight_cell() inline {
                 );
                 return ();
             }
+            ;; Aborted native handoff can itself bounce. Keep a distinct
+            ;; correlated operation and restore only principal actually returned.
+            if ((recovery_phase == 5) & equal_slices(sender_address,curve_address) & (orig_op == op::deposit_ton_liquidity)) {
+                int amount = body_slice~load_coins();
+                if ((amount <= 0) | (amount > pending_ton) | (msg_value < amount)) { return (); }
+                ton_liquidity += amount;pending_ton -= amount;
+                save_data((pending_ton > 0) | (pending_tokens > 0),curve_address,lp_locker_address,dex_router_address,
+                    token_minter_address,pton_minter_address,ton_liquidity,tokens_liquidity,admin_address,
+                    expected_lp_wallet,expected_pton_wallet,pending_ton,pending_tokens,jetton_wallet_code);
+                return ();
+            }
         }
         return ();
     }
@@ -265,6 +276,7 @@ cell flight_cell() inline {
     if (op == op::recover_lp_account) {
         throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,admin_address) | equal_slices(sender_address,curve_address));
         throw_unless(ERROR_INVALID_STATE,(pending_ton > 0) | (pending_tokens > 0));
+        throw_if(ERROR_INVALID_STATE,recovery_phase == 5); ;; handoff receipts, not a DEX-account refund
         throw_unless(ERROR_INVALID_STATE,~ cell_null?(flight_cell()));
         throw_unless(ERROR_INSUFFICIENT_GAS,msg_value >= 900000000); ;; 0.8 SDK refund + query chain budget
         in_msg_body.end_parse();
@@ -579,6 +591,12 @@ cell flight_cell() inline {
         throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, curve_address) | equal_slices(sender_address, admin_address));
         throw_unless(ERROR_INVALID_STATE,(pending_ton == 0) & (pending_tokens == 0));
         throw_unless(ERROR_NOTHING_TO_ABORT, (ton_liquidity > 0) | (tokens_liquidity > 0));
+        (_,int used) = used_ids.udict_get?(64,query_id);throw_if(ERROR_ALREADY_INITIALIZED,used);
+        int returning_ton = ton_liquidity;int returning_tokens = tokens_liquidity;
+        int required_gas = (tokens_liquidity > 0 ? MIN_ABORT_TOKEN_GAS : 0) + (ton_liquidity > 0 ? 20000000 : 0);
+        throw_unless(ERROR_INSUFFICIENT_GAS,msg_value >= required_gas);
+        throw_unless(ERROR_INVALID_STATE,my_balance - msg_value >= returning_ton);
+        raw_reserve(my_balance - msg_value - returning_ton,0);
 
         if (tokens_liquidity > 0) {
             throw_unless(ERROR_INSUFFICIENT_GAS, msg_value >= MIN_ABORT_TOKEN_GAS);
@@ -608,7 +626,7 @@ cell flight_cell() inline {
             var ret_ton = begin_cell()
                 .store_uint(0x18, 6)
                 .store_slice(curve_address)
-                .store_coins(ton_liquidity)
+                .store_coins(ton_liquidity + 10000000) ;; caller-funded bounce/execution gas; principal unchanged
                 .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
                 .store_uint(op::deposit_ton_liquidity, 32)
                 .store_uint(query_id, 64)
@@ -617,12 +635,18 @@ cell flight_cell() inline {
             ton_liquidity = 0;
         }
 
-        is_initialized = 0;
+        ;; Dispatch is not delivery. Keep return obligations until authenticated
+        ;; custody/receipts prove completion or a correlated bounce restores it.
+        pending_ton = returning_ton;pending_tokens = returning_tokens;
+        is_initialized = (pending_ton > 0) | (pending_tokens > 0);
         save_data(
             is_initialized, curve_address, lp_locker_address, dex_router_address,
             token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address,
             expected_lp_wallet, expected_pton_wallet, pending_ton, pending_tokens, jetton_wallet_code
         );
+        used_ids~udict_set_builder(64,query_id,begin_cell().store_uint(1,1));
+        slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
+        save_flight(query_id,0,5,none,none,used_ids);
         return ();
     }
 
