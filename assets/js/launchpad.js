@@ -2,15 +2,14 @@
  * ANLGRAM Launchpad — Factory Integration
  * Version: 1.0.0
  *
- * Routes token creation through the ANLGRAM Factory contract.
- * ONE transaction → Factory deploys Jetton, mints supply,
- * sends platform fee to treasury, refunds excess.
+ * Factory submission remains blocked pending verified routing and approval.
+ * Direct creation delegates to the canonical creator and its safeguards.
  *
  * Fee model (all BigInt, no floating point):
- *   Blockchain execution : ~0.064 TON
- *   ANLGRAM service (70%): ~0.0448 TON
- *   Estimated total      : ~0.1088 TON
- *   User sends (buffer)  :  0.120  TON
+ *   Creation execution  : 0.20 TON
+ *   Mandatory Donation  : 0.02 TON (10% of execution)
+ *   Transaction total   : 0.22 TON before wallet network fees
+ * See donation-config.js for the preserved main-branch creation allocation.
  */
 
 (function () {
@@ -25,12 +24,6 @@
 
     TREASURY: 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd',
 
-    SERVICE_RATE_NUMERATOR:   70n,
-    SERVICE_RATE_DENOMINATOR: 100n,
-
-    BLOCKCHAIN_COST_NANO: 64_000_000n,  // 0.064 TON
-    BUFFER_RATE: 10n,                   // +10% safety buffer
-
     NETWORK: 'testnet',  // change to 'mainnet' when ready
 
     CLONE_SOURCE: '0:30eb766a2e69f0440efb3d6d3b0962049e0c20f9e222cac6aa67c216a542f49c',
@@ -43,25 +36,13 @@
   // ══════════════════════════════════════════════════════════
 
   function calculateFees() {
-    const blockchainCost = ANLGRAM_CONFIG.BLOCKCHAIN_COST_NANO;
-    const platformFee    = blockchainCost
-                           * ANLGRAM_CONFIG.SERVICE_RATE_NUMERATOR
-                           / ANLGRAM_CONFIG.SERVICE_RATE_DENOMINATOR;
-    const estimatedTotal = blockchainCost + platformFee;
-    const withBuffer     = estimatedTotal + (estimatedTotal * ANLGRAM_CONFIG.BUFFER_RATE / 100n);
-
-    return {
-      blockchainCostNano: blockchainCost,
-      platformFeeNano:    platformFee,
-      estimatedTotalNano: estimatedTotal,
-      sendAmountNano:     withBuffer,
-      blockchainCostTON:  nanoToTON(blockchainCost),
-      platformFeeTON:     nanoToTON(platformFee),
-      estimatedTotalTON:  nanoToTON(estimatedTotal),
-      sendAmountTON:      nanoToTON(withBuffer),
-    };
+    const d = window.ANLGRAM_DONATION_CONFIG;
+    if (!d || d.DONATION_AMOUNT_NANO !== 20000000n || d.BASE_EXECUTION_NANO !== 200000000n) throw new Error('Mandatory donation configuration unavailable.');
+    return { blockchainCostNano: d.BASE_EXECUTION_NANO, platformFeeNano: d.DONATION_AMOUNT_NANO,
+      estimatedTotalNano: d.TOTAL_TRANSACTION_NANO, sendAmountNano: d.TOTAL_TRANSACTION_NANO,
+      blockchainCostTON: d.BASE_EXECUTION_TON, platformFeeTON: d.DONATION_AMOUNT_TON,
+      estimatedTotalTON: d.TOTAL_TRANSACTION_TON, sendAmountTON: d.TOTAL_TRANSACTION_TON };
   }
-
   function nanoToTON(nano) {
     const whole = nano / 1_000_000_000n;
     const frac  = nano % 1_000_000_000n;
@@ -120,7 +101,7 @@
     if (!quote.factoryAddress) {
       throw new Error(
         'ANLGRAM Factory not yet deployed on ' + quote.network.toUpperCase() + '. ' +
-        'Falling back to direct deploy (no platform fee collected).'
+        'Use the canonical creator with its disclosed Mandatory Donation (10%).'
       );
     }
 
@@ -187,11 +168,12 @@
     try {
       // If factory not deployed yet → fallback to direct deploy
       if (!quote.factoryAddress) {
-        showProgress(btn, 1, 'Factory not deployed — direct deploy (no fee)...');
+        showProgress(btn, 1, 'Preparing creation with disclosed Mandatory Donation (10%)...');
         await directDeploy(btn, origHTML, tc, name, symbol, desc, logo);
         return;
       }
 
+      throw new Error('Factory creation requires verified donation routing and explicit production approval. No wallet request was sent.');
       showProgress(btn, 1, 'Building factory transaction...');
       const formData = {
         name, symbol,
@@ -317,7 +299,7 @@
       <span style="font-family:var(--font-mono);color:#fff;">~${quote.blockchainCostTON} TON</span>
     </div>
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-      <span style="color:#94a3b8;">ANLGRAM platform service</span>
+      <span style="color:#94a3b8;">Mandatory Donation (10%)</span>
       <span style="font-family:var(--font-mono);color:#fff;">~${quote.platformFeeTON} TON</span>
     </div>
     <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;">
@@ -651,15 +633,15 @@
     card.id = 'anlgram-fee-breakdown';
     card.innerHTML = `
 <div style="background:rgba(0,240,255,0.04);border:1px solid rgba(0,240,255,0.15);border-radius:12px;padding:16px 20px;margin-bottom:16px;">
-  <div style="color:var(--accent-cyan);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Token Creation Cost</div>
+  <div style="color:var(--accent-cyan);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Token Creation Cost &amp; Donation</div>
   <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;">
     <span style="color:#94a3b8;">Blockchain execution</span>
     <span style="font-family:var(--font-mono);">~${fees.blockchainCostTON} TON</span>
   </div>
   <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;align-items:center;">
     <span style="color:#94a3b8;display:flex;align-items:center;gap:5px;">
-      ANLGRAM platform service
-      <span title="ANLGRAM's platform service covers launchpad operations and token creation infrastructure."
+      Mandatory Donation (10%)
+      <span title="Mandatory 0.02 TON donation on the 0.20 TON creation execution base."
         style="width:15px;height:15px;border-radius:50%;background:rgba(0,240,255,0.15);border:1px solid rgba(0,240,255,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:var(--accent-cyan);cursor:help;">ℹ</span>
     </span>
     <span style="font-family:var(--font-mono);">~${fees.platformFeeTON} TON</span>

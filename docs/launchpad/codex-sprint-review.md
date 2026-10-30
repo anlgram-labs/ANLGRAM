@@ -1,5 +1,194 @@
 # MemeLabs isolated sprint: review notes
 
+## 2026-10-29 — refund settlement and preserved creation donation
+
+Continued from `64afb2a`, preserving all earlier commits. Financial correction:
+`95c2eac` (`fix(curve): fund rejected-sell refunds and preserve correlated claims`).
+The latest user authorization permits protocol extensions and pushing this
+development branch. Earlier sections saying such extensions require authorization
+are historical: permission is now granted, but implementation and verification
+of those extensions remain incomplete. Production remains blocked.
+
+### New demonstrated financial defect and correction
+
+The full Sandbox buy → malformed sell → immediate refund reproduced **709 in
+the Curve's sending Jetton wallet**. A sell notification supplied 50,000,000
+nanoTON; the Curve retained a 10,000,000 compute allowance and attached
+40,000,000 to the refund, but requested a 10,000,000 forwarding notification.
+The standard wallet requires strictly more than forwarding amount + two
+forwarding fees + 30,000,000. Thus the original refund could not settle, and
+its truncated bounce had no correlation record to restore a seller claim.
+
+All three immediate rejection paths (inactive Curve, insolvent quote, slippage
+or malformed payload) now use a 1 nanoTON notification, retain the existing
+incoming-gas threshold, and record query/amount/beneficiary before dispatch.
+The minimum existing attachment of 35,000,000 exceeds the observed standard
+wallet threshold with the small notification; actual 45/50/60 million
+notification cases settle in Sandbox. No extra mandatory gas payment is added.
+Refund excess returns through the authenticated recipient-wallet path already
+used by buys/claims. A raw reserve protects the prior Curve TON balance and
+the unused incoming gas returns to the seller.
+
+New tests check actual buyer and Curve Jetton ownership, exact sell payout and
+fee, malformed refund, minimum funding boundary, underfunded escrow/claim,
+and a real protocol first-hop bounce after an explicitly injected local wallet
+freeze. Replaying that consumed bounce cannot double-credit the claim; clearing
+the local fault permits exactly one recovery. Account freezes and restored
+states are labeled fault fixtures, not deployments or external-chain evidence.
+The downstream recipient-failure blocker described below remains unresolved.
+
+TVM assertions now inspect the refund opcode, recipient, amount and protected
+reserve action instead of assuming a refund emits only one action. The refund
+also emits reserve and gas-return actions. Assertions were not weakened to
+accept 709 or missing delivery. Sandbox time is fixed explicitly; otherwise a
+wall-clock second boundary intermittently charges one nanoTON of storage and
+invalidates a transaction-gas-only balance comparison. Expectations remain exact.
+
+### Source, bytecode and compatibility
+
+- Curve source SHA-256 (LF-normalized):
+  `338c9c275c4a72869aa6da25eb3315f6c9931de900fdfa50408060cb982f1cc5`.
+- New Curve code-cell hash:
+  `5a912e5b958474508238675dead24a308336d061832aa43c6b61d683ea322b5d`.
+- Serialized BOC SHA-256:
+  `53f45f36381a421fbc4e7fc1990846f6349a2f99feb7e6e125e93384a452821c`.
+- Compiler `@ton-community/func-js@0.11.0`, BOC 4,601 bytes;
+  `node minter-contract/compile-bonding-curve.js --check` passes without writes.
+- No storage layout, message input interface, price formula, fee percentage,
+  supply, graduation threshold or liquidity allocation changed. Existing
+  dictionary correlation encoding is reused for immediate refunds.
+- Outbound refund notification funding changes from 0.01 TON to 1 nanoTON;
+  response address is the Curve, which forwards authenticated excess to seller.
+- The new code changes every derived Curve StateInit address. Any dependent
+  minter/router/locker StateInit containing that address must be recomputed.
+  This is not an upgrade to existing deployed contracts. Nothing was deployed.
+- Source-compiled minter, locker and migration router hashes still match their
+  saved artifacts; their contract source and bytecode were unchanged this turn.
+
+### Donation restored selectively from main, locally verified
+
+The original allocation is 10% of the **0.20 TON creation execution base**:
+0.05 deploy + 0.15 mint + **0.02 Mandatory Donation = 0.22 TON**, before wallet
+network fees. This is not 10% of token supply, trade value or token sale fees.
+`assets/js/donation-config.js` preserves that model using integer nanoTON.
+Its configuration object is frozen and validates the designated mainnet address:
+`UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd`.
+The canonical creator independently checks recipient, amount, base, consent,
+network and final message before requesting a wallet signature. No testnet
+recipient has been approved, so this flow refuses testnet rather than sending
+to a mainnet-designated recipient there.
+
+Existing fee components retain their styling and now disclose **Mandatory
+Donation (10%)** and the full payment. No recipient address is added to visible
+normal UI. Wallet transaction disclosures remain intact. The actual generated
+three-message frontend batch is executed in local Sandbox: pinned minter
+deployment, 1B token mint to the creator, and one 20,000,000 nanoTON donation
+credit. A second identical frontend intent cannot request another payment.
+The production approval flag is changed only in the isolated VM test copy;
+the shipped creator remains disabled pending production approval.
+
+`lookupDonation` requires the exact signed wallet transaction, exactly one
+matching outgoing donation (source, destination, value, comment body), and its
+correlated recipient transaction with successful execution. Missing child,
+wrong hash/account/amount/body, bounce, duplicate debit, skipped or failed
+actions, emulation and unavailable evidence stay PENDING. The wizard cannot
+confirm creation from mint balances and wallet acceptance alone. This relies
+on the configured TonAPI provider, not a light-client inclusion proof; strict
+checks may remain pending for uninitialized recipient accounts. It never
+automatically retries or refunds a pending donation.
+API schema reference: https://github.com/tonkeeper/opentonapi/blob/master/api/openapi.yml.
+
+### Actual verification results — all local, zero real transactions
+
+| Suite / verification | Passed | Failed |
+| --- | ---: | ---: |
+| Saved-artifact TVM suite | 135 | 0 |
+| Independently source-compiled TVM suite | 135 | 0 |
+| Sandbox runtime (14 settlement, 19 LP fixtures, 1 wire reference, 16 donation) | 50 | 0 |
+| Activation flow TVM | 2 | 0 |
+| Financial regression TVM | 3 | 0 |
+| Curve mathematics, including 12,000 deterministic trade cycles | 46 | 0 |
+| Bootstrap preflight, authority and LP boundary TVM/unit suites | 14 | 0 |
+| Existing minter Mocha suite | 5 | 0 |
+| Mocked wallet outcomes / production gate / donation safeguards | 13 | 0 |
+| Wizard confirmation integration fixtures | 12 | 0 |
+| Exact transaction receipt fixtures | 11 | 0 |
+| Direct creator delegation | 4 | 0 |
+| Distribution pending safeguards | 30 | 0 |
+| Distribution wizard regression | 21 | 0 |
+| Vesting confirmation regression | 18 | 0 |
+| Worker proxy/security regression | 22 | 0 |
+| Existing wizard static regression | 50 | 0 |
+| Existing Labs integration static regression | 33 | 0 |
+
+Total: **604 passing checks**, including repeated source/artifact cases, not
+604 distinct blockchain scenarios. JavaScript syntax checks and `git diff
+--check` pass. Settlement-runtime dependency audit: zero vulnerabilities.
+The 19 LP cases are injected snapshot fixtures; the STON.fi wire test validates
+outgoing cells against official SDK reference cells, not an actual DEX pool.
+No Testnet/Mainnet verification, transaction, wallet signature or spend occurred.
+
+### Remaining critical work and publication decision
+
+1. A launchpad-specific wallet receipt protocol, persistent in-flight state and
+   gas/retry accounting are still needed for downstream recipient failure.
+   Standard wallet balance restoration alone does not authorize a Curve refund.
+2. The on-chain LP authentication handshake is not implemented. The read-only
+   verifier must not be substituted for contract-enforced pool/pair/code binding.
+   The privileged locker binding boundary test demonstrates the remaining risk.
+3. Full STON.fi pool creation/discovery, deposit execution, LP issuance, final
+   custody/locking and asynchronous failure reconciliation remain unverified.
+   No verified local external Router/Pool contract fixtures or trusted deployed
+   manifest have been integrated. No completed migration is claimed.
+4. Bootstrap/address dependency cycles and contract deployment validation remain
+   preflight blockers. Creation, trading and migration must not be enabled for
+   real funds by merging this branch or flipping a configuration flag.
+5. Mainnet stays BLOCKED. This turn implements the confirmed refund correction
+   and donation integration; it does not complete all requested protocol work.
+
+Fetched remote refs again before integration: `main=781e1db`,
+`feature/launchpad-engine=caf2c70`. No remote Antigravity commits changed during
+this turn. Main has donation/navigation/supervised-execution work that is not
+identical to the feature baseline. Overlaps include `memecoin-platform.html`,
+`assets/js/{anl-labs,launchpad,donation-config}.js`, the Curve source/artifact,
+launchpad tests and documentation. No blind merge or full-file replacement was
+performed. Original `E:\ANLGRAM` was not accessed or modified. Antigravity's
+uncommitted working state was not available for review from this isolated tree;
+remote refs cannot establish that state.
+
+The branch contains both financial changes and divergent frontend work. The
+Pages workflow publishes the entire repository root on main pushes; production
+compatibility cannot be established by these local tests. Use the authorized
+development-branch push and review proposal. **No main merge, website
+publication, contract deployment or real transaction is authorized by this
+report or was performed.**
+
+### Changed files and safe integration instructions
+
+- Financial commit: `minter-contract/contracts/anlgram-bonding-curve.fc`,
+  its `build/anlgram-bonding-curve.compiled.json`, `test-bonding-curve-tvm.js`,
+  `test-graduation-accounting-known-issues.js`,
+  `tests/settlement-runtime/settlement.test.js`.
+- Donation integration: `assets/js/donation-config.js`, `assets/js/launchpad.js`,
+  `assets/js/transaction-receipt.js`, `assets/js/anl-labs.js`,
+  `memecoin-platform.html`, `test-jetton-deploy-outcomes.js`,
+  `test-jetton-wizard-confirmation.js`, `tests/settlement-runtime/donation.test.js`,
+  runtime `package.json`, deterministic settlement test clock and this report.
+- Antigravity should first preserve its own modified/untracked files, then fetch
+  `codex/memelabs-sprint` into an isolated review branch. Compare common files;
+  never replace whole frontend files or assume main is older/correct by default.
+- Review `95c2eac` separately. Keep Curve source and generated artifact together,
+  rerun compiler `--check`, both TVM suites, financial and Sandbox suites.
+- Review donation configuration, HTML loader order/cache versions, canonical
+  batch, receipt module and wizard checks as one integration unit. Keep the
+  production gate false. Do not cherry-pick UI pricing without payment routing,
+  consent, transaction verification and duplicate-intent protection.
+- Re-fetch feature/main immediately before proposing actual integration and
+  resolve financial conflicts by demonstrated behavior, never automatic choice.
+- The previous seven Codex commits remain intact. The GitHub review/push result
+  will be reported with the exact remote commit; this document does not assert
+  a successful push or publication before those operations occur.
+
 ## Critical-flow follow-up — current verified scope
 
 Continued from `c5c026e` without changing contract code, bytecode, tokenomics,

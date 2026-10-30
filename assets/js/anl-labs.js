@@ -715,6 +715,11 @@
           : { status: 'PENDING' };
         wizardState.deployment.walletReceipt = receipt;
         if (receipt.status !== 'INCLUDED') continue;
+        const donationReceipt = typeof window.AnlgramTransactionReceipt.lookupDonation === 'function'
+          ? await window.AnlgramTransactionReceipt.lookupDonation(submission, String(tc?.account?.chain), labsFetchTonApi, window.TON_CORE, window.ANLGRAM_DONATION_CONFIG)
+          : { status: 'PENDING' };
+        wizardState.deployment.donationReceipt = donationReceipt;
+        if (donationReceipt.status !== 'INCLUDED') continue;
         const targetMinter = foundMinter;
         if (targetMinter) {
           const verifier = window.TokenVerificationEngine;

@@ -614,7 +614,7 @@
               </div>
               <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px; display:flex; justify-content:space-between; font-weight:700;">
                 <span style="color:#fff;">Total Estimated Cost:</span>
-                <span style="color:var(--labs-cyan); font-family:var(--font-mono); font-size:15px;">~0.20 TON</span>
+                <span style="color:var(--labs-cyan); font-family:var(--font-mono); font-size:15px;">0.22 TON (includes 0.02 TON Mandatory Donation, 10% of 0.20 TON)</span>
               </div>
             </div>
 
@@ -1199,13 +1199,13 @@
               <strong style="color:#fff;" id="deploy-confirm-token-supply">1,000,000,000</strong>
             </div>
             <div style="display:flex; justify-content:space-between; font-size:13px;">
-              <span style="color:var(--labs-text-muted);">Estimated Network Fee:</span>
-              <strong style="color:var(--labs-cyan);">~0.20 TON (0.05 deploy + 0.15 mint)</strong>
+              <span style="color:var(--labs-text-muted);">Creation payment before wallet fees:</span>
+              <strong style="color:var(--labs-cyan);">0.22 TON (0.05 deploy + 0.15 mint + 0.02 Mandatory Donation)</strong>
             </div>
           </div>
           <label style="display:flex; align-items:flex-start; gap:10px; font-size:12px; color:#fff; cursor:pointer; margin-bottom:16px;">
             <input type="checkbox" id="deploy-confirm-checkbox" style="margin-top:2px; accent-color:#00f0ff;"/>
-            <span>I review and authorize this smart contract deployment plan on <span id="deploy-confirm-network">TON Mainnet</span>.</span>
+            <span>I authorize creation on <span id="deploy-confirm-network">TON Mainnet</span>, including Mandatory Donation (10%): 0.02 TON on the 0.20 TON execution base. Total 0.22 TON before wallet network fees.</span>
           </label>
           <p style="font-size:12px; color:var(--labs-text-muted); line-height:1.4;">
             Your connected TON wallet (Tonkeeper / Telegram Wallet) will prompt you to review and sign the transaction.
@@ -1863,6 +1863,8 @@
   }
 
     async function deployJettonWeb3(event) {
+      // Production enablement requires an explicit reviewed source change.
+      const CREATION_MAINNET_APPROVED = false;
       const btn = event.currentTarget;
       const origHTML = btn.innerHTML;
       
@@ -1891,6 +1893,19 @@
           (window.location?.search?.includes('testnet') && walletChain !== '-3')) {
         alert('No se pudo verificar la red de la wallet. Comprueba la conexión antes de continuar.');
         return { submitted: false, reason: 'Wallet network could not be verified.' };
+      }
+      if (walletChain === '-239' && !CREATION_MAINNET_APPROVED) {
+        alert('Token creation is awaiting production approval. No wallet request was sent.');
+        return { submitted: false, reason: 'Token creation is awaiting production approval.' };
+      }
+      if (walletChain !== '-239') return { submitted: false, reason: 'No approved testnet donation recipient is configured.' };
+      const donation = window.ANLGRAM_DONATION_CONFIG;
+      if (!donation || donation.RECIPIENT_ADDRESS !== 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd' ||
+          donation.DONATION_AMOUNT_NANO !== 20000000n || donation.BASE_EXECUTION_NANO !== 200000000n) {
+        return { submitted: false, reason: 'Mandatory donation configuration could not be verified.' };
+      }
+      if (!document.getElementById('deploy-confirm-checkbox')?.checked) {
+        return { submitted: false, reason: 'Review and authorize the Mandatory Donation (10%) before signing.' };
       }
   
       const name = String(event.wizardInitiated
@@ -2052,6 +2067,10 @@
             .endCell();
         
         const mintPayloadBase64 = mintPayload.toBoc().toString('base64');
+        const donationMessage = donation.createMessage(window.TON_CORE, walletChain);
+        if (donationMessage.address !== 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd' || donationMessage.amount !== '20000000') {
+          throw new Error('Mandatory donation recipient or amount was changed.');
+        }
         
         // 5. Send Transaction request (Deploy + Mint bundled)
         const transaction = {
@@ -2068,7 +2087,8 @@
                     address: destAddressMint,
                     amount: toNano("0.15").toString(), // 0.15 TON for minting 1B tokens
                     payload: mintPayloadBase64
-                }
+                },
+                donationMessage
             ]
         };
   
@@ -2763,8 +2783,9 @@
 
 <script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
 <script src="assets/js/wallet-connect.js?v=2026.35"></script>
-<script src="assets/js/launchpad.js?v=1.0.0"></script>
-<script src="assets/js/transaction-receipt.js?v=1"></script>
-<script src="assets/js/anl-labs.js?v=2026.1"></script>
+<script src="assets/js/donation-config.js?v=2026.52"></script>
+<script src="assets/js/launchpad.js?v=2026.53"></script>
+<script src="assets/js/transaction-receipt.js?v=2026.53"></script>
+<script src="assets/js/anl-labs.js?v=2026.53"></script>
 </body>
 </html>

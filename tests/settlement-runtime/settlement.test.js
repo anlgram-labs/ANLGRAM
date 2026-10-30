@@ -21,6 +21,9 @@ const curveAddress = addr(2), master = addr(3);
 const supply = 1000000000000000000n;
 async function setup(curveCode, walletCode, existing = false, senderTokens = supply) {
   const chain = await Blockchain.create(); chain.verbosity = { print: false, blockchainLogs: false, vmLogs: 'none', debugLogs: false };
+  // Stable transaction time: wall-clock second changes otherwise introduce
+  // incidental storage fees into assertions about transaction gas funding.
+  chain.now = 1800000000;
   const buyer = await chain.treasury('buyer');
   const walletData = owner => beginCell().storeCoins(owner.equals(curveAddress) ? senderTokens : 0n).storeAddress(owner).storeAddress(master).storeRef(walletCode).endCell();
   const buyerWallet = contractAddress(0, { code: walletCode, data: walletData(buyer.address) });

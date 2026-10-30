@@ -21,7 +21,7 @@ function setup({ result, chain = '-239', report, balance = '1000000000000000000'
   const wizardState = { deployment: { status: 'idle', minterAddress: '', reviewedWallet: 'sender', reviewedChain: chain }, tokenDraft: { name: 'Example', symbol: 'EXM' } };
   const tc = { connected: true, account: { address: 'sender', chain } };
   const window = { tonConnectUI: tc, TON_CORE: { Address: { parse: x => ({ equals: y => x === y.value, value: x }) } },
-    AnlgramTransactionReceipt: { lookup: async () => ({ status: 'INCLUDED', scope: 'wallet_transaction_only' }) },
+    AnlgramTransactionReceipt: { lookup: async () => ({ status: 'INCLUDED', scope: 'wallet_transaction_only' }), lookupDonation: async () => ({ status: 'INCLUDED', scope: 'creation_donation_only' }) },
     deployJettonWeb3: async () => result,
     addEventListener: (type, fn) => { listeners[type] = fn; }, dispatchEvent() {},
     TokenVerificationEngine: { verifyToken: async address => { calls.push(address); return report; } } };
@@ -42,6 +42,12 @@ const validReport = { target: { network: 'TON Mainnet' }, claims: {
 (async () => {
   let passed = 0;
   async function check(name, run) { await run(); passed++; console.log(`PASS ${name}`); }
+  await check('unverified donation prevents confirmation even with matching minted balance', async () => {
+    const t = setup({ result: { submitted: true, destAddressMint: 'expected' }, report: validReport });
+    t.context.window.AnlgramTransactionReceipt.lookupDonation = async () => ({ status: 'PENDING' });
+    await t.context.window.labsExecuteDeployFromWizard();
+    assert.notStrictEqual(t.wizardState.deployment.status, 'confirmed'); assert.strictEqual(t.calls.length, 0);
+  });
   await check('failed wallet request does not start blockchain polling', async () => {
     const t = setup({ result: { submitted: false, reason: 'cancelled' } }); await t.context.window.labsExecuteDeployFromWizard();
     assert.strictEqual(t.wizardState.deployment.status, 'failed'); assert.strictEqual(t.calls.length, 0);
