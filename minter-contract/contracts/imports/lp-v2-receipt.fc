@@ -1,0 +1,12 @@
+;; Project locker observations, never foreign-wallet delivery attestations.
+() send_v2_observation(cell cfg,cell state,int previous,int q) impure inline {
+    (_,_,int expected,_,_,slice contributor,slice pool,slice wallet) = configuration(cfg);
+    slice s = state.begin_parse();int received = s~load_coins();int locked = s~load_coins();int free = s~load_coins();int pending = s~load_coins();
+    s~load_uint(1);s~load_uint(64);s~load_uint(64);int unlock = s~load_uint(64);
+    raw_reserve(max(previous,10000000),2);
+    cell body = begin_cell().store_uint(0x414c5635,32).store_uint(expected,64).store_uint(cur_lt(),64)
+        .store_coins(received).store_coins(locked).store_coins(free).store_coins(pending).store_uint(unlock,64)
+        .store_ref(begin_cell().store_slice(pool).store_slice(wallet).end_cell()).end_cell();
+    send_raw_message(begin_cell().store_uint(0x10,6).store_slice(contributor).store_coins(0)
+        .store_uint(1,107).store_ref(body).end_cell(),128 + 2);
+}

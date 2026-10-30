@@ -340,6 +340,28 @@ int consume_native_receipt(cell full_message) impure inline {
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
 
+    if(op == 0x414e4833) {
+        throw_unless(401,equal_slices(sender_address,curve_address));
+        throw_unless(409,(recovery_phase == 5) & (query_id == flight_id));
+        int original_ton = in_msg_body~load_coins();int original_tokens = in_msg_body~load_coins();
+        int confirmed_ton = in_msg_body~load_coins();int confirmed_tokens = in_msg_body~load_coins();in_msg_body.end_parse();
+        (int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) = load_reconciliation();
+        throw_unless(409,(original_ton == ot) & (original_tokens == oj));
+        cell seen = native_receipts();int key = cell_hash(begin_cell().store_uint(0x48414e32,32).end_cell());
+        (slice prior,int found) = seen.udict_get?(256,key);int last_ton = 0;int last_tokens = 0;
+        if(found) { last_ton = prior~load_coins();last_tokens = prior~load_coins(); }
+        throw_unless(409,(confirmed_ton >= last_ton) & (confirmed_ton <= ot) & (confirmed_tokens >= last_tokens) & (confirmed_tokens <= oj));
+        int dt = confirmed_ton - last_ton;int dj = confirmed_tokens - last_tokens;
+        throw_unless(409,(dt <= pending_ton) & (dj <= pending_tokens));
+        pending_ton -= dt;pending_tokens -= dj;
+        save_data((pending_ton > 0) | (pending_tokens > 0),curve_address,lp_locker_address,dex_router_address,
+            token_minter_address,pton_minter_address,ton_liquidity,tokens_liquidity,admin_address,
+            expected_lp_wallet,expected_pton_wallet,pending_ton,pending_tokens,jetton_wallet_code);
+        seen~udict_set_builder(256,key,begin_cell().store_coins(confirmed_ton).store_coins(confirmed_tokens));
+        save_reconciliation_with_receipts(((confirmed_ton == ot) & (confirmed_tokens == oj)) ? 8 : 6,opened,epoch,ot,oj,rt,rj,cumulative,seen,lp_evidence());
+        return ();
+    }
+
     if(op == op::finalize_migration) {
         throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,admin_address) | equal_slices(sender_address,curve_address));
         ;; LP_VERIFIED -> LOCKED -> FINALIZED requires independently reviewed
@@ -796,7 +818,7 @@ int consume_native_receipt(cell full_message) impure inline {
         used_ids~udict_set_builder(64,query_id,begin_cell().store_uint(1,1));
         slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
         save_flight(query_id,0,5,none,none,used_ids);
-        ifnot(cell_null?(reconciliation_cell())) { save_reconciliation(6,0,0,returning_ton,returning_tokens,0,0,0); }
+        if((cell_hash(jetton_wallet_code) == SETTLEMENT_WALLET_CODE_HASH) | (~ cell_null?(reconciliation_cell()))) { save_reconciliation(6,0,0,returning_ton,returning_tokens,0,0,0); }
         return ();
     }
 
@@ -848,4 +870,13 @@ int consume_native_receipt(cell full_message) impure inline {
         is_initialized, admin_address, expected_lp_wallet, expected_pton_wallet,
         pending_ton, pending_tokens, my_jetton_wallet, dex_router_token_wallet
     );
+}
+
+(int,int,int) get_curve_handoff_v2() method_id {
+    cell seen = native_receipts();int key = cell_hash(begin_cell().store_uint(0x48414e32,32).end_cell());
+    (slice prior,int found) = seen.udict_get?(256,key);
+    ifnot(found) { return (0,0,0); }
+    int ct = prior~load_coins();int cj = prior~load_coins();
+    (_,_,_,int ot,int oj,_,_,_) = load_reconciliation();
+    return (ct,cj,(ct == ot) & (cj == oj));
 }

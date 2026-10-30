@@ -55,6 +55,7 @@ cell account(int received,int locked,int free,int pending,int kind,int pq,int ne
     (slice pool,slice wallet) = stonfi_expected_destinations(router,w0,w1,profile);
     return(percent,duration,q,beneficiary,controller,contributor,pool,wallet);
 }
+#include "imports/lp-v2-receipt.fc";
 () recv_internal(int balance,int value,cell message,slice body) impure  {
     if(body.slice_empty?()) { return ();
     }
@@ -95,6 +96,11 @@ cell account(int received,int locked,int free,int pending,int kind,int pq,int ne
     }
     int op = body~load_uint(32);
     int q = body~load_uint(64);
+    if(op == 0x414c5634) {
+        throw_unless(401,equal_slices(sender,contributor) | equal_slices(sender,beneficiary) | equal_slices(sender,controller));
+        throw_unless(409,q == deposit_q);body.end_parse();throw_unless(407,value >= 20000000);
+        send_v2_observation(cfg,state,balance - value,q);return ();
+    }
     if(op == 0x7362d09c) {
         throw_unless(401,equal_slices(sender,wallet));
         throw_unless(409,q == deposit_q);
@@ -124,6 +130,7 @@ cell account(int received,int locked,int free,int pending,int kind,int pq,int ne
         }
         seen~udict_set_builder(256,hash,begin_cell().store_uint(1,1));
         save_vault(cfg,account(received,locked,free,pending,kind,pq,next,unlock),seen,requests);
+        send_v2_observation(cfg,account(received,locked,free,pending,kind,pq,next,unlock),balance - value,q);
         return ();
     }
     if(op == 0x414c5633) {

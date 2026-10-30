@@ -1,0 +1,67 @@
+;; Immutable destination-binding component; NO liquidity executor or authorization.
+#include "imports/stdlib.fc";
+#include "imports/params.fc";
+#include "imports/jetton-utils.fc";
+#include "imports/stonfi-v22-auth.fc";
+#include "imports/lp-locker-v2-code.fc";
+#pragma version >=0.2.0;
+(cell,cell) plan_data() inline {
+    slice s = get_data().begin_parse();throw_unless(408,s~load_uint(32) == 0x4d563250);
+    cell cfg = s~load_ref();cell observation = s~load_ref();s.end_parse();return(cfg,observation);
+}
+(cell,slice,slice,slice,int,int,int,slice) bound_vault(cell cfg) impure inline {
+    slice s = cfg.begin_parse();int percent = s~load_uint(7);int duration = s~load_uint(32);int q = s~load_uint(64);
+    cell endpoints = s~load_ref();slice parties = s~load_ref().begin_parse();cell profile = s~load_ref();cell code = s~load_ref();s.end_parse();
+    throw_unless(408,(percent >= 50) & (percent <= 100) & ((duration == 0) | (duration == 15552000) | (duration == 31536000)));
+    throw_unless(408,cell_hash(code) == LP_LOCKER_V2_CODE_HASH);
+    slice creator = parties~load_msg_addr();slice beneficiary = parties~load_msg_addr();slice controller = parties~load_msg_addr();parties.end_parse();
+    force_chain(creator);force_chain(beneficiary);force_chain(controller);
+    cell vc = begin_cell().store_uint(percent,7).store_uint(duration,32).store_uint(q,64).store_ref(endpoints)
+        .store_ref(begin_cell().store_slice(beneficiary).store_slice(controller).store_slice(my_address()).end_cell()).store_ref(profile).end_cell();
+    cell account = begin_cell().store_coins(0).store_coins(0).store_coins(0).store_coins(0)
+        .store_uint(0,1).store_uint(0,64).store_uint(1,64).store_uint(0,64).end_cell();
+    cell data = begin_cell().store_uint(2,8).store_ref(vc).store_ref(account).store_dict(null()).store_dict(null()).end_cell();
+    cell init = begin_cell().store_uint(0,2).store_dict(code).store_dict(data).store_uint(0,1).end_cell();
+    slice vault = calculate_jetton_wallet_address(init);
+    s = endpoints.begin_parse();slice router = s~load_msg_addr();slice w0 = s~load_msg_addr();slice w1 = s~load_msg_addr();s.end_parse();
+    (slice pool,_) = stonfi_expected_destinations(router,w0,w1,profile);
+    (_,cell lp_code,_) = stonfi_profile_codes(profile);
+    slice wallet = calculate_user_jetton_wallet_address(vault,pool,lp_code);
+    return(init,vault,pool,wallet,percent,duration,q,creator);
+}
+() recv_internal(int balance,int value,cell message,slice body) impure {
+    if(body.slice_empty?()) { return (); }
+    slice h = message.begin_parse();int flags = h~load_uint(4);if(flags & 1) { return (); } slice sender = h~load_msg_addr();
+    (cell cfg,cell observation) = plan_data();
+    (_,slice vault,slice pool,slice wallet,int percent,int duration,int expected,slice creator) = bound_vault(cfg);
+    int op = body~load_uint(32);int q = body~load_uint(64);throw_unless(409,q == expected);
+    if(op == 0x414e5632) {
+        throw_unless(401,equal_slices(sender,creator));body.end_parse();throw_unless(407,value >= 40000000);
+        raw_reserve(max(balance - value,10000000),0);
+        send_raw_message(begin_cell().store_uint(0x18,6).store_slice(vault).store_coins(0).store_uint(0,107)
+            .store_uint(0x414c5634,32).store_uint(q,64).end_cell(),128);return ();
+    }
+    if(op == 0x414c5635) {
+        throw_unless(401,equal_slices(sender,vault));int lt = body~load_uint(64);
+        int received = body~load_coins();int locked = body~load_coins();int free = body~load_coins();int pending = body~load_coins();int unlock = body~load_uint(64);
+        slice a = body~load_ref().begin_parse();throw_unless(409,equal_slices(a~load_msg_addr(),pool) & equal_slices(a~load_msg_addr(),wallet));a.end_parse();body.end_parse();
+        int target = (received * percent + 99) / 100;
+        throw_unless(409,(locked <= target) & (free <= received - target) & (locked + free + pending == received));
+        throw_unless(409,(received == 0) | ((duration == 0) ? (unlock == 0xffffffffffffffff) : (unlock > 0)));
+        slice old = observation.begin_parse();int last = old~load_uint(64);
+        if(lt <= last) { return (); }
+        cell next = begin_cell().store_uint(lt,64).store_coins(received).store_coins(locked).store_coins(free).store_coins(pending).store_uint(unlock,64).end_cell();
+        set_data(begin_cell().store_uint(0x4d563250,32).store_ref(cfg).store_ref(next).end_cell());return ();
+    }
+    ;; No registration can change terms/destinations, and no deposit/finalize path.
+    throw(414);
+}
+(slice,slice,slice,int,int,int) get_v2_destinations() method_id {
+    (cell cfg,_) = plan_data();(_,slice vault,slice pool,slice wallet,int percent,int duration,int q,_) = bound_vault(cfg);
+    return(vault,pool,wallet,percent,duration,q);
+}
+(int,int,int,int,int,int) get_v2_observation() method_id {
+    (_,cell observation) = plan_data();slice s = observation.begin_parse();
+    return(s~load_uint(64),s~load_coins(),s~load_coins(),s~load_coins(),s~load_coins(),s~load_uint(64));
+}
+int is_migration_authorized() method_id { return 0; }

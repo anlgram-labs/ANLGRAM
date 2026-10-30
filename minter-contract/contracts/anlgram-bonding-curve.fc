@@ -222,6 +222,8 @@ int settlement_enabled() inline {
     return cell_hash(dicts~load_ref()) == SETTLEMENT_WALLET_CODE_HASH;
 }
 
+#include "imports/curve-return-v2.fc";
+
 ;; Helper: Outbound Jetton Transfer funded strictly by attached_ton
 () send_jettons_with_id(slice jetton_wallet, slice to_address, int token_amount, slice response_address, int forward_ton_amount, int attached_gas, int operation_id) impure inline {
     var msg_body = begin_cell()
@@ -385,6 +387,8 @@ int settlement_enabled() inline {
         int virtual_ton_reserve, int virtual_token_reserve, int graduation_threshold_ton, int dex_tokens_escrow,
         cell pending_refunds_dict, cell jetton_wallet_code
     ) = load_data();
+
+    if(handle_curve_return(op,query_id,in_msg_body,sender_address,msg_value,my_balance,in_msg_full)) { return (); }
 
     ;; Only the pinned opt-in sender wallet may attest a final outcome. Missing
     ;; notification/timeouts are never failure proof. Failure means the sender
@@ -592,8 +596,11 @@ int settlement_enabled() inline {
             return ();
         }
 
+        if(settlement_enabled() & equal_slices(from_address,migration_router_address)) { return (); }
+
         ;; SUB-FLOW A2: Migration Token Recovery / Refund from Migration Router
         if (((state == STATE_MIGRATION_IN_PROGRESS) | (state == STATE_MIGRATION_FAILED)) & (migration_router_address.preload_uint(2) == 2) & equal_slices(from_address, migration_router_address)) {
+            if(settlement_enabled()) { return (); } ;; receipt ledger, never a notification hint
             throw_unless(ERROR_ZERO_INPUT, token_amount > 0);
             dex_tokens_escrow += token_amount;
             if ((real_ton_reserve > 0) & (dex_tokens_escrow > 0)) {
@@ -968,6 +975,12 @@ int settlement_enabled() inline {
 
         int ton_to_migrate = real_ton_reserve;
         int tokens_to_migrate = dex_tokens_escrow;
+        if(settlement_enabled()) {
+        (_,int return_used) = pending_refunds_dict.udict_get?(256,curve_return_key(query_id));
+        throw_if(ERROR_INVALID_STATE,return_used);
+        pending_refunds_dict~udict_set_builder(256,curve_return_key(query_id),
+            curve_return_record(ton_to_migrate,tokens_to_migrate,0,0,0,null()));
+        }
         state = STATE_MIGRATION_IN_PROGRESS;
         real_ton_reserve = 0;
         dex_tokens_escrow = 0;
