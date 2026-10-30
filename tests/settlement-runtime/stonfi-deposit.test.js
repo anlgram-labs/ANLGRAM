@@ -37,6 +37,7 @@ for(const baseline of[true,false])test(baseline?'baseline 0.10 TON forward is re
   .storeRef(beginCell().storeAddress(unverifiedLp).storeAddress(ptonWallet).storeCoins(0).storeCoins(0).storeRef(wallet).endCell()).endCell();
  await chain.setShardAccount(migrator,createShardAccount({address:migrator,code,data,balance:500010000000n}));
  const body=beginCell().storeUint(0x414e4c37,32).storeUint(1,64).storeAddress(dexTokenWallet).storeAddress(unverifiedLp).storeAddress(ptonWallet).endCell();
+ if(!baseline)await admin.send({to:migrator,value:40000000n,bounce:true,body:beginCell().storeUint(0x414e4c3d,32).storeUint(1,64).endCell()});
  const result=await admin.send({to:migrator,value:400000000n,bounce:true,body});
  console.log('DEX_SNAPSHOT_TRACE',JSON.stringify({baseline,transactions:result.transactions.length,routerInputs:result.transactions.filter(t=>t.inMessage?.info.dest?.equals(dex)).map(t=>t.inMessage.info.value.coins.toString()),expectedMetadataRejections:result.transactions.filter(t=>t.description.computePhase?.exitCode===407).length}));
  const poolData=(await chain.runGetMethod(pool,'get_pool_data')).stackReader;

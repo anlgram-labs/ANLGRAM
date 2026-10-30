@@ -10,6 +10,7 @@ async function balances(f){
  e.readBigNumber();for(let i=0;i<3;i++)e.readAddress();return{initialized,ton,tokens,pendingTon:e.readBigNumber(),pendingTokens:e.readBigNumber()};
 }
 const recover=f=>f.admin.send({to:f.migrator,value:900000000n,bounce:true,body:beginCell().storeUint(0x414e4c3c,32).storeUint(999,64).endCell()});
+const sync=f=>f.admin.send({to:f.migrator,value:40000000n,bounce:true,body:beginCell().storeUint(0x414e4c3e,32).storeUint(101,64).endCell()});
 async function expectRecovered(f){
  assert.deepEqual(await balances(f),{initialized:0n,ton:500000000000n,tokens:200000000000000000n,pendingTon:0n,pendingTokens:0n});
  assert.equal((await f.chain.runGetMethod(f.ownWallet,'get_wallet_data')).stackReader.readBigNumber(),200000000000000000n);
@@ -70,6 +71,16 @@ test('expired delayed token leg is refunded by real Router code; pTON recovers w
  const b=await balances(f);assert.equal(b.ton,500000000000n);assert.equal(b.pendingTon,0n);assert.equal(b.pendingTokens,200000000000000000n);
  const p=(await f.chain.runGetMethod(f.pool,'get_pool_data')).stackReader;p.readBigNumber();p.readAddress();assert.equal(p.readBigNumber(),0n,'no LP is issued for the partial expired deposit');
  assert.equal((await f.chain.runGetMethod(f.locker,'is_migration_authorized')).stackReader.readBigNumber(),0n);
+ await sync(f);await expectRecovered(f);
+});
+test('real captured LP-account refunds reconcile both asset legs through authenticated wallet receipts',async()=>{
+ const f=await fixture();await f.chain.sendMessage(f.token);await recover(f);
+ assert.equal((await balances(f)).pendingTokens,200000000000000000n,'zero-forward refund remains pending before receipt');
+ await sync(f);let b=await balances(f);assert.equal(b.tokens,200000000000000000n);assert.equal(b.pendingTokens,0n);assert.equal(b.pendingTon,500000000000n);
+ // Deliver the genuinely queued native leg only after the token refund.
+ await f.chain.sendMessage(f.ton);await recover(f);await sync(f);await expectRecovered(f);
+ const r=(await f.chain.runGetMethod(f.migrator,'get_migration_operation',[{type:'int',value:101n}])).stackReader;
+ assert.equal(r.readBigNumber(),5n);r.readBigNumber();r.readBigNumber();assert.equal(r.readBigNumber(),500000000000n);assert.equal(r.readBigNumber(),200000000000000000n);assert.equal(r.readBigNumber(),500000000000n);assert.equal(r.readBigNumber(),200000000000000000n);
 });
 test('recovery rejects unauthorized callers, underfunding, substituted replies and stale query IDs',async()=>{
  const f=await fixture(),attacker=await f.chain.treasury('recovery-attacker');

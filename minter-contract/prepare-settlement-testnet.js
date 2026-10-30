@@ -40,7 +40,7 @@ function buildCandidate(operatorInput=OPERATOR_INPUT,tonCore=core){
  const curveAddress=contractAddress(0,curve);
  const empty=beginCell().storeAddress(null).storeAddress(null).endCell();
  const guard={code:code('anlgram-lp-auth-guard',tonCore),data:beginCell().storeUint(0,8).storeUint(0,64)
-  .storeRef(beginCell().storeAddress(dex).storeAddress(minterAddress).storeAddress(pton).storeRef(beginCell().storeAddress(operator).endCell()).storeRef(profileCell(tonCore)).endCell())
+  .storeRef(beginCell().storeAddress(dex).storeAddress(minterAddress).storeAddress(pton).storeRef(beginCell().storeAddress(operator).storeAddress(curveAddress).endCell()).storeRef(profileCell(tonCore)).endCell())
   .storeRef(empty).storeRef(empty).endCell()};
  const guardAddress=contractAddress(0,guard);
  const migration={code:code('anlgram-migration-router',tonCore),data:beginCell().storeBit(0).storeAddress(curveAddress).storeAddress(guardAddress).storeAddress(dex)

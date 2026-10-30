@@ -57,6 +57,16 @@ int record_key(int kind, int id) inline {
 int incoming_key(slice peer, int id) inline {
   return cell_hash(begin_cell().store_uint(0x494e434d, 32).store_slice(peer).store_uint(id, 64).end_cell());
 }
+int credit_key(slice peer,int id) inline {
+  return cell_hash(begin_cell().store_uint(0x43524454,32).store_slice(peer).store_uint(id,64).end_cell());
+}
+int standard_out_key(slice peer,int id) inline {
+  return cell_hash(begin_cell().store_uint(0x5354444f,32).store_slice(peer).store_uint(id,64).end_cell());
+}
+int credited_total(cell records,slice peer,int id) inline {
+  (slice record,int found) = records.udict_get?(256,credit_key(peer,id));
+  return found ? record~load_coins() : 0;
+}
 () send_remaining(slice recipient, cell body, int previous_balance, int bounce) impure inline {
   raw_reserve(previous_balance, 0);
   send_raw_message(begin_cell().store_uint(bounce ? 0x18 : 0x10, 6).store_slice(recipient).store_coins(0)
@@ -68,6 +78,33 @@ int incoming_key(slice peer, int id) inline {
   raw_reserve(max(previous_balance,10000000),2);
   send_raw_message(begin_cell().store_uint(0x10,6).store_slice(recipient).store_coins(0)
     .store_uint(1,1 + 4 + 4 + 64 + 32 + 1 + 1).store_ref(body).end_cell(),128 + 2);
+}
+() credit_observation(slice body,slice sender,int value,int ton_balance,int opening) impure {
+  throw_unless(709,value >= 10000000);
+  int id = body~load_uint(64);
+  (_,slice owner,slice master,cell code) = load_data();
+  throw_unless(705,equal_slices(sender,owner));
+  cell records = settlement_records();int key = record_key(0x45504348,id);
+  (slice record,int found) = records.udict_get?(256,key);
+  slice peer = owner;int baseline = 0;int epoch = 0;
+  if(opening) { peer = body~load_msg_addr();force_chain(peer); }
+  body.end_parse();
+  if(found) {
+    slice expected = record~load_msg_addr();baseline = record~load_coins();epoch = record~load_uint(64);record.end_parse();
+    if(opening) { throw_unless(708,equal_slices(peer,expected)); }
+    peer = expected;
+  } else {
+    throw_unless(711,opening);
+    baseline = credited_total(records,peer,id);epoch = cur_lt();
+    records~udict_set_builder(256,key,begin_cell().store_slice(peer).store_coins(baseline).store_uint(epoch,64));
+    (int balance,_,_,_) = load_data();save_with_records(balance,owner,master,code,records);
+  }
+  int cumulative = credited_total(records,peer,id) - baseline;
+  (int current_balance,_,_,_) = load_data();
+  ;; Only the authenticated owner can open/query an epoch. Opening is
+  ;; idempotent; repeated requests never reset the original baseline.
+  receipt_remaining(owner,begin_cell().store_uint(sop::credit_receipt,32).store_uint(id,64)
+    .store_uint(epoch,64).store_slice(peer).store_coins(cumulative).store_coins(current_balance).end_cell(),ton_balance - value);
 }
 () owner_receipt(slice owner, int owner_id, int wire_id, int amount, int status, int previous_balance) impure inline {
   receipt_remaining(owner, begin_cell().store_uint(sop::receipt,32).store_uint(owner_id,64)
@@ -247,7 +284,13 @@ int incoming_key(slice peer, int id) inline {
                      ;; msg_fwd_fee(to_wallet, msg_body, state_init, 15)
 
   send_raw_message(msg.end_cell(), 64); ;; revert on errors
-  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code);
+  cell records = settlement_records();
+  if(jetton_amount > 0) {
+    int key = standard_out_key(to_wallet_address,query_id);
+    (slice old,int found) = records.udict_get?(256,key);int pending = found ? old~load_coins() : 0;
+    records~udict_set_builder(256,key,begin_cell().store_coins(pending + jetton_amount));
+  }
+  save_with_records(balance, owner_address, jetton_master_address, jetton_wallet_code,records);
 }
 
 {-
@@ -258,7 +301,7 @@ int incoming_key(slice peer, int id) inline {
                      = InternalMsgBody;
 -}
 
-() receive_tokens (slice in_msg_body, slice sender_address, int my_ton_balance, int fwd_fee, int msg_value) impure {
+() receive_tokens (slice in_msg_body, slice sender_address, int my_ton_balance, int fwd_fee, int msg_value,cell full_message) impure {
   ;; NOTE we can not allow fails in action phase since in that case there will be
   ;; no bounce. Thus check and throw in computation phase.
   (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
@@ -272,10 +315,25 @@ int incoming_key(slice peer, int id) inline {
       |
       equal_slices(calculate_user_jetton_wallet_address(from_address, jetton_master_address, jetton_wallet_code), sender_address)
   );
+  cell records = settlement_records();
+  (slice epoch_record,int observing) = records.udict_get?(256,record_key(0x45504348,query_id));
+  if(observing) { observing = equal_slices(epoch_record~load_msg_addr(),from_address) & (jetton_amount > 0); }
+  ;; Only owner-opened epochs create credit records: unrelated/zero-token
+  ;; transfers cannot force refund-ledger storage growth.
+  if(observing) {
+    int message_key = cell_hash(begin_cell().store_uint(0x5354444d,32).store_uint(cell_hash(full_message),256).end_cell());
+    (_,int seen) = records.udict_get?(256,message_key);
+    if(seen) { return (); } ;; no duplicate credit or owner notification
+    records~udict_set_builder(256,message_key,begin_cell().store_uint(1,1));
+    int total = credited_total(records,from_address,query_id) + jetton_amount;
+    records~udict_set_builder(256,credit_key(from_address,query_id),begin_cell().store_coins(total));
+  }
   int forward_ton_amount = in_msg_body~load_coins();
 
   int ton_balance_before_msg = my_ton_balance - msg_value;
   int storage_fee = min_tons_for_storage - min(ton_balance_before_msg, min_tons_for_storage);
+  throw_unless(709,msg_value >= storage_fee + gas_consumption + forward_ton_amount + (forward_ton_amount ? fwd_fee : 0));
+  raw_reserve(max(ton_balance_before_msg,min_tons_for_storage),2);
   msg_value -= (storage_fee + gas_consumption);
   if(forward_ton_amount) {
     msg_value -= (forward_ton_amount + fwd_fee);
@@ -296,7 +354,7 @@ int incoming_key(slice peer, int id) inline {
       .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
       .store_ref(msg_body);
 
-    send_raw_message(msg.end_cell(), 1);
+    send_raw_message(msg.end_cell(), 1 + 2); ;; credit/ledger survive retryable notification action failure
   }
 
   if ((response_address.preload_uint(2) != 0) & (msg_value > 0)) {
@@ -310,7 +368,7 @@ int incoming_key(slice peer, int id) inline {
     send_raw_message(msg.end_cell(), 2);
   }
 
-  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code);
+  save_with_records(balance, owner_address, jetton_master_address, jetton_wallet_code,records);
 }
 
 () burn_tokens (slice in_msg_body, slice sender_address, int msg_value, int fwd_fee) impure {
@@ -347,15 +405,24 @@ int incoming_key(slice peer, int id) inline {
   save_data(balance, owner_address, jetton_master_address, jetton_wallet_code);
 }
 
-() on_bounce (slice in_msg_body) impure {
+() on_bounce (slice in_msg_body,slice sender,cell full_message) impure {
   in_msg_body~skip_bits(32); ;; 0xFFFFFFFF
   (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
   int op = in_msg_body~load_uint(32);
   throw_unless(709, (op == op::internal_transfer()) | (op == op::burn_notification()));
   int query_id = in_msg_body~load_uint(64);
   int jetton_amount = in_msg_body~load_coins();
+  cell records = settlement_records();
+  int seen_key = cell_hash(begin_cell().store_uint(0x424e4331,32).store_uint(cell_hash(full_message),256).end_cell());
+  (_,int seen) = records.udict_get?(256,seen_key);if(seen) { return (); }
+  if(op == op::internal_transfer()) {
+    int key = standard_out_key(sender,query_id);(slice prior,int found) = records.udict_get?(256,key);
+    throw_unless(707,found);int pending = prior~load_coins();throw_unless(708,(jetton_amount > 0) & (jetton_amount <= pending));
+    records~udict_set_builder(256,key,begin_cell().store_coins(pending - jetton_amount));
+  } else { throw_unless(707,equal_slices(sender,jetton_master_address)); }
+  records~udict_set_builder(256,seen_key,begin_cell().store_uint(1,1));
   balance += jetton_amount;
-  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code);
+  save_with_records(balance, owner_address, jetton_master_address, jetton_wallet_code,records);
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
@@ -373,7 +440,7 @@ int incoming_key(slice peer, int id) inline {
       if (original == sop::internal) { settled_outcome(bounced,sender_address,msg_value,my_balance,1); return (); }
       if (original == sop::query) { return (); }
     }
-    on_bounce(in_msg_body);
+    on_bounce(in_msg_body,sender_address,in_msg_full);
     return ();
   }
   cs~load_msg_addr(); ;; skip dst
@@ -389,6 +456,8 @@ int incoming_key(slice peer, int id) inline {
   if (op == sop::ack) { settled_outcome(in_msg_body,sender_address,msg_value,my_balance,0); return (); }
   if (op == sop::retry) { settled_retry(in_msg_body,msg_value,my_balance,0); return (); }
   if (op == sop::query) { settled_query(in_msg_body,sender_address,msg_value,my_balance); return (); }
+  if (op == sop::credit_open) { credit_observation(in_msg_body,sender_address,msg_value,my_balance,1); return (); }
+  if (op == sop::credit_query) { credit_observation(in_msg_body,sender_address,msg_value,my_balance,0); return (); }
 
   if (op == op::transfer()) { ;; outgoing transfer
     send_tokens(in_msg_body, sender_address, msg_value, fwd_fee);
@@ -396,7 +465,7 @@ int incoming_key(slice peer, int id) inline {
   }
 
   if (op == op::internal_transfer()) { ;; incoming transfer
-    receive_tokens(in_msg_body, sender_address, my_balance, fwd_fee, msg_value);
+    receive_tokens(in_msg_body, sender_address, my_balance, fwd_fee, msg_value,in_msg_full);
     return ();
   }
 
@@ -420,4 +489,11 @@ int incoming_key(slice peer, int id) inline {
   (slice record,_) = records.udict_get?(256,record_key(0x4f555447,wire_id));
   int status = record~load_uint(2); record~load_uint(64); int amount = record~load_coins();
   return (status,wire_id,amount);
+}
+(slice,int,int,int) get_credit_epoch(int id) method_id {
+  cell records = settlement_records();(slice r,int found) = records.udict_get?(256,record_key(0x45504348,id));
+  (int balance,_,_,_) = load_data();
+  ifnot(found) { return (begin_cell().store_uint(0,2).end_cell().begin_parse(),0,0,balance); }
+  slice peer = r~load_msg_addr();int baseline = r~load_coins();int epoch = r~load_uint(64);
+  return (peer,epoch,credited_total(records,peer,id) - baseline,balance);
 }

@@ -10,24 +10,33 @@
 #include "imports/utils.fc";
 #include "imports/jetton-utils.fc";
 #include "imports/stonfi-v22-auth.fc";
+#include "imports/settlement-wallet-code.fc";
+#include "imports/migration-router-code.fc";
+#include "imports/lp-custody-receipts.fc";
 #pragma version >=0.2.0;
 const int start_auth  =  0x414c5001;
 const int pool_query  =  0x2993ade0;
+const int register_lp_operation = 0x414c5002;
+const int lp_receipt_tag = 0x414c5003;
+const int query_lp_receipt = 0x414c5004;
 
 ;; root: phase:uint8 nonce:uint64 ^config ^wallets ^result
 ;; config: router master0 master1 ^admin [^development_profile]; wallets: wallet0 wallet1;
 ;; result: pool lp_wallet. All endpoints are immutable genesis configuration.
 (int,int,cell,slice,slice,slice,slice) load_auth() inline {
   slice ds = get_data().begin_parse(); int phase = ds~load_uint(8); int nonce = ds~load_uint(64);
-  cell cfg = ds~load_ref();slice w = ds~load_ref().begin_parse();slice r = ds~load_ref().begin_parse();ds.end_parse();
+  cell cfg = ds~load_ref();slice w = ds~load_ref().begin_parse();slice r = ds~load_ref().begin_parse();
+  if(ds.slice_refs()) { ds~load_ref(); } ds.end_parse();
   slice w0 = w~load_msg_addr();slice w1 = w~load_msg_addr();w.end_parse();
   slice pool = r~load_msg_addr();slice lp = r~load_msg_addr();r.end_parse();
   return(phase,nonce,cfg,w0,w1,pool,lp);
 }
 () save_auth(int phase,int nonce,cell cfg,slice w0,slice w1,slice pool,slice lp) impure inline {
-  set_data(begin_cell().store_uint(phase,8).store_uint(nonce,64).store_ref(cfg)
+  cell records = lp_records();
+  builder b = begin_cell().store_uint(phase,8).store_uint(nonce,64).store_ref(cfg)
     .store_ref(begin_cell().store_slice(w0).store_slice(w1).end_cell())
-    .store_ref(begin_cell().store_slice(pool).store_slice(lp).end_cell()).end_cell());
+    .store_ref(begin_cell().store_slice(pool).store_slice(lp).end_cell());
+  ifnot(cell_null?(records)) { b = b.store_ref(records); } set_data(b.end_cell());
 }
 () forward_query(slice destination,cell body,int previous) impure inline {
   raw_reserve(max(previous,10000000),0);
@@ -38,13 +47,21 @@ const int pool_query  =  0x2993ade0;
   forward_query(master,begin_cell().store_uint(op::provide_wallet_address(),32).store_uint(nonce,64)
     .store_slice(owner).store_uint(1,1).end_cell(),previous);
 }
+() return_lp_receipt(slice recipient,int previous,int id,slice pool,slice wallet,int amount) impure inline {
+  ;; Optional gas delivery must not roll back an authenticated LP receipt.
+  raw_reserve(max(previous,10000000),2);
+  cell payload = begin_cell().store_uint(0x414c5005,32).store_uint(id,64).store_slice(pool).store_slice(wallet).store_coins(amount).store_uint(0,1).end_cell();
+  send_raw_message(begin_cell().store_uint(0x10,6).store_slice(recipient).store_coins(0)
+    .store_uint(1,1 + 4 + 4 + 64 + 32 + 1 + 1).store_ref(payload).end_cell(),128 + 2);
+}
 () recv_internal(int balance,int value,cell full,slice body) impure {
   if(body.slice_empty?()) { return(); }
   slice msg = full.begin_parse();int flags = msg~load_uint(4);if(flags  &  1) { return(); }
   slice sender = msg~load_msg_addr();int op = body~load_uint(32);int q = body~load_uint(64);
   (int phase,int nonce,cell cfg,slice w0,slice w1,slice pool,slice lp) = load_auth();
   slice c = cfg.begin_parse();slice router = c~load_msg_addr();slice m0 = c~load_msg_addr();slice m1 = c~load_msg_addr();
-  slice sa = c~load_ref().begin_parse();slice admin = sa~load_msg_addr();sa.end_parse();
+  slice sa = c~load_ref().begin_parse();slice admin = sa~load_msg_addr();
+  slice expected_curve = sa.slice_bits() ? sa~load_msg_addr() : begin_cell().store_uint(0,2).end_cell().begin_parse();sa.end_parse();
   cell profile = c.slice_refs() ? c~load_ref() : null();c.end_parse();
   throw_unless(408,(router.preload_uint(2) == 2) & (m0.preload_uint(2) == 2) & (m1.preload_uint(2) == 2) & (admin.preload_uint(2) == 2));
   throw_if(408,equal_slices(m0,m1));
@@ -56,10 +73,42 @@ const int pool_query  =  0x2993ade0;
     save_auth(1,nonce,cfg,none,none,none,none);
     query_wallet(m0,router,nonce,balance - value);return();
   }
-  ;; A notification alone is not custody/code proof. Accept its gas without
-  ;; claiming a lock, rebinding an address, authorizing migration or bouncing
-  ;; an actual LP-wallet notification back into its unrelated bounce handler.
-  if(op == op::transfer_notification()) { return(); }
+  if(op == register_lp_operation) {
+    throw_unless(401,equal_slices(sender,admin));throw_unless(405,value >= 30000000);
+    throw_unless(407,(~ cell_null?(profile)) & (expected_curve.preload_uint(2) == 2) & (pool.preload_uint(2) == 2) & (lp.preload_uint(2) == 2));
+    stonfi_profile_codes(profile);
+    slice funding_owner = body~load_msg_addr();force_chain(funding_owner);cell init = body~load_ref();body.end_parse();
+    validate_migration_genesis(init,funding_owner,expected_curve,router,m0,m1,admin,lp,w1);
+    cell records = lp_records();int key = lp_operation_key(q);(slice old,int found) = records.udict_get?(256,key);
+    if(found) { throw_unless(408,old~load_uint(256) == cell_hash(init));forward_query(admin,begin_cell().store_uint(op::excesses(),32).store_uint(q,64).end_cell(),balance - value);return(); }
+    records~udict_set_builder(256,key,begin_cell().store_uint(cell_hash(init),256).store_slice(funding_owner)
+      .store_ref(begin_cell().store_slice(pool).store_slice(lp).store_coins(0).end_cell()));
+    save_lp_records(records);forward_query(admin,begin_cell().store_uint(op::excesses(),32).store_uint(q,64).end_cell(),balance - value);return();
+  }
+  if(op == query_lp_receipt) {
+    throw_unless(405,value >= 20000000);body.end_parse();
+    (slice r,int found) = lp_records().udict_get?(256,lp_operation_key(q));throw_unless(407,found);
+    r~load_uint(256);slice owner = r~load_msg_addr();slice e = r~load_ref().begin_parse();slice pool = e~load_msg_addr();slice wallet = e~load_msg_addr();int amount = e~load_coins();
+    throw_unless(401,equal_slices(sender,owner) | equal_slices(sender,admin));
+    return_lp_receipt(owner,balance - value,q,pool,wallet,amount);return();
+  }
+  if(op == op::transfer_notification()) {
+    cell records = lp_records();int key = lp_operation_key(q);(slice record,int found) = records.udict_get?(256,key);
+    ifnot(found) { return(); } ;; unregistered donations cannot establish custody
+    record~load_uint(256);slice funding_owner = record~load_msg_addr();slice endpoints = record~load_ref().begin_parse();
+    slice expected_pool = endpoints~load_msg_addr();slice expected_wallet = endpoints~load_msg_addr();int received = endpoints~load_coins();
+    throw_unless(401,equal_slices(sender,expected_wallet));int amount = body~load_coins();slice origin = body~load_msg_addr();
+    throw_unless(408,(amount > 0) & equal_slices(origin,funding_owner));
+    throw_unless(408,body~load_uint(1));cell payload = body~load_ref();body.end_parse();slice tag = payload.begin_parse();
+    throw_unless(408,(tag~load_uint(32) == lp_receipt_tag) & (tag~load_uint(64) == q));tag.end_parse();
+    int seen_key = cell_hash(begin_cell().store_uint(0x4c505243,32).store_uint(cell_hash(full),256).end_cell());(_,int seen) = records.udict_get?(256,seen_key);
+    if(seen) { return(); }
+    records~udict_set_builder(256,seen_key,begin_cell().store_uint(1,1));
+    (slice original,_) = records.udict_get?(256,key);int init_hash = original~load_uint(256);
+    records~udict_set_builder(256,key,begin_cell().store_uint(init_hash,256).store_slice(funding_owner)
+      .store_ref(begin_cell().store_slice(expected_pool).store_slice(expected_wallet).store_coins(received + amount).end_cell()));
+    save_lp_records(records);return_lp_receipt(funding_owner,balance - value,q,expected_pool,expected_wallet,received + amount);return();
+  }
   throw_unless(407,(q == nonce) & (phase > 0) & (phase < 5));
   if(op == op::take_wallet_address()) {
     slice expected = (phase == 1) ? m0 : ((phase == 2) ? m1 : pool);
@@ -98,6 +147,12 @@ const int pool_query  =  0x2993ade0;
  (int phase,int nonce,_,slice w0,slice w1,slice pool,slice lp) = load_auth();return(phase,nonce,w0,w1,pool,lp);
 }
 int is_migration_authorized() method_id { return 0; }
+(int,slice,slice,slice,int) get_lp_receipt(int id) method_id {
+ cell records = lp_records();(slice r,int found) = records.udict_get?(256,lp_operation_key(id));
+ ifnot(found) { slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();return(0,none,none,none,0); }
+ r~load_uint(256);slice owner = r~load_msg_addr();slice e = r~load_ref().begin_parse();slice pool = e~load_msg_addr();slice wallet = e~load_msg_addr();int amount = e~load_coins();
+ return(amount > 0 ? 2 : 1,owner,pool,wallet,amount);
+}
 (int,slice,slice) get_expected_destinations() method_id {
  (int phase,int nonce,cell cfg,slice w0,slice w1,slice pool,slice lp) = load_auth();
  slice c = cfg.begin_parse();c~load_msg_addr();c~load_msg_addr();c~load_msg_addr();c~load_ref();

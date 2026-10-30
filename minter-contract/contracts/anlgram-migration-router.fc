@@ -25,6 +25,8 @@
 #include "imports/op-codes.fc";
 #include "imports/utils.fc";
 #include "imports/jetton-utils.fc";
+#include "imports/settlement-protocol.fc";
+#include "imports/settlement-wallet-code.fc";
 #pragma version >=0.2.0;
 
 const int ERROR_UNAUTHORIZED_SENDER = 401;
@@ -51,6 +53,10 @@ const int op::getter_pool_address    = 0x2993ade0;
 const int op::getter_lp_account      = 0x15fbca95;
 const int op::getter_lp_account_data = 0x24cfc100;
 const int op::refund_me              = 0x132b9a2c;
+const int op::prime_refund_receipts   = 0x414e4c3d;
+const int op::sync_refund_receipts    = 0x414e4c3e;
+const int op::finalize_migration      = 0x414e4c43;
+const int op::lp_custody_receipt      = 0x414c5005;
 
 ;; Minimum operational gas for execute_dex_provision (0.40 TON > 0.02 + 0.20 + 0.15 TON + fwd fees)
 const int MIN_PROVISION_GAS          = 400000000;
@@ -64,6 +70,28 @@ cell flight_cell() inline {
     s~load_msg_addr(); s~load_msg_addr(); s~load_msg_addr(); s~load_ref(); s~load_ref();
     return s.slice_refs() ? s~load_ref() : null();
 }
+cell reconciliation_cell() inline {
+    cell f = flight_cell();if(cell_null?(f)) { return null(); }
+    slice s = f.begin_parse();s~skip_bits(131);s~load_msg_addr();s~load_msg_addr();s~load_dict();
+    return s.slice_refs() ? s~load_ref() : null();
+}
+(int,int,int,int,int,int,int,int) load_reconciliation() inline {
+    cell r = reconciliation_cell();if(cell_null?(r)) { return (0,0,0,0,0,0,0,0); }
+    slice s = r.begin_parse();int stage = s~load_uint(8);int opened = s~load_uint(1);int epoch = s~load_uint(64);
+    int ot = s~load_coins();int oj = s~load_coins();int rt = s~load_coins();int rj = s~load_coins();int cumulative = s~load_coins();
+    if(s.slice_bits()) { s~load_dict(); } if(s.slice_bits()) { s~load_dict(); } s.end_parse();
+    return (stage,opened,epoch,ot,oj,rt,rj,cumulative);
+}
+cell native_receipts() inline {
+    cell r = reconciliation_cell();if(cell_null?(r)) { return null(); }
+    slice s = r.begin_parse();s~skip_bits(73);s~load_coins();s~load_coins();s~load_coins();s~load_coins();s~load_coins();
+    return s.slice_bits() ? s~load_dict() : null();
+}
+cell lp_evidence() inline {
+    cell r = reconciliation_cell();if(cell_null?(r)) { return null(); }
+    slice s = r.begin_parse();s~skip_bits(73);s~load_coins();s~load_coins();s~load_coins();s~load_coins();s~load_coins();
+    if(s.slice_bits()) { s~load_dict(); } return s.slice_bits() ? s~load_dict() : null();
+}
 (int,int,int,slice,slice,cell) load_flight() inline {
     cell c = flight_cell();
     if (cell_null?(c)) {
@@ -72,16 +100,54 @@ cell flight_cell() inline {
     }
     slice s = c.begin_parse();
     int id = s~load_uint(64);int nonce = s~load_uint(64);int phase = s~load_uint(3);
-    slice pool = s~load_msg_addr();slice account = s~load_msg_addr();cell used = s~load_dict();s.end_parse();
+    slice pool = s~load_msg_addr();slice account = s~load_msg_addr();cell used = s~load_dict();
+    if(s.slice_refs()) { s~load_ref(); } s.end_parse();
     return (id,nonce,phase,pool,account,used);
 }
-() save_flight(int id,int nonce,int phase,slice pool,slice account,cell used) impure inline {
+() replace_flight(cell flight) impure inline {
     slice s = get_data().begin_parse();
     int initialized = s~load_uint(1);slice curve = s~load_msg_addr();slice locker = s~load_msg_addr();slice router = s~load_msg_addr();
     cell c2 = s~load_ref();cell c3 = s~load_ref();
     builder b = begin_cell().store_uint(initialized,1).store_slice(curve).store_slice(locker).store_slice(router).store_ref(c2).store_ref(c3);
-    set_data(b.store_ref(begin_cell().store_uint(id,64).store_uint(nonce,64).store_uint(phase,3)
-        .store_slice(pool).store_slice(account).store_dict(used).end_cell()).end_cell());
+    set_data(b.store_ref(flight).end_cell());
+}
+() save_flight(int id,int nonce,int phase,slice pool,slice account,cell used) impure inline {
+    cell r = reconciliation_cell();
+    builder b = begin_cell().store_uint(id,64).store_uint(nonce,64).store_uint(phase,3).store_slice(pool).store_slice(account).store_dict(used);
+    ifnot(cell_null?(r)) { b = b.store_ref(r); }
+    replace_flight(b.end_cell());
+}
+() save_reconciliation_with_receipts(int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative,cell native_seen,cell lp) impure inline {
+    cell r = begin_cell().store_uint(stage,8).store_uint(opened ? 1 : 0,1).store_uint(epoch,64)
+        .store_coins(ot).store_coins(oj).store_coins(rt).store_coins(rj).store_coins(cumulative).store_dict(native_seen).store_dict(lp).end_cell();
+    (int id,int nonce,int phase,slice pool,slice account,cell used) = load_flight();
+    (_,int found) = used.udict_get?(64,id);
+    if(found) { used~udict_set_builder(64,id,begin_cell().store_uint(1,1).store_ref(r)); }
+    replace_flight(begin_cell().store_uint(id,64).store_uint(nonce,64).store_uint(phase,3).store_slice(pool).store_slice(account).store_dict(used).store_ref(r).end_cell());
+}
+() save_reconciliation(int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) impure inline {
+    cell seen = ((stage == 1) | (stage == 6)) ? null() : native_receipts();
+    cell lp = ((stage == 1) | (stage == 6)) ? null() : lp_evidence();
+    save_reconciliation_with_receipts(stage,opened,epoch,ot,oj,rt,rj,cumulative,seen,lp);
+}
+int consume_native_receipt(cell full_message) impure inline {
+    cell seen = native_receipts();int key = cell_hash(full_message);(_,int found) = seen.udict_get?(256,key);
+    if(found) { return 0; }
+    seen~udict_set_builder(256,key,begin_cell().store_uint(1,1));
+    (int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) = load_reconciliation();
+    save_reconciliation_with_receipts(stage,opened,epoch,ot,oj,rt,rj,cumulative,seen,lp_evidence());return -1;
+}
+() record_refund(int native,int tokens,int pending_native,int pending_tokens) impure inline {
+    (int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) = load_reconciliation();
+    if(stage >= 3) {
+        throw_unless(ERROR_INVALID_STATE,(rt + native <= ot) & (rj + tokens <= oj));
+        save_reconciliation(((pending_native == 0) & (pending_tokens == 0)) ? 5 : 4,opened,epoch,ot,oj,rt + native,rj + tokens,cumulative);
+    }
+}
+() return_receipt_gas(slice admin,int previous,int id) impure inline {
+    raw_reserve(previous,0);
+    send_raw_message(begin_cell().store_uint(0x10,6).store_slice(admin).store_coins(0)
+        .store_uint(0,1 + 4 + 4 + 64 + 32 + 1 + 1).store_uint(op::excesses(),32).store_uint(id,64).end_cell(),128 + 2);
 }
 () recovery_query(slice destination,cell body,int previous) impure inline {
     ;; Only forward this request's funding, never native principal or storage.
@@ -236,6 +302,7 @@ cell flight_cell() inline {
                     token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address,
                     expected_lp_wallet, expected_pton_wallet, pending_ton, pending_tokens, jetton_wallet_code
                 );
+                record_refund(0,bounced_tokens,pending_ton,pending_tokens);
                 return ();
             }
 
@@ -251,6 +318,7 @@ cell flight_cell() inline {
                     token_minter_address, pton_minter_address, ton_liquidity, tokens_liquidity, admin_address,
                     expected_lp_wallet, expected_pton_wallet, pending_ton, pending_tokens, jetton_wallet_code
                 );
+                record_refund(bounced_ton,0,pending_ton,pending_tokens);
                 return ();
             }
             ;; Aborted native handoff can itself bounce. Keep a distinct
@@ -262,6 +330,7 @@ cell flight_cell() inline {
                 save_data((pending_ton > 0) | (pending_tokens > 0),curve_address,lp_locker_address,dex_router_address,
                     token_minter_address,pton_minter_address,ton_liquidity,tokens_liquidity,admin_address,
                     expected_lp_wallet,expected_pton_wallet,pending_ton,pending_tokens,jetton_wallet_code);
+                record_refund(amount,0,pending_ton,pending_tokens);
                 return ();
             }
         }
@@ -270,6 +339,74 @@ cell flight_cell() inline {
 
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
+
+    if(op == op::finalize_migration) {
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,admin_address) | equal_slices(sender_address,curve_address));
+        ;; LP_VERIFIED -> LOCKED -> FINALIZED requires independently reviewed
+        ;; foreign code/custody and final deposit evidence, not just this receipt.
+        throw(414);
+    }
+    if(op == op::lp_custody_receipt) {
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,lp_locker_address));
+        throw_unless(ERROR_INVALID_STATE,(cell_hash(jetton_wallet_code) == SETTLEMENT_WALLET_CODE_HASH) & (query_id == flight_id));
+        slice pool = in_msg_body~load_msg_addr();slice wallet = in_msg_body~load_msg_addr();int amount = in_msg_body~load_coins();int reviewed = in_msg_body~load_uint(1);in_msg_body.end_parse();
+        throw_unless(ERROR_INVALID_ADDRESS,(pool.preload_uint(2) == 2) & equal_slices(wallet,expected_lp_wallet));
+        throw_unless(ERROR_INVALID_STATE,(amount > 0) & (reviewed == 0));
+        (int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) = load_reconciliation();
+        throw_unless(ERROR_INVALID_STATE,opened & ((stage == 3) | (stage == 4) | (stage == 7)));
+        cell old = lp_evidence();
+        ifnot(cell_null?(old)) { slice s = old.begin_parse();slice previous_pool = s~load_msg_addr();slice previous_wallet = s~load_msg_addr();int previous = s~load_coins();
+            throw_unless(ERROR_INVALID_STATE,equal_slices(pool,previous_pool) & equal_slices(wallet,previous_wallet) & (amount >= previous)); }
+        cell lp = begin_cell().store_slice(pool).store_slice(wallet).store_coins(amount).end_cell();
+        save_reconciliation_with_receipts(7,opened,epoch,ot,oj,rt,rj,cumulative,native_receipts(),lp);
+        return (); ;; principal remains pending; no financial completion inferred
+    }
+
+    if ((op == op::prime_refund_receipts) | (op == op::sync_refund_receipts)) {
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,admin_address));
+        throw_unless(ERROR_INVALID_STATE,cell_hash(jetton_wallet_code) == SETTLEMENT_WALLET_CODE_HASH);
+        int wallet_gas = in_msg_body.slice_empty?() ? 20000000 : in_msg_body~load_coins();in_msg_body.end_parse();
+        throw_unless(ERROR_INSUFFICIENT_GAS,(wallet_gas >= 20000000) & (msg_value >= wallet_gas + 20000000));
+        (int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) = load_reconciliation();
+        if(op == op::prime_refund_receipts) {
+            throw_unless(ERROR_INVALID_STATE,(pending_ton == 0) & (pending_tokens == 0) & (is_initialized == 0));
+            throw_unless(ERROR_NO_TON_LIQUIDITY,ton_liquidity > 0);throw_unless(ERROR_NO_TOKEN_LIQUIDITY,tokens_liquidity > 0);
+            (_,int used) = used_ids.udict_get?(64,query_id);throw_if(ERROR_ALREADY_INITIALIZED,used);
+            if((stage == 1) | (stage == 2)) { throw_unless(ERROR_INVALID_STATE,query_id == flight_id); }
+            else {
+                slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
+                save_flight(query_id,0,0,none,none,used_ids);
+                save_reconciliation(1,0,0,ton_liquidity,tokens_liquidity,0,0,0);
+            }
+        } else {
+            throw_unless(ERROR_INVALID_STATE,(query_id == flight_id) & opened & (stage >= 2) & (stage <= 5) & (recovery_phase != 5));
+        }
+        builder body = begin_cell().store_uint(op == op::prime_refund_receipts ? sop::credit_open : sop::credit_query,32).store_uint(query_id,64);
+        if(op == op::prime_refund_receipts) { body = body.store_slice(dex_router_address); }
+        send_raw_message(begin_cell().store_uint(0x18,6).store_slice(my_jetton_wallet).store_coins(wallet_gas)
+            .store_uint(1,1 + 4 + 4 + 64 + 32 + 1 + 1).store_ref(body.end_cell()).end_cell(),1);
+        return_receipt_gas(admin_address,my_balance - msg_value,query_id);return ();
+    }
+    if(op == sop::credit_receipt) {
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,(cell_hash(jetton_wallet_code) == SETTLEMENT_WALLET_CODE_HASH) & equal_slices(sender_address,my_jetton_wallet));
+        throw_unless(ERROR_INVALID_STATE,query_id == flight_id);
+        int observed_epoch = in_msg_body~load_uint(64);slice origin = in_msg_body~load_msg_addr();int observed = in_msg_body~load_coins();int wallet_balance = in_msg_body~load_coins();in_msg_body.end_parse();
+        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(origin,dex_router_address));
+        (int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int cumulative) = load_reconciliation();
+        throw_unless(ERROR_INVALID_STATE,(observed_epoch > 0) & ((~ opened) | (observed_epoch == epoch)) & (observed >= cumulative));
+        throw_unless(ERROR_INVALID_STATE,(stage >= 1) & (stage <= 5) & (recovery_phase != 5));
+        if(stage <= 2) { throw_unless(ERROR_INVALID_STATE,wallet_balance >= tokens_liquidity);save_reconciliation(2,1,observed_epoch,ot,oj,0,0,observed); }
+        else {
+            int delta = observed - cumulative;
+            throw_unless(ERROR_INVALID_STATE,(delta <= pending_tokens) & (rj + delta <= oj) & (wallet_balance >= tokens_liquidity + delta));
+            tokens_liquidity += delta;pending_tokens -= delta;
+            save_data((pending_ton > 0) | (pending_tokens > 0),curve_address,lp_locker_address,dex_router_address,
+                token_minter_address,pton_minter_address,ton_liquidity,tokens_liquidity,admin_address,
+                expected_lp_wallet,expected_pton_wallet,pending_ton,pending_tokens,jetton_wallet_code);
+            save_reconciliation(((pending_ton == 0) & (pending_tokens == 0)) ? 5 : 4,1,epoch,ot,oj,rt,rj + delta,observed);
+        }
+        return_receipt_gas(admin_address,my_balance - msg_value,query_id);return ();
+    }
 
     ;; Recover only through the configured Router -> pair Pool -> own LP
     ;; account chain. These replies do NOT authorize migration or prove code.
@@ -408,6 +545,8 @@ cell flight_cell() inline {
             ;; When is_initialized == 1, accept token refund strictly from STON.fi DEX Router
             throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(from_address, dex_router_address));
             ifnot (cell_null?(flight_cell())) { throw_unless(ERROR_INVALID_STATE,query_id == flight_id); }
+            (_,int opened,_,_,_,_,_,_) = load_reconciliation();
+            if(opened) { return_receipt_gas(admin_address,my_balance - msg_value,query_id);return (); } ;; notification is only a hint; query authenticated cumulative custody
             throw_unless(ERROR_INVALID_STATE,token_amount <= pending_tokens);
             tokens_liquidity += token_amount;
             pending_tokens -= token_amount;
@@ -448,10 +587,12 @@ cell flight_cell() inline {
         int amount = in_msg_body~load_coins();slice origin = in_msg_body~load_msg_addr();
         throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(origin,dex_router_address));
         throw_unless(ERROR_INVALID_STATE,(amount > 0) & (amount <= pending_ton) & (msg_value >= amount));
+        ifnot(cell_null?(reconciliation_cell())) { ifnot(consume_native_receipt(in_msg_full)) { return (); } }
         ton_liquidity += amount;pending_ton -= amount;
         is_initialized = (pending_tokens > 0) | (pending_ton > 0);
         save_data(is_initialized,curve_address,lp_locker_address,dex_router_address,token_minter_address,pton_minter_address,
             ton_liquidity,tokens_liquidity,admin_address,expected_lp_wallet,expected_pton_wallet,pending_ton,pending_tokens,jetton_wallet_code);
+        record_refund(amount,0,pending_ton,pending_tokens);
         return ();
     }
 
@@ -467,6 +608,10 @@ cell flight_cell() inline {
         throw_unless(ERROR_NO_TON_LIQUIDITY, ton_liquidity > 0);
         throw_unless(ERROR_NO_TOKEN_LIQUIDITY, tokens_liquidity > 0);
         throw_unless(ERROR_INSUFFICIENT_GAS, msg_value >= MIN_PROVISION_GAS);
+        if(cell_hash(jetton_wallet_code) == SETTLEMENT_WALLET_CODE_HASH) {
+            (int stage,int opened,_,int ot,int oj,_,_,_) = load_reconciliation();
+            throw_unless(ERROR_INVALID_STATE,(stage == 2) & opened & (query_id == flight_id) & (ot == ton_liquidity) & (oj == tokens_liquidity));
+        }
 
         slice router_token_wallet = in_msg_body~load_msg_addr();
         slice lp_token_wallet     = in_msg_body~load_msg_addr();
@@ -500,13 +645,15 @@ cell flight_cell() inline {
 
         ;; Step B: Construct exact STON.fi v2.1 cross_provide_lp_body
         ;; cross_provide_lp_body:^[min_lp_out:Coins to_address:MsgAddress both_positive:uint1 fwd_amount:Coins custom_payload:(Maybe ^Cell)]
-        cell cross_body = begin_cell()
+        builder cross_builder = begin_cell()
             .store_coins(1)                     ;; min_lp_out: 1 unit minimum
             .store_slice(lp_locker_address)     ;; to_address: LP Locker receives all minted LP tokens!
             .store_uint(1, 1)                   ;; both_positive: true (both Token and TON > 0)
-            .store_coins(20000000)              ;; fwd_amount: 0.02 TON
-            .store_uint(0, 1)                   ;; null custom_payload
-            .end_cell();
+            .store_coins(20000000);             ;; existing fwd_amount: 0.02 TON
+        if(cell_hash(jetton_wallet_code) == SETTLEMENT_WALLET_CODE_HASH) {
+            cross_builder = cross_builder.store_uint(1,1).store_ref(begin_cell().store_uint(0x414c5003,32).store_uint(query_id,64).end_cell());
+        } else { cross_builder = cross_builder.store_uint(0,1); }
+        cell cross_body = cross_builder.end_cell();
 
         ;; Step C: Construct DexPayload for Token Deposit
         ;; provide_lp#37c096df token_wallet1:MsgAddress refund_address:MsgAddress excesses_address:MsgAddress tx_deadline:uint64 cross_provide_lp_body:^Cell
@@ -581,6 +728,8 @@ cell flight_cell() inline {
         used_ids~udict_set_builder(64,query_id,begin_cell().store_uint(1,1));
         slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
         save_flight(query_id,0,0,none,none,used_ids);
+        (int stage,int opened,int epoch,int ot,int oj,_,_,int cumulative) = load_reconciliation();
+        if(opened) { save_reconciliation(3,opened,epoch,ot,oj,0,0,cumulative); }
         return ();
     }
 
@@ -647,6 +796,7 @@ cell flight_cell() inline {
         used_ids~udict_set_builder(64,query_id,begin_cell().store_uint(1,1));
         slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
         save_flight(query_id,0,5,none,none,used_ids);
+        ifnot(cell_null?(reconciliation_cell())) { save_reconciliation(6,0,0,returning_ton,returning_tokens,0,0,0); }
         return ();
     }
 
@@ -656,6 +806,21 @@ cell flight_cell() inline {
 (int,int,int,slice,slice) get_migration_recovery() method_id {
     (int id,int nonce,int phase,slice pool,slice account,_) = load_flight();
     return (id,nonce,phase,pool,account);
+}
+(int,int,int,int,int,int,int,int) get_migration_settlement() method_id { return load_reconciliation(); }
+(int,int,int,int,int,int,int,int) get_migration_operation(int id) method_id {
+    (_,_,_,_,_,cell used) = load_flight();
+    (slice entry,int found) = used.udict_get?(64,id);
+    ifnot(found) { return (0,0,0,0,0,0,0,0); }
+    entry~load_uint(1);ifnot(entry.slice_refs()) { return (0,0,0,0,0,0,0,0); }
+    slice s = entry~load_ref().begin_parse();int stage = s~load_uint(8);int opened = s~load_uint(1);int epoch = s~load_uint(64);
+    int ot = s~load_coins();int oj = s~load_coins();int rt = s~load_coins();int rj = s~load_coins();int cumulative = s~load_coins();
+    if(s.slice_bits()) { s~load_dict(); } if(s.slice_bits()) { s~load_dict(); } s.end_parse();
+    return (stage,opened,epoch,ot,oj,rt,rj,cumulative);
+}
+(slice,slice,int,int) get_migration_lp_receipt() method_id {
+    cell lp = lp_evidence();if(cell_null?(lp)) { slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();return(none,none,0,0); }
+    slice s = lp.begin_parse();slice pool = s~load_msg_addr();slice wallet = s~load_msg_addr();int amount = s~load_coins();return(pool,wallet,amount,0);
 }
 
 ;; Get Methods

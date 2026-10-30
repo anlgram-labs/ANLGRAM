@@ -1,7 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "test": "node --test settlement.test.js lp-custody.test.js migration-wire.test.js donation.test.js authenticated-settlement.test.js lp-auth-handshake.test.js stonfi-snapshot.test.js stonfi-deposit.test.js genesis.test.js migration-recovery.test.js lp-bootstrap.test.js lp-deterministic-auth.test.js"
+    "test": "node --test settlement.test.js lp-custody.test.js migration-wire.test.js donation.test.js authenticated-settlement.test.js lp-auth-handshake.test.js stonfi-snapshot.test.js stonfi-deposit.test.js genesis.test.js migration-recovery.test.js lp-bootstrap.test.js lp-deterministic-auth.test.js refund-receipts.test.js lp-custody-receipts.test.js"
   },
   "dependencies": {
     "@ton-community/func-js": "0.11.0",
