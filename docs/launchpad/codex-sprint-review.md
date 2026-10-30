@@ -1,5 +1,122 @@
 # MemeLabs isolated sprint: review notes
 
+## Error 709 correction — latest verified status
+
+All previous commits, including `5910e42` and `7905672`, are preserved. The
+earlier 709 blocker below is superseded by the results in this section.
+
+### Root cause and unchanged buyer budget
+
+The failing message was Curve -> Curve Jetton wallet, not the recipient
+deployment. `jetton-wallet.fc` requires strictly more than
+`forward_ton_amount + 2 * floor(inboundForwardFee * 3 / 2) + 2 * 0.01 + 0.01 TON`.
+The old message supplied exactly 0.04 TON, with a 0.01 TON notification, so it
+failed even with zero forwarding fees. The full-phase baseline measured an
+80,890 nanoTON inbound forward fee: the strict threshold was 40,242,670
+nanoTON. It rejected with 709 and its real truncated bounce then failed with 9.
+
+The correction allocates the SAME existing 40,000,000 nanoTON overhead:
+
+| Internal allocation | Before | After |
+| --- | ---: | ---: |
+| Sender-wallet attachment | 40,000,000 | 35,000,000 nanoTON |
+| Owner notification (inside that attachment) | 10,000,000 | 1 nanoTON |
+| Curve compute/action budget | no remainder | 5,000,000 nanoTON |
+
+No mandatory buyer gas payment or pricing/fee parameter was added. The tested
+new sender-wallet threshold is 30,240,541 nanoTON (80,180 inbound forward fee),
+below its 35,000,000 attachment. An owner contract may skip the 1-nanoton
+notification due to insufficient compute gas; notification execution is NOT
+used as proof of token delivery. The recipient Jetton balance is verified.
+
+Every buy reserves the entire pre-message balance plus newly booked liquidity
+and protocol fees before sending. Unspent trade input is refunded exactly;
+unused Curve gas is returned separately, after fees. Recipient-wallet gas
+excess travels through an authenticated standard TEP-74 response and is also
+returned to the buyer. In the 1 TON fixture, liquidity is 950,400,000 nanoTON
+and protocol fee is 9,600,000. Curve balance is exactly its prior 50,000,000
+plus those booked amounts: 1,010,000,000. No prior funds subsidize delivery.
+
+Measured local transaction fees for that fixture: Curve buy 1,284,777 nanoTON,
+sender wallet 807,397, recipient wallet 724,355, Curve excess relay 1,013,755.
+The test prints each message value, inbound forward fee, gas/storage/action
+fees and final contract balances. These are Sandbox configuration measurements,
+not a promised live-network fee schedule. Retained wallet balance is part of
+the existing wallet gas/storage policy; new recipient deployment is tested.
+
+### Recovery and compatibility
+
+Real bounces contain only a truncated original body, so the recipient address
+cannot be decoded reliably. The Curve now correlates buys and token claims by
+its unique transaction logical time. In-flight records use domain-separated
+keys in the existing dictionary; address-hash claim entries retain their old
+encoding. An authentic first-hop rejection restores the buyer's pending token
+entitlement once. Replayed bounces do not double-credit or underflow. A claim
+works with its existing 0.04 TON minimum, preserves prior balance, and restores
+its pending entitlement if its first-hop transfer fails again. On success the
+derived recipient wallet is authenticated before the delivery record is cleared.
+
+No constructor storage fields, public getters or numeric message opcodes change.
+The existing standard excesses opcode is now handled; dictionary semantics gain
+in-flight entries. Older code cannot safely process these entries: do not
+downgrade or reuse live in-flight state. No deployed contract was upgraded.
+Bytecode and StateInit-derived addresses change; regenerate all dependent
+deployment addresses/plans before any separately authorized deployment.
+
+- Curve code cell hash: `0abb0feb4b9b124d04fd349c2131f6f9d54a371bb743a44c88c6f91b52c53334`.
+- Serialized BOC SHA-256: `3d50570332dc1f1e124274fdbb4adffab587659e88e805172b6f0475808a5180`.
+- Reproducible source/import provenance is recorded in the artifact; compiler
+  `--check` passes without rewriting it.
+
+### Actual local tests
+
+| Suite | Passed | Failed |
+| --- | ---: | ---: |
+| Full-phase Sandbox settlement | 7 | 0 |
+| Artifact TVM regression | 135 | 0 |
+| Source TVM regression | 135 | 0 |
+| Routed activation, buy/sell, graduation dispatch + financial regressions | 5 | 0 |
+| Math model, including 12,000 deterministic cycles | 46 | 0 |
+| Preflight/bootstrap/LP boundary/receipt regressions | 25 | 0 |
+
+Sandbox covers the original 709 baseline, new/existing recipient wallets,
+insufficient input, capped overpayment, repeated paid query ids and authentic
+first-hop failure/claim/replay behavior. The failure test explicitly injects a
+sender-token shortage, restores the fixture's custody before successful claim,
+and does not pretend to mint missing tokens. Reusing a query id with a new paid
+message is a new purchase; wallet-level replay protection is separate.
+
+Run `npm ci --ignore-scripts --prefix tests/settlement-runtime`, then
+`npm test --prefix tests/settlement-runtime`. This locked, separate runtime uses
+Sandbox to model action/storage/forwarding fees, unlike compute-only tests.
+Its dependencies were installed inside this isolated worktree, not in the
+shared Antigravity dependency directory. No blockchain RPC or transaction is
+needed by this test. The fixture starts active; the separate routed activation
+test exercises initialization and renounce.
+
+### Remaining limits and safe integration
+
+Do not enable production trading. Later-hop recipient failure, missing excess
+acknowledgements and extreme/future fee schedules still need complete recovery
+verification. The standard sender wallet restores a bounced recipient transfer
+but does not notify the Curve: a new authenticated failure exchange may be
+necessary to resolve such in-flight records without risking double delivery.
+No speculative wallet interface change was made. LP pool/master authentication
+and actual STON.fi provision/custody remain blocked. The routed graduation test
+checks dispatch and duplicate rejection, not successful external DEX execution.
+
+Changed files: Curve source and compiled artifact; deployment preflight message;
+`test-bonding-curve-tvm.js`; `test-graduation-accounting-known-issues.js`;
+`tests/settlement-runtime/{package.json,package-lock.json,settlement.test.js}`;
+this document. Existing assertions now distinguish TON reserve/gas-return
+actions from the single Jetton transfer and continue requiring the exact capped
+trade refund. No failed assertion was bypassed by increasing fixture funding.
+
+Review these changes atop the preserved Codex commits, compare Antigravity's
+current branch before integration, and regenerate dependent addresses. No
+`E:\ANLGRAM` edit, merge, push, publication or real transaction was performed.
+Mainnet remains blocked; all results above are local simulations.
+
 ## Remaining integration iteration — latest status
 
 Base commit `9f34102` and all preceding commits are preserved. This iteration

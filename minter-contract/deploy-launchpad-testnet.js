@@ -117,7 +117,7 @@ const KNOWN_BOOTSTRAP_BLOCKERS = [
   {
     id: 'CURVE_SETTLEMENT_END_TO_END_UNVERIFIED',
     nodes: ['bondingCurve'],
-    message: 'Capped accounting, TON refunds and malformed sell recovery pass local regressions. Routed TVM buy delivery fails at the Jetton wallet with exit 709: the existing 0.04 TON attachment does not exceed its forwarding plus gas/storage requirement. Funding allocation must be explicitly reviewed; do not enable trading. Full asynchronous settlement remains unverified.',
+    message: 'Local full-phase Sandbox purchase settlement now passes with unchanged 0.04 TON overhead, protected prior balance, buyer gas refunds and first-hop bounce claims. Live fee configurations, downstream receiver failures and complete DEX settlement remain unverified; do not enable production trading.',
   },
 ];
 

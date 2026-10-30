@@ -31,6 +31,10 @@ const { compileFunc } = minterRequire('@ton-community/func-js');
 let passed = 0;
 let failed = 0;
 
+function isJettonSend(action) {
+  return action.type === 'send_msg' && action.message.body.beginParse().readUint(32).toNumber() === 0x0f8a7ea5;
+}
+
 function assert(condition, testName, details = '') {
   if (condition) {
     console.log(`  ✅ [PASS] ${testName}${details ? ` (${details})` : ''}`);
@@ -817,7 +821,8 @@ async function runTests() {
     })
   );
   assert(buyRes.type === 'success', 'Buy order executes on TVM curve successfully');
-  assert(buyRes.actionList && buyRes.actionList.length === 1, 'Emits outbound Jetton transfer delivering tokens to Buyer');
+  assert(buyRes.actionList && buyRes.actionList.filter(isJettonSend).length === 1 &&
+    buyRes.actionList.some(a => a.type === 'reserve_currency'), 'Buy reserves protected TON and emits one outbound Jetton transfer');
 
   // 3.8B Adversarial Test: Inbound sell notification from unauthorized Jetton wallet rejected with exit code 401
   const fakeWalletSellMsg = new InternalMessage({
@@ -946,7 +951,7 @@ async function runTests() {
   });
   const claimRefundRes = await curveContract.sendInternalMessage(claimRefundMsg);
   assert(claimRefundRes.type === 'success', 'Entitled seller successfully claims pending refund');
-  assert(claimRefundRes.actionList && claimRefundRes.actionList.length === 1, 'Emits return Jetton transfer funded strictly by claimant gas');
+  assert(claimRefundRes.actionList?.filter(isJettonSend).length === 1 && claimRefundRes.actionList.some(a => a.type === 'reserve_currency'), 'Reserves prior balance and emits claimant-funded return transfer');
 
   const stateAfterClaim = await curveContract.invokeGetMethod('get_curve_state', []);
   assert(stateAfterClaim.result[7].toString() === '0', 'pending_refunds_tokens reset to 0 after successful claim');
@@ -1046,7 +1051,7 @@ async function runTests() {
   });
   const claimBouncedRes = await curveContract.sendInternalMessage(claimBouncedMsg);
   assert(claimBouncedRes.type === 'success', 'Seller successfully claims bounced token refund');
-  assert(claimBouncedRes.actionList && claimBouncedRes.actionList.length === 1, 'Emits return transfer delivering recovered bounced tokens to claimant');
+  assert(claimBouncedRes.actionList?.filter(isJettonSend).length === 1 && claimBouncedRes.actionList.some(a => a.type === 'reserve_currency'), 'Reserves prior balance and dispatches bounced-token claim');
 
   const stateAfterClaimBounced = await curveContract.invokeGetMethod('get_curve_state', []);
   assert(stateAfterClaimBounced.result[7].toString() === '0', 'pending_refunds_tokens reset to 0 after claiming recovered bounce');

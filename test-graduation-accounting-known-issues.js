@@ -149,7 +149,9 @@ async function scenario() {
   const expectedRefund = 1000n * ONE - 40_000_000n - expectedGross;
   const unaccountedBeforeExecutionFees = 1000n * ONE - 40_000_000n - (actualTon - beforeTon) - (afterFees - beforeFees);
   const actions = second.actionList || [];
-  const buyerRefunds = actions.filter(a => a.message?.info?.dest?.equals(buyer));
+  // Explicit unspent trade refund; the separate mode-128 message returns
+  // operational gas and is settled/tested with actual action fees in Sandbox.
+  const buyerRefunds = actions.filter(a => a.message?.info?.dest?.equals(buyer) && a.message.info.value.coins.gt(new BN(0)));
   console.log('TVM capped buy after first trade:', JSON.stringify({
     beforeTon: String(beforeTon), beforeTokens: String(beforeTokens), actualTon: String(actualTon),
     expectedTon: String(expectedTon), expectedRefund: String(expectedRefund),
