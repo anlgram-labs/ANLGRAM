@@ -1,5 +1,121 @@
 # MemeLabs isolated sprint: review notes
 
+## Critical-flow follow-up — current verified scope
+
+Continued from `c5c026e` without changing contract code, bytecode, tokenomics,
+website design or existing commits. Curve cell hash remains
+`0abb0feb4b9b124d04fd349c2131f6f9d54a371bb743a44c88c6f91b52c53334`;
+the compiler's read-only `--check` passes. No deterministic addresses change
+in this iteration. Existing deployment/address warnings below still apply.
+
+### Recipient failure: reproduced, not falsely refunded
+
+Added a full Sandbox scenario with a recipient account frozen at a prior
+nonzero-token state. This is an explicit local account-state fixture, not a
+live frozen wallet. The sender accepts the transfer and debits tokens; the
+recipient cannot unfreeze from the zero-initial-balance StateInit supplied by
+the transfer and aborts. Its real protocol bounce returns to the sender wallet,
+which restores its token balance exactly to the original 1B units. Recipient
+state stays frozen. The Curve receives no authenticated failure receipt and
+its token claim remains unavailable (409). No new TON or Jetton refund is
+authorized merely because a success notification is missing.
+
+This passing reproduction asserts the SAFE refusal to fabricate a refund; it
+does not mean recipient-failure recovery is complete. The existing standard
+wallet's `on_bounce` updates only its own balance and emits no owner receipt.
+
+**Authorization needed for an incompatible extension:** a launchpad-specific
+Jetton wallet must report correlated delivery success/failure to the Curve,
+authenticate consumed in-flight messages, and prevent duplicate restoration or
+claims. This likely needs wallet in-flight storage and a new authenticated
+receipt message/acknowledgement exchange, plus reviewed gas funding. Changing
+wallet code changes every derived Jetton wallet and dependent master/Curve
+StateInit. It must also be recognized separately by bytecode verification;
+do not silently relabel it as the existing canonical standard wallet. No new
+opcode, wallet storage or wallet implementation was invented or activated here.
+
+### LP verification implementation (read-only, fails closed)
+
+`minter-contract/verify-lp-custody.js` implements snapshot verification using
+the documented STON.fi v2 getter interfaces:
+
+- Requires independently trusted addresses and code hashes for Router, Pool,
+  LP wallet, locker, both token masters, Curve and migration router; requires
+  exact expected network, anchored snapshot id and reconciled minimum LP.
+- Derives each Router token wallet from its token master, then derives the
+  Pool via Router `get_pool_address`; verifies Pool router and token pair.
+- Derives locker LP wallet through Pool `get_wallet_address`; matches Pool
+  supply/admin and advertised wallet code, wallet owner/master/code and balance.
+- Checks permanent lock, stored Pool/Curve/wallet/migration-router binding and
+  actual balance covering the recorded lock and expected minimum.
+- Rejects missing pins, code substitution, mixed snapshots, wrong networks,
+  non-exact numbers and failed getters. Rechecks account code at the end.
+
+Its reader adapter must supply trusted, consistently anchored account/getter
+evidence. No production RPC adapter, trusted deployment manifest or real pinned
+snapshot is supplied. `VERIFIED_SNAPSHOT` is conditional read-only custody
+evidence, not a transaction trace, Merkle proof, DEX audit, contract-level
+enforcement or evidence that an actual deployment was verified. Unit tests use
+clearly labeled injected getter fixtures. Missing evidence stays UNVERIFIED.
+
+The locker still permits an authorized initializer to bind a wallet without
+contract-enforced derivation. Replacing that with an asynchronous authenticated
+pool/Router binding and making migration wait for the binding acknowledgement
+requires a reviewed contract protocol/state-machine extension. That specific
+interface change was stopped; the preflight LP blocker remains active.
+
+Getter specifications checked against official documentation:
+[STON.fi Pool](https://docs.ston.fi/developer-section/dex/smart-contracts/v2/pool),
+[STON.fi Router](https://docs.ston.fi/developer-section/dex/smart-contracts/v2/router).
+
+### STON.fi migration wire verification
+
+`migration-wire.test.js` executes the actual source-compiled migration router
+in Sandbox with explicitly preloaded liquidity and synthetic addresses. Its
+outbound Jetton and pTON payload cells are compared to the exact cells generated
+by official `@ston-fi/sdk@2.7.0` DEX.v2_1 / pTON.v2_1 builders. The pinned fixture
+records the SDK version/source and token-wallet code hash. Both payloads match.
+The test checks destination, query id, token amount and forwarding amount too.
+It does NOT emulate external STON.fi Router/Pool contracts, pool creation,
+LP issuance, LP receipt, or a successful completed migration.
+
+Fixture regeneration is explicit via `ANLGRAM_GENERATE_SDK_FIXTURE=1` and a
+temporary official SDK install. SDK was removed after generating the fixture;
+the committed runtime dependency lock is unchanged and tests run without the
+SDK. Its temporary dependency tree reported three high audit findings through
+Zod; after removal `npm audit --prefix tests/settlement-runtime` reports zero.
+No vulnerable SDK dependency was added to the app or retained in the test lock.
+
+### Actual tests and integration
+
+| Suite | Passed | Failed |
+| --- | ---: | ---: |
+| Full-phase Sandbox settlement, including frozen recipient | 8 | 0 |
+| LP verification algorithm (explicit unit fixtures) | 19 | 0 |
+| Actual migration output vs official SDK reference | 1 | 0 |
+| Source TVM regression | 135 | 0 |
+| Artifact TVM regression | 135 | 0 |
+| Routed activation/settlement + financial regressions | 5 | 0 |
+| Preflight/bootstrap/LP boundary/receipt regressions | 25 | 0 |
+| Math model, including 12,000 deterministic cycles | 46 | 0 |
+
+Run `npm ci --ignore-scripts --prefix tests/settlement-runtime`, then
+`npm test --prefix tests/settlement-runtime` (28 local tests). No RPC/broadcast
+is needed. None of these local results establish a successful chain migration.
+
+Files: `minter-contract/verify-lp-custody.js`, runtime `package.json`, expanded
+`settlement.test.js`, new `lp-custody.test.js`, `migration-wire.test.js`,
+`stonfi-v21-wire-fixture.json`, and this document. No existing passing financial
+test was removed. Review the isolated local commits, confirm actual deployment
+pins and a trusted snapshot adapter before integrating the verifier, and obtain
+authorization for the wallet/locker protocol extensions before implementing
+them. Preserve Antigravity's concurrent code. Do not merge/publish/deploy these
+changes automatically. `E:\ANLGRAM` was not modified.
+
+Mainnet and financial feature enablement remain blocked by recipient recovery,
+contract-enforced LP authenticity, complete external DEX execution and recovery,
+and live fee/delivery verification. No Testnet or Mainnet transactions occurred.
+
 ## Error 709 correction — latest verified status
 
 All previous commits, including `5910e42` and `7905672`, are preserved. The

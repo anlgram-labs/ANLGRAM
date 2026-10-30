@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { Blockchain, createShardAccount } = require('@ton/sandbox');
-const { Address, beginCell, Cell, internal, contractAddress } = require('@ton/core');
+const { Address, beginCell, Cell, internal, contractAddress, storeStateInit } = require('@ton/core');
 const { compileFunc } = require('@ton-community/func-js');
 const root = path.resolve(__dirname, '../..');
 const contracts = path.join(root, 'minter-contract/contracts');
@@ -130,4 +130,27 @@ test('actual truncated first-hop bounce retains buyer token entitlement without 
   assert.equal((await s.chain.runGetMethod(curveAddress, 'get_curve_state')).stack[7].value, 0n);
   const again = await claim();
   assert(again.transactions.some(tx => tx.description.computePhase?.type === 'vm' && tx.description.computePhase.exitCode === 409));
+});
+test('frozen recipient failure restores sender tokens but cannot authorize a Curve refund', async () => {
+  const [curve, wallet] = await codes; const s = await setup(curve, wallet);
+  // Explicit local frozen-account fixture: state contains a previous token
+  // balance, so the zero-balance StateInit supplied by transfer cannot unfreeze it.
+  const data = beginCell().storeCoins(42n).storeAddress(s.buyer.address).storeAddress(master).storeRef(wallet).endCell();
+  const frozen = createShardAccount({ address: s.buyerWallet, code: wallet, data, balance: 10000000n });
+  const stateHash = beginCell().store(storeStateInit({ code: wallet, data })).endCell().hash();
+  frozen.account.storage.state = { type: 'frozen', stateHash: BigInt('0x' + stateHash.toString('hex')) };
+  await s.chain.setShardAccount(s.buyerWallet, frozen);
+  const result = await s.buy();
+  const failed = result.transactions.find(tx => tx.inMessage?.info.dest?.equals(s.buyerWallet));
+  assert(failed); assert.equal(failed.description.aborted, true);
+  const restored = result.transactions.find(tx => tx.inMessage?.info.type === 'internal' && tx.inMessage.info.bounced && tx.inMessage.info.dest.equals(s.curveWallet));
+  assert(restored); assert.equal(restored.description.aborted, false);
+  assert.equal((await s.chain.runGetMethod(s.curveWallet, 'get_wallet_data')).stackReader.readBigNumber(), supply);
+  assert.equal((await s.chain.getContract(s.buyerWallet)).accountState.type, 'frozen');
+  const state = await s.chain.runGetMethod(curveAddress, 'get_curve_state');
+  assert.equal(state.stack[7].value, 0n, 'absence of a success notice is not failure proof at Curve');
+  const claim = await s.buyer.send({ to: curveAddress, value: 40000000n, bounce: true,
+    body: beginCell().storeUint(0x414e4c34,32).storeUint(90,64).endCell() });
+  assert(claim.transactions.some(tx => tx.description.computePhase?.type === 'vm' && tx.description.computePhase.exitCode === 409));
+  console.log('RECIPIENT_FAILURE_BLOCKER: sender custody restored, Curve receives no authenticated failure receipt; no refund authorized.');
 });
