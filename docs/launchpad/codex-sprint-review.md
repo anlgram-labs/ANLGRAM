@@ -1,5 +1,93 @@
 # MemeLabs isolated sprint: review notes
 
+## PR #1 conflict resolution — isolated integration, 2026-10-29
+
+Integration branch: `codex/memelabs-integration`, preserving `51a101c` and all
+Codex history, with production `main=781e1db` merged only into this review branch.
+Antigravity feature `caf2c70` is an ancestor of the Codex sprint. All 13 Git
+conflicts were inspected and resolved explicitly; no original E: checkout was
+modified and no force push, production merge, deployment or transaction occurred.
+
+Resolution decisions:
+
+| Conflict | Resolution |
+| --- | --- |
+| `assets/js/anl-labs.js` | Main's tab/hash navigation plus Codex's missing-consent rejection, exact receipts and financial gates. |
+| `assets/js/donation-config.js` | Exact main allocation, immutable Codex config, pinned recipient and mainnet validation. |
+| `assets/js/launchpad.js` | Preserve production fee styling; use canonical checked creator rather than main's unchecked clone path and invalid config-property aliases. |
+| `memecoin-platform.html` | Current production HTML/CSS/navigation/calculator/pool empty state; transplant checked creator and receipt loading. Keep mandatory disclosure and hide recipient from normal creator markup, preserving wallet disclosures. |
+| `docs/release/memelabs-production-readiness.md` | Preserve main's newer corrected historical release report; this report supersedes its financial readiness claims. |
+| Curve source + artifact | Keep verified financial fixes; preserve main's three read-only getters; regenerate bytecode. No pricing, input opcode or storage-layout change. |
+| LP locker source + artifact | Keep Codex's strictly stronger initialization, address, sender/origin and positive-amount guards. Main's less restrictive version is preserved in Git and independently tested as baseline. |
+| Migration router source + artifact | Preserve Codex's pending-asset accounting and source/artifact pair. Main's incompatible runtime storage/error/interface variant is not spliced into it. Both variants remain reviewable in Git; historical main suite runs separately. |
+| `deploy-launchpad-testnet.js` | Keep read-only fail-closed preflight and bootstrap blockers, not optimistic deployment instructions. Main executor/planner files and tests are retained separately. |
+| `test-bonding-curve-tvm.js` | Keep integrated financial suite; run all 154 original main assertions through a separate immutable-baseline harness, not against incompatible fixtures. |
+
+Automatically compatible main changes were reviewed and retained: homepage,
+wallet connector, manifests, supervised executor/engine, minter's optional
+admin-change confirmation destination, release documentation, candidate tools
+and tests. No current production CSS file was changed. New preservation tests
+compare every non-script inline style, CSS block, navigation markup, homepage
+and wallet connector exactly with main. All pass. Text corrections and the new
+consent-network span do not replace layout components.
+
+Additional verified defect: executor artifact verification previously trusted
+recorded code-cell hashes. It now independently decodes both BOC encodings,
+allows legitimate CRC/index serialization differences, compares code cells and
+recalculates the cell hash as well as the recorded serialization checksum.
+Forged metadata and conflicting cells are rejected. This is integrity evidence,
+not source verification, deployment approval or signing permission.
+
+The old donation suite expected duplicate builders, substring-based rejection
+classification and visible recipient addresses. Assertions now require canonical
+routing, exact pinned message guards, mandatory wording and typed rejection/
+persistent uncertain intent. Runtime batch and receipt tests retain actual
+local Sandbox evidence. The real proxy test starts an ephemeral HTTP server
+with explicitly injected upstream fixtures, removing its undeclared requirement
+for an already-running localhost:8080 process. No result is represented as a
+real external balance or deployment.
+
+Verified results: **36/36 root regression suites pass**; source/artifact TVM
+135 each; original main baseline TVM 154; donation static 26; creator outcomes
+13; wizard confirmation 12; production preservation 4; receipt fixtures 11.
+Additionally: **68/68** deployment-plan/executor/supervised-engine tests,
+**50/50** Sandbox tests, **46/46** math checks (12,000 deterministic trade cycles),
+and **5/5** minter Mocha tests. Compiler check passes and test-runtime dependency
+audit reports zero vulnerabilities. Root suites include existing read-only
+public TonAPI checks; those are unrelated account queries, not verification of
+ANLGRAM deployment. Upload scripts and live transaction/deployment tests are
+excluded under the user's no-spend/no-broadcast restrictions.
+
+Curve cell hash: `bfb3af58119a5dccc6f40da34b33cb09b576204b6a6f11a3e6884b655770215e`.
+Curve source SHA-256: `4d4231f6415af2dba3cd59c626ffec0c7712c566a11e0956d3bd2f67a2f761e9`.
+Curve serialized BOC SHA-256: `f5029dac1fc2ee3d399ec87c4b012bf744be440a81f48f24a60dd65e96a2275c`.
+Retained main minter cell hash:
+`90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec`.
+Both source/artifact pairs match independent compilation. These hashes change
+Curve and dependent deterministic addresses versus the previous sprint;
+there is no deployed-code upgrade or production address substitution.
+
+Production-only preparation uses a separate worktree and branch based directly
+on main. Only frontend safeguards, exact GET-only receipt proxy routing and
+associated tests/documentation may be copied there. Contract source, artifacts,
+CLI deployment tools, credentials and production addresses must remain identical
+to main. No merge/publication is being performed as part of PR preparation.
+
+Critical development remains isolated and blocked: no authenticated downstream
+recipient failure receipt protocol, no contract-enforced trusted LP handshake,
+and no fully executed external STON.fi deposit/LP custody/recovery simulation.
+The two router storage variants must not be combined or switched during an
+in-flight operation. An external verified Router/Pool fixture and authenticated
+receipt retry/gas design are still required. Neither passing historical tests
+nor matching SDK payload cells establishes migration completion or LP custody.
+
+Antigravity integration: review this merge commit by conflict decision above;
+run `node scripts/run-local-regressions.js`, all minter planner tests, runtime
+Sandbox and source/compiler checks. Re-fetch main and feature first. Preserve
+its own uncommitted work before any integration. PR #1 is development-only;
+never use it as the production publication unit.
+
+
 ## 2026-10-29 — refund settlement and preserved creation donation
 
 Continued from `64afb2a`, preserving all earlier commits. Financial correction:

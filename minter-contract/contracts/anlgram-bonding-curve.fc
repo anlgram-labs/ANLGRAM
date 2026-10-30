@@ -1095,3 +1095,37 @@ int get_pending_refund(slice user_address) method_id {
     );
 }
 
+
+;; Read-only getter compatibility retained from production main.
+int get_dex_escrow() method_id {
+    (
+        _, _, _, _,
+        _, _, _, _, _,
+        _, _, _, _,
+        _, _, _, int dex_tokens_escrow,
+        _, _
+    ) = load_data();
+    return dex_tokens_escrow;
+}
+
+slice get_migration_router() method_id {
+    (
+        _, _, _, _,
+        _, _, _, _, slice migration_router_address,
+        _, _, _, _,
+        _, _, _, _,
+        _, _
+    ) = load_data();
+    return migration_router_address;
+}
+
+slice get_lp_locker() method_id {
+    (
+        _, _, _, _,
+        _, _, _, slice lp_locker_address, _,
+        _, _, _, _,
+        _, _, _, _,
+        _, _
+    ) = load_data();
+    return lp_locker_address;
+}

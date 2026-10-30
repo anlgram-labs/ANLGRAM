@@ -295,7 +295,7 @@
   <div class="glass-card" style="text-align:left;margin-bottom:20px;">
     <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Creation Cost Breakdown</div>
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-      <span style="color:#94a3b8;">Blockchain execution</span>
+      <span style="color:#94a3b8;">Blockchain execution base</span>
       <span style="font-family:var(--font-mono);color:#fff;">~${quote.blockchainCostTON} TON</span>
     </div>
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
@@ -633,9 +633,9 @@
     card.id = 'anlgram-fee-breakdown';
     card.innerHTML = `
 <div style="background:rgba(0,240,255,0.04);border:1px solid rgba(0,240,255,0.15);border-radius:12px;padding:16px 20px;margin-bottom:16px;">
-  <div style="color:var(--accent-cyan);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Token Creation Cost &amp; Donation</div>
+  <div style="color:var(--accent-cyan);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Token Creation Cost &amp; Donation Breakdown</div>
   <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;">
-    <span style="color:#94a3b8;">Blockchain execution</span>
+    <span style="color:#94a3b8;">Blockchain execution base</span>
     <span style="font-family:var(--font-mono);">~${fees.blockchainCostTON} TON</span>
   </div>
   <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;align-items:center;">
@@ -644,7 +644,7 @@
       <span title="Mandatory 0.02 TON donation on the 0.20 TON creation execution base."
         style="width:15px;height:15px;border-radius:50%;background:rgba(0,240,255,0.15);border:1px solid rgba(0,240,255,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:var(--accent-cyan);cursor:help;">ℹ</span>
     </span>
-    <span style="font-family:var(--font-mono);">~${fees.platformFeeTON} TON</span>
+    <span style="font-family:var(--font-mono);color:#4ade80;">+${fees.platformFeeTON} TON</span>
   </div>
   <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;">
     <strong style="font-size:13px;">Estimated total</strong>

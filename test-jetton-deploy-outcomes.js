@@ -96,13 +96,13 @@ function event() { return { wizardInitiated: true, currentTarget: { innerHTML: '
     const t = createContext({ badWalletCode: true }); const r = await t.context.deployJettonWeb3(event());
     assert.strictEqual(r.submitted, false); assert.match(r.reason, /wallet bytecode hash/); assert.strictEqual(t.sent, 0);
   });
-  await check('sample liquidity pool is labeled and cannot trigger a removal action', async () => {
-    const startPool = html.indexOf('TON-NewToken — DEMO PREVIEW');
-    const endPool = html.indexOf('// Load only tokens WHERE wallet is admin', startPool);
-    assert(startPool >= 0 && endPool > startPool);
-    const poolPreview = html.slice(startPool, endPool);
-    assert.match(poolPreview, /<button class="btn-solid" disabled/);
-    assert(!poolPreview.includes("removeLiquidityRedirect('TON-NewToken')"));
+  await check('production pool preview is opt-in and cannot remove liquidity', async () => {
+    const a = html.indexOf("const isDemoPreview = localStorage.getItem('anlgram_demo_pools_preview') === 'true'");
+    const b = html.indexOf('// Load only tokens WHERE wallet is admin', a);
+    assert(a >= 0 && b > a);
+    const pools = html.slice(a, b);
+    assert.match(pools, /DEMO PREVIEW/); assert.match(pools, /No Verified Liquidity Pools|No Active Liquidity Pools|No Liquidity Pools/i);
+    assert(!pools.includes('onclick="removeLiquidityRedirect('));
   });
   console.log(`${passed} mocked wallet checks passed`);
 })().catch(e => { console.error(e); process.exitCode = 1; });
