@@ -4,6 +4,22 @@
 
 Preserves all history through `91b3b63`. Implementation commits: `a800c7b` and
 `e8703d0`; this section supersedes older current-result/address summaries below.
+GitHub delivery blocker: implementation `a800c7b`, offline plan `e8703d0`
+and evidence/report `2920313` are committed locally. The atomic push failed because
+Git Credential Manager did not return a GitHub password/token; noninteractive
+credential checks also failed. No secret was printed. Public API confirms PR #1
+still draft/open at `91b3b63`, and PR #2 open/non-draft at `8cbda34`.
+Do not describe the new work as pushed or available in PR #1 yet. After restoring
+GitHub authentication, fetch/recheck concurrency and run from the isolated dev
+worktree:
+
+```powershell
+git push --atomic origin HEAD:refs/heads/codex/memelabs-settlement-1030 HEAD:refs/heads/codex/memelabs-sprint
+```
+
+Then update PR #1 with this evidence and retain draft status; never push PR #2,
+merge, deploy or sign transactions as part of that recovery.
+
 PR #1 remains development-only/draft. PR #2 and its production-safe head
 `8cbda34` are unchanged. No UI, TON Center, Cloudflare, Telegram Bot, economic
 parameters or production credentials were changed. No transactions were signed,

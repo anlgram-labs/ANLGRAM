@@ -499,5 +499,14 @@
     "Frozen LP owner missing notification cannot authenticate custody retrospectively",
     "Curve final-return accounting acknowledgment incomplete",
     "Migration finalization blocked; guard authorization remains zero"
-  ]
+  ],
+  "githubDelivery": {
+    "status": "BLOCKED_MISSING_GITHUB_CREDENTIAL",
+    "atomicPushSucceeded": false,
+    "lastObservedPr1Head": "91b3b63121b9b1b42c8918974b059b88df786c01",
+    "pr1Draft": true,
+    "pr2Head": "8cbda34117cbac86855de855c01850ecaa8db2eb",
+    "pr2Draft": false,
+    "localEvidenceCommit": "2920313"
+  }
 }
