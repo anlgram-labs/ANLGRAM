@@ -3,6 +3,7 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const core=require('@ton/core');const {beginCell,Cell,Address,Dictionary,contractAddress}=core;
 const {DEFAULT_CONFIG,BondingCurveEngine}=require('./scripts/bonding-curve-math');
+const {profileCell}=require('./scripts/stonfi-v22-addresses');
 const OPERATOR_INPUT='UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd';
 const DEX='0:05a5e18525003d2aa882c5767c27897ffef4980311528ab48ebcf1e7e92497e3';
 const PTON='0:024b7d03368510ecd7c0a4fbf387b78199267d2f8ca027e964356b5b6bc4d04f';
@@ -39,7 +40,7 @@ function buildCandidate(operatorInput=OPERATOR_INPUT,tonCore=core){
  const curveAddress=contractAddress(0,curve);
  const empty=beginCell().storeAddress(null).storeAddress(null).endCell();
  const guard={code:code('anlgram-lp-auth-guard',tonCore),data:beginCell().storeUint(0,8).storeUint(0,64)
-  .storeRef(beginCell().storeAddress(dex).storeAddress(minterAddress).storeAddress(pton).storeRef(beginCell().storeAddress(operator).endCell()).endCell())
+  .storeRef(beginCell().storeAddress(dex).storeAddress(minterAddress).storeAddress(pton).storeRef(beginCell().storeAddress(operator).endCell()).storeRef(profileCell(tonCore)).endCell())
   .storeRef(empty).storeRef(empty).endCell()};
  const guardAddress=contractAddress(0,guard);
  const migration={code:code('anlgram-migration-router',tonCore),data:beginCell().storeBit(0).storeAddress(curveAddress).storeAddress(guardAddress).storeAddress(dex)
@@ -55,6 +56,7 @@ function manifest(candidate=buildCandidate()){
   operatorTestnetRepresentation:candidate.operator.toString({testOnly:true,bounceable:false}),
   warning:'A Testnet tag is not proof of control. Match the connected wallet account and chain before any signature.',
   proposedMetadata:{name:'ANLGRAM Testnet Settlement',symbol:'ANLTEST',decimals:9},metadataApproved:false,
+  lpDevelopmentProfile:{codeIdentityPinned:true,trustModelAcceptedForDevelopment:true,sourceAuditVerified:false,migrationAuthorized:false},
   accounts:Object.fromEntries(Object.entries(candidate.states).map(([role,init])=>[role,{address:candidate.addresses[role].toString({testOnly:true}),
    raw:candidate.addresses[role].toRawString(),codeHash:init.code.hash().toString('hex'),dataHash:init.data.hash().toString('hex')}])),
   curveWallet:candidate.curveWallet.toString({testOnly:true}),settlementWalletCodeHash:candidate.wallet.hash().toString('hex'),

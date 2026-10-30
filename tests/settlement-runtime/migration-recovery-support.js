@@ -5,7 +5,7 @@ const core=require('@ton/core');const {createShardAccount,internal}=require('@to
 const {compileFunc}=require('@ton-community/func-js');const {setup,snap}=require('./stonfi-snapshot-support');
 const {beginCell,Address,contractAddress}=core,addr=n=>new Address(0,Buffer.alloc(32,n));
 let compiled;
-async function fixture(){
+async function fixture({pinned=false}={}){
  const chain=await setup(),admin=await chain.treasury('recovery-admin');
  const dir=path.resolve(__dirname,'../../minter-contract/contracts');
  const codes=await (compiled ||= Promise.all(['anlgram-migration-router','anlgram-settlement-wallet','anlgram-launchpad-jetton-minter','anlgram-lp-auth-guard'].map(async name=>{
@@ -19,8 +19,10 @@ async function fixture(){
  const ptonWallet=(await chain.runGetMethod(pton,'get_wallet_address',[arg(dex)])).stackReader.readAddress();
  const pool=(await chain.runGetMethod(dex,'get_pool_address',[arg(dexTokenWallet),arg(ptonWallet)])).stackReader.readAddress();
  const empty=beginCell().storeAddress(null).storeAddress(null).endCell();
+ let cfg=beginCell().storeAddress(dex).storeAddress(master).storeAddress(pton).storeRef(beginCell().storeAddress(admin.address).endCell());
+ if(pinned)cfg=cfg.storeRef(require('../../minter-contract/scripts/stonfi-v22-addresses').profileCell(core));
  await chain.setShardAccount(locker,createShardAccount({address:locker,code:guard,balance:10000000n,data:beginCell().storeUint(0,8).storeUint(0,64)
-  .storeRef(beginCell().storeAddress(dex).storeAddress(master).storeAddress(pton).storeRef(beginCell().storeAddress(admin.address).endCell()).endCell()).storeRef(empty).storeRef(empty).endCell()}));
+  .storeRef(cfg.endCell()).storeRef(empty).storeRef(empty).endCell()}));
  await chain.setShardAccount(master,createShardAccount({address:master,code:minter,balance:10000000n,data:beginCell().storeCoins(1000000000000000000n).storeAddress(null).storeRef(beginCell().endCell()).storeRef(wallet).endCell()}));
  await chain.setShardAccount(ownWallet,createShardAccount({address:ownWallet,code:wallet,data:walletData(migrator,200000000000000000n),balance:10000000n}));
  await chain.setShardAccount(migrator,createShardAccount({address:migrator,code,balance:500010000000n,data:beginCell().storeBit(false).storeAddress(curve).storeAddress(locker).storeAddress(dex)

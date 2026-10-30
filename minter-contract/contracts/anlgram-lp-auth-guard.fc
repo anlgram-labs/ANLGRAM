@@ -8,12 +8,14 @@
 #include "imports/op-codes.fc";
 #include "imports/discovery-params.fc";
 #include "imports/utils.fc";
+#include "imports/jetton-utils.fc";
+#include "imports/stonfi-v22-auth.fc";
 #pragma version >=0.2.0;
 const int start_auth  =  0x414c5001;
 const int pool_query  =  0x2993ade0;
 
 ;; root: phase:uint8 nonce:uint64 ^config ^wallets ^result
-;; config: router master0 master1 ^admin; wallets: wallet0 wallet1;
+;; config: router master0 master1 ^admin [^development_profile]; wallets: wallet0 wallet1;
 ;; result: pool lp_wallet. All endpoints are immutable genesis configuration.
 (int,int,cell,slice,slice,slice,slice) load_auth() inline {
   slice ds = get_data().begin_parse(); int phase = ds~load_uint(8); int nonce = ds~load_uint(64);
@@ -42,11 +44,13 @@ const int pool_query  =  0x2993ade0;
   slice sender = msg~load_msg_addr();int op = body~load_uint(32);int q = body~load_uint(64);
   (int phase,int nonce,cell cfg,slice w0,slice w1,slice pool,slice lp) = load_auth();
   slice c = cfg.begin_parse();slice router = c~load_msg_addr();slice m0 = c~load_msg_addr();slice m1 = c~load_msg_addr();
-  slice sa = c~load_ref().begin_parse();slice admin = sa~load_msg_addr();sa.end_parse();c.end_parse();
+  slice sa = c~load_ref().begin_parse();slice admin = sa~load_msg_addr();sa.end_parse();
+  cell profile = c.slice_refs() ? c~load_ref() : null();c.end_parse();
   throw_unless(408,(router.preload_uint(2) == 2) & (m0.preload_uint(2) == 2) & (m1.preload_uint(2) == 2) & (admin.preload_uint(2) == 2));
   throw_if(408,equal_slices(m0,m1));
   if(op == start_auth) {
     throw_unless(401,equal_slices(sender,admin));throw_unless(405,value >= 150000000);
+    ifnot (cell_null?(profile)) { stonfi_profile_codes(profile); }
     ;; Starting/retrying establishes a fresh nonce; stale replies cannot advance it.
     nonce = cur_lt();slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
     save_auth(1,nonce,cfg,none,none,none,none);
@@ -69,11 +73,14 @@ const int pool_query  =  0x2993ade0;
       save_auth(2,nonce,cfg,wallet,w1,pool,lp);query_wallet(m1,router,nonce,balance - value);return();
     }
     if(phase == 2) {
-      throw_if(408,equal_slices(wallet,w0));save_auth(3,nonce,cfg,w0,wallet,pool,lp);
+      throw_if(408,equal_slices(wallet,w0));
+      ifnot (cell_null?(profile)) { (pool,lp) = stonfi_expected_destinations(router,w0,wallet,profile); }
+      save_auth(3,nonce,cfg,w0,wallet,pool,lp);
       forward_query(router,begin_cell().store_uint(pool_query,32).store_uint(nonce,64)
         .store_slice(w0).store_slice(wallet).end_cell(),balance - value);return();
     }
     ;; Address binding complete, but authorization remains false (no code/custody proof).
+    ifnot (cell_null?(profile)) { throw_unless(408,equal_slices(wallet,lp)); }
     save_auth(5,nonce,cfg,w0,w1,pool,wallet);
     forward_query(admin,begin_cell().store_uint(op::excesses(),32).store_uint(nonce,64).end_cell(),balance - value);
     return();
@@ -82,6 +89,7 @@ const int pool_query  =  0x2993ade0;
     throw_unless(407,phase == 3);throw_unless(401,equal_slices(sender,router));
     slice found = body~load_msg_addr();body.end_parse();throw_unless(408,found.preload_uint(2) == 2);force_chain(found);
     throw_if(408,equal_slices(found,router) | equal_slices(found,my_address()));
+    ifnot (cell_null?(profile)) { throw_unless(408,equal_slices(found,pool)); }
     save_auth(4,nonce,cfg,w0,w1,found,lp);query_wallet(found,my_address(),nonce,balance - value);return();
   }
   throw(404);
@@ -90,3 +98,9 @@ const int pool_query  =  0x2993ade0;
  (int phase,int nonce,_,slice w0,slice w1,slice pool,slice lp) = load_auth();return(phase,nonce,w0,w1,pool,lp);
 }
 int is_migration_authorized() method_id { return 0; }
+(int,slice,slice) get_expected_destinations() method_id {
+ (int phase,int nonce,cell cfg,slice w0,slice w1,slice pool,slice lp) = load_auth();
+ slice c = cfg.begin_parse();c~load_msg_addr();c~load_msg_addr();c~load_msg_addr();c~load_ref();
+ cell profile = c.slice_refs() ? c~load_ref() : null();c.end_parse();
+ return (~ cell_null?(profile),pool,lp);
+}
