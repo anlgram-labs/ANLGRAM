@@ -873,7 +873,10 @@ async function runTests() {
 
   const sufficientGasSellRes = await curveContract.sendInternalMessage(sufficientGasSellMsg);
   assert(sufficientGasSellRes.type === 'success', 'Slippage violation handled safely WITHOUT TVM exception');
-  assert(sufficientGasSellRes.actionList && sufficientGasSellRes.actionList.length === 1, 'Emits outbound Jetton transfer safely refunding tokens to Seller');
+  assert(sufficientGasSellRes.actionList?.filter(isJettonSend).length === 1 &&
+    sufficientGasSellRes.actionList.some(a => a.type === 'reserve_currency') &&
+    sufficientGasSellRes.actionList.filter(a => a.type === 'send_msg').length === 2,
+    'Reserves prior TON, refunds tokens and returns unused notification gas');
 
   const stateAfterSufficient = await curveContract.invokeGetMethod('get_curve_state', []);
   assert(stateAfterSufficient.result[4].toString() === tonReserveBefore, 'Curve real TON reserve remains 100% UNCHANGED (Zero gas subsidy paid from reserve)');

@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { Blockchain, createShardAccount } = require('@ton/sandbox');
-const { Address, beginCell, Cell, internal, contractAddress, storeStateInit } = require('@ton/core');
+const { Address, beginCell, Cell, internal, external, contractAddress, storeStateInit } = require('@ton/core');
 const { compileFunc } = require('@ton-community/func-js');
 const root = path.resolve(__dirname, '../..');
 const contracts = path.join(root, 'minter-contract/contracts');
@@ -153,4 +153,80 @@ test('frozen recipient failure restores sender tokens but cannot authorize a Cur
     body: beginCell().storeUint(0x414e4c34,32).storeUint(90,64).endCell() });
   assert(claim.transactions.some(tx => tx.description.computePhase?.type === 'vm' && tx.description.computePhase.exitCode === 409));
   console.log('RECIPIENT_FAILURE_BLOCKER: sender custody restored, Curve receives no authenticated failure receipt; no refund authorized.');
+});
+
+for (const [malformed, forward] of [[false,50000000n], [true,45000000n], [true,50000000n], [true,60000000n]]) test(`actual buy then ${malformed ? 'malformed sell refund' : 'sell payout'} (${forward} nanoTON) reconciles wallet ownership and reserves`, async () => {
+  const [curve, wallet] = await codes; const s = await setup(curve, wallet);
+  await s.buy();
+  const tokens = (await s.chain.runGetMethod(s.buyerWallet, 'get_wallet_data')).stackReader.readBigNumber();
+  const before = (await s.chain.runGetMethod(curveAddress, 'get_curve_state')).stack;
+  const priorTon = (await s.chain.getContract(curveAddress)).balance;
+  const payload = malformed ? beginCell().storeUint(15, 4).endCell() : beginCell().storeCoins(0).endCell();
+  const result = await s.buyer.send({ to: s.buyerWallet, value: 100000000n, bounce: true,
+    body: beginCell().storeUint(0x0f8a7ea5,32).storeUint(100,64).storeCoins(tokens).storeAddress(curveAddress)
+      .storeAddress(s.buyer.address).storeBit(false).storeCoins(forward).storeBit(true).storeRef(payload).endCell() });
+  const failures = result.transactions.filter(tx => tx.description.computePhase?.type === 'vm' && ![0,1].includes(tx.description.computePhase.exitCode));
+  assert.deepEqual(failures.map(tx => tx.description.computePhase.exitCode), [], JSON.stringify(summary(result)));
+  const after = (await s.chain.runGetMethod(curveAddress, 'get_curve_state')).stack;
+  const balance = (await s.chain.runGetMethod(s.buyerWallet, 'get_wallet_data')).stackReader.readBigNumber();
+  const custody = (await s.chain.runGetMethod(s.curveWallet, 'get_wallet_data')).stackReader.readBigNumber();
+  if (malformed) {
+    assert.equal(balance, tokens); assert.equal(custody, supply - tokens);
+    for (const i of [4,5,6,7]) assert.equal(after[i].value, before[i].value);
+    assert.equal((await s.chain.getContract(curveAddress)).balance, priorTon, 'refund consumes no protected balance and returns unused gas');
+  } else {
+    assert.equal(balance, 0n); assert.equal(custody, supply);
+    const gross = (before[4].value + before[8].value) * tokens / (before[5].value + before[9].value + tokens);
+    const fee = gross * 100n / 10000n;
+    assert.equal(after[4].value, before[4].value - gross); assert.equal(after[6].value, before[6].value + fee);
+    assert(result.transactions.some(tx => tx.inMessage?.info.type === 'internal' && tx.inMessage.info.src.equals(curveAddress) &&
+      tx.inMessage.info.dest.equals(s.buyer.address) && tx.inMessage.info.value.coins === gross - fee));
+  }
+});
+
+test('malformed sell with underfunded notification escrows actual tokens and permits exactly one funded claim', async () => {
+  const [curve, wallet] = await codes; const s = await setup(curve, wallet); await s.buy();
+  const amount = (await s.chain.runGetMethod(s.buyerWallet, 'get_wallet_data')).stackReader.readBigNumber();
+  await s.buyer.send({ to: s.buyerWallet, value: 100000000n, bounce: true,
+    body: beginCell().storeUint(0x0f8a7ea5,32).storeUint(101,64).storeCoins(amount).storeAddress(curveAddress)
+      .storeAddress(s.buyer.address).storeBit(false).storeCoins(20000000n).storeBit(true).storeRef(beginCell().storeUint(15,4).endCell()).endCell() });
+  assert.equal((await s.chain.runGetMethod(s.buyerWallet, 'get_wallet_data')).stackReader.readBigNumber(), 0n);
+  assert.equal((await s.chain.runGetMethod(curveAddress, 'get_curve_state')).stack[7].value, amount);
+  const claim = () => s.buyer.send({ to: curveAddress, value: 40000000n, bounce: true, body: beginCell().storeUint(0x414e4c34,32).storeUint(102,64).endCell() });
+  await claim();
+  assert.equal((await s.chain.runGetMethod(s.buyerWallet, 'get_wallet_data')).stackReader.readBigNumber(), amount);
+  assert.equal((await s.chain.runGetMethod(curveAddress, 'get_curve_state')).stack[7].value, 0n);
+  const again = await claim(); assert(again.transactions.some(t => t.description.computePhase?.exitCode === 409));
+});
+
+test('actual immediate refund first-hop bounce re-escrows once and recovers after wallet fault is cleared', async () => {
+  const [curve, wallet] = await codes; const s = await setup(curve, wallet); await s.buy();
+  const amount = (await s.chain.runGetMethod(s.buyerWallet, 'get_wallet_data')).stackReader.readBigNumber();
+  const body = beginCell().storeUint(0x0f8a7ea5,32).storeUint(103,64).storeCoins(amount).storeAddress(curveAddress)
+    .storeAddress(s.buyer.address).storeBit(false).storeCoins(50000000n).storeBit(true).storeRef(beginCell().storeUint(15,4).endCell()).endCell();
+  const message = external({ to: s.buyer.address, body: s.buyer.createTransfer({ messages: [internal({ to: s.buyerWallet, value: 100000000n, bounce: true, body })], sendMode: 1 }) });
+  let injected = false, bounce;
+  for await (const tx of await s.chain.sendMessageIter(message)) {
+    if (!injected && tx.inMessage?.info.dest?.equals(curveAddress)) {
+      // Explicit local account freeze between sell notification and refund.
+      // Actual custody is preserved; the next real wallet message must bounce.
+      const prior = await s.chain.getContract(s.curveWallet);
+      const data = beginCell().storeCoins(supply).storeAddress(curveAddress).storeAddress(master).storeRef(wallet).endCell();
+      const frozen = createShardAccount({ address: s.curveWallet, code: wallet, data, balance: prior.balance });
+      frozen.account.storage.state = { type: 'frozen', stateHash: BigInt('0x' + beginCell().store(storeStateInit({ code: wallet, data })).endCell().hash().toString('hex')) };
+      await s.chain.setShardAccount(s.curveWallet, frozen); injected = true;
+    }
+    if (tx.inMessage?.info.type === 'internal' && tx.inMessage.info.bounced && tx.inMessage.info.dest.equals(curveAddress)) bounce = tx.inMessage;
+  }
+  assert(injected); assert(bounce);
+  assert.equal((await s.chain.runGetMethod(curveAddress, 'get_curve_state')).stack[7].value, amount);
+  await s.chain.sendMessage(bounce); // deliberately replay consumed authentic bounce
+  assert.equal((await s.chain.runGetMethod(curveAddress, 'get_curve_state')).stack[7].value, amount);
+  const prior = await s.chain.getContract(s.curveWallet);
+  await s.chain.setShardAccount(s.curveWallet, createShardAccount({ address: s.curveWallet, code: wallet,
+    data: beginCell().storeCoins(supply).storeAddress(curveAddress).storeAddress(master).storeRef(wallet).endCell(), balance: prior.balance }));
+  await s.buyer.send({ to: curveAddress, value: 40000000n, bounce: true, body: beginCell().storeUint(0x414e4c34,32).storeUint(104,64).endCell() });
+  assert.equal((await s.chain.runGetMethod(s.buyerWallet, 'get_wallet_data')).stackReader.readBigNumber(), amount);
+  assert.equal((await s.chain.runGetMethod(s.curveWallet, 'get_wallet_data')).stackReader.readBigNumber(), supply - amount);
+  assert.equal((await s.chain.runGetMethod(curveAddress, 'get_curve_state')).stack[7].value, 0n);
 });

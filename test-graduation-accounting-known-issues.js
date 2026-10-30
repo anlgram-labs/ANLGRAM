@@ -114,7 +114,14 @@ async function scenario() {
       body: new CommonMessageInfo({ body: new CellMessage(body.endCell()) }),
     }));
     assert.equal(result.type, 'success', variant);
-    assert.equal(result.actionList.length, 1, variant + ' must refund');
+    const transfers = result.actionList.filter(a => a.type === 'send_msg' &&
+      a.message?.info?.dest?.equals(curveJettonWallet));
+    assert.equal(transfers.length, 1, variant + ' must return actual Jettons');
+    const refund = transfers[0].message.body.beginParse();
+    assert.equal(refund.readUint(32).toNumber(), 0x0f8a7ea5);
+    refund.readUint(64); assert.equal(refund.readCoins().toString(), '100');
+    assert(refund.readAddress().equals(buyer));
+    assert(result.actionList.some(a => a.type === 'reserve_currency'), variant + ' must protect prior TON');
   }
   const lowGas = await curve.sendInternalMessage(new InternalMessage({
     to: curveAddress, from: curveJettonWallet, value: big(5_000_000n), bounce: false,
