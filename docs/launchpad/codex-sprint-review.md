@@ -1,5 +1,109 @@
 # MemeLabs isolated sprint: review notes
 
+## October 30 critical financial completion — current checkpoint
+
+Preserves all history through `91b3b63`. Implementation commits: `a800c7b` and
+`e8703d0`; this section supersedes older current-result/address summaries below.
+PR #1 remains development-only/draft. PR #2 and its production-safe head
+`8cbda34` are unchanged. No UI, TON Center, Cloudflare, Telegram Bot, economic
+parameters or production credentials were changed. No transactions were signed,
+broadcast or funded. User-approved STON.fi trust is for development only.
+
+Implemented and locally verified:
+
+- Owner-opened refund credit epochs and authenticated cumulative wallet receipts,
+  including zero-forward refunds, partial returns, recovery by explicitly funded
+  query, actual wallet balance checks and persistent per-operation reconciliation.
+- Sender/query/amount authentication and message-hash replay protection on standard
+  delivery, native partial refunds and bounce recovery. Tests exposed and fixed
+  duplicate native partial-credit accounting and a duplicate reserve action.
+- Migration primes refund correlation before depositing; archives operation totals;
+  accepts authenticated LP observations without treating them as finalization.
+- Guard validates the full canonical migration StateInit against pinned code and
+  configured Curve/DEX/master/admin before registering LP ownership. Real captured
+  LP-wallet code delivers a correlated receipt; lost guard-to-router receipts can
+  be queried. Duplicate receipts cannot double-credit the operation.
+- Offline, unsigned, transaction-specific Testnet preparation with decoded StateInit
+  address tests; no wallet session or broadcast capability is activated.
+
+Actual local results: **109/109 Sandbox**, **38/38 root regression suites**,
+**68/68 supervised executor tests (serial)**, **46/46 math tests** with 12,000
+cycles, and **5/5 legacy minter tests**. Financial TVM paths each pass 139
+assertions; four compiler consistency checks pass. First executor run under
+concurrent compilation had one 30-second child-process timeout (67 passed);
+serial rerun passed without changing assertions or time limits. Captured STON.fi
+code ran locally; controlled adversarial refund actors are explicitly simulations.
+These are not real on-chain settlement or liquidity results.
+
+[Machine-readable evidence](verified-financial-completion-2026-10-30.json) includes
+source-file hashes and changed files. Contract code-cell and serialized BOC hashes:
+
+| Contract | Code-cell SHA-256 | BOC SHA-256 |
+| --- | --- | --- |
+| anlgram-settlement-wallet | `e21136c0ea3074a48addec49215af2d8d20125b4cc61a564a1a37d37667b58a2` | `b8283a205b69b9cb9a3a5f3de6df7f03ce739b75f9b3c03839a0ff42a6b6f472` |
+| anlgram-bonding-curve | `90f92a9ab2ef46a7bc2c0a3c296547cd5e552a52e2cb4d9facdcfc94cdabf811` | `1ae86be44ae61eaf691a28cddf77c2b68a29ef90c420c967c1e6eba35cf0e2b0` |
+| anlgram-migration-router | `190a9e5d06a400cdd02afdd15970662077ac73970ef9750cdb36b933964bc4e1` | `a96a1bd01dc816c034043831664a7c91bb9950b4d94fa82dd21f58c5c0073d25` |
+| anlgram-lp-auth-guard | `d4a76916d44c5a1b36c347137d5234036e2c56f784bf218cdf7b89d78de3e4e8` | `05b1f899cd3bdff0c67210053de493c6201f9f4c93ad742f972606ae00fbb12d` |
+
+Compatibility and funding: this is an opt-in extended settlement protocol, not a
+silent upgrade of deployed wallets. New optional epoch, reconciliation and LP
+operation storage and new message opcodes require the matched contract family.
+Compile Wallet -> Curve -> Migration Router -> LP Guard; generated hash pins are
+part of the review. Curve pricing source is unchanged; its bytecode changes due
+to the wallet pin. Minter code is unchanged, but wallet-code data and dependent
+StateInit addresses change. Do not reuse previous candidate addresses or mix old
+and new artifacts. Canonical legacy Jetton wallet and production embeds remain
+untouched. See [protocol details](refund-custody-protocol.md).
+
+Buyer gas remains .04 TON with .035 forwarded, migration execution .40 TON, and
+existing LP forward gas .02 TON. Refund queries explicitly require incoming
+funding: default .04 TON includes .02 wallet relay plus routing, with optional
+higher caller-funded relay. Existing liquidity is reserved, not used as query gas.
+No changes to 1B supply, 80/20 allocation, 500 TON graduation, existing fee
+percentages, or creation .20 TON + mandatory .02 TON donation. Normal UI remains
+unchanged; the validated production donation recipient remains configured.
+
+Remaining blockers, in implementation order:
+
+1. Add authenticated Curve-to-migrator acknowledgment/query for returned native
+   and Jetton principal and final Curve bookkeeping. Migrator stage 6 is pending,
+   not successful completion. Missing notification is never sufficient proof.
+2. Frozen LP locker can own real LP tokens without executing its notification.
+   The captured wallet has no verified internal balance/replay API to recover
+   that evidence. Need reviewed authenticated replay/state proof; off-chain
+   snapshots cannot finalize custody. New attestor trust would require approval.
+3. Independent STON.fi v2.2 source/build and current code/immutability review,
+   complete two-leg deposit/reserve reconciliation, custody/permanent-lock proof.
+   LP stage 7 means observed/unreviewed. Guard authorization remains 0; Curve
+   dispatch and migration finalization remain rejected (414). No LP_VERIFIED,
+   LOCKED or FINALIZED success is manufactured.
+4. Storage rent/growth, operational gas stranded after frozen/failed receipts and
+   safe pruning/sweep policy need review; no unrestricted sweep was introduced.
+5. Wire only the reviewed protocol into the existing UI after the gates pass.
+   Supervised Testnet needs operator-control proof, funding, metadata and a
+   separately validated Testnet donation recipient plus approval of exact steps.
+
+Testnet candidate and unsigned plan are in
+[testnet-candidate-2026-10-30.json](testnet-candidate-2026-10-30.json) and
+[financial-testnet-plan-2026-10-30.json](financial-testnet-plan-2026-10-30.json).
+Four candidate accounts were observed uninitialized/zero via public provider GET;
+operator observed uninitialized/.0035 Testnet TON, control unverified. These are
+provider observations, not validator proofs. The proposed 2.5 TESTNET TON smoke
+budget includes .20 + .02 creation allocation, .10 sell reserve and a provisional
+fee reserve. It is neither authorization nor a current fee quote. Testnet donation
+recipient is deliberately blocked, never borrowed silently from Mainnet. Full
+500 TON graduation/migration is outside that smoke budget. Five real Mainnet TON
+cannot cover the unchanged 500 TON threshold. No Mainnet readiness is claimed.
+
+Antigravity integration: review the focused commits and exact file list in the
+evidence JSON in a separate branch; do not merge automatically. Recompile in the
+order above and run the documented suites. Preserve production/design/integrations
+and PR #2. Resolve financial/storage disagreements by explicit review, never by
+choosing older main automatically. Next recommended change is item 1, with
+partial/duplicate/bounced and frozen-Curve receipt recovery tests, while retaining
+all migration gates. Mainnet remains blocked until custody, migration and genuine
+supervised Testnet outcomes are independently verified.
+
 ## Accepted development model — deterministic LP authentication
 
 The user explicitly approved the documented external STON.fi Router trust model

@@ -1,5 +1,22 @@
 # Supervised Testnet candidate — blocked pending verification and review
 
+> Current checkpoint: superseded candidate addresses and hashes below must not be reused.
+> Use [the regenerated candidate](testnet-candidate-2026-10-30.json) and
+> [the unsigned exact-message plan](financial-testnet-plan-2026-10-30.json).
+> These are BLOCKED_NOT_APPROVED, offline templates, not authorized transactions.
+> Smoke proposal: 2.5 TESTNET TON, including mandatory .20 + .02 creation allocation;
+> Testnet donation recipient, operator control, funding and metadata remain blocked.
+> Public GET observed operator uninitialized with .0035 Testnet TON; candidate
+> contracts uninitialized/zero. Provider observations do not prove wallet control.
+> Deployment/mint/renounce/small buy templates are decoded/address-tested locally.
+> Sell requires actual acquired balance and a fresh quote. Full migration remains
+> blocked and its unchanged 500 TON threshold is outside this smoke budget.
+> Prime refund epochs before provisioning; register the full migration StateInit
+> with the LP guard; query persistent receipts after lost notifications. A frozen
+> LP owner missing its original notification still cannot prove custody here.
+> See [current protocol](refund-custody-protocol.md) and the sprint report for gates.
+> No signing, broadcast, deployment or spending occurred during this sprint.
+
 ## Accepted development model: new LP guard candidate
 
 The user accepted the documented STON.fi trust model for development only.

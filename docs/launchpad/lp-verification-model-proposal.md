@@ -120,3 +120,17 @@ from a live Pool remains a separate corroboration; an uninitialized Pool still
 cannot send that reply. Original configurations without the profile remain
 readable and retain their previous address-discovery behavior, without gaining
 new financial authorization. The offline candidate now includes the profile.
+
+## October 30 implementation checkpoint
+
+The accepted development trust model is unchanged. Guard registration now validates
+full canonical migration StateInit and project code pins before correlating real
+captured LP-wallet notification receipts. Querying persisted guard records recovers
+a lost guard-to-migration receipt. Replay protection and custody observations have
+actual local Sandbox tests. This is not independent source/build verification or
+permission to deploy. A frozen guard missing the initial LP notification remains
+blocked: its actual LP balance cannot be promoted into authenticated custody from
+an off-chain snapshot. No additional attestor model was introduced. Guard migration
+authorization remains zero and finalization rejects 414. See
+[protocol](refund-custody-protocol.md) and
+[current evidence](verified-financial-completion-2026-10-30.json).
