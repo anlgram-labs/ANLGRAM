@@ -110,14 +110,9 @@ const KNOWN_BOOTSTRAP_BLOCKERS = [
     message: 'An authorized initializer can bind an LP wallet address without proving its relationship to the intended pool; a notification from that address can trigger a lock confirmation without proving custody of genuine LP tokens.',
   },
   {
-    id: 'BUY_GRADUATION_ACCOUNTING_UNRESOLVED',
+    id: 'CURVE_SETTLEMENT_END_TO_END_UNVERIFIED',
     nodes: ['bondingCurve'],
-    message: 'Local source-compiled TVM simulations reveal incorrect reserve accounting and no buyer refund when a purchase exceeds the remaining bonding-curve inventory. Graduation and refunds require correction and verification before deployment.',
-  },
-  {
-    id: 'MALFORMED_SELL_RECOVERY_UNVERIFIED',
-    nodes: ['bondingCurve'],
-    message: 'A local source-compiled TVM simulation shows a truncated sell notification aborts without a refund action. The preceding wallet-to-Curve delivery and recovery have not been verified end-to-end.',
+    message: 'Capped accounting, TON refunds and malformed sell recovery pass local regressions. Complete asynchronous settlement, action-phase fee sufficiency and wallet delivery still require end-to-end verification before deployment.',
   },
 ];
 

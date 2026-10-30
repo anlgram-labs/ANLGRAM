@@ -1,5 +1,83 @@
 # MemeLabs isolated sprint: review notes
 
+## Authorized financial correction — latest status (2026-10-29)
+
+This section supersedes the historical failures and source/artifact mismatch
+described below. Commits `9fb3d16` and `9b9bcba` are preserved.
+
+### Corrections
+
+1. Capped buys reconstructed K from the shrinking current token inventory.
+   They now use the existing model's initial 800M atomic-9 curve allocation
+   and configured virtual reserves. The reproduction now reaches exactly
+   500 TON of recorded reserves instead of 462.761517970 TON.
+2. The unspent purchase input was neither recorded nor returned. It is now
+   sent back as non-bounceable TON excess, with fees paid separately. Booked
+   principal and accrued fees are reserved before the refund action; inadequate
+   operational funding must fail the action phase rather than consume them.
+   The regression checks the exact 504.869494949 TON refund for its fixture.
+3. Sell payload parsing checked only the length prefix, then attempted to read
+   absent bytes. Structural checks now validate Either/ref presence and all
+   VarUInteger bytes before reading. Invalid orders use the existing funded
+   Jetton refund or underfunded pending-claim path. Tests check exact refunded
+   tokens and recipient, unchanged trading reserves/fees, five malformed
+   encodings, low-gas escrow, successful claim and rejection of a repeated claim.
+
+### Artifact provenance and compatibility
+
+The intended source is the preserved `caf2c70` implementation with these targeted
+financial corrections, not a wholesale contract import from main. The old BOC's
+provenance remains unresolved; its bytes remain recoverable from prior commits.
+The corrected BOC is compiled from the reviewed source and all imports.
+
+- Previous saved curve cell hash: `f280c59c7f8bf9c8a530f71ead0bebf9e30055c41d6c6ed6aec1d63b2672acef`.
+- Corrected curve cell hash: `9059d4a1ca1acc5d8e0d2e64648e7eb894fc2b3bf6dd39fdefa849897837de34`.
+- Serialized BOC SHA-256: `e59a4ff918ce9f4172ee6ca1bada5e117c1e7c45c7cefa517f71de7efb5db5d9`.
+- Source file SHA-256 in this worktree: `2b7cdf159cc69b473e2fbf314c8a9f4c3210aca93fc0b945b5ffb81c776ed6a5`.
+
+The compiler records its package version and sorted SHA-256 hashes for every
+source/import, normalizes CRLF to LF and omits variable timestamps. Repeated
+compilations produced identical artifacts. Run
+`node minter-contract/compile-bonding-curve.js --check` to verify without writing.
+
+Storage, opcodes, getters, fee rate, initial supply, token allocations and
+graduation threshold are unchanged. Financial execution and bytecode change.
+New StateInit addresses therefore change, including dependent deterministic
+addresses: regenerate deployment plans and review them together. Existing
+deployed contracts are not upgraded by these files; no migration/upgrade of
+deployed state is authorized or performed. Custom initial allocations other
+than the existing fixed 800M curve allocation are unsupported by this model.
+
+### Latest executed tests
+
+| Local suite | Passed | Failed |
+| --- | ---: | ---: |
+| Former three financial failures (expanded edge assertions) | 3 | 0 |
+| Saved-artifact TVM suite | 135 | 0 |
+| Source-compiled TVM suite | 135 | 0 |
+| Mathematical model, including 12,000 deterministic cycles | 46 | 0 |
+| Preflight / bootstrap / LP trust-boundary tests | 14 | 0 |
+| Jetton wizard confirmation | 10 | 0 |
+| Distribution safety | 30 | 0 |
+| Vesting confirmation | 18 | 0 |
+
+The two resolved preflight defect labels were replaced by an explicit remaining
+end-to-end settlement blocker. Renounce authority, LP authenticity and external
+DEX blockers remain. Local executor action lists are not proof of final delivery
+or fee sufficiency on a live chain. Full asynchronous settlement, failed Jetton
+delivery after refund, fee-buffer exhaustion, and authentic LP custody require
+further integrated verification. Trading and distribution remain disabled as
+before; no redesign, wallet signatures, deployment, push or merge was performed.
+
+Modified this iteration: `anlgram-bonding-curve.fc`, its compiler and compiled
+JSON, the deployment preflight and its test, the financial regression test,
+and this document. Integration: review this local commit on top of the two
+preserved commits, compare Antigravity's latest code before any authorized
+integration, and regenerate dependent addresses. Never copy BOCs alone or
+enable production trading merely because these local tests pass.
+
+## Historical sprint record (superseded where noted above)
+
 Base: `feature/launchpad-engine` at `caf2c70`. The sprint branch is separate
 from Antigravity's working directory and has not been merged or deployed. The
 `main` branch has independent UI, donation, and supervised-executor changes;

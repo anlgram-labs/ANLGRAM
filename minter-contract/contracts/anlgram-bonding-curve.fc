@@ -480,8 +480,21 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
         }
 
         ;; Parse min_ton_out from forward_payload
-        slice payload = in_msg_body~load_int(1) ? in_msg_body~load_ref().begin_parse() : in_msg_body;
-        int min_ton_out = payload.slice_bits() >= 4 ? payload~load_coins() : 0;
+        int min_ton_out = 1 << 120; ;; invalid order: use existing refund path
+        if (in_msg_body.slice_bits() >= 1) {
+            int referenced = in_msg_body~load_uint(1);
+            if ((referenced == 0) | (in_msg_body.slice_refs() > 0)) {
+                slice payload = referenced ? in_msg_body~load_ref().begin_parse() : in_msg_body;
+                if (payload.slice_bits() == 0) {
+                    min_ton_out = 0;
+                } elseif (payload.slice_bits() >= 4) {
+                    int byte_count = payload.preload_uint(4);
+                    if (payload.slice_bits() >= 4 + byte_count * 8) {
+                        min_ton_out = payload~load_coins();
+                    }
+                }
+            }
+        }
 
         ;; Constant Product Math: dx_gross = floor(X * dy / (Y + dy))
         int X = real_ton_reserve + virtual_ton_reserve;
@@ -676,7 +689,10 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
 
             int targetY = Y - real_token_reserve;
             if (targetY > 0) {
-                int reqX = (virtual_ton_reserve * (real_token_reserve + virtual_token_reserve) + targetY - 1) / targetY;
+                ;; The existing model fixes initial curve allocation at 800M
+                ;; atomic-9 tokens. Current inventory cannot reconstruct K.
+                int initial_k = virtual_ton_reserve * (800000000000000000 + virtual_token_reserve);
+                int reqX = (initial_k + targetY - 1) / targetY;
                 if (reqX > X) {
                     actual_net_ton = reqX - X;
                     int netMultiplier = BPS_DENOMINATOR - 100;
@@ -711,6 +727,20 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
 
         ;; Deliver Purchased Jettons to Buyer
         send_jettons_funded(curve_jetton_wallet, sender_address, tokens_out, sender_address, 10000000, 40000000);
+        int excess_ton = gross_ton_in - actual_net_ton - actual_fee_ton;
+        throw_unless(ERROR_INVALID_STATE, excess_ton >= 0);
+        if (excess_ton > 0) {
+            ;; Action fees must not consume the booked principal or fees. If
+            ;; the operational gas buffer is insufficient the action phase
+            ;; must fail atomically rather than silently undercollateralize.
+            raw_reserve(real_ton_reserve + accrued_protocol_fees, 0);
+            ;; Return only unspent input, not recorded reserves or protocol fees.
+            cell refund = begin_cell().store_uint(0x10, 6)
+                .store_slice(sender_address).store_coins(excess_ton)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .store_uint(op::excesses(), 32).store_uint(query_id, 64).end_cell();
+            send_raw_message(refund, 1);
+        }
         return ();
     }
 

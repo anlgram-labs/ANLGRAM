@@ -1,6 +1,6 @@
 /** Regression checks for a capped buy after earlier trades.
  * Local TVM simulation, compiled from current sources; no blockchain calls.
- * These assertions deliberately expose known failures until the contract is fixed.
+ * Former failing reproductions retained as regression requirements.
  */
 'use strict';
 
@@ -90,6 +90,50 @@ async function scenario() {
     body: new CommonMessageInfo({ body: new CellMessage(notification.message.body) }),
   }));
   const afterMalformed = await curve.invokeGetMethod('get_curve_state', []);
+  assert.equal(afterMalformed.result[4].toString(), before.result[4].toString());
+  assert.equal(afterMalformed.result[5].toString(), before.result[5].toString());
+  assert.equal(afterMalformed.result[6].toString(), before.result[6].toString());
+  if (malformedSell.type === 'success') {
+    const refundBody = malformedSell.actionList[0].message.body.beginParse();
+    assert.equal(refundBody.readUint(32).toNumber(), 0x0f8a7ea5);
+    refundBody.readUint(64);
+    assert.equal(refundBody.readCoins().toString(), (1_000_000n * ONE).toString());
+    assert(refundBody.readAddress().equals(buyer));
+  }
+  // Synthetic notifications exercise structural payload variants and the
+  // existing underfunded escrow/claim path independently of sender debit.
+  for (const variant of ['missing-tag', 'missing-ref', 'short-prefix', 'truncated-inline', 'truncated-ref']) {
+    const body = beginCell().storeUint(0x7362d09c, 32).storeUint(3, 64)
+      .storeCoins(big(100n)).storeAddress(buyer);
+    if (variant === 'missing-ref') body.storeBit(1);
+    if (variant === 'short-prefix') body.storeBit(0).storeUint(7, 3);
+    if (variant === 'truncated-inline') body.storeBit(0).storeUint(15, 4);
+    if (variant === 'truncated-ref') body.storeBit(1).storeRef(beginCell().storeUint(15, 4).endCell());
+    const result = await curve.sendInternalMessage(new InternalMessage({
+      to: curveAddress, from: curveJettonWallet, value: big(60_000_000n), bounce: false,
+      body: new CommonMessageInfo({ body: new CellMessage(body.endCell()) }),
+    }));
+    assert.equal(result.type, 'success', variant);
+    assert.equal(result.actionList.length, 1, variant + ' must refund');
+  }
+  const lowGas = await curve.sendInternalMessage(new InternalMessage({
+    to: curveAddress, from: curveJettonWallet, value: big(5_000_000n), bounce: false,
+    body: new CommonMessageInfo({ body: new CellMessage(beginCell().storeUint(0x7362d09c, 32)
+      .storeUint(4, 64).storeCoins(big(123n)).storeAddress(buyer).storeBit(0).storeUint(15, 4).endCell()) }),
+  }));
+  assert.equal(lowGas.type, 'success');
+  assert.equal(lowGas.actionList.length, 0);
+  const pending = await curve.invokeGetMethod('get_curve_state', []);
+  assert.equal(pending.result[7].toString(), '123');
+  assert.equal(pending.result[4].toString(), before.result[4].toString());
+  assert.equal(pending.result[5].toString(), before.result[5].toString());
+  const claim = () => curve.sendInternalMessage(new InternalMessage({
+    to: curveAddress, from: buyer, value: big(100_000_000n), bounce: false,
+    body: new CommonMessageInfo({ body: new CellMessage(beginCell().storeUint(0x414e4c34, 32).storeUint(5, 64).endCell()) }),
+  }));
+  assert.equal((await claim()).type, 'success');
+  assert.equal((await claim()).type, 'failed', 'claim cannot be executed twice');
+  assert.equal((await curve.invokeGetMethod('get_curve_state', [])).result[7].toString(), '0');
   console.log('Malformed sell TVM result:', JSON.stringify(malformedSell, (key, value) =>
     typeof value === 'bigint' ? value.toString() : value));
   const second = await buy(1000n * ONE);

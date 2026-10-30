@@ -74,8 +74,8 @@ test('dependency graph is acyclic but critical bootstrap and accounting issues b
   assert.equal(readiness.cycles.length, 0);
   assert.ok(readiness.blockers.some(b => b.id === 'MINTER_RENOUNCE_AUTHORITY_MISMATCH'));
   assert.ok(readiness.blockers.some(b => b.id === 'LP_CUSTODY_WALLET_UNVERIFIED'));
-  assert.ok(readiness.blockers.some(b => b.id === 'BUY_GRADUATION_ACCOUNTING_UNRESOLVED'));
-  assert.ok(readiness.blockers.some(b => b.id === 'MALFORMED_SELL_RECOVERY_UNVERIFIED'));
+  assert.ok(readiness.blockers.some(b => b.id === 'CURVE_SETTLEMENT_END_TO_END_UNVERIFIED'));
+  assert.ok(!readiness.blockers.some(b => b.id === 'BUY_GRADUATION_ACCOUNTING_UNRESOLVED'));
   assert.ok(readiness.resolvedMechanisms.length >= 2);
 });
 
@@ -88,8 +88,8 @@ test('show-plan reports critical contract blockers and fails closed', () => {
   assert.equal(result.status, 2, result.stderr);
   assert.match(result.stdout, /MINTER_RENOUNCE_AUTHORITY_MISMATCH/);
   assert.match(result.stdout, /LP_CUSTODY_WALLET_UNVERIFIED/);
-  assert.match(result.stdout, /BUY_GRADUATION_ACCOUNTING_UNRESOLVED/);
-  assert.match(result.stdout, /MALFORMED_SELL_RECOVERY_UNVERIFIED/);
+  assert.match(result.stdout, /CURVE_SETTLEMENT_END_TO_END_UNVERIFIED/);
+  assert.doesNotMatch(result.stdout, /MALFORMED_SELL_RECOVERY_UNVERIFIED/);
   assert.match(result.stdout, /FINAL PREFLIGHT VERDICT: BLOCKED/);
   assert.doesNotMatch(result.stdout, /triggering automatic admin renounce/);
 });
