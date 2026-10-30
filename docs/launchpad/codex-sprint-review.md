@@ -1,5 +1,117 @@
 # MemeLabs isolated sprint: review notes
 
+## Focused lifecycle sprint — new evidence only (October 30)
+
+Continues `ad38652` on `codex/financial-integration-v2`. Code commit `27c2dca`.
+Scope is the Curve/Migrator dispatch, abort and return-epoch lifecycle only.
+LP Locker V2, V2 plan/pair discovery, UI, integrations, tokenomics and mandatory
+.02 TON donation are unchanged. PR #1 and PR #2 are not integration targets.
+
+**Final local execution: 141/141 Sandbox (all prior130 +11 new), 38/38 root
+regression suites, 68/68 executor tests and six compiler consistency checks.**
+The source/artifact financial runners remain139/139 each inside the root suite.
+No assertion was weakened. An intermediate8/11 lifecycle run found an incorrect
+stage-selection bitmask/precedence; explicit booleans fixed it before final runs.
+
+The new fixture starts with fresh **pre-dispatch** graduation-pending reserves
+and empty Curve/Migrator dictionaries, with zero available Migrator principal.
+Initial Jettons are actually minted and native funding is sent by Sandbox
+transactions. Every operation, obligation, epoch and return is then produced by
+source-compiled contract transactions; no post-dispatch obligation is seeded.
+The pre-dispatch graduation state is a fixture, not a claim that this test drives
+all previous buys from zero. Existing fresh genesis/buy/sell tests stay passing.
+
+Production authorization is not removed: begin validates the configured guard's
+full canonical StateInit against a generated code identity pin, expected Curve,
+Router, master and admin. Only that canonical guard can reply. Its real source
+always denies this authorization. Positive lifecycle tests replace ONLY this
+independent external dependency at its canonical Sandbox address with an explicit
+permission fixture. A separate real-guard case proves dispatch rejects414 and
+all original token principal remains in the Curve wallet. No positive test proves
+real LP authenticity, permanent locking or independent foreign source approval.
+
+Operation IDs and storage:
+
+- Root `q`: positive and <2^62. DEX deposit/refund legs retain exactly `q`.
+- Initial Jetton funding uses wire `q+2^63`; Curve-return Jettons use `q+2^62`.
+  These are deterministic roles of one persistent operation, not independent IDs.
+- Curve context lives in namespaced dictionary records; Migrator context uses a
+  tagged reserved high-ID entry in the existing flight dictionary. Old occupied
+  IDs are rejected, never overwritten. Legacy APIs cannot change an active V3
+  root through a new abort/prime ID. Existing V2 behavior is preserved otherwise.
+- Three epochs must exist before principal moves: Curve wallet/return peer,
+  Migrator wallet/Curve funding peer, and Migrator wallet/DEX refund peer. Epoch
+  opening deploys the Migrator's empty wallet using its actual StateInit. Funded
+  idempotent retries preserve epoch baselines when acknowledgments are lost.
+- Migrator funding is booked from actual attached TON and authenticated cumulative
+  wallet credit; notifications alone do not book Jettons. DEX execution requires
+  fully confirmed original funding, and both actual DEX legs retain the root ID.
+- DEX pending principal, available Migrator principal, Curve-bound transit and
+  cumulative Curve-confirmed principal are separate. Abort can return recovered
+  assets while the other leg is still at DEX. Subsequent DEX recovery stays live;
+  it does not overwrite or re-credit the first return.
+- Authenticated first-hop dispatch bounces are recorded separately from actual
+  Migrator returns. Native value, amount caps, epochs, sender identity, cumulative
+  deltas and message hashes enforce monotonic/replay-safe accounting. Repeated
+  dispatch emits no second principal transfer. Authenticated return first-hop
+  bounces restore only transit, enabling a same-root retry once.
+- Stage6 is unresolved Curve transit and stage8 is confirmed Curve bookkeeping;
+  neither means LP finalization. Real DEX success without final evidence retains
+  DEX pending balances. A downstream wallet failure without an authenticated
+  final receipt remains unresolved; silence or wallet excess never restores a claim.
+
+Actual new cases cover: both captured DEX legs executing; either leg failing
+independently; funds split between Curve and DEX/Migrator; late refunds; duplicate
+bounces/funding/acks; lost readiness/final acks; wrong IDs and forged authorization;
+failed epoch initialization; insufficient gas; direct funding and return bounces
+and retry. Restored token custody returns to exactly the original1B in recovery
+cases; native/Jetton principal accounting is checked across the split stages.
+
+New entry points: Curve begin `0x414e5801` (guard StateInit reference), arm
+`0x414e5802`, dispatch `0x414e5803`; Migrator prepare/ready/sync-funding/abort/Curve
+ack use `0x414e5901..0x414e5905`. Existing DEX execute, DEX recovery and Curve sync
+stay available with the same root. Calls are explicitly caller-funded: minimum
+.10 TON begin, .18 arm, .25 dispatch, .08 funding sync, .12 recovered-principal
+abort and .04 Curve sync in this development implementation. These are separate
+operator gas provisions, not buyer fees or verified real-network cost quotes.
+Operational surplus can remain as contract storage/gas funding; no protected
+principal is sold or silently used to fund outgoing messages. Rent, gas limits
+and surplus-recovery policy still require independent review before live use.
+
+Compatibility/bytecode: no deployed upgrade is performed. Three code cells and
+all dependent addresses change. Compile order is now **Wallet -> Migrator -> LP
+Guard -> Curve**, because Curve pins the canonical guard and guard pins Migrator;
+there is no code-hash cycle. LockerV2 -> V2 binding remains unchanged. New protocol
+messages require this matched development family. Regenerated baseline candidate
+and unsigned plan remain blocked; old account observations must not be reused.
+
+- anlgram-migration-router: `e9124986c48a9b070ed8e617447b7f4529c10e1f8d7698f0fbc6493dc090ec4a` (BOC `4a166f716689ea976be796e535d6a48cb893973debba2d8f5297a74159b2136a`).
+- anlgram-lp-auth-guard: `113108a0c8e7a48729e3da01dd2e2a4067955561ad8bfc19f1fba90db084a967` (BOC `6ae6efcac7117a05b2c8ff49bc73427354413afe3a8ed472e3641c6cdc70a3c9`).
+- anlgram-bonding-curve: `421b1028536b49f6d79eadf872076cc7e7c9afde2aeca0e2868b2706449c3627` (BOC `3ec7cf1ba10ff47d485b1581c69b3dd9324fe5fbd551b0cf9171dee2898527b2`).
+
+Full source hashes, changed files and machine results are appended under
+`focusedLifecycleV3` in
+[the existing evidence](verified-financial-integration-v2-2026-10-30.json).
+
+Remaining blockers: independent LP/STON.fi authorization is still denied; foreign
+LP withdrawal receipts and frozen-locker first-notification recovery remain
+unfinished; authenticated pair discovery and frontend activation were deliberately
+deferred. Project standard-wallet downstream failures without final receipts also
+remain pending, although authenticated first-hop bounce recovery is implemented.
+Do not promote those pending funds into available balances.
+
+Component Testnet assessment: epoch preparation and real-guard denial can be
+planned as supervised component tests after exact addresses, funding, metadata,
+operator control and approval are verified. **Positive real dispatch is not ready
+with the production guard, which still denies it**; the local permission fixture
+cannot be deployed at that canonical address. Independent review is required
+before any real authorization change. No signing, deployment, broadcast, TON
+spending, merge or production change occurred. Mainnet stays blocked.
+
+Next step after this focused sprint: independent review of the lifecycle and its
+LP authorization boundary, followed by an explicitly approved component Testnet
+plan. Stop here rather than starting another implementation track.
+
 ## Financial integration V2 — latest verified development checkpoint
 
 Based on preserved `15d9143`; dedicated branch `codex/financial-integration-v2`.
