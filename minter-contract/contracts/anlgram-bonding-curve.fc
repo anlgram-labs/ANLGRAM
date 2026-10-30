@@ -26,6 +26,8 @@
 #include "imports/utils.fc";
 #include "imports/jetton-utils.fc";
 #pragma version >=0.2.0;
+#include "imports/settlement-protocol.fc";
+#include "imports/settlement-wallet-code.fc";
 
 ;; State Machine Constants
 const int STATE_UNINITIALIZED           = 0;
@@ -53,6 +55,7 @@ const int ERROR_NO_PENDING_REFUND       = 409;
 const int ERROR_TOTAL_SUPPLY_MISMATCH    = 410;
 const int ERROR_SUPPLY_MISMATCH_RENOUNCE = 411;
 const int ERROR_INVALID_RENOUNCE_QUERY   = 412;
+const int ERROR_LP_AUTH_REQUIRED          = 414;
 
 ;; Opcodes
 const int op::init_launchpad                = 0x414e4c01;
@@ -76,6 +79,10 @@ const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
 ;; Existing address-hash keys still hold only claimable token balances.
 int buy_delivery_key(int query_id) inline {
     return cell_hash(begin_cell().store_uint(0x42555944, 32).store_uint(query_id, 64).end_cell());
+}
+
+int completed_delivery_key(int query_id) inline {
+    return cell_hash(begin_cell().store_uint(0x444f4e45,32).store_uint(query_id,64).end_cell());
 }
 
 () return_unreserved_gas(slice recipient, int query_id) impure inline {
@@ -208,11 +215,18 @@ int buy_delivery_key(int query_id) inline {
     );
 }
 
+int settlement_enabled() inline {
+    slice root = get_data().begin_parse();
+    root~load_ref(); root~load_ref();
+    slice dicts = root~load_ref().begin_parse(); dicts~load_dict();
+    return cell_hash(dicts~load_ref()) == SETTLEMENT_WALLET_CODE_HASH;
+}
+
 ;; Helper: Outbound Jetton Transfer funded strictly by attached_ton
-() send_jettons_funded(slice jetton_wallet, slice to_address, int token_amount, slice response_address, int forward_ton_amount, int attached_gas) impure inline {
+() send_jettons_with_id(slice jetton_wallet, slice to_address, int token_amount, slice response_address, int forward_ton_amount, int attached_gas, int operation_id) impure inline {
     var msg_body = begin_cell()
-        .store_uint(op::transfer(), 32)
-        .store_uint(cur_lt(), 64)
+        .store_uint(settlement_enabled() ? sop::transfer : op::transfer(), 32)
+        .store_uint(operation_id, 64)
         .store_coins(token_amount)
         .store_slice(to_address)
         .store_slice(response_address)
@@ -229,6 +243,10 @@ int buy_delivery_key(int query_id) inline {
         .store_ref(msg_body);
 
     send_raw_message(msg.end_cell(), 1);
+}
+
+() send_jettons_funded(slice wallet, slice recipient, int amount, slice response, int forward, int gas) impure inline {
+    send_jettons_with_id(wallet,recipient,amount,response,forward,gas,cur_lt());
 }
 
 ;; ----------------------------------------------------------------------------
@@ -263,6 +281,11 @@ int buy_delivery_key(int query_id) inline {
             }
             if (body_slice.slice_bits() >= 32) {
                 int orig_op = body_slice~load_uint(32);
+                if ((orig_op == sop::transfer) & settlement_enabled()) {
+                    ;; A bounced request is not proof that another copy was not
+                    ;; accepted. Retain in-flight entitlement; query the ledger.
+                    return ();
+                }
                 if (orig_op == op::transfer()) {
                     if (body_slice.slice_bits() < 68) { return (); }
                     int delivery_query = body_slice~load_uint(64);
@@ -363,10 +386,83 @@ int buy_delivery_key(int query_id) inline {
         cell pending_refunds_dict, cell jetton_wallet_code
     ) = load_data();
 
+    ;; Only the pinned opt-in sender wallet may attest a final outcome. Missing
+    ;; notification/timeouts are never failure proof. Failure means the sender
+    ;; has atomically restored custody before emitting this receipt.
+    if (op == sop::receipt) {
+        throw_unless(ERROR_UNAUTHORIZED, settlement_enabled() & equal_slices(sender_address,curve_jetton_wallet));
+        int wire_id = in_msg_body~load_uint(64);
+        int amount = in_msg_body~load_coins(); int outcome = in_msg_body~load_uint(2);
+        in_msg_body.end_parse();
+        throw_unless(ERROR_INVALID_STATE, (wire_id > 0) & ((outcome == 2) | (outcome == 3)));
+        int key = buy_delivery_key(query_id);
+        (slice delivery,int found) = pending_refunds_dict.udict_get?(256,key);
+        ifnot(found) {
+            (slice done,int completed) = pending_refunds_dict.udict_get?(256,completed_delivery_key(query_id));
+            if (completed) {
+                throw_unless(ERROR_INVALID_STATE,done~load_coins() == amount);
+                slice beneficiary = done~load_msg_addr();
+                throw_unless(ERROR_INVALID_STATE,(done~load_uint(64) == wire_id) & (done~load_uint(2) == outcome));
+                raw_reserve(my_balance - msg_value,0);
+                return_unreserved_gas(beneficiary,query_id);
+            }
+            return (); ;; no repeated claim
+        }
+        int expected = delivery~load_coins(); slice beneficiary = delivery~load_msg_addr();
+        throw_unless(ERROR_INVALID_STATE, amount == expected);
+        (pending_refunds_dict,_) = pending_refunds_dict.udict_delete?(256,key);
+        pending_refunds_dict~udict_set_builder(256,completed_delivery_key(query_id),
+            begin_cell().store_coins(amount).store_slice(beneficiary).store_uint(wire_id,64).store_uint(outcome,2));
+        if (outcome == 3) {
+            int claim_key = slice_hash(beneficiary);
+            (slice prior,int has_prior) = pending_refunds_dict.udict_get?(256,claim_key);
+            int prior_amount = has_prior ? prior~load_coins() : 0;
+            pending_refunds_dict~udict_set_builder(256,claim_key,begin_cell().store_coins(prior_amount + amount));
+            pending_refunds_tokens += amount;
+        }
+        save_data(state,admin_address,creator_address,treasury_address,
+            jetton_master_address,curve_jetton_wallet,dex_router_address,lp_locker_address,migration_router_address,
+            real_ton_reserve,real_token_reserve,accrued_protocol_fees,pending_refunds_tokens,
+            virtual_ton_reserve,virtual_token_reserve,graduation_threshold_ton,dex_tokens_escrow,
+            pending_refunds_dict,jetton_wallet_code);
+        raw_reserve(my_balance - msg_value,0);
+        return_unreserved_gas(beneficiary,query_id);
+        return ();
+    }
+
+    if (op == sop::not_seen) {
+        throw_unless(ERROR_UNAUTHORIZED,settlement_enabled() & equal_slices(sender_address,curve_jetton_wallet));
+        (slice delivery,int found) = pending_refunds_dict.udict_get?(256,buy_delivery_key(query_id));
+        ifnot(found) { return (); }
+        throw_unless(ERROR_INSUFFICIENT_GAS,msg_value >= 40000000);
+        int amount = delivery~load_coins(); slice beneficiary = delivery~load_msg_addr();
+        ;; Reuse owner operation id, not cur_lt: wallet deduplication remains
+        ;; authoritative even if the original request arrives after this retry.
+        send_jettons_with_id(curve_jetton_wallet,beneficiary,amount,my_address(),1,35000000,query_id);
+        raw_reserve(my_balance - msg_value,0);
+        return_unreserved_gas(beneficiary,query_id);
+        return ();
+    }
+
+    if (op == sop::retry) {
+        throw_unless(ERROR_UNAUTHORIZED,settlement_enabled());
+        throw_unless(ERROR_INSUFFICIENT_GAS,msg_value >= 20000000); ;; optional caller-funded recovery
+        (_,int pending) = pending_refunds_dict.udict_get?(256,buy_delivery_key(query_id));
+        (_,int completed) = pending_refunds_dict.udict_get?(256,completed_delivery_key(query_id));
+        throw_unless(ERROR_INVALID_STATE,pending | completed);
+        raw_reserve(my_balance - msg_value,0);
+        cell request = begin_cell().store_uint(0x18,6).store_slice(curve_jetton_wallet).store_coins(0)
+            .store_uint(1,1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_ref(begin_cell().store_uint(sop::retry,32).store_uint(query_id,64).end_cell()).end_cell();
+        send_raw_message(request,128);
+        return ();
+    }
+
     ;; Standard TEP-74 excess response from a successfully credited buyer
     ;; wallet. Authenticate its deterministic address before clearing the
     ;; in-flight record or returning its unused gas to the buyer.
     if (op == op::excesses()) {
+        if (settlement_enabled()) { return (); } ;; opt-in delivery requires receipt, not excess
         int key = buy_delivery_key(query_id);
         (slice delivery, int found) = pending_refunds_dict.udict_get?(256, key);
         if (found) {
@@ -431,6 +527,8 @@ int buy_delivery_key(int query_id) inline {
         );
 
         cell new_wallet_code = in_msg_body~load_ref();
+        ;; Protocol selection is immutable genesis configuration, not an admin downgrade.
+        throw_unless(ERROR_INVALID_RENOUNCE,cell_hash(new_wallet_code) == cell_hash(jetton_wallet_code));
 
         cell state_init = calculate_jetton_wallet_state_init(my_address(), new_master, new_wallet_code);
         slice expected_curve_wallet = calculate_jetton_wallet_address(state_init);
@@ -860,6 +958,9 @@ int buy_delivery_key(int query_id) inline {
     ;; 7. OP::INITIATE_MIGRATION (Phase 1 DEX Migration Dispatch)
     ;; ------------------------------------------------------------------------
     if (op == op::initiate_migration) {
+        ;; New settlement deployment cannot dispatch liquidity before contract-
+        ;; enforced LP code/custody proof exists. Address-only handshake is insufficient.
+        throw_if(ERROR_LP_AUTH_REQUIRED,settlement_enabled());
         throw_unless(ERROR_UNAUTHORIZED, equal_slices(sender_address, admin_address) | equal_slices(sender_address, creator_address));
         throw_unless(ERROR_INVALID_STATE, state == STATE_GRADUATION_PENDING);
         throw_unless(ERROR_INVALID_STATE, (real_ton_reserve > 0) & (dex_tokens_escrow > 0));
@@ -927,6 +1028,7 @@ int buy_delivery_key(int query_id) inline {
     ;; 8. OP::LP_LOCKED_CONFIRMATION (Phase 2 DEX Migration & Graduation Verification)
     ;; ------------------------------------------------------------------------
     if (op == op::lp_locked_confirmation) {
+        throw_if(ERROR_LP_AUTH_REQUIRED,settlement_enabled()); ;; no address-only graduation
         ;; Security Gate: Must originate strictly from the configured immutable LP Locker
         throw_unless(ERROR_UNAUTHORIZED, equal_slices(sender_address, lp_locker_address));
         throw_unless(ERROR_INVALID_STATE, state == STATE_MIGRATION_IN_PROGRESS);
