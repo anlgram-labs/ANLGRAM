@@ -1600,7 +1600,7 @@ async function runTests() {
   assert(bouncedJettonRes.type === 'success', 'Bounced Jetton transfer parsed and handled safely by Migration Router');
 
   const stateAfterBouncedJetton = await migratorContract.invokeGetMethod('get_migration_data', []);
-  assert(stateAfterBouncedJetton.result[0].toString() === '0', 'is_initialized reset to 0 following bounced message');
+  assert(stateAfterBouncedJetton.result[0].toString() === '1', 'Migration stays in-flight while the other principal leg is pending');
   assert(stateAfterBouncedJetton.result[7].toString() === dexTokenDeposit.toString(), 'tokens_liquidity 100% restored to 200M tokens upon bounce');
 
   // Simulate bounced pTON transfer from ptonWallet
@@ -1624,6 +1624,15 @@ async function runTests() {
   const bouncedPtonRes = await migratorContract.sendInternalMessage(bouncedPtonMsg);
   assert(bouncedPtonRes.type === 'success', 'Bounced pTON transfer parsed and handled safely by Migration Router');
 
+  const underfundedBounceState = await migratorContract.invokeGetMethod('get_migration_data', []);
+  assert(underfundedBounceState.result[6].toString() === '0', 'A 0.05 TON bounce cannot manufacture 500 TON of recoverable principal');
+  const fundedPtonBounce = new InternalMessage({
+    to: migrationRouter, from: ptonWallet, value: new BN('500150000000'), bounce: false, bounced: true,
+    body: new CommonMessageInfo({ body: new CellMessage(beginCell().storeUint(0xffffffff,32)
+      .storeUint(0x01f3835d,32).storeUint(5,64).storeCoins(new BN((500n * ONE_TON).toString())).endCell()) })
+  });
+  const fundedBounceResult = await migratorContract.sendInternalMessage(fundedPtonBounce);
+  assert(fundedBounceResult.type === 'success', 'Authentic fully funded pTON bounce restores received principal');
   const stateAfterBouncedPton = await migratorContract.invokeGetMethod('get_migration_data', []);
   assert(stateAfterBouncedPton.result[6].toString() === (500n * ONE_TON).toString(), 'ton_liquidity 100% restored to 500 TON upon bounce');
 

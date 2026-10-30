@@ -75,6 +75,33 @@ const claim=s=>s.buyer.send({to:curveAddress,value:40000000n,bounce:true,body:be
 const retry=(s,id)=>s.buyer.send({to:curveAddress,value:20000000n,bounce:true,body:beginCell().storeUint(OP.retry,32).storeUint(id,64).endCell()});
 async function escrow(s) {return (await s.chain.runGetMethod(curveAddress,'get_curve_state')).stack[7].value;}
 
+test('40 persistent settlements survive 30 days of real simulated rent and funded receipt replay',async()=>{
+ const [curve,wallet]=await codes;const s=await setup(curve,wallet);
+ const size=async()=>(await s.chain.getContract(s.curveWallet)).accountState.state.data.toBoc().length;
+ const initialSize=await size(),ids=[];
+ for(let i=0;i<40;i++)ids.push(operation(await s.buy(100000000n,BigInt(i+1)),s));
+ const storedSize=await size();assert(storedSize>initialSize,'persistent dictionaries consume storage; not a constant-space claim');
+ const amount=await tokens(s,s.buyerWallet);
+ // createShardAccount fixtures start with zero storage-usage counters. Supply
+ // a measured, deduplicated StateInit DAG so the TVM rent phase is exercised;
+ // this is a local usage model, not a quote for a deployed account.
+ for(const address of[curveAddress,s.curveWallet,s.buyerWallet]){
+  const c=await s.chain.getContract(address),a=c.account,seen=new Set();let cells=0n,bits=0n;
+  function visit(cell){const key=cell.hash().toString('hex');if(seen.has(key))return;seen.add(key);cells++;bits+=BigInt(cell.bits.length);cell.refs.forEach(visit);}
+  visit(beginCell().store(storeStateInit(c.accountState.state)).endCell());
+  c.account={...a,account:{...a.account,storageStats:{...a.account.storageStats,used:{cells,bits},lastPaid:s.chain.now}}};
+ }
+ s.chain.now+=30*24*60*60;
+ let storageFees=0n;
+ for(const id of[ids[0],ids[39]]){
+  const r=await retry(s,id);assert.equal((await state(s,id)).readBigNumber(),2n);
+  storageFees+=r.transactions.reduce((sum,t)=>sum+(t.description.storagePhase?.storageFeesCollected||0n),0n);
+ }
+ assert(storageFees>0n,'TVM actually charges storage rent after the elapsed interval');
+ assert.equal(await tokens(s,s.buyerWallet),amount);assert.equal(await tokens(s,s.curveWallet),supply-amount);assert.equal(await escrow(s),0n);
+ console.log('SETTLEMENT_RENT_SAMPLE',JSON.stringify({operations:40,days:30,modeledStorageFeesNano:storageFees.toString(),initialWalletDataBocBytes:initialSize,finalWalletDataBocBytes:storedSize}));
+});
+
 test('frozen recipient: authenticated failure restores sender custody, escrows once, and recovers exactly once',async()=>{
  const [curve,wallet]=await codes;const s=await setup(curve,wallet);
  await s.buy();await sellAll(s);
