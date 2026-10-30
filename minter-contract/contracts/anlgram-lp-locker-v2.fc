@@ -1,0 +1,183 @@
+;; Opt-in immutable LP locker V2. NOT wired to production or migration.
+;; No admin, upgrade, burn or emergency entry point. Permanent principal has
+;; no reachable withdrawal path. Pending wallet transfers are never receipts.
+#include "imports/stdlib.fc";
+#include "imports/params.fc";
+#include "imports/jetton-utils.fc";
+#include "imports/stonfi-v22-auth.fc";
+#pragma version >=0.2.0;
+;; root: version:uint8 ^immutable_config ^accounting seen:(HashmapE 256 bit) requests:(HashmapE 64 record)
+;; config: percent:uint7 duration:uint32 deposit_query:uint64
+;; ^(router pair_wallet0 pair_wallet1) ^(beneficiary unlocked_controller contributor)
+;; ^pinned_STON_profile. duration = 0 is permanent;
+;; No mutable configuration.
+;; accounting: received locked_available unlocked_available pending:Coins,
+;; pending_kind:uint1 pending_query:uint64 next_query:uint64 unlock:uint64.
+(cell,cell,cell,cell) load_vault() inline  {
+    slice s = get_data().begin_parse();
+    throw_unless(408,s~load_uint(8) == 2);
+    cell cfg = s~load_ref();
+    cell state = s~load_ref();
+    cell seen = s~load_dict();
+    cell requests = s~load_dict();
+    s.end_parse();
+    return(cfg,state,seen,requests);
+}
+() save_vault(cell cfg,cell state,cell seen,cell requests) impure inline  {
+    set_data(begin_cell().store_uint(2,8).store_ref(cfg).store_ref(state).store_dict(seen).store_dict(requests).end_cell());
+}
+cell account(int received,int locked,int free,int pending,int kind,int pq,int next,int unlock) inline  {
+    return begin_cell().store_coins(received).store_coins(locked).store_coins(free)
+    .store_coins(pending).store_uint(kind,1).store_uint(pq,64).store_uint(next,64).store_uint(unlock,64).end_cell();
+}
+(int,int,int,slice,slice,slice,slice,slice) configuration(cell cfg) impure inline  {
+    slice c = cfg.begin_parse();
+    int percent = c~load_uint(7);
+    int duration = c~load_uint(32);
+    int q = c~load_uint(64);
+    slice endpoints = c~load_ref().begin_parse();
+    slice parties = c~load_ref().begin_parse();
+    cell profile = c~load_ref();
+    c.end_parse();
+    throw_unless(408,(percent >= 50) & (percent <= 100));
+    throw_unless(408,(duration == 0) | (duration == 15552000) | (duration == 31536000));
+    slice router = endpoints~load_msg_addr();
+    slice w0 = endpoints~load_msg_addr();
+    slice w1 = endpoints~load_msg_addr();
+    endpoints.end_parse();
+    slice beneficiary = parties~load_msg_addr();
+    slice controller = parties~load_msg_addr();
+    slice contributor = parties~load_msg_addr();
+    parties.end_parse();
+    force_chain(beneficiary);
+    force_chain(controller);
+    force_chain(contributor);
+    (slice pool,slice wallet) = stonfi_expected_destinations(router,w0,w1,profile);
+    return(percent,duration,q,beneficiary,controller,contributor,pool,wallet);
+}
+() recv_internal(int balance,int value,cell message,slice body) impure  {
+    if(body.slice_empty?()) { return ();
+    }
+    slice h = message.begin_parse();
+    int flags = h~load_uint(4);
+    slice sender = h~load_msg_addr();
+    (cell cfg,cell state,cell seen,cell requests) = load_vault();
+    (int percent,int duration,int deposit_q,slice beneficiary,slice controller,slice contributor,slice pool,slice wallet) = configuration(cfg);
+    slice s = state.begin_parse();
+    int received = s~load_coins();
+    int locked = s~load_coins();
+    int free = s~load_coins();
+    int pending = s~load_coins();
+    int kind = s~load_uint(1);
+    int pq = s~load_uint(64);
+    int next = s~load_uint(64);
+    int unlock = s~load_uint(64);
+    s.end_parse();
+    if(flags & 1) {
+;; Only an immediate, authenticated bounce of OUR exact outgoing wallet
+;; request restores available principal. Downstream recipient failure is
+;; not inferable here: leave pending, never retry or declare delivered.
+        throw_unless(401,equal_slices(sender,wallet));
+        throw_unless(409,pending > 0);
+        throw_unless(409,body~load_uint(32) == 0xffffffff);
+        throw_unless(409,body~load_uint(32) == 0x0f8a7ea5);
+        int bounced_q = body~load_uint(64);
+        (slice request,int found) = udict_get?(requests,64,bounced_q);
+        throw_unless(409,found);
+        int bounced_amount = request~load_coins();int bounced_kind = request~load_uint(1);
+        request.end_parse();
+        throw_unless(409,body~load_coins() == bounced_amount);
+        throw_unless(409,pending >= bounced_amount);
+        if(bounced_kind) { locked += bounced_amount; } else { free += bounced_amount; }
+        (requests,_) = udict_delete?(requests,64,bounced_q);
+        save_vault(cfg,account(received,locked,free,pending - bounced_amount,kind,pq,next,unlock),seen,requests);
+        return ();
+    }
+    int op = body~load_uint(32);
+    int q = body~load_uint(64);
+    if(op == 0x7362d09c) {
+        throw_unless(401,equal_slices(sender,wallet));
+        throw_unless(409,q == deposit_q);
+        int amount = body~load_coins();
+        throw_unless(408,amount > 0);
+        throw_unless(401,equal_slices(body~load_msg_addr(),contributor));
+        slice payload = body;
+        if(body~load_uint(1)) { payload = body~load_ref().begin_parse();
+            body.end_parse();
+        } else { payload = body;
+        }
+        throw_unless(409,payload~load_uint(32) == 0x414c5632);
+        throw_unless(409,payload~load_uint(64) == q);
+        payload.end_parse();
+        int hash = cell_hash(message);
+        (slice prior,int found) = udict_get?(seen,256,hash);
+        if(found) { return ();
+        }
+;; Ceiling on the cumulative allocation ensures at least the chosen share;
+;; split notifications cannot reduce locked principal by integer rounding.
+        int allocation = ( (received + amount) * percent + 99 ) / 100 - (received * percent + 99) / 100;
+        received += amount;
+        locked += allocation;
+        free += amount - allocation;
+        if(duration) { unlock = max(unlock,now() + duration);
+        } else { unlock = 0xffffffffffffffff;
+        }
+        seen~udict_set_builder(256,hash,begin_cell().store_uint(1,1));
+        save_vault(cfg,account(received,locked,free,pending,kind,pq,next,unlock),seen,requests);
+        return ();
+    }
+    if(op == 0x414c5633) {
+        int want_locked = body~load_uint(1);
+        int amount = body~load_coins();
+        body.end_parse();
+        slice recipient = controller;
+        if(want_locked) { recipient = beneficiary;
+        }
+        throw_unless(401,equal_slices(sender,recipient));
+        throw_unless(409,(q == next) & (next < 0xffffffffffffffff));
+        if(want_locked) { throw_unless(403,(duration != 0) & (unlock != 0) & (now() >= unlock));
+            throw_unless(408,(amount > 0) & (amount <= locked));
+            locked -= amount;
+        }
+        else { throw_unless(408,(amount > 0) & (amount <= free));
+            free -= amount;
+        }
+        throw_unless(407,value >= 100000000);
+;; Explicit claimant-funded gas, no LP sale or principal subsidy.
+        requests~udict_set_builder(64,q,begin_cell().store_coins(amount).store_uint(want_locked,1));
+        save_vault(cfg,account(received,locked,free,pending + amount,want_locked,q,next + 1,unlock),seen,requests);
+        raw_reserve(max(balance - value,10000000),0);
+        cell transfer = begin_cell().store_uint(0x0f8a7ea5,32).store_uint(q,64).store_coins(amount)
+        .store_slice(recipient).store_slice(my_address()).store_uint(0,1).store_coins(1).store_uint(0,1).end_cell();
+        send_raw_message(begin_cell().store_uint(0x18,6).store_slice(wallet).store_coins(0)
+        .store_uint(1,107).store_ref(transfer).end_cell(),128);
+        return ();
+    }
+;; Standard excess is only operational TON, never delivery evidence.
+    if(op == 0xd53276db) { throw_unless(401,equal_slices(sender,wallet));
+        return ();
+    }
+    throw(404);
+}
+(int,int,int,int,int,int,int,int,slice,slice,slice,slice) get_lock_v2() method_id  {
+    (cell cfg,cell state,cell seen,cell requests) = load_vault();
+    (int percent,int duration,int q,slice beneficiary,slice controller,slice contributor,slice pool,slice wallet) = configuration(cfg);
+    slice s = state.begin_parse();
+    int received = s~load_coins();
+    int locked = s~load_coins();
+    int free = s~load_coins();
+    int pending = s~load_coins();
+    int kind = s~load_uint(1);
+    int pq = s~load_uint(64);
+    int next = s~load_uint(64);
+    int unlock = s~load_uint(64);
+    return(percent,duration,unlock,received,locked,free,pending,next,beneficiary,controller,pool,wallet);
+}
+int is_migration_authorized() method_id  { return 0;
+}
+(int,int) get_claim_v2(int q) method_id {
+    (cell cfg,cell state,cell seen,cell requests) = load_vault();
+    (slice request,int found) = udict_get?(requests,64,q);
+    ifnot(found) { return (0,0); }
+    return (request~load_coins(),request~load_uint(1));
+}
