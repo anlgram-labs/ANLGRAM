@@ -56,7 +56,8 @@
   "mocha": {
     "require": [
       "chai",
-      "ts-node/register"
+      "ts-node/register",
+      "./test/mocha-setup.cjs"
     ],
     "timeout": 20000
   },

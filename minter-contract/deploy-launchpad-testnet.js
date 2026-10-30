@@ -98,7 +98,28 @@ const RESOLVED_BOOTSTRAP_MECHANISMS = [
   },
 ];
 
-const KNOWN_BOOTSTRAP_BLOCKERS = [];
+const KNOWN_BOOTSTRAP_BLOCKERS = [
+  {
+    id: 'MINTER_RENOUNCE_AUTHORITY_MISMATCH',
+    nodes: ['launchpadMinter', 'bondingCurve'],
+    message: 'The configured Minter admin is the operator, but the Curve sends change_admin as the Curve. The Minter rejects that call when those addresses differ. The full renounce and activation sequence must be validated before deployment.',
+  },
+  {
+    id: 'LP_CUSTODY_WALLET_UNVERIFIED',
+    nodes: ['lpLocker', 'migrationRouter'],
+    message: 'An authorized initializer can bind an LP wallet address without proving its relationship to the intended pool; a notification from that address can trigger a lock confirmation without proving custody of genuine LP tokens.',
+  },
+  {
+    id: 'BUY_GRADUATION_ACCOUNTING_UNRESOLVED',
+    nodes: ['bondingCurve'],
+    message: 'Local source-compiled TVM simulations reveal incorrect reserve accounting and no buyer refund when a purchase exceeds the remaining bonding-curve inventory. Graduation and refunds require correction and verification before deployment.',
+  },
+  {
+    id: 'MALFORMED_SELL_RECOVERY_UNVERIFIED',
+    nodes: ['bondingCurve'],
+    message: 'A local source-compiled TVM simulation shows a truncated sell notification aborts without a refund action. The preceding wallet-to-Curve delivery and recovery have not been verified end-to-end.',
+  },
+];
 
 const EXTERNAL_DEX_BLOCKERS = [
   {
@@ -821,7 +842,7 @@ async function main(argv = process.argv.slice(2), env = process.env) {
 
   if (args.showPlan || args.dryRun) {
     console.log('\n[Deployment Plan]');
-    if (readiness.ready) {
+    if (readiness.cycles.length === 0) {
       console.log('Topological Deployment Order:');
       console.log('  1. Launchpad Jetton Master (contracts/anlgram-launchpad-jetton-minter.fc)');
       console.log('  2. Bonding Curve (contracts/anlgram-bonding-curve.fc)');
@@ -830,8 +851,9 @@ async function main(argv = process.argv.slice(2), env = process.env) {
       console.log('\nPost-Deployment Bootstrap Sequence (One-Time Authorized Operations):');
       console.log('  Step 1: Deployer calls op::init_lp_locker (0x414e4c39) on LP Locker with Migration Router address.');
       console.log('  Step 2: Deployer calls op::init_launchpad (0x414e4c01) on Bonding Curve with Minter, Locker & Router addresses.');
-      console.log('  Step 3: Deployer mints 1,000,000,000 tokens from Minter to Curve, triggering automatic admin renounce to addr_none.');
-      console.log('  Step 4: Curve receives admin_changed_notification and transitions to STATE_ACTIVE (trading enabled).');
+      console.log('  Step 3: Deployer mints 1,000,000,000 tokens from Minter to Curve.');
+      console.log('  BLOCKER: With a distinct deployer as Minter admin, the Curve cannot automatically renounce that admin: its change_admin request is rejected by the Minter.');
+      console.log('  Step 4: The renounce and Curve activation sequence requires separate end-to-end validation before any deployment.');
       console.log('  Step 5 (At Graduation): Authorized caller invokes op::initiate_migration (0x414e4c35) on Curve (>= 0.25 TON gas), delivering 500 TON and 200M Jettons to Migration Router.');
       console.log('  Step 6 (DEX Provision): Authorized caller invokes op::execute_dex_provision (0x414e4c37) on Migration Router (>= 0.40 TON gas), sending TEP-74 op::transfer to Migration Router Jetton Wallet and pTON ton_transfer to pTON Wallet.');
       console.log('Funding estimate: Minimum ~2.5 TON testnet recommended for initial contract state storage rent and bootstrap messages.');
@@ -861,7 +883,8 @@ async function main(argv = process.argv.slice(2), env = process.env) {
 
   const hardBlockers = [];
   if (repo.branch && repo.branch !== EXPECTED_BRANCH) hardBlockers.push(`Wrong branch: ${repo.branch}`);
-  if (!readiness.ready) hardBlockers.push('Unresolved circular contract-address dependencies prevent a deterministic deployment order.');
+  if (readiness.cycles.length) hardBlockers.push('Unresolved circular contract-address dependencies prevent a deterministic deployment order.');
+  for (const blocker of readiness.blockers) hardBlockers.push(`${blocker.id}: ${blocker.message}`);
   if (artifacts && !artifacts.ok) hardBlockers.push('One or more compiled artifacts do not match the current contract sources or recorded hashes.');
   if (configResult && !configResult.ok) hardBlockers.push('Testnet network configuration is incomplete or unsafe.');
   if (dexReadResult && !dexReadResult.ok) hardBlockers.push('Read-only live DEX account identity/interface checks failed or remain unverified.');

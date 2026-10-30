@@ -66,14 +66,32 @@ test('missing config fails closed', () => {
   assert.ok(r.errors.length >= 5);
 });
 
-test('dependency graph identifies synthetic cycles and confirms remediated DAG is acyclic', () => {
+test('dependency graph is acyclic but critical bootstrap and accounting issues block readiness', () => {
   const cycles = findCycles({ a: ['b'], b: ['a'], c: ['b'] });
   assert.ok(cycles.some(c => c.includes('a') && c.includes('b')));
   const readiness = dependencyReadiness();
-  assert.equal(readiness.ready, true, 'Remediated deployment graph must have zero unresolved cycles');
+  assert.equal(readiness.ready, false, 'Acyclic addresses do not imply a valid bootstrap');
   assert.equal(readiness.cycles.length, 0);
-  assert.equal(readiness.blockers.length, 0);
+  assert.ok(readiness.blockers.some(b => b.id === 'MINTER_RENOUNCE_AUTHORITY_MISMATCH'));
+  assert.ok(readiness.blockers.some(b => b.id === 'LP_CUSTODY_WALLET_UNVERIFIED'));
+  assert.ok(readiness.blockers.some(b => b.id === 'BUY_GRADUATION_ACCOUNTING_UNRESOLVED'));
+  assert.ok(readiness.blockers.some(b => b.id === 'MALFORMED_SELL_RECOVERY_UNVERIFIED'));
   assert.ok(readiness.resolvedMechanisms.length >= 2);
+});
+
+test('show-plan reports critical contract blockers and fails closed', () => {
+  const { spawnSync } = require('node:child_process');
+  const result = spawnSync(process.execPath, [require.resolve('./deploy-launchpad-testnet'), '--show-plan'], {
+    encoding: 'utf8', timeout: 30000, maxBuffer: 8 * 1024 * 1024,
+  });
+  assert.ifError(result.error);
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stdout, /MINTER_RENOUNCE_AUTHORITY_MISMATCH/);
+  assert.match(result.stdout, /LP_CUSTODY_WALLET_UNVERIFIED/);
+  assert.match(result.stdout, /BUY_GRADUATION_ACCOUNTING_UNRESOLVED/);
+  assert.match(result.stdout, /MALFORMED_SELL_RECOVERY_UNVERIFIED/);
+  assert.match(result.stdout, /FINAL PREFLIGHT VERDICT: BLOCKED/);
+  assert.doesNotMatch(result.stdout, /triggering automatic admin renounce/);
 });
 
 test('TON conversion is exact integer nanotons', () => {
