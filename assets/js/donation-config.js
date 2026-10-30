@@ -40,7 +40,7 @@
     return `${whole}.${fracStr}`;
   }
 
-  return {
+  return Object.freeze({
     RECIPIENT_ADDRESS,
     DONATION_RATE_PERCENT,
     DONATION_RATE_BPS,
@@ -59,11 +59,19 @@
     TOTAL_TRANSACTION_TON: nanoToTON(TOTAL_TRANSACTION_NANO),
 
     PAYLOAD_COMMENT: 'ANLGRAM 10% Token Creation Donation',
-    PRIMARY_LABEL: '10% Token Creation Donation',
+    PRIMARY_LABEL: 'Mandatory Donation (10%)',
     RECIPIENT_LABEL: 'Token Creation Donation Recipient',
 
     DISCLOSURE_TEXT:
-      'I understand that a 10% Token Creation Donation (0.02 TON), calculated from the displayed 0.20 TON execution base, will be sent to the displayed recipient wallet (UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd) as part of this token-creation flow.',
+      'I authorize the Mandatory Donation (10%): 0.02 TON on the 0.20 TON creation execution base, total 0.22 TON before wallet network fees. Wallet confirmation exposes all public transaction recipients.',
+
+    createMessage(core, chain) {
+      if (chain !== '-239') throw new Error('No approved testnet donation recipient is configured.');
+      const recipient = core.Address.parseFriendly(RECIPIENT_ADDRESS);
+      if (recipient.isTestOnly || recipient.address.workChain !== 0) throw new Error('Donation recipient/network invalid.');
+      return { address: RECIPIENT_ADDRESS, amount: DONATION_AMOUNT_NANO.toString(),
+        payload: core.beginCell().storeUint(0, 32).storeStringTail('ANLGRAM 10% Token Creation Donation').endCell().toBoc().toString('base64') };
+    },
 
     /**
      * Compute donation for arbitrary nanoTON base using integer math.
@@ -81,5 +89,5 @@
         totalTON: nanoToTON(total)
       };
     }
-  };
+  });
 });

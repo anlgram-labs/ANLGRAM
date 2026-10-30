@@ -5,7 +5,7 @@
  * Verifies:
  * 1. 10% (1,000 bps) BigInt nanoTON calculation against verified 0.20 TON execution base.
  * 2. Recipient address matches UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd.
- * 3. Atomic bundling of 3 messages in deployJettonWeb3 preventing duplicate donation.
+ * 3. Wallet batching of 3 messages (downstream settlement is asynchronous) in deployJettonWeb3 preventing duplicate donation.
  * 4. User consent acknowledgement requirement before wallet approval.
  * 5. Rejection and error handling without fake confirmation or phantom charges.
  * 6. Separation of token contract address (TBA) and donation recipient.
@@ -98,7 +98,7 @@ it('Donation calculation is consistent for arbitrary custom base values', () => 
 
 it('Payload comment matches required disclosure string', () => {
   assert.strictEqual(CONFIG.PAYLOAD_COMMENT, 'ANLGRAM 10% Token Creation Donation');
-  assert.strictEqual(CONFIG.PRIMARY_LABEL, '10% Token Creation Donation');
+  assert.strictEqual(CONFIG.PRIMARY_LABEL, 'Mandatory Donation (10%)');
 });
 
 // ══════════════════════════════════════════════════════════════
@@ -114,7 +114,7 @@ it('memecoin-platform.html loads donation-config.js', () => {
 });
 
 it('Fee breakdown card in Step 2 explicitly states 10% Token Creation Donation', () => {
-  assert.strictEqual(platformHtml.includes('10% Token Creation Donation (Required):'), true);
+  assert.strictEqual(platformHtml.includes('Mandatory Donation (10%):'), true);
   assert.strictEqual(platformHtml.includes('0.02 TON'), true);
 });
 
@@ -127,14 +127,14 @@ it('Fee breakdown card displays the exact 0.20 TON execution base and recipient'
 
 it('deploy-confirm-modal contains detailed 10% Token Creation Donation disclosure', () => {
   assert.strictEqual(platformHtml.includes('id="deploy-confirm-modal"'), true);
-  assert.strictEqual(platformHtml.includes('10% Token Creation Donation:'), true);
+  assert.strictEqual(platformHtml.includes('Mandatory Donation (10%):'), true);
   assert.strictEqual(platformHtml.includes('0.20 TON execution base'), true);
 });
 
 it('deploy-confirm-modal contains mandatory user acknowledgement checkbox with full text', () => {
   assert.strictEqual(platformHtml.includes('id="deploy-confirm-checkbox"'), true);
   assert.strictEqual(
-    platformHtml.includes('I understand that a 10% Token Creation Donation (0.02 TON), calculated from the displayed 0.20 TON execution base, will be sent to the displayed recipient wallet (UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd) as part of this token-creation flow.'),
+    platformHtml.includes('including Mandatory Donation (10%): 0.02 TON on the 0.20 TON execution base. Total 0.22 TON before wallet network fees.'),
     true
   );
 });
@@ -146,22 +146,23 @@ console.log('\nSECTION 3: Standard Jetton Creator Transaction Builder');
 console.log('----------------------------------------------------------------');
 
 it('deployJettonWeb3 verifies user acknowledgement checkbox before dispatching', () => {
-  assert.strictEqual(platformHtml.includes("deployCheckbox && !deployCheckbox.checked"), true);
-  assert.strictEqual(platformHtml.includes("Please review and check the acknowledgement box confirming the 10% Token Creation Donation"), true);
+  assert(platformHtml.includes("!document.getElementById('deploy-confirm-checkbox')?.checked"));
+  assert(platformHtml.includes('Review and authorize the Mandatory Donation (10%) before signing.'));
 });
 
-it('deployJettonWeb3 bundles exactly 3 atomic messages in tc.sendTransaction', () => {
-  // Message 1: minter deploy (0.05 TON)
-  // Message 2: initial mint (0.15 TON)
-  // Message 3: 10% Token Creation Donation (0.02 TON)
-  assert.strictEqual(platformHtml.includes("amount: (donationCfg.BASE_DEPLOY_NANO || 50000000n).toString()"), true);
-  assert.strictEqual(platformHtml.includes("amount: (donationCfg.BASE_MINT_NANO || 150000000n).toString()"), true);
-  assert.strictEqual(platformHtml.includes("address: donationCfg.RECIPIENT_ADDRESS"), true);
-  assert.strictEqual(platformHtml.includes("amount: (donationCfg.DONATION_AMOUNT_NANO || 20000000n).toString()"), true);
+it('deployJettonWeb3 bundles exactly 3 requested messages in tc.sendTransaction', () => {
+  // Batch contents and actual downstream outcomes are executed in donation.test.js.
+  assert(platformHtml.includes('amount: toNano("0.05").toString()'));
+  assert(platformHtml.includes('amount: toNano("0.15").toString()'));
+  assert(platformHtml.includes('donationMessage'));
+  assert(platformHtml.includes("donationMessage.amount !== '20000000'"));
+  assert(platformHtml.includes("donationMessage.address !== '" + CONFIG.RECIPIENT_ADDRESS + "'"));
 });
 
 it('Donation payload cell in deployJettonWeb3 contains text comment', () => {
-  assert.strictEqual(platformHtml.includes("storeStringTail(donationCfg.PAYLOAD_COMMENT)"), true);
+  const configSource = fs.readFileSync(donationConfigPath, 'utf8');
+  assert(platformHtml.includes('donation.createMessage(window.TON_CORE, walletChain)'));
+  assert(configSource.includes("storeStringTail('ANLGRAM 10% Token Creation Donation')"));
 });
 
 it('deployJettonWeb3 uses 100% English user-facing error and status alerts', () => {
@@ -178,8 +179,9 @@ it('deployJettonWeb3 uses 100% English user-facing error and status alerts', () 
 });
 
 it('deployJettonWeb3 safely handles wallet cancellation without phantom success', () => {
-  assert.strictEqual(platformHtml.includes("errMsg.includes('reject') || errMsg.includes('declined') || errMsg.includes('cancel') || errMsg.includes('User declined')"), true);
-  assert.strictEqual(platformHtml.includes("Deploy cancelled by user in wallet"), true);
+  assert(platformHtml.includes("e?.name === 'UserRejectsError'"));
+  assert(platformHtml.includes('return { submitted: false, uncertain, destAddressMint: pendingAddress, reason: errMsg }'));
+  assert(platformHtml.includes('if (localStorage.getItem(pendingKey))'));
 });
 
 // ══════════════════════════════════════════════════════════════
@@ -234,19 +236,19 @@ console.log('----------------------------------------------------------------');
 const launchpadJs = fs.readFileSync(path.join(__dirname, 'assets/js/launchpad.js'), 'utf8');
 
 it('launchpad.js uses 10% donation numerator and 0.20 TON base execution cost', () => {
-  assert.strictEqual(launchpadJs.includes('DONATION_RATE_NUMERATOR:   10n'), true);
-  assert.strictEqual(launchpadJs.includes('DONATION_RATE_DENOMINATOR: 100n'), true);
-  assert.strictEqual(launchpadJs.includes("BLOCKCHAIN_COST_NANO: (typeof window !== 'undefined' && window.ANLGRAM_DONATION_CONFIG?.BASE_EXECUTION_NANO)"), true);
+  assert(launchpadJs.includes('window.ANLGRAM_DONATION_CONFIG'));
+  assert(launchpadJs.includes('d.DONATION_AMOUNT_NANO !== 20000000n'));
+  assert(launchpadJs.includes('d.BASE_EXECUTION_NANO !== 200000000n'));
 });
 
 it('launchpad.js directDeploy fallback bundles the 0.02 TON donation message', () => {
-  assert.strictEqual(launchpadJs.includes('address: donationRecipient, amount: donationNano'), true);
-  assert.strictEqual(launchpadJs.includes('ANLGRAM 10% Token Creation Donation'), true);
+  assert(launchpadJs.includes('window.deployJettonWeb3({ currentTarget: btn })'));
+  assert(!launchpadJs.includes('address: donationRecipient, amount: donationNano'), 'no duplicate unchecked payment builder');
 });
 
 it('launchpad.js fee breakdown UI displays 10% Token Creation Donation', () => {
-  assert.strictEqual(launchpadJs.includes('10% Token Creation Donation'), true);
-  assert.strictEqual(launchpadJs.includes('Token Creation Cost &amp; Donation Breakdown'), true);
+  assert(launchpadJs.includes('Mandatory Donation (10%)'));
+  assert(launchpadJs.includes('Token Creation Cost &amp; Donation Breakdown'));
 });
 
 // ══════════════════════════════════════════════════════════════
