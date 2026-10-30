@@ -152,7 +152,9 @@ this turn. Main has donation/navigation/supervised-execution work that is not
 identical to the feature baseline. Overlaps include `memecoin-platform.html`,
 `assets/js/{anl-labs,launchpad,donation-config}.js`, the Curve source/artifact,
 launchpad tests and documentation. No blind merge or full-file replacement was
-performed. Original `E:\ANLGRAM` was not accessed or modified. Antigravity's
+performed. No files in original `E:\ANLGRAM` were modified. The existing minter
+dependency junction was read only to run tests; no dependency installation or
+write through that junction was performed. Antigravity's
 uncommitted working state was not available for review from this isolated tree;
 remote refs cannot establish that state.
 
@@ -188,6 +190,18 @@ report or was performed.**
 - The previous seven Codex commits remain intact. The GitHub review/push result
   will be reported with the exact remote commit; this document does not assert
   a successful push or publication before those operations occur.
+
+### Verified GitHub delivery
+
+Code commits `95c2eac` and `0198eff` were pushed successfully to
+`origin/codex/memelabs-sprint`; remote code tip was independently confirmed as
+`0198eff95267f6ba5e9c1384c8cda913910a75de` before this documentation follow-up.
+Draft review: https://github.com/anlgram-labs/ANLGRAM/pull/1.
+GitHub reports 51 changed files, `mergeable=false`, `mergeable_state=dirty`:
+integration has real conflicts with main. They were not resolved automatically.
+Antigravity must review both preserved branches before selecting behavior.
+Main remained `781e1dbf523d5e82ebc7295adf8367e42084cd34`; feature remained
+`caf2c70aac9d49df77671570587f3fec8c54cbbd`. No production publication occurred.
 
 ## Critical-flow follow-up — current verified scope
 
