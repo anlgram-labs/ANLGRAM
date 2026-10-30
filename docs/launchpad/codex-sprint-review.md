@@ -1,5 +1,70 @@
 # MemeLabs isolated sprint: review notes
 
+## Accepted development model — deterministic LP authentication
+
+The user explicitly approved the documented external STON.fi Router trust model
+for development on October 30: "Acepto el modelo para desarrollo". This is not
+deployment, signing, spending, Mainnet activation or independent source-review
+approval. All existing commits remain preserved; code commit `e405a51` extends
+the isolated development branch from `4371111`.
+
+The LP guard now optionally embeds an immutable development code profile in
+genesis. It checks the exact Pool, LP-wallet and LP-account code-cell hashes,
+then independently calculates Pool StateInit from the configured Router and
+discovered pair wallets. Descending serialized-address cell-hash ordering matches
+the actual captured Router in 32 pairs, in both input orders. The LP wallet is
+calculated from its code, the guard as owner, and the derived Pool as master.
+The observed genesis DEX fields 20/10 are used for identity only; no ANLGRAM or
+foreign DEX fee is changed.
+
+Before the Pool exists, the contract exposes both calculated endpoints through
+`get_expected_destinations`. It still awaits the actual Pool's TEP-89 response as
+corroboration. Even authenticated Router/Pool replies cannot substitute other
+addresses. Substituted code cells, changed genesis fees and invalid profile tags
+are rejected before query dispatch. Validation is marked impure so the compiler
+cannot discard checks when only their throwing behavior is needed.
+
+No custody finalization was added. A matching StateInit address does not prove
+current foreign code, non-upgradability, account balance or a particular LP mint.
+`is_migration_authorized()` remains zero and Curve dispatch/finalization still
+reject 414. Independent foreign v2.2 source/build and immutability review,
+operation-correlated LP custody receipts, zero-forward Jetton refund receipts,
+Curve handoff receipts and final migration reconciliation remain outstanding.
+The TON ABI schema reference is pinned to commit
+`7dc57067d85c95dc25c09ccaaf108eaba62f6303`; a schema is not an audited implementation.
+
+Actual final results: **92/92 local Sandbox tests**, **37/37 root regression
+suites**, 139 financial assertions in both source/artifact runner paths, 68/68
+supervised executor tests, 46/46 math tests including 12,000 deterministic cycles,
+and 5/5 legacy minter tests. All four compiler checks and the offline foreign
+profile regeneration check pass. Machine-readable current evidence is in
+[`verified-lp-deterministic-auth-2026-10-30.json`](verified-lp-deterministic-auth-2026-10-30.json).
+The five new tests include real captured-code derivation/bootstrap and explicitly
+labeled local injected adversarial replies. No result is live ANLGRAM settlement.
+
+Current LP guard code-cell SHA-256:
+`c7cb54c792e23eea4abb1bf3472d819ae2b8fb7d095b9010cf66031fec9e8143`.
+BOC SHA-256:
+`94c7663923f7e3953b1b8f4ce46f4ace84f3a61dce254922474e018bbe4ca0c9`.
+The existing guard root layout is unchanged; the configuration accepts an optional
+second reference containing the profile. Old configurations remain readable and
+gain no financial authorization. New code/profile changes the guard candidate to
+`0:0ea55227dfae405859094b7526c376b441c729aec35fd0a7943ffad3248046ef`.
+The unchanged migration bytecode embeds that guard in genesis, so its candidate
+changes to `0:245f446a80ffc4cbc80186a1d5f41358a28eefa368c1615afc0ae70104026740`.
+Master, Curve, project wallet bytecode, tokenomics and their candidate identities
+remain unchanged. The regenerated manifest now includes an LP-wallet prediction
+before bootstrap, marked without custody/audit authorization.
+
+Review points for Antigravity: guard source/artifact, optional config reference,
+offline candidate builder and runtime suite registration. New import, profile,
+offline extractor, derivation helper and test file are separate. Use
+`git diff --name-status 4371111..e405a51` for the code file list. Fetch current
+Antigravity refs again before integration; do not resolve financial conflicts
+automatically. PR #2, production design, donation configuration and existing
+TON Center/TonAPI/Cloudflare/Telegram code are unchanged. No credential access,
+real transaction, deployment, merge or real TON spending occurred in this step.
+
 ## October 30 critical-integration follow-up — current verified state
 
 Preserved baseline `ce72cc8`; new code commits `11f7d22` (migration recovery),

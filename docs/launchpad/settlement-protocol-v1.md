@@ -147,3 +147,29 @@ outgoing abort messages also need actual delivery receipts before completion.
 Provider getter snapshots must not clear either obligation. New execution and
 abort cannot reuse unresolved balances or used IDs. LP authorization stays zero;
 none of these recovery additions completes or enables financial migration.
+
+## Accepted development model: deterministic foreign addresses
+
+The development LP guard configuration can now carry a second optional reference
+after its admin reference: uint32 profile tag `0x53543232`, uint16 genesis LP fee
+20, uint16 genesis protocol fee 10, and three references to exact pinned Pool,
+LP-wallet and LP-account code cells. These observed foreign genesis fee fields
+are identity inputs only. Configuration is immutable and no admin override of
+pins or calculated destinations exists.
+
+Once the two Router-owned token wallets are discovered, the guard sorts their
+serialized-address cell hashes descending and constructs the exact constant-
+product Pool StateInit template. It calculates its own zero-balance LP wallet
+StateInit using that Pool and the pinned LP code. `get_expected_destinations`
+returns profile presence and calculated Pool/LP addresses; this can precede Pool
+deployment. Phase 3 Router replies must match the derived Pool; phase 4 TEP-89
+replies must match the derived LP wallet and include the guard as owner.
+
+`scripts/prepare-stonfi-v22-profile.js --check` regenerates the development profile
+offline through captured real getters. `minter-contract/scripts/stonfi-v22-addresses.js`
+is the equivalent offline calculation used to prepare the candidate manifest.
+The contract has independent constants and calculations, with actual captured
+Router/Pool/LP tests checking agreement. No unverified provider snapshot enables
+authorization. Foreign implementation immutability and source/build review remain
+required; `is_migration_authorized()` stays zero. Old genesis configurations
+without this optional profile retain only their legacy discovery behavior.

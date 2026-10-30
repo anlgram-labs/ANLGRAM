@@ -11,6 +11,12 @@
     "decimals": 9
   },
   "metadataApproved": false,
+  "lpDevelopmentProfile": {
+    "codeIdentityPinned": true,
+    "trustModelAcceptedForDevelopment": true,
+    "sourceAuditVerified": false,
+    "migrationAuthorized": false
+  },
   "accounts": {
     "minter": {
       "address": "kQBnKDajI7s7UhzvriQVcMz6QkTsA51nwSC4CdTUAzaJdwJU",
@@ -25,16 +31,16 @@
       "dataHash": "95ec10d931acd0392d175676bb02650f53d2e5e980de4cf013b33d1ad7c32db7"
     },
     "guard": {
-      "address": "kQCqKmNSwTtu9Spo7DIHtXK5U_cIUwjC5TERShrqz9zawtaE",
-      "raw": "0:aa2a6352c13b6ef52a68ec3207b572b953f7085308c2e531114a1aeacfdcdac2",
-      "codeHash": "58cad0f20c79bee067e14c3ffdf5c66567d7f43ebb7fba6f8230c49a2a12e939",
-      "dataHash": "c04882174e70ce6f552d75df172b6652fe2f02ddecf93d8a142a430d61792965"
+      "address": "kQAOpVIn365AWFkJS3Umw3a0QccprsNf0KeUP_rTJIBG70ER",
+      "raw": "0:0ea55227dfae405859094b7526c376b441c729aec35fd0a7943ffad3248046ef",
+      "codeHash": "c7cb54c792e23eea4abb1bf3472d819ae2b8fb7d095b9010cf66031fec9e8143",
+      "dataHash": "15224064a94cfc153bf2385a66a70fb9d23424236e176369147934ed395a7e9e"
     },
     "migration": {
-      "address": "kQDwDbNIuf6DXoVS-Rt61qUV8LS8bjryBQzBaqFhFm4EbVPJ",
-      "raw": "0:f00db348b9fe835e8552f91b7ad6a515f0b4bc6e3af2050cc16aa161166e046d",
+      "address": "kQAkX0RqgP_Ey8gBhqHV9BNYoo7vo2jBYVr8CucBBAJnQLOY",
+      "raw": "0:245f446a80ffc4cbc80186a1d5f41358a28eefa368c1615afc0ae70104026740",
       "codeHash": "a8a0b3487d1a5f4dcc0dffb6ffc56532919fd5294796e2196818686a86e02d36",
-      "dataHash": "973405caaa2746a11c8529d7ab425efd691b9ee32faa1ce72ee087fcf3cc3f91"
+      "dataHash": "0d956d52393ebbcb1fbc14e55778afdb34af8959c70571ed0e5d3db25c316ec2"
     }
   },
   "curveWallet": "kQAQBftZUp8R1iudIlaoT_puUqeHDfgctdqpQmXWmLb2PBV7",
@@ -48,7 +54,7 @@
     "Migration pending balances and interrupted DEX recovery are not fully reconciled.",
     "Testnet donation recipient is not approved; production donation remains mainnet-only.",
     "No deployment or transaction is authorized.",
-    "Zero-forward Jetton refund custody and Curve handoff delivery receipts remain incomplete; pending liabilities cannot be cleared by snapshots."
+    "Zero-forward Jetton refund and Curve handoff delivery receipts remain incomplete; no snapshot-based reconciliation."
   ],
   "operatorReadOnlyObservation": {
     "network": "-3",
@@ -58,14 +64,6 @@
     "controlVerified": false,
     "observedUtc": "2026-10-30T10:56:26.580Z",
     "scope": "Public provider observation, not a cryptographic state proof"
-  },
-  "predictedDex": {
-    "scope": "Offline deterministic getters using captured code; these are not deployed/verified project accounts",
-    "routerTokenWallet": "kQCcZYwFKgiGmNvvx3bwMtF3cFraBE37vIv-9VRV6k-u-hju",
-    "routerPtonWallet": "kQDYnMBdovx2Ot3r0-Pe7HJFRzOLZW9Ot90WTySXeGf5CPSg",
-    "pool": "kQCl_NTrsWdzFO112kTUJ4ciRM1UU9p7JTDDXphtLbByMwK-",
-    "lockerLpWallet": null,
-    "blocker": "LP wallet and code/custody authentication remain blocked before verified Pool initialization."
   },
   "mainnetSpendingAuthorization": {
     "maximumNanoTon": "5000000000",
@@ -77,5 +75,15 @@
       "No real Testnet verification of the new contracts",
       "Unresolved LP custody/code trust and partial migration recovery"
     ]
+  },
+  "predictedDex": {
+    "scope": "Offline deterministic genesis derivation, locally cross-checked with captured real code; no deployment/custody attestation",
+    "routerTokenWallet": "kQCcZYwFKgiGmNvvx3bwMtF3cFraBE37vIv-9VRV6k-u-hju",
+    "routerPtonWallet": "kQDYnMBdovx2Ot3r0-Pe7HJFRzOLZW9Ot90WTySXeGf5CPSg",
+    "pool": "kQCl_NTrsWdzFO112kTUJ4ciRM1UU9p7JTDDXphtLbByMwK-",
+    "lockerLpWallet": "kQAl4PG6g-weiSqK8mkC9UkD-kH28JFpV6JDja7i2Q0I3z73",
+    "sourceAuditVerified": false,
+    "custodyVerified": false,
+    "migrationAuthorized": false
   }
 }

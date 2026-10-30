@@ -1,5 +1,31 @@
 # Supervised Testnet candidate — blocked pending verification and review
 
+## Accepted development model: new LP guard candidate
+
+The user accepted the documented STON.fi trust model for development only.
+The guard now pins development code identities and independently derives Pool
+and guard-owned LP-wallet StateInit addresses, rejecting substituted responses.
+No financial gate is opened: source/build audit, immutability review, custody
+receipts and real Testnet execution remain required.
+
+Current guard code hash:
+`c7cb54c792e23eea4abb1bf3472d819ae2b8fb7d095b9010cf66031fec9e8143`.
+Current guard candidate:
+`0:0ea55227dfae405859094b7526c376b441c729aec35fd0a7943ffad3248046ef`.
+Embedding this guard changes migration genesis, while migration bytecode remains
+unchanged. Current migration candidate:
+`0:245f446a80ffc4cbc80186a1d5f41358a28eefa368c1615afc0ae70104026740`.
+The candidate JSON now also contains the independently derived LP-wallet address
+before Pool deployment, explicitly marked without audit/custody authorization.
+Master, Curve, token wallet code and tokenomics remain unchanged. Old guard and
+migration candidate addresses below are historical; use the latest JSON.
+
+Regenerate the foreign development profile with
+`node scripts/prepare-stonfi-v22-profile.js --check` (offline captured code only).
+The profile's code identities are not independent source verification. A schema
+or foreign code update needs a separate reviewed guard version, not a runtime
+admin override. No additional transaction permission accompanies model approval.
+
 ## Critical-integration follow-up
 
 The current migration code hash is

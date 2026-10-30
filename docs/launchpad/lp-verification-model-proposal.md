@@ -1,8 +1,10 @@
-# LP verification model — proposal, not approval or authorization
+# LP verification model — approved for development only
 
-Current contract result remains `is_migration_authorized() = 0`. No new trust
-model is enabled. This document identifies the decision needed before accepting
-LP custody as migration completion. It does not authorize deployment or spending.
+On October 30 the user explicitly accepted this model: "Acepto el modelo para
+desarrollo". That accepts the stated external Router-administration trust for
+development. It does not waive independent review or authorize deployment,
+signatures, spending, financial activation or a Mainnet readiness claim.
+Current contract result remains `is_migration_authorized() = 0`.
 
 ## What the current evidence establishes
 
@@ -90,5 +92,31 @@ It inherits the existing configured DEX trust and stays behind the production
 financial block. The zero-forward Jetton refund accounting gap is deliberately
 unresolved rather than cleared using a provider snapshot.
 
-Approval needed: acceptance of the exact external Router-administration trust
-above for further implementation of this model. Current status: **not approved**.
+Trust-model status: **approved for development only**. Independently reviewed
+v2.2 source/build correspondence, code immutability, actual custody receipts and
+live Testnet verification remain incomplete. No financial authorization is enabled.
+
+## Deterministic authentication implementation
+
+The guard now supports an immutable optional genesis development profile. It
+pins exact Pool, LP-wallet and LP-account code-cell identities and the observed
+constant-product genesis schema. The contract independently builds Pool StateInit
+from the Router and the two discovered token wallets, ordered by descending
+serialized-address cell hash. It independently builds the zero-balance LP-wallet
+StateInit with owner equal to itself and master equal to that Pool. Authenticated
+Router/Pool replies must match those locally calculated addresses.
+
+The observed Pool genesis fields are unlocked, zero reserves/supply/protocol
+collections, null protocol-fee address, and DEX fee fields 20/10. These are
+identity inputs from existing captured foreign code, not changes to ANLGRAM or
+STON.fi economic settings. The schema is cross-referenced to
+[TON ABI revision 7dc5706](https://github.com/ton-blockchain/abis/tree/7dc57067d85c95dc25c09ccaaf108eaba62f6303/data/stonfi).
+ABI schemas are not audited implementation source or proof of code immutability.
+
+`get_expected_destinations` exposes profile presence and derived endpoints once
+both token wallets are discovered, including before the Pool is deployed.
+Profile presence is not code audit, authorization or custody. The TEP-89 reply
+from a live Pool remains a separate corroboration; an uninitialized Pool still
+cannot send that reply. Original configurations without the profile remain
+readable and retain their previous address-discovery behavior, without gaining
+new financial authorization. The offline candidate now includes the profile.
