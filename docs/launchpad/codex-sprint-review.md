@@ -1,5 +1,24 @@
 # MemeLabs isolated sprint: review notes
 
+## Unified read-only integration — 2026-10-30
+
+New branch `codex/unified-readonly-integration` starts at `69f4c57`; all V4
+financial work remains unchanged. Antigravity's tracked development was already
+included, and frontend assets matched PR #2 before this sprint. Implemented shared
+network-aware GET transport, exact wallet/token balances, stale-response rejection,
+safe token rendering, correct holder percentages and a read-only signing gate.
+Design/navigation/donation preservation checks pass; original E checkout and
+production-safe worktree are untouched. PR #1/#2 remain unchanged.
+
+Actual results: **39/39 root suites, 155/155 Sandbox, 68/68 executor, six compiler
+checks; 18/18 targeted integration/preservation cases**. Public Worker health and
+real USD₮ metadata GET succeeded; four local HTTP checks returned200. No deployment,
+signing, broadcast or spending. Full inventory, scope, limitations and integration
+instructions: [unified read-only integration](unified-readonly-integration.md).
+Exact foreign LP issuance/withdrawal evidence, independent Router/Pool review,
+complete migration finalization and supervised real Testnet execution remain
+blocked. A read-only review candidate is prepared; production is not updated.
+
 ## Phase V4 — authentic LP custody: current verified checkpoint
 
 Continues `1ad7cda`; implementation commit `843d4c6` on the same dedicated branch.
