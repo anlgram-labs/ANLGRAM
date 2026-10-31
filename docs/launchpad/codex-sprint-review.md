@@ -1,5 +1,23 @@
 # MemeLabs isolated sprint: review notes
 
+## Supervised smoke preparation — 2026-10-31
+
+`codex/testnet-execution-candidate` continues `c8b7a08`. Reuses the seven verified
+artifacts and existing planner, with explicit operator input, a bounded native
+bounce test and a separately approved fresh-quote sell template. Exact serialized
+messages deploy/mint/renounce/activate/buy, reject impossible slippage, replay
+authenticated receipts without resending tokens, and sell in fresh Sandbox.
+Focused tests:12/12 (three smoke, two existing planner, seven component cases);
+final stricter receipt-routing rerun5/5. Source/candidate reproduction passes.
+Existing155/39-suite checkpoint reused; contracts/bytecode/addresses unchanged.
+
+Operator Testnet observation is uninitialized with0.0035 TON, insufficient for
+the proposed2.50 Testnet TON envelope. Actual network fees, signer control,
+metadata, donation recipient, staging manifest and per-stage approval remain
+required. No signing/broadcast/deployment/spending or financial activation.
+V2 LP evidence/finalization blockers remain unchanged. See the exact
+[unsigned proposal and recovery evidence](supervised-smoke-review-2026-10-31.md).
+
 ## Resume after production release — 2026-10-31
 
 Production `61cb4bc` verified directly: exact published files 55/55, valid enforced
