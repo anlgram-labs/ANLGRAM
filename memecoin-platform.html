@@ -19,9 +19,12 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="assets/js/telegram-mini-app.js"></script>
   <script src="assets/js/security.js"></script>
+  <script src="assets/js/blockchain-provider.js"></script>
+  <script src="assets/js/memelabs-readonly.js?v=2026.55"></script>
   <script>
     window.ANLGRAM_TON_PROXY_URL = 'https://anlgram-ton-proxy.anlgram.workers.dev';
     window.anlgramFetchTonApi = async function(endpoint) {
+      if (window.ANLGRAM_READONLY) return window.ANLGRAM_READONLY.fetchTonApi(endpoint);
       const proxyBase = (window.ANLGRAM_TON_PROXY_URL || '').replace(/\/+$/, '');
       if (proxyBase) {
         try {
@@ -1492,7 +1495,7 @@
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody id="trending-tokens-tbody">
+            <tbody id="trending-tokens-tbody" hidden>
               <tr>
                 <td>
                   <div class="token-cell">
@@ -1789,7 +1792,7 @@
           <div class="glass-card-header" style="padding: 24px;"><span class="glass-card-title">Managed Wallets</span></div>
           <table class="ent-table">
             <thead><tr><th>Label</th><th>Address</th><th>Balance</th><th>Status</th></tr></thead>
-            <tbody id="managed-wallets-tbody">
+            <tbody id="managed-wallets-tbody" hidden>
               <tr>
                 <td><span style="font-weight:600;">Treasury Alpha</span></td>
                 <td style="font-family:var(--font-mono); color:var(--text-muted);">UQDK...4bA1</td>
@@ -2612,8 +2615,16 @@
 
   // --- API Integrations for Wallet ---
   
+  let tokenViewRequest = 0;
   // Listen for the wallet connection event emitted by wallet-connect.js
   window.addEventListener('anlgramWalletChanged', async (e) => {
+    const request = ++tokenViewRequest;
+    let context;
+    try { context = window.ANLGRAM_READONLY.getContext().chainId; } catch (_) { context = null; }
+    const current = () => {
+      try { return request === tokenViewRequest && context === window.ANLGRAM_READONLY.getContext().chainId; }
+      catch (_) { return false; }
+    };
     const address = e.detail.address;
     const selectEl = document.getElementById('user-jetton-select');
     const setupArea = document.getElementById('liquidity-setup-area');
@@ -2626,32 +2637,47 @@
       if(setupArea) setupArea.style.display = 'none';
       if(poolsList) poolsList.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">Connect wallet to view your active liquidity pools.</div>';
       if(walletsTbody) walletsTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Connect wallet to view balances.</td></tr>';
+      if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5">Connect wallet to view tokens.</td></tr>';
+      return;
+    }
+
+    if (!context) {
+      if(selectEl) selectEl.innerHTML = '<option value="">Wallet network unavailable. Reconnect a supported wallet.</option>';
+      if(walletsTbody) walletsTbody.innerHTML = '<tr><td colspan="4">Wallet network unavailable.</td></tr>';
+      if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5">Wallet network unavailable.</td></tr>';
+      if(setupArea) setupArea.style.display = 'none';
+      if(poolsList) poolsList.textContent = 'Wallet network unavailable.';
       return;
     }
 
     // Wallet is connected. Fetch Jettons from TonAPI
     if(selectEl) selectEl.innerHTML = '<option value="">Loading tokens from blockchain...</option>';
     if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Loading tokens...</td></tr>';
+    if(walletsTbody) walletsTbody.innerHTML = '<tr><td colspan="4">Loading wallet balance...</td></tr>';
     
     // Load Main Account Data (TON Balance)
     try {
       const accRes = await window.anlgramFetchTonApi(`/accounts/${encodeURIComponent(address)}`);
+      if (!accRes.ok) throw new Error('Account data unavailable');
       if(accRes.ok) {
         const accData = await accRes.json();
+        if (!current()) return;
         if(walletsTbody) {
           const shortAddr = address.substring(0, 4) + "..." + address.slice(-4);
-          const formattedTon = (Number(accData.balance) / 1e9).toFixed(2);
+          const formattedTon = window.ANLGRAM_READONLY.formatUnits(accData.balance, 9);
           walletsTbody.innerHTML = `
               <tr>
                 <td><span style="font-weight:600;">Main Connected Wallet</span></td>
                 <td style="font-family:var(--font-mono); color:var(--text-muted);">${shortAddr}</td>
                 <td style="font-family:var(--font-mono); color:var(--green);">${formattedTon} TON</td>
-                <td><span style="background:rgba(0,255,100,0.1); color:#00ff66; padding:2px 8px; border-radius:12px; font-size:11px;">Active</span></td>
+                <td><span style="background:rgba(0,255,100,0.1); color:#00ff66; padding:2px 8px; border-radius:12px; font-size:11px;">${String(accData.status || 'Unknown').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</span></td>
               </tr>
           `;
         }
       }
     } catch(err) {
+      if (!current()) return;
+      if(walletsTbody) walletsTbody.innerHTML = '<tr><td colspan="4">Wallet data unavailable. Retry after the provider recovers.</td></tr>';
       console.warn("Could not fetch main account:", err);
     }
     
@@ -2772,7 +2798,8 @@
       const response = await window.anlgramFetchTonApi(`/accounts/${encodeURIComponent(address)}/jettons?supported_extensions=custom_payload`);
       if (!response.ok) throw new Error('API Error');
       const data = await response.json();
-      const balances = data.balances || [];
+      if (!current()) return;
+      const balances = (data.balances || []).filter(b => window.BlockchainProvider.validateTonAddress(b?.jetton?.address).valid);
 
       if (balances.length === 0) {
         if(selectEl) selectEl.innerHTML = '<option value="">No tokens found in this wallet.</option>';
@@ -2787,17 +2814,8 @@
 
       // Normalize connected wallet address to raw hex for comparison
       function toRawHex(addr) {
-        if (!addr) return '';
-        // If already raw (contains ':'), strip workchain prefix
-        if (addr.includes(':')) return addr.split(':')[1].toLowerCase();
-        // If friendly (EQ/UQ), decode base64url to get raw hex
-        try {
-          const std = addr.replace(/-/g, '+').replace(/_/g, '/') + '==';
-          const bytes = atob(std);
-          let hex = '';
-          for (let i = 2; i < 34; i++) hex += bytes.charCodeAt(i).toString(16).padStart(2, '0');
-          return hex.toLowerCase();
-        } catch(e) { return addr.toLowerCase().replace(/[^a-z0-9]/g,''); }
+        const normalized = window.BlockchainProvider.validateTonAddress(addr);
+        return normalized.valid ? normalized.raw : '';
       }
 
       const walletRawHex = toRawHex(address);
@@ -2828,6 +2846,7 @@
 
       let optionsHTML = `<option value="">-- ${isFiltered ? `${adminTokens.length} token(s) you created` : 'Choose your token'} --</option>`;
       let explorerHTML = '';
+      const optionStyle = '';
 
       // Convert all minter addresses to friendly format in parallel
       const resolvedTokens = await Promise.all(tokensToShow.map(async (b) => {
@@ -2836,12 +2855,13 @@
         return { ...b, _friendlyMinterAddr: friendlyAddr };
       }));
 
+      if (!current()) return;
       resolvedTokens.forEach(b => {
         const symbol = b.jetton.symbol || 'Unknown';
         const name = b.jetton.name || 'Unknown Token';
         const rawBal = b.balance;
-        const decimals = b.jetton.decimals || 9;
-        const formattedBal = (Number(rawBal) / Math.pow(10, decimals)).toFixed(2);
+        const decimals = b.jetton.decimals;
+        const formattedBal = window.ANLGRAM_READONLY.formatUnits(rawBal, decimals);
         // Use the pre-resolved friendly EQ... address
         const minterAddr = b._friendlyMinterAddr || b._minterAddress || b.jetton.address;
 
@@ -2877,7 +2897,7 @@
             <td style="font-family:var(--font-mono);">-</td>
             <td style="font-family:var(--font-mono);">${formattedBal}</td>
             <td style="white-space: nowrap;">
-              <button class="btn-ent" style="padding:4px 12px;font-size:11px;" onclick="window.open('https://tonscan.org/address/${encodeURIComponent(minterAddr)}','_blank')">Explorer ↗</button>
+              <button class="btn-ent" style="padding:4px 12px;font-size:11px;" onclick="window.open('${window.ANLGRAM_READONLY.getContext().tonscanBase}/address/${encodeURIComponent(minterAddr)}','_blank')">Explorer ↗</button>
               <button class="btn-solid" style="padding:4px 12px;font-size:11px; margin-left: 4px;" data-name="${safeName}" data-symbol="${safeSymbol}" onclick="copyToken(this.getAttribute('data-name'), this.getAttribute('data-symbol'))">Copy</button>
             </td>
           </tr>
@@ -2963,6 +2983,7 @@
       }
 
     } catch (err) {
+      if (!current()) return;
       console.warn('Failed to fetch Jettons from TonAPI:', err);
       if(selectEl) selectEl.innerHTML = '<option value="">Error fetching tokens. Refresh page.</option>';
       if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Error fetching tokens.</td></tr>';
@@ -2981,6 +3002,6 @@
 <script src="assets/js/wallet-connect.js?v=2026.51"></script>
 <script src="assets/js/launchpad.js?v=2026.54"></script>
 <script src="assets/js/transaction-receipt.js?v=2026.54"></script>
-<script src="assets/js/anl-labs.js?v=2026.54"></script>
+<script src="assets/js/anl-labs.js?v=2026.55"></script>
 </body>
 </html>
