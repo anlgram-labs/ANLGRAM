@@ -9,8 +9,10 @@ test('production contracts, artifacts, wallet connector, donation, CSS, credenti
  const unchanged=['minter-contract','assets/css','assets/js/wallet-connect.js','assets/js/donation-config.js','cloudflare-worker','server.js','tonconnect-manifest.json','CNAME','index.html'];
  assert.equal(execFileSync('git',['diff','--name-only',base,'--',...unchanged],{cwd:__dirname,encoding:'utf8'}).trim(),'');
 });
-test('MemeLabs preserves production navigation, CSS blocks and every non-script inline style',()=>{
- const strip=s=>s.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
+test('MemeLabs preserves navigation, CSS and non-script styles outside removed hidden sample rows',()=>{
+ // Hidden fixture rows were already cleared at bootstrap in the released page.
+ // Removing those obsolete source examples must not weaken protection of the UI.
+ const strip=s=>s.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/(<tbody id="(?:trending-tokens|managed-wallets)-tbody"[^>]*>)[\s\S]*?(<\/tbody>)/gi,'$1$2');
  for(const regex of [/<nav\b[^>]*>[\s\S]*?<\/nav>/gi,/<style\b[^>]*>[\s\S]*?<\/style>|\bstyle="[^"]*"/gi])assert.deepEqual(strip(source('memecoin-platform.html')).match(regex),strip(original('memecoin-platform.html')).match(regex));
 });
 test('factory fee display uses actual unchanged donation configuration without undefined aliases',()=>{

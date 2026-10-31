@@ -1659,6 +1659,23 @@
   // 7. STEP 5: TOKEN MANAGEMENT & LIQUIDITY
   // ═══════════════════════════════════════════════════════════════════
 
+  function labsSetManagementAvatar(container, source) {
+    if (!container) return;
+    const fallback = 'assets/img/anlgram-icon.svg';
+    const image = document.createElement('img');
+    image.alt = 'Logo';
+    image.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+    let url = fallback;
+    try {
+      const parsed = new URL(source, window.location.href);
+      if (parsed.protocol === 'https:' || parsed.origin === window.location.origin || /^data:image\/(png|jpeg|gif|webp);base64,/i.test(source)) url = parsed.href;
+    } catch (_) {}
+    image.onerror = () => { image.onerror = null; image.src = fallback; };
+    image.src = url;
+    // Remote metadata is never parsed as HTML or inline event attributes.
+    container.replaceChildren(image);
+  }
+
   function labsUpdateManagementScreen() {
     const token = wizardState.activeToken;
     if (!token) return;
@@ -1676,7 +1693,7 @@
     if (renAddr) renAddr.value = friendlyAddr;
 
     // Render Token Avatar in Step 5 Header
-    const defaultLogo = 'https://anlgram.com/assets/images/icon-192.png';
+    const defaultLogo = 'assets/img/anlgram-icon.svg';
     let tokenImage = token.image || wizardState.tokenDraft?.logoUrl || wizardState.tokenDraft?.logoDataUrl || '';
     if (!tokenImage || tokenImage.includes('anlgram.io')) {
       try {
@@ -1689,7 +1706,7 @@
     }
 
     if (tmAvatar) {
-      tmAvatar.innerHTML = `<img src="${tokenImage}" onerror="this.onerror=null; this.src='${defaultLogo}';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+      labsSetManagementAvatar(tmAvatar, tokenImage);
     }
 
     // Query on-chain Jetton metadata from TonAPI to reflect live status
@@ -1697,14 +1714,14 @@
       labsFetchTonApi(`/jettons/${encodeURIComponent(token.address)}`)
         .then(r => r.ok ? r.json() : null)
         .then(data => {
-          if (data && data.metadata && data.metadata.image) {
+          if (wizardState.activeToken === token && data && data.metadata && data.metadata.image) {
             let fetchedImg = data.metadata.image;
             if (fetchedImg.includes('anlgram.io')) {
               fetchedImg = defaultLogo;
             }
             token.image = fetchedImg;
             if (tmAvatar) {
-              tmAvatar.innerHTML = `<img src="${fetchedImg}" onerror="this.onerror=null; this.src='${defaultLogo}';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+              labsSetManagementAvatar(tmAvatar, fetchedImg);
             }
           }
         })
@@ -1799,12 +1816,12 @@
       // Update avatar element in Step 5
       if (tmAvatar) {
         tmAvatar.style.opacity = '1';
-        tmAvatar.innerHTML = `<img src="${finalUrl}" onerror="this.onerror=null; this.src='https://anlgram.com/assets/images/icon-192.png';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+        labsSetManagementAvatar(tmAvatar, finalUrl);
       }
 
       // Also update any other avatar containers across the wizard
       document.querySelectorAll('.labs-avatar-preview, #labs-avatar-preview-box, #labs-review-avatar, .wizard-dex-preview-avatar, #logo-preview-container').forEach((el) => {
-        el.innerHTML = `<img src="${finalUrl}" onerror="this.onerror=null; this.src='https://anlgram.com/assets/images/icon-192.png';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+        labsSetManagementAvatar(el, finalUrl);
       });
 
       console.log('Step 5 Token Logo updated successfully:', finalUrl.substring(0, 60) + '...');

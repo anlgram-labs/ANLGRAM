@@ -1,5 +1,11 @@
 # MemeLabs read-only release candidate — 2026-10-30 (America/New_York)
 
+Historical pre-release record below. PR #4 was subsequently merged at `61cb4bc`
+and its Pages deployment succeeded with enforced HTTPS. The current follow-up
+candidate and actual mobile/production verification are documented in
+[read-only completion](readonly-completion-2026-10-31.md). No new publication is
+implied by this follow-up.
+
 Branch: `codex/memelabs-readonly-release`, based directly on production
 `781e1db`. Selected only the read-only delta of `0627533`; did not merge
 `codex/financial-integration-v2` or import its financial implementations.
