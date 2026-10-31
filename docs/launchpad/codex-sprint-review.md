@@ -1,5 +1,34 @@
 # MemeLabs isolated sprint: review notes
 
+## Resume after production release — 2026-10-31
+
+Production `61cb4bc` verified directly: exact published files 55/55, valid enforced
+HTTPS, live read-only balances/metadata/holders, actual owner-approved SDK session,
+restoration and authenticated disconnect. No financial signature was requested.
+Production remains unchanged. Full mobile acceptance remains limited by a later
+browser-tool interruption, not an observed application failure.
+
+Dedicated follow-up branch `codex/lp-custody-followup` preserves financial checkpoint
+`69f4c57`. Added source verification of seven address dependencies before offline
+component preparation, complete StateInit and operation-correlated funded query
+templates, immutable terms options and deterministic `--check`. Corrected stale
+V3 blocker labels. Restricted the historical financial-branch Pages manual deploy
+job to main; production's reviewed workflow is untouched.
+
+Actual results: existing Sandbox 155/155; root runner 39/39 suites; new manifest
+suite final rerun 7/7; saved/source financial paths 139/139 each; executor tests
+68/68; mathematical tests 46/46; legacy Jetton tests 5/5; production-only release
+tests 12/12. Seven compilation checks and candidate
+reproduction pass. No contract source/bytecode/address changes, deployments,
+broadcasts, signatures, spending, production changes or merges.
+
+Exact LP operation provenance, lost-first-notification exact recovery, foreign
+final withdrawal receipts, independent current-code/upgrade review and V2 migration
+execution/final reconciliation remain blocked. The actual foreign protocol cannot
+supply the missing proofs; an approved compatible extension or independently
+reviewed anchored proof system is needed. No API snapshot substitutes for it.
+See [current evidence, inventory and Testnet path](resume-2026-10-31.md).
+
 ## Phase V4 — authentic LP custody: current verified checkpoint
 
 Continues `1ad7cda`; implementation commit `843d4c6` on the same dedicated branch.
