@@ -1,5 +1,14 @@
 # Supervised Testnet smoke candidate — 2026-10-31
 
+Current update: the owner approved the fixed Testnet donation recipient and
+connected/restored the matching operator on chain -3. The version2 candidate now
+includes10 prepared messages and1.87 TON Phase A attachments (donation included,
+not added twice). Current provider fee/account observations and the exact latest
+approval sheet supersede the historical9-message b46cc7b record below:
+[current approval sheet](testnet-approval-sheet-2026-10-31.md).
+Production read-only PR #6 is deployed at `37ee53b`. PR #7 remains development-only;
+no contract deployment, financial signature or broadcast is authorized/performed.
+
 Development branch `codex/testnet-execution-candidate`, based on `c8b7a08`.
 No contract source/bytecode/address recipe, tokenomics, donation, frontend or
 Antigravity integration changes. PR #5 stays preserved. Nothing is deployed,

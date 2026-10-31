@@ -2,17 +2,17 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const core=require('./tests/settlement-runtime/node_modules/@ton/core');
 const {Blockchain}=require('./tests/settlement-runtime/node_modules/@ton/sandbox');
-const {prepare,sellTemplate}=require('./scripts/prepare-supervised-smoke');
+const {prepare,sellTemplate,testnetDonation}=require('./scripts/prepare-supervised-smoke');
 const {buildCandidate}=require('./minter-contract/prepare-settlement-testnet');
 const {beginCell,Cell,Address,loadStateInit}=core;
 let fixture;
 const setup=()=>fixture??=(async()=>{const chain=await Blockchain.create();chain.now=1800000000;const operator=await chain.treasury('supervised-plan-operator');return{chain,operator,plan:await prepare({operator:operator.address})};})();
 const op=m=>m?.body?.bits.length>=32?m.body.beginParse().loadUint(32):null;
-async function send(operator,message){return operator.send({to:Address.parse(message.address),value:BigInt(message.amount),body:Cell.fromBase64(message.payload),bounce:true,...(message.stateInit?{init:loadStateInit(Cell.fromBase64(message.stateInit).beginParse())}:{})});}
+async function send(operator,message){const to=Address.parseFriendly(message.address);return operator.send({to:to.address,value:BigInt(message.amount),body:Cell.fromBase64(message.payload),bounce:to.isBounceable,...(message.stateInit?{init:loadStateInit(Cell.fromBase64(message.stateInit).beginParse())}:{})});}
 
 test('source-verified smoke has a bounded balanced budget, exact pre-dispatch payloads and no migration allowlist',async()=>{
- const {plan:p}=await setup();assert.equal(Object.keys(p.sourceVerification.contracts).length,7);assert.equal(p.steps.length,9);assert.equal(p.broadcastEnabled,false);assert.equal(p.readyForSigning,false);assert.equal(p.phaseA.donation.message,null);assert.equal(p.phaseB.message,null);assert.equal(p.recovery.gasQuery.payload,null);assert.deepEqual(p.migration.templates,[]);
- const b=p.proposedSmokeBudget;assert.equal(BigInt(b.phaseAAttachmentsNano)+BigInt(b.subsequentSellAttachmentNano)+BigInt(b.creationBaseReserveNano)+BigInt(b.mandatoryDonationNano)+BigInt(b.feesAndContingencyReserveNano),BigInt(b.maximumTestnetNano));assert.equal(b.isLiveFeeQuote,false);
+ const {plan:p}=await setup();assert.equal(Object.keys(p.sourceVerification.contracts).length,7);assert.equal(p.steps.length,10);assert.equal(p.broadcastEnabled,false);assert.equal(p.readyForSigning,false);assert(p.phaseA.donation.recipientApproved);assert.equal(p.phaseA.donation.paymentAuthorized,false);assert.equal(p.phaseB.message,null);assert.equal(p.recovery.gasQuery.payload,null);assert.deepEqual(p.migration.templates,[]);
+ const b=p.proposedSmokeBudget;assert.equal(BigInt(b.phaseAAttachmentsNano)+BigInt(b.subsequentSellAttachmentNano)+BigInt(b.creationBaseReserveNano)+BigInt(b.feesAndContingencyReserveNano),BigInt(b.maximumTestnetNano));assert.equal(b.donationIncludedInPhaseA,true);assert.equal(b.mandatoryDonationNano,'20000000');assert.equal(b.isLiveFeeQuote,false);
  assert(p.steps.every(s=>s.requiresSeparateApproval&&Address.parseFriendly(s.message.address).isTestOnly));
 });
 
@@ -23,6 +23,11 @@ test('the exact serialized plan deploys fresh contracts, activates, buys, reject
  for(const step of p.steps){
   const before=step.expectedContractExit?await curveState():null;
   const r=await send(operator,step.message);fees+=r.transactions.reduce((n,t)=>n+t.totalFees.coins,0n);
+  if(step.name==='mandatory-creation-donation'){
+   const recipient=Address.parse(p.phaseA.donation.recipient);assert(!recipient.equals(operator.address),'test operator never substitutes the fixed recipient');
+   const tx=r.transactions.find(t=>t.inMessage?.info.type==='internal'&&t.inMessage.info.dest.equals(recipient)&&t.inMessage.info.src.equals(operator.address)&&!t.inMessage.info.bounced);
+   assert(tx);assert.equal(tx.inMessage.info.value.coins,20000000n);assert.equal((await chain.getContract(recipient)).balance,20000000n);
+  }
   if(step.name==='small-test-buy'){
    const transfer=r.transactions.find(t=>t.inMessage?.info.dest?.equals(c.curveWallet)&&op(t.inMessage)===0x414e5301);assert(transfer);const s=transfer.inMessage.body.beginParse();s.loadUint(32);deliveryId=s.loadUintBig(64);
    const receipt=(await chain.runGetMethod(c.curveWallet,'get_settlement',[{type:'int',value:deliveryId}])).stackReader;assert.equal(receipt.readBigNumber(),2n);receipt.readBigNumber();delivered=receipt.readBigNumber();assert(delivered>0n);
@@ -47,6 +52,13 @@ test('the exact serialized plan deploys fresh contracts, activates, buys, reject
  assert.equal((await chain.runGetMethod(wallet,'get_wallet_data')).stackReader.readBigNumber(),0n);assert.equal((await chain.runGetMethod(c.curveWallet,'get_wallet_data')).stackReader.readBigNumber(),1000000000000000000n);
  const final=await curveState();assert.equal(final[5],800000000000000000n);assert.equal(final[7],0n);assert.equal((await chain.runGetMethod(c.addresses.guard,'is_migration_authorized')).stackReader.readBigNumber(),0n);
  console.log('LOCAL_PLAN_EVIDENCE',JSON.stringify({network:'Sandbox only',deliveredUnits:delivered.toString(),actualNativeBounceNano:bounced.toString(),quotedAndExecutedSellPayoutNano:quote.toString(),phaseASimulatedTransactionFeesNano:fees.toString(),notLiveFeeQuote:true}));
+});
+
+test('approved Testnet donation retains the permanent recipient, amount and comment while production Testnet gate remains intact',()=>{
+ const original=require('./assets/js/donation-config'),d=testnetDonation();assert(Address.parse(d.message.address).equals(Address.parse(original.RECIPIENT_ADDRESS)));
+ assert(Address.parseFriendly(d.message.address).isTestOnly);assert.equal(d.message.amount,original.DONATION_AMOUNT_NANO.toString());
+ const s=Cell.fromBase64(d.message.payload).beginParse();assert.equal(s.loadUint(32),0);assert.equal(s.loadStringTail(),original.PAYLOAD_COMMENT);
+ assert.throws(()=>testnetDonation('-239'),/Testnet-only/);assert.throws(()=>original.createMessage(core,'-3'),/No approved testnet/);
 });
 
 test('sell review builder rejects zero minimum output and unsafe ranges, preserves complete uint64 query and exact recipients',()=>{
