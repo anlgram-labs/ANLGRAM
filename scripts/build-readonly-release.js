@@ -3,7 +3,7 @@
 const fs=require('node:fs'),path=require('node:path'),{execFileSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..');
 const extra=new Set(['CNAME','favicon.ico','favicon.svg','logo.svg','manifest.json','tonconnect-manifest.json','robots.txt','sitemap.xml']);
-const bootstrap='<script src="assets/js/blockchain-provider.js"></script>\n<script src="assets/js/memelabs-readonly.js?v=2026.56"></script>\n';
+const bootstrap='<script src="assets/js/blockchain-provider.js"></script>\n<script src="assets/js/memelabs-readonly.js?v=2026.57"></script>\n';
 const safety='<script>if(!window.ANLGRAM_READONLY){window.stop();document.documentElement.textContent="Read-only safety module unavailable. Reload before continuing.";}</script>';
 function eligible(file){
   if(file.split('/').some(part=>part.startsWith('.')))return false;
