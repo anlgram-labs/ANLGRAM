@@ -1,0 +1,82 @@
+;; TEP-89 + official STON.fi getter_pool_address. Address relations only:
+;; the Router's CURRENT code/version cannot be attested by these messages.
+cell plan_extension() inline {
+    slice s = get_data().begin_parse();s~load_uint(32);s~load_ref();s~load_ref();return s.slice_refs() ? s~load_ref() : null();
+}
+cell plan_auth() inline { cell e = plan_extension();return cell_null?(e) ? null() : e.begin_parse().preload_dict(); }
+cell plan_floor() inline { cell e = plan_extension();if(cell_null?(e)) { return null(); } slice s = e.begin_parse();s~load_dict();return s~load_dict(); }
+() plan_extensions(cell auth,cell floor) impure inline {
+    (cell cfg,cell observation) = plan_data();
+    set_data(begin_cell().store_uint(0x4d563250,32).store_ref(cfg).store_ref(observation)
+        .store_ref(begin_cell().store_dict(auth).store_dict(floor).end_cell()).end_cell());
+}
+cell auth_data(slice m0,slice m1,int pin,int nonce,int flags) inline {
+    return begin_cell().store_slice(m0).store_slice(m1).store_uint(pin,256).store_uint(nonce,64).store_uint(flags,8).end_cell();
+}
+() discovery_forward(slice to,cell b,int previous) impure inline {
+    raw_reserve(max(previous,10000000),0);
+    send_raw_message(begin_cell().store_uint(0x18,6).store_slice(to).store_coins(0).store_uint(1,107).store_ref(b).end_cell(),128);
+}
+int handle_plan_discovery(int balance,int value,cell full,slice body) impure {
+    if(body.slice_bits() < 96) { return 0; } int op = body~load_uint(32);int q = body~load_uint(64);
+    ifnot((op == 0x414e5640) | (op == 0xd1735400) | (op == 0x2993ade0) | (op == 0x414c5639)) { return 0; }
+    slice h = full.begin_parse();int mf = h~load_uint(4);if(mf & 1) { return -1; } slice sender = h~load_msg_addr();
+    (cell cfg,_) = plan_data();(_,slice vault,slice pool,slice lp,_,_,int expected,slice creator) = bound_vault(cfg);
+    if(op == 0x414c5639) {
+        throw_unless(401,equal_slices(sender,vault));throw_unless(409,q == expected);
+        int lt = body~load_uint(64);int floor = body~load_coins();throw_unless(409,body~load_uint(2) == 0);
+        slice endpoints = body~load_ref().begin_parse();body.end_parse();
+        throw_unless(409,equal_slices(endpoints~load_msg_addr(),pool) & equal_slices(endpoints~load_msg_addr(),lp));endpoints.end_parse();
+        cell old = plan_floor();int prior = 0;int prior_lt = 0;ifnot(cell_null?(old)) { slice s = old.begin_parse();prior = s~load_coins();prior_lt = s~load_uint(64); }
+        if(lt <= prior_lt) { return -1; } throw_unless(409,floor >= prior);
+        plan_extensions(plan_auth(),begin_cell().store_coins(floor).store_uint(lt,64).end_cell());return -1;
+    }
+    cell auth = plan_auth();throw_if(408,cell_null?(auth));slice a = auth.begin_parse();slice m0 = a~load_msg_addr();slice m1 = a~load_msg_addr();
+    int pin = a~load_uint(256);int nonce = a~load_uint(64);int flags = a~load_uint(8);a.end_parse();force_chain(m0);force_chain(m1);
+    ;; Pin is an EXPECTED off-chain build identity, never current on-chain proof.
+    throw_unless(408,pin == 0xa7e2f92c4bccbdbaaa0c083aa1da9762b52023134234adeb3b7bc8e72dbd1182);
+    slice c = cfg.begin_parse();c~skip_bits(103);slice pair = c~load_ref().begin_parse();slice router = pair~load_msg_addr();slice w0 = pair~load_msg_addr();slice w1 = pair~load_msg_addr();
+    throw_if(408,equal_slices(m0,m1) | equal_slices(m0,router) | equal_slices(m1,router));
+    if(op == 0x414e5640) {
+        throw_unless(401,equal_slices(sender,creator));throw_unless(409,q == expected);body.end_parse();throw_unless(407,value >= 180000000);
+        nonce = cur_lt();flags = 0;plan_extensions(auth_data(m0,m1,pin,nonce,flags),plan_floor());
+        raw_reserve(max(balance - value,10000000),0);
+        repeat(2) {
+            slice master = flags ? m1 : m0;
+            cell b = begin_cell().store_uint(0x2c76b973,32).store_uint(nonce,64).store_slice(router).store_uint(1,1).end_cell();
+            send_raw_message(begin_cell().store_uint(0x18,6).store_slice(master).store_coins(70000000).store_uint(1,107).store_ref(b).end_cell(),1);flags = 1;
+        } return -1;
+    }
+    throw_unless(409,(nonce > 0) & (q == nonce));
+    if(op == 0xd1735400) {
+        slice wallet = body~load_msg_addr();cell included = body~load_dict();body.end_parse();throw_if(408,cell_null?(included));
+        slice owner = included.begin_parse();slice reported = owner~load_msg_addr();owner.end_parse();
+        if(equal_slices(sender,pool)) {
+            throw_unless(409,(flags & 4) != 0);throw_unless(408,equal_slices(wallet,lp) & equal_slices(reported,vault));flags = flags | 8;
+        } else {
+            throw_unless(401,equal_slices(sender,m0) | equal_slices(sender,m1));
+            throw_unless(408,equal_slices(reported,router));int first = equal_slices(sender,m0);
+            throw_unless(408,equal_slices(wallet,first ? w0 : w1));flags = flags | (first ? 1 : 2);
+        }
+        plan_extensions(auth_data(m0,m1,pin,nonce,flags),plan_floor());
+        if(((flags & 3) == 3) & ((flags & 16) == 0)) {
+            flags = flags | 16;plan_extensions(auth_data(m0,m1,pin,nonce,flags),plan_floor());
+            discovery_forward(router,begin_cell().store_uint(0x2993ade0,32).store_uint(nonce,64).store_slice(w0).store_slice(w1).end_cell(),balance - value);
+        } return -1;
+    }
+    throw_unless(401,equal_slices(sender,router));throw_unless(409,(flags & 3) == 3);
+    throw_unless(408,equal_slices(body~load_msg_addr(),pool));body.end_parse();flags = flags | 4;
+    plan_extensions(auth_data(m0,m1,pin,nonce,flags),plan_floor());
+    if((flags & 32) == 0) {
+        flags = flags | 32;plan_extensions(auth_data(m0,m1,pin,nonce,flags),plan_floor());
+        discovery_forward(pool,begin_cell().store_uint(0x2c76b973,32).store_uint(nonce,64).store_slice(vault).store_uint(1,1).end_cell(),balance - value);
+    } return -1;
+}
+(int,int,slice,slice,int,int) get_pair_discovery_v4() method_id {
+    cell a = plan_auth();slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();if(cell_null?(a)) { return(0,0,none,none,0,0); }
+    slice s = a.begin_parse();slice m0 = s~load_msg_addr();slice m1 = s~load_msg_addr();int expected_hash = s~load_uint(256);int nonce = s~load_uint(64);int flags = s~load_uint(8);
+    return(flags & 15,nonce,m0,m1,expected_hash,0); ;; Router code/version not attested
+}
+(int,int,int,int) get_custody_floor_v4() method_id {
+    cell f = plan_floor();if(cell_null?(f)) { return(0,0,0,0); } slice s = f.begin_parse();return(s~load_coins(),s~load_uint(64),0,0);
+}

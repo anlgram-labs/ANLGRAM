@@ -9,10 +9,10 @@ async function candidate(){
  if(!core.Address.parse(snap.accounts.pton.address).equals(base.pton)||!core.Address.parse(snap.accounts.router.address).equals(base.dex))throw Error('Foreign snapshot endpoint mismatch');
  const ptonWallet=(await chain.runGetMethod(base.pton,'get_wallet_address',[{type:'slice',cell:core.beginCell().storeAddress(base.dex).endCell()}])).stackReader.readAddress();
  const tokenWallet=core.contractAddress(0,{code:base.wallet,data:core.beginCell().storeCoins(0).storeAddress(base.dex).storeAddress(base.addresses.minter).storeRef(base.wallet).endCell()});
- const p=build(core,{creator:base.operator,router:base.dex,pairWallet0:tokenWallet,pairWallet1:ptonWallet,operationId:77,percent:100,duration:'permanent'});
+ const p=build(core,{creator:base.operator,router:base.dex,pairWallet0:tokenWallet,pairWallet1:ptonWallet,operationId:77,tokenMaster0:base.addresses.minter,tokenMaster1:base.pton,percent:100,duration:'permanent'});
  const account=x=>({raw:x.address.toRawString(),testnet:x.address.toString({testOnly:true}),codeHash:x.init.code.hash().toString('hex'),dataHash:x.init.data.hash().toString('hex')});
  return{network:'-3',status:'BLOCKED_COMPONENT_CANDIDATE_NOT_DEPLOYMENT_PLAN',broadcastEnabled:false,signaturesRequested:0,
-  operatorControlVerified:false,accountStateCheckedLive:false,metadataApproved:false,testnetDonationRecipientApproved:false,
+  pairDiscoveryConfigured:true,pairDiscoveryVerifiedLive:false,currentRouterCodeProvenOnChain:false,operatorControlVerified:false,accountStateCheckedLive:false,metadataApproved:false,testnetDonationRecipientApproved:false,
   pairSource:{kind:'OFFLINE_CAPTURED_GETTER_NOT_LIVE',capturedUtc:snap.observedUtc,router:base.dex.toRawString(),pton:base.pton.toRawString(),tokenMaster:base.addresses.minter.toRawString(),pairWallets:[tokenWallet.toRawString(),ptonWallet.toRawString()]},
   accounts:{binding:account(p),locker:account(p.vault)},expectedPool:p.vault.pool.toRawString(),expectedLpWallet:p.vault.lpWallet.toRawString(),
   terms:p.vault.terms,lpIssued:false,lpCustodyVerified:false,foreignSourceAuditVerified:false,migrationAuthorized:false,liquidityExecutorImplemented:false,

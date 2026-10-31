@@ -7,7 +7,7 @@
 #pragma version >=0.2.0;
 (cell,cell) plan_data() inline {
     slice s = get_data().begin_parse();throw_unless(408,s~load_uint(32) == 0x4d563250);
-    cell cfg = s~load_ref();cell observation = s~load_ref();s.end_parse();return(cfg,observation);
+    cell cfg = s~load_ref();cell observation = s~load_ref();if(s.slice_refs()) { s~load_ref(); } s.end_parse();return(cfg,observation);
 }
 (cell,slice,slice,slice,int,int,int,slice) bound_vault(cell cfg) impure inline {
     slice s = cfg.begin_parse();int percent = s~load_uint(7);int duration = s~load_uint(32);int q = s~load_uint(64);
@@ -29,8 +29,10 @@
     slice wallet = calculate_user_jetton_wallet_address(vault,pool,lp_code);
     return(init,vault,pool,wallet,percent,duration,q,creator);
 }
+#include "imports/plan-discovery-v4.fc";
 () recv_internal(int balance,int value,cell message,slice body) impure {
     if(body.slice_empty?()) { return (); }
+    if(handle_plan_discovery(balance,value,message,body)) { return (); }
     slice h = message.begin_parse();int flags = h~load_uint(4);if(flags & 1) { return (); } slice sender = h~load_msg_addr();
     (cell cfg,cell observation) = plan_data();
     (_,slice vault,slice pool,slice wallet,int percent,int duration,int expected,slice creator) = bound_vault(cfg);
@@ -51,7 +53,8 @@
         slice old = observation.begin_parse();int last = old~load_uint(64);
         if(lt <= last) { return (); }
         cell next = begin_cell().store_uint(lt,64).store_coins(received).store_coins(locked).store_coins(free).store_coins(pending).store_uint(unlock,64).end_cell();
-        set_data(begin_cell().store_uint(0x4d563250,32).store_ref(cfg).store_ref(next).end_cell());return ();
+        cell extension = plan_extension();builder updated = begin_cell().store_uint(0x4d563250,32).store_ref(cfg).store_ref(next);
+        ifnot(cell_null?(extension)) { updated = updated.store_ref(extension); } set_data(updated.end_cell());return ();
     }
     ;; No registration can change terms/destinations, and no deposit/finalize path.
     throw(414);

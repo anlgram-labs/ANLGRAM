@@ -11,7 +11,13 @@ function build(core,o){
   .storeRef(ston.profileCell(core)).storeRef(vaultCode).endCell();
  const code=o.code??core.Cell.fromBase64(JSON.parse(fs.readFileSync(path.join(__dirname,'../build/anlgram-migration-v2-plan.compiled.json'),'utf8')).codeBocBase64);
  const observation=core.beginCell().storeUint(0,64).storeCoins(0).storeCoins(0).storeCoins(0).storeCoins(0).storeUint(0,64).endCell();
- const init={code,data:core.beginCell().storeUint(0x4d563250,32).storeRef(cfg).storeRef(observation).endCell()},address=core.contractAddress(0,init);
+ let data=core.beginCell().storeUint(0x4d563250,32).storeRef(cfg).storeRef(observation);
+ if(o.tokenMaster0||o.tokenMaster1){
+  const m0=a(o.tokenMaster0),m1=a(o.tokenMaster1);if(!core.Address.isAddress(m0)||!core.Address.isAddress(m1)||m0.workChain!==0||m1.workChain!==0||m0.equals(m1))throw Error('Invalid token masters');
+  const auth=core.beginCell().storeAddress(m0).storeAddress(m1).storeUint(BigInt('0x'+require('../stonfi-v22-development-profile.json').routerCodeReferenceHash),256).storeUint(0,64).storeUint(0,8).endCell();
+  data=data.storeRef(core.beginCell().storeMaybeRef(auth).storeMaybeRef(null).endCell());
+ }
+ const init={code,data:data.endCell()},address=core.contractAddress(0,init);
  const vault=lp.build(core,{...o,code:vaultCode,contributor:address});
  return{init,address,vault,executorImplemented:false,migrationAuthorized:false};
 }

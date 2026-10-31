@@ -56,9 +56,11 @@ cell account(int received,int locked,int free,int pending,int kind,int pq,int ne
     return(percent,duration,q,beneficiary,controller,contributor,pool,wallet);
 }
 #include "imports/lp-v2-receipt.fc";
+#include "imports/lp-custody-probe-v4.fc";
 () recv_internal(int balance,int value,cell message,slice body) impure  {
     if(body.slice_empty?()) { return ();
     }
+    if(handle_lp_probe(balance,value,message,body)) { return (); }
     slice h = message.begin_parse();
     int flags = h~load_uint(4);
     slice sender = h~load_msg_addr();
@@ -112,7 +114,8 @@ cell account(int received,int locked,int free,int pending,int kind,int pq,int ne
             body.end_parse();
         } else { payload = body;
         }
-        throw_unless(409,payload~load_uint(32) == 0x414c5632);
+        int tag = payload~load_uint(32);
+        throw_unless(409,(tag == 0x414c5632) | (tag == 0x414c5003));
         throw_unless(409,payload~load_uint(64) == q);
         payload.end_parse();
         int hash = cell_hash(message);
@@ -183,6 +186,7 @@ cell account(int received,int locked,int free,int pending,int kind,int pq,int ne
 int is_migration_authorized() method_id  { return 0;
 }
 (int,int) get_claim_v2(int q) method_id {
+    if(q == 0) { return (0,0); }
     (cell cfg,cell state,cell seen,cell requests) = load_vault();
     (slice request,int found) = udict_get?(requests,64,q);
     ifnot(found) { return (0,0); }
