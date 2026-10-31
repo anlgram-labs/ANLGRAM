@@ -74,6 +74,7 @@
       account:a=>json('/accounts/'+address(a)),
       jettons:a=>json('/accounts/'+address(a)+'/jettons'),
       jetton:a=>json('/jettons/'+address(a)),
+      holders:a=>json('/jettons/'+address(a)+'/holders?limit=5'),
       events:a=>json('/accounts/'+address(a)+'/events?limit=20'),
       transactions:a=>json('/blockchain/accounts/'+address(a)+'/transactions?limit=20')};
   }
@@ -90,7 +91,7 @@
     }
     function current(){const c=context();return client({network:c.network,proxy:c.tonApiBase,fetch:w.fetch.bind(w)});}
     return{getContext:context,fetchTonApi:endpoint=>current().request(endpoint),formatUnits,
-      jettons:a=>current().jettons(a),jetton:a=>current().jetton(a),account:a=>current().account(a),events:a=>current().events(a),transactions:a=>current().transactions(a)};
+      jettons:a=>current().jettons(a),jetton:a=>current().jetton(a),holders:a=>current().holders(a),account:a=>current().account(a),events:a=>current().events(a),transactions:a=>current().transactions(a)};
   }
   function installReadOnlyGuard(w){
     const message='Transactions are unavailable in this read-only review release. Financial verification and separate release approval are required.';
