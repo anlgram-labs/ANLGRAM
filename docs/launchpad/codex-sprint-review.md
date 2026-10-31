@@ -1,5 +1,174 @@
 # MemeLabs isolated sprint: review notes
 
+## Phase V4 — authentic LP custody: current verified checkpoint
+
+Continues `1ad7cda`; implementation commit `843d4c6` on the same dedicated branch.
+V3 dispatch/abort lifecycle, Curve, Migrator and guard source/bytecode are unchanged.
+No UI, Antigravity integration, TON Center/TonAPI, Cloudflare, Telegram, tokenomics,
+lock choices or mandatory .02 TON creation donation changed. No deployment,
+signing, broadcast, spending, main merge or production activation occurred.
+
+**Final results: 155/155 Sandbox (141 preserved +14 new), 38/38 root suites,
+139/139 financial assertions in each source/artifact path, 68/68 executor tests
+and six source/artifact compilation checks.** All pass; no tests skipped. The new
+positive custody cases use actual captured Router/Pool/LP-wallet execution and
+real local DEX deposits/LP issuance, rather than injected LP mint messages. Project
+contracts compile from source. Existing funded DEX setup is a local fixture,
+not evidence of a live launchpad or an authorized fresh production migration.
+Adversarial wrong-master inputs are explicitly labeled fixtures.
+
+### First-notification recovery: implemented safe subset
+
+The foreign LP wallet supports genuine owner-authorized TEP-74 self-transfers.
+A funded request transfers a candidate quantity back to the same locker owner,
+therefore to the same authentic LP wallet. Its authenticated notification proves
+that at least that quantity existed at the wallet's message-emission logical time.
+The candidate can come from an API hint, but an API value alone is never accepted
+as evidence: the real wallet must execute the transfer and authenticate the result.
+
+This is **a custody lower bound, NOT an exact balance, migration mint receipt,
+claim refund or final withdrawal outcome**. It is deliberately restricted to an
+initial 100%-permanent vault with zero recorded issuance/pending withdrawal. The
+existing 50..100% and timed lock settings are unchanged; unsupported recovery
+conditions fail closed. LP never changes wallet or owner during this self-transfer.
+A separate proof record is stored under reserved request key0; claim IDs start1
+and `get_claim_v2(0)` cannot interpret this metadata as a spendable claim.
+
+- Start: ANLGRAM `0x414c5636`, immutable operation:uint64, candidate:Coins, authorized
+  only for beneficiary/contributor; minimum .12 TON explicit request funding.
+- Probe uses REAL TEP-74 transfer, destination fixed to this locker, .02 TON forward
+  notification and a project payload `0x414c5637 + operation + challenge`. The
+  challenge is unique logical time, correlated to the immutable operation.
+- Only the derived LP wallet, self origin, exact challenge/candidate and payload
+  can confirm the proof. Lower bounds only increase; replay cannot add credits.
+  The stored timestamp is the LP wallet message's actual `created_lt`, not an
+  invented current-balance timestamp.
+- Retry/query: `0x414c5638 + operation`. Pending probes can re-execute the same
+  self-transfer with caller funding. Confirmed proofs are re-emitted using at
+  least .02 TON. Bounces remain unconfirmed; they cannot prove an upper balance
+  bound because gas failure/frozen state can also cause a bounce.
+- Proof `0x414c5639` carries operation, proof logical time, floor, two zero flags
+  (not exact / not attributed issuance), and Pool/LP-wallet endpoints. The canonical
+  V4 binding accepts only its derived locker and matching endpoints. Older proof
+  time cannot replace newer evidence. `get_lp_recovery_v4` and
+  `get_custody_floor_v4` expose the separate record and its limitations.
+
+**No normal `received`, locked, unlocked or pending-claim amount is increased by
+this proof.** A delayed original contributor notification books its real amount
+once, without adding the recovered floor. Authentic donated LP can prove a custody
+floor but cannot be reclassified as migration-origin issuance; a new actual-token
+case verifies this distinction. The normal migration payload tag `0x414c5003` is
+now accepted alongside the prior vault tag `0x414c5632`, with unchanged strict
+sender/contributor/operation checks. These are project payloads, not new STON.fi ops.
+
+### Authenticated pair discovery
+
+New V4 genesis optionally commits both token masters in an extension. These cannot
+be attached or changed by an admin afterward. Funded `0x414e5640 + operation`
+starts a fresh logical-time nonce (minimum .18 TON operational provision). Real
+TEP-89 master replies bind the Router-owned pair wallets; official
+`getter_pool_address#2993ade0` must return the independently derived Pool; that
+Pool's TEP-89 reply must bind the derived LP wallet to the immutable locker owner.
+Sender, included owner, nonce, declared pair and Pool/wallet identities must match.
+Retries use a new discovery nonce, preserving custody observations and floor proof.
+
+`get_pair_discovery_v4` flags15 means only **declared address relationships
+confirmed**, never live code or custody approval. Wrong masters, stale queries,
+forged Router replies and the wrong LP owner/master namespace are rejected.
+Actual source-backed masters, captured Router and captured Pool complete this
+flow in Sandbox. Immutable creator percentages/durations/beneficiary/controller
+are still part of the full canonical locker StateInit.
+
+Expected Router identity is the existing pinned capture: version2.2 release,
+constant_product, code `a7e2f92c4bccbdbaaa0c083aa1da9762b52023134234adeb3b7bc8e72dbd1182`.
+Local execution verifies those captured getter results and code hash. The internal
+address-query interfaces do NOT attest current Router version/code, so the new
+getter explicitly returns current-code-verified=0 and financial authorization
+remains0. Existing Router administrative upgrade trust remains development-only;
+source/code identity does not remove Router/Pool governance or backing-reserve risk.
+
+### Official wallet source reproducibility and capability finding
+
+Read-only rebuild pinned to official STON.fi commit
+`af0a955cc835af9697cd383e201fefcbe1a6a87e`, target `contracts/lp_wallet.fc`, using
+func-js0.11.0 and the official dependency funcbox0.1.4 with pinned archive integrity.
+The script fetches sources in memory, performs declared static preprocessing and
+compiles them; it does not install packages, run foreign build scripts or modify
+shared dependencies. All37 raw/rendered source hashes are recorded.
+
+The rebuilt implementation is
+`c00836440d084e44fb94316132ac5a21417ef4f429ee09b5560b5678b334c3e8`, exactly matching
+the captured LP wallet's library target. Its wrapper remains
+`bf13041750f2beeb688859c75689e2c18b9c90bd78e97b197aad7ad6bc520c84`.
+This is reproducible LP-source identity, **not an independent DEX security audit**.
+[Build provenance](stonfi-lp-source-v4-2026-10-30.json).
+
+The matched source implements transfers, incoming credits, burn and bounce
+restoration; `get_wallet_data` is an off-chain getter. It has no internal exact
+balance-proof request, notification replay endpoint or authenticated final owner
+receipt. A getter selector sent as an internal message is rejected in a real
+wallet test. A frozen withdrawal recipient restores the sender's LP balance,
+but the locker receives no final failure receipt. Successful and failed requests
+correctly remain pending; retries cannot spend those amounts twice. Actual
+post-expiry and permanent-lock behavior is also tested using real issued LP.
+
+Primary references (source/interface evidence, not live authorization):
+[official LP source](https://github.com/ston-fi/dex-core-v2/blob/af0a955cc835af9697cd383e201fefcbe1a6a87e/contracts/lp_wallet.fc),
+[official Router queries/upgrades](https://docs.ston.fi/developer-section/dex/smart-contracts/v2/router),
+[official Pool interfaces](https://docs.ston.fi/developer-section/dex/smart-contracts/v2/pool).
+
+### Concrete compatible-recovery design and unresolved blockers
+
+For exact operation-level recovery, a future foreign capability must persist
+operation-correlated Pool issuance and recipient credit/debit outcomes, with
+owner/master/code binding, authenticated success/bounce receipts, monotonically
+sequenced cumulative totals and funded replay/query after notification loss. A
+balance-only snapshot is insufficient to distinguish the original mint, donations,
+claimed amounts and pending/restored withdrawals.
+
+For final direct-beneficiary LP withdrawals, the foreign sender/recipient wallet
+family must implement authenticated delivery acknowledgment and restored-failure
+records. No such foreign message was invented or enabled here. A custom project
+wallet cannot simply replace the foreign LP wallet: its code participates in the
+wallet address and Pool authentication. A compatible STON.fi-supported wallet/Pool
+version or a separately reviewed migration is required. Do not overwrite existing
+foreign wallets or assume old/new address families interoperate.
+
+An alternative is an independently reviewed on-chain account/transaction proof
+verifier anchored to validated TON masterchain/shard commitments, including the
+issuance transaction's operation provenance. An unanchored API response or newly
+trusted attestor is not a substitute; no new attestor trust was introduced.
+A beneficiary adapter could acknowledge delivery into adapter custody only;
+it would require explicit opt-in immutable terms and would not prove final
+payment to an ordinary beneficiary wallet. No such adapter is implemented.
+
+Remaining: exact first-notification recovery/issuance attribution; exact pending
+withdrawal outcomes; independently verified current Router/Pool code and governance;
+full LP migration authorization/finalization; independent review and genuine
+supervised Testnet execution. Normal notification-driven custody and the restricted
+lower-bound recovery are verified end-to-end in Sandbox with real captured
+protocol execution. **General exact recovery still needs additional external
+contract capabilities or a reviewed anchored proof system.** Mainnet stays closed.
+
+### Compatibility and integration
+
+Only Locker V2's new V4 extension and the V2 binding source/code change. Existing
+V3 Curve/Migrator/guard artifacts and lifecycle are untouched. Locker root layout
+stays the same with reserved dictionary key0; binding adds an optional root
+extension for immutable masters/discovery state and the separate floor. Old
+roots remain readable, but masters cannot be retrofitted. This is not an in-place
+upgrade: the two changed code cells and new genesis data change addresses. Compile
+LockerV2 before binding; all six checks pass. The offline component candidate is
+regenerated and explicitly lacks live code/custody authorization. PR #1/#2 and
+production are not changed; review this dedicated branch before integration.
+
+- anlgram-lp-locker-v2: code `22d689df2f32d5fd00c72b50f31ab77291117a7625ad1bb654a4b6dbc796e001`; BOC `c84a400362588cf4a67b089bd30aad44118a2f24d2edd2a374a1876552037fbd`.
+- anlgram-migration-v2-plan: code `4467bce59c4cb5c8359bbd94011bd2ebdb5e301a959ff0e0f2f6722fd8650043`; BOC `b1be2b1de8a768082016c80964e9b04aaa866cd6ef50888c04b0aa2b0e41faec`.
+
+Actual results, complete source hashes and modified files are appended under
+`phaseV4` in [the existing machine evidence](verified-financial-integration-v2-2026-10-30.json).
+Stop at this phase; no frontend activation or Mainnet deployment work begins.
+
 ## Focused lifecycle sprint — new evidence only (October 30)
 
 Continues `ad38652` on `codex/financial-integration-v2`. Code commit `27c2dca`.

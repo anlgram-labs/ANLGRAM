@@ -1103,5 +1103,588 @@
       "tests/settlement-runtime/lifecycle-v3.test.js",
       "tests/settlement-runtime/package.json"
     ]
+  },
+  "phaseV4": {
+    "base": "1ad7cda",
+    "implementationCommit": "843d4c6",
+    "branch": "codex/financial-integration-v2",
+    "sandbox": {
+      "passed": 155,
+      "failed": 0,
+      "skipped": 0,
+      "previousPreserved": 141,
+      "new": 14
+    },
+    "rootRegressionSuites": [
+      {
+        "file": "test-anl-labs-regression.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca SUMMARY: 33 Passed, 0 Failed"
+        ]
+      },
+      {
+        "file": "test-blockchain-provider.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca BLOCKCHAIN PROVIDER TEST RESULTS: 25 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-distribution-pending-safety.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "PASS network query override cannot make a mainnet wallet use testnet data",
+          "PASS unknown wallet network is rejected",
+          "PASS unsupported special token transfers are rejected",
+          "PASS scaled token displays cannot be mistaken for raw decimal units",
+          "PASS insufficient token balance is rejected before wallet signing",
+          "Distribution pending safety: 30 passed; 0 failed"
+        ]
+      },
+      {
+        "file": "test-distribution-wizard-flow.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "--- 3. Distribution Lifecycle Behavioral Tests ---",
+          "  \u2705 [PASS] Failed state displays error banner, preserves completed batch count, and offers Resume/Retry",
+          "\ud83d\udcca DISTRIBUTION SUITE: 21 Passed, 0 Failed",
+          "\ud83c\udf89 All Step 3 Distribution Completion & Step 4 Transition tests PASSED!"
+        ]
+      },
+      {
+        "file": "test-explorer-regression.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca TEST SUITE SUMMARY: 148 Passed, 0 Failed",
+          "\ud83c\udf89 All regression tests passed successfully!"
+        ]
+      },
+      {
+        "file": "test-financial-testnet-plan.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\u2139 tests 2",
+          "\u2139 pass 2",
+          "\u2139 fail 0"
+        ]
+      },
+      {
+        "file": "test-antigravity-contract-baseline.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "  \u2705 [PASS] Migration Router marks is_failed == 1 upon bounce",
+          "  \u2705 [PASS] Curve state remains STATE_MIGRATION_FAILED (7)",
+          "  \u2705 [PASS] Authorized retry of op::initiate_migration succeeds from STATE_MIGRATION_FAILED",
+          "  \u2705 [PASS] Curve in STATE_MIGRATION_FAILED (7)",
+          "  \u2705 [PASS] op::set_migration_router in STATE_MIGRATION_FAILED strictly rejected with exit code 407 (ANTI-RUG-PULL)",
+          "\ud83d\udcca TVM SIMULATION TEST RESULTS: 154 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-homepage-truthfulness-and-address.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "Results: 19 / 19 tests passed."
+        ]
+      },
+      {
+        "file": "test-bonding-curve-tvm.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca TVM SIMULATION TEST RESULTS: 139 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-integration-preservation.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\u2139 tests 4",
+          "\u2139 pass 4",
+          "\u2139 fail 0"
+        ]
+      },
+      {
+        "file": "test-intel-exchange-regression.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca RESULTADO: 73 PASARON | 0 FALLARON"
+        ]
+      },
+      {
+        "file": "test-jetton-deploy-outcomes.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "PASS wallet rejection does not emit deployment event",
+          "PASS wallet acceptance returns exact address but does not assert on-chain success",
+          "PASS unknown wallet chain does not submit",
+          "PASS unexpected Jetton wallet code cannot reach signing",
+          "PASS production pool preview is opt-in and cannot remove liquidity",
+          "13 mocked wallet checks passed"
+        ]
+      },
+      {
+        "file": "test-jetton-wizard-confirmation.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "PASS changing wallet during verification prevents confirmation",
+          "PASS matching state and balance verifies only the expected address",
+          "PASS wizard deployment event does not launch a second poll",
+          "PASS a changed network invalidates the reviewed authorization",
+          "PASS missing transaction receipt cannot confirm deployment from balances alone",
+          "12 mocked wizard checks passed"
+        ]
+      },
+      {
+        "file": "test-graduation-accounting-known-issues.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\u2139 tests 3",
+          "\u2139 pass 3",
+          "\u2139 fail 0"
+        ]
+      },
+      {
+        "file": "test-launchpad-direct-delegation.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\u2139 tests 4",
+          "\u2139 pass 4",
+          "\u2139 fail 0"
+        ]
+      },
+      {
+        "file": "test-bonding-curve-source-tvm.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca TVM SIMULATION TEST RESULTS: 139 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-lp-locker-trust-boundary.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\u2139 tests 1",
+          "\u2139 pass 1",
+          "\u2139 fail 0"
+        ]
+      },
+      {
+        "file": "test-launchpad-bootstrap-authority.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\u2139 tests 1",
+          "\u2139 pass 1",
+          "\u2139 fail 0"
+        ]
+      },
+      {
+        "file": "test-profit-calculator-regression.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "  \u2705 [PASS] DOM ID exists in markup: #coinSearchResults",
+          "  \u2705 [PASS] DOM ID exists in markup: #resultStatusBox",
+          "  \u2705 [PASS] DOM ID exists in markup: #resultStatusBadge",
+          "\ud83d\udcca RESULTADO: 65 PASARON | 0 FALLARON"
+        ]
+      },
+      {
+        "file": "test-router-candidates-tvm.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca CANDIDATE VERIFICATION TEST RESULTS: 11 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-onchain-security-and-burn.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "  \u2713 ALTO-02 Scenario 4 (DOM): Failed Getter renders NOT VERIFIED for supply, admin, minting, and renounce status",
+          "  \u2713 MEDIO-04 (explorer.html): Badge priority distinguishes Renounced, Active Admin, Failed Checks, Unverified, and Network Error",
+          "SUMMARY: 33 / 33 tests passed (100%)",
+          "\ud83c\udf89 ALL SECURITY AUDIT & BURN TESTS PASSED SUCCESSFULLY!"
+        ]
+      },
+      {
+        "file": "test-master-security-audit.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "  \u2705 PASS: Engine returns immediate FAILED status for Excessive 5000-char string without external RPC",
+          "  \u2705 PASS: Engine returns immediate FAILED status for Malformed length (47 chars) without external RPC",
+          "  \u2705 PASS: Engine returns immediate FAILED status for Invalid workchain (workchain 2) without external RPC",
+          "  \u2705 PASS: MEDIO-01: Mutation attempts on AUDITED_BYTECODE_REGISTRY and STATUS fail to alter canonical hashes",
+          "  \u2705 PASS: BAJO-02: auditVestingContract returns FAILED when vesting contract belongs to a different Jetton Master",
+          "AUDIT TEST RESULTS: 51 PASSED | 0 FAILED | 0 SKIPPED"
+        ]
+      },
+      {
+        "file": "test-search-explorer.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "  \u2705 [PASS] Markup contains element: #search-results-dropdown",
+          "  \u2705 [PASS] CSS definition exists: .search-results-dropdown",
+          "  \u2705 [PASS] Defines function renderSearchResultsDropdown",
+          "\ud83d\udcca TEST RESULTS: 47 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-launchpad-activation-flow.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\u2139 tests 2",
+          "\u2139 pass 2",
+          "\u2139 fail 0"
+        ]
+      },
+      {
+        "file": "test-tma-integration.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca TMA TEST SUITE SUMMARY: 64 Passed, 0 Failed",
+          "\ud83c\udf89 All Telegram Mini App integration tests passed successfully!"
+        ]
+      },
+      {
+        "file": "test-step4-vesting-comprehensive.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca STEP 4 VESTING SUITE: 50 / 50 Tests Passed (100%)"
+        ]
+      },
+      {
+        "file": "test-token-creation-donation.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "Results: 26 / 26 tests passed."
+        ]
+      },
+      {
+        "file": "test-token-drawer-intelligence.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca TEST RESULTS: 60 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-tonapi-backend-proxy.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "--- 1. NFT Image Resolution & IPFS Sanitization Tests ---",
+          "--- 2. Proxy Security & Route Whitelisting Tests ---",
+          "\ud83d\udcca TEST SUITE SUMMARY: 12 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-stake-vault-comprehensive.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca RESULTADO FINAL STAKEVAULT: 72 PASARON | 0 FALLARON"
+        ]
+      },
+      {
+        "file": "test-vesting-confirmation-regression.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "PASS fractional units are converted without floating point rounding",
+          "PASS values above the token precision are rejected before signing",
+          "PASS zero and exponential amounts are rejected before signing",
+          "PASS missing decimal metadata is rejected before signing",
+          "PASS Coins upper bound is enforced exactly",
+          "Vesting confirmation unit tests: 18 passed"
+        ]
+      },
+      {
+        "file": "test-transaction-receipt.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\u2714 failed transaction is not accepted (10.2721ms)",
+          "\u2139 tests 11",
+          "\u2139 pass 11",
+          "\u2139 fail 0"
+        ]
+      },
+      {
+        "file": "test-wallet-pnl-accounting.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca SUITE COMPLETED: 22 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-wizard-comprehensive.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca MULTI-STEP WIZARD SUMMARY: 50 Passed, 0 Failed",
+          "\ud83c\udf89 All Progressive Multi-Step Token Wizard verifications PASSED!"
+        ]
+      },
+      {
+        "file": "test-toncenter-settlement-evidence.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\u2714 unknown schema, network error, rate limiting and oversized data fail closed without upstream details (99.8632ms)",
+          "\u2139 tests 8",
+          "\u2139 pass 8",
+          "\u2139 fail 0"
+        ]
+      },
+      {
+        "file": "test-wizard-ui-centering.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca UI CENTERING SUITE: 28 Passed, 0 Failed",
+          "\ud83c\udf89 Centered Full-Screen Token Wizard UI verification PASSED with 100% success!"
+        ]
+      },
+      {
+        "file": "test-worker-deep-audit.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "WORKER AUDIT RESULTS: 22 PASSED | 0 FAILED"
+        ]
+      },
+      {
+        "file": "test-staking-comprehensive.js",
+        "code": 0,
+        "timedOut": false,
+        "summary": [
+          "\ud83d\udcca RESULTADO FINAL: 103 PASARON | 0 FALLARON"
+        ]
+      }
+    ],
+    "financialAssertions": {
+      "source": 139,
+      "artifact": 139
+    },
+    "executor": {
+      "passed": 68,
+      "failed": 0
+    },
+    "compilerChecksPassed": 6,
+    "contracts": {
+      "anlgram-lp-locker-v2": {
+        "codeCellHash": "22d689df2f32d5fd00c72b50f31ab77291117a7625ad1bb654a4b6dbc796e001",
+        "bocFileSha256": "c84a400362588cf4a67b089bd30aad44118a2f24d2edd2a374a1876552037fbd",
+        "sourceFilesSha256": {
+          "anlgram-lp-locker-v2.fc": "da2e6b55d7536049c1254f5a751c9c4ab49a4bf54ef3559a496561c6f5ea7474",
+          "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+          "imports/lp-custody-probe-v4.fc": "62bcf17fa4fcacc0955757ed0a03f5a7f008cd10bb10dba8099af062572bdf7f",
+          "imports/lp-v2-receipt.fc": "494cdcc77cbe5df715a15a5c818bb39783095c704625afeb7d5aea2e00b00813",
+          "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+          "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+          "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728"
+        }
+      },
+      "anlgram-migration-v2-plan": {
+        "codeCellHash": "4467bce59c4cb5c8359bbd94011bd2ebdb5e301a959ff0e0f2f6722fd8650043",
+        "bocFileSha256": "b1be2b1de8a768082016c80964e9b04aaa866cd6ef50888c04b0aa2b0e41faec",
+        "sourceFilesSha256": {
+          "anlgram-migration-v2-plan.fc": "dd52ba32d9378281601785d449d2a3cab0451a8a540bd6e0525f6ba5c37015a7",
+          "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+          "imports/lp-locker-v2-code.fc": "d6ad285d03e77a4017fc378e1c8ac18fa50a1abf8a2ca9154e71128f7b8b40cb",
+          "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+          "imports/plan-discovery-v4.fc": "999503c1d6fa91d3d200a6b57389cfee37048b9e2500663e91e2d62f51d8c8d3",
+          "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+          "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728"
+        }
+      }
+    },
+    "officialLpSourceBuild": {
+      "routerCapture": {
+        "scope": "LOCAL_CAPTURE_NOT_LIVE_CODE_PROOF",
+        "address": "0:05a5e18525003d2aa882c5767c27897ffef4980311528ab48ebcf1e7e92497e3",
+        "observedUtc": "2026-10-30T09:27:37.127Z",
+        "version": {
+          "major": "2",
+          "minor": "2",
+          "development": "release"
+        },
+        "poolType": "constant_product",
+        "codeHash": "a7e2f92c4bccbdbaaa0c083aa1da9762b52023134234adeb3b7bc8e72dbd1182",
+        "matchesExpectedReference": true,
+        "admin": "0:a9a7352d98648c83714846514bce14e8a9b682d318e68f33a7d28ec7e0cf00b9",
+        "upgradeStateHash": "18a11ca854a1ef8049810b9fa973f7174ee6e5c043cbaca105b90bd972de5ece",
+        "currentCodeProvenOnChain": false
+      },
+      "sourceRepository": "https://github.com/ston-fi/dex-core-v2",
+      "commit": "af0a955cc835af9697cd383e201fefcbe1a6a87e",
+      "target": "contracts/lp_wallet.fc",
+      "license": "GPL-3.0",
+      "preprocess": {
+        "dexType": "constant_product",
+        "version": "2.2.0",
+        "developmentSuffix": "",
+        "defaultIsLocked": 0,
+        "defaultLPFee": 20,
+        "defaultProtocolFee": 10
+      },
+      "funcbox": {
+        "version": "0.1.4",
+        "integrity": "sha512-xeiV04rXFhVeUSLZ+vr2ypkdY0BxK0sYGsxLYj7cxn++KMdh1m3d6XQGp5hfSBJcLfIgRf/P5ZfgZ+MwqP4hvA==",
+        "archiveSha256": "a688b90fd35d71a5ab4300b21b22367756caf75d6bc397e0f7cfe539d8eded20"
+      },
+      "compilerPackageVersion": "0.11.0",
+      "rawSourceFilesSha256": {
+        "contracts/common/common.fc": "73e3c72212b3880fe8f28b6c803faf9024a55ab9568bbf3acfe30d4775a5b764",
+        "contracts/common/contracts.fc": "bb43a65a0afc7e763dedcde560c916e620cd20c6cbc46c5fbbb2aa310a1513ed",
+        "contracts/common/errors.fc": "6b2dc3a25f69c50711c1bd844ca312e386e985faaeebd04348179ebf4f9d043c",
+        "contracts/common/gas.fc": "0088f54fa3c47f73c618a513fb0604e3f4398cc8ec9e7e4a880558b3fe63439d",
+        "contracts/common/op.fc": "186b14f8b1c41ad6cf667c99a22831938e2f8e045de112a25be94ce48b32ebe8",
+        "contracts/common/params.fc": "6cc1f7ee35efb4af46498565da7a806b56955502567afe40a6c9ff9201a4b44f",
+        "contracts/common/utils.fc": "db8d291650ab7c244d5048f5172e1e3ef42a8e12eab772012eb4a22f6db9526a",
+        "contracts/lp_wallet.fc": "cec001ac041acfbbd61fffcd6f04d7f0258ca84c1f0f13712c4f2d8ec4fc1104",
+        "contracts/lp_wallet/jetton-utils.fc": "4b5e5740fe450fcc6812b4b40e3c57299d6a5f5348a9f82b05c0556808ed6375",
+        "contracts/lp_wallet/op.fc": "45659141d1fcbfff1c428eaa98b3bfcddc0990335892806dd8a8a263bcaadfb6",
+        "contracts/lp_wallet/params.fc": "63007c2376e70d88c2fde24aab1365f753c95ecd0a577c1376287071eafaee96",
+        "contracts/lp_wallet/storage.fc": "20889ba1c667b20bf7bacd6512b6bf4015842decee6d9de8683b9541530c6997",
+        "contracts/pool/pools/constant_product/gas.fc": "d49390a34f8160c76a0f4425f2813be6dd3b2bc6c896214a922684a18b8e1eba",
+        "contracts/pool/pools/constant_product/state_init.fc": "ac2fac64b4ac39cc0e69648e66e918f5a65c969c9ee769c985eedf9f6dcd79ca",
+        "node_modules/@ston-fi/funcbox/autoload.fc": "2d53676b3347d14fe8186a8790402db86f67d2e8c9a49208680c189553ed6c10",
+        "node_modules/@ston-fi/funcbox/contracts/address.fc": "571996c90dc2d8afeffeb3d8c38202c89b8c923246fdcb6cfa73bf677fa637b7",
+        "node_modules/@ston-fi/funcbox/contracts/cell.fc": "79918c350865c0266e9df541b8df177a5e53b894609158217e06a5b5f7518a1b",
+        "node_modules/@ston-fi/funcbox/contracts/console.fc": "d5e1fb87c111ef5d392f120ea18dbfc266a1c307ccaec6887384a07b486d0ac3",
+        "node_modules/@ston-fi/funcbox/contracts/consts.fc": "dd7e02ac1537af0952b4df2823a635180e7091f16e23402b56541da7d69ebfa4",
+        "node_modules/@ston-fi/funcbox/contracts/contracts.fc": "1dcc8ecad29659d871a0fd7204ad92222cc8d7ebdf759457462d4a88020db6f4",
+        "node_modules/@ston-fi/funcbox/contracts/ctx.fc": "e51bc6f079ba76dc6e2fca3b97ec798811514fa6fcab732d10698693dcf04032",
+        "node_modules/@ston-fi/funcbox/contracts/dict.fc": "1b451e267c8467d8b73e9cd71114e73949629fd4aaa77ae00fd39ec2a8a9fba5",
+        "node_modules/@ston-fi/funcbox/contracts/globs.fc": "d3dac293d53074341a800dfe346c9178db7a0b1490d951d5038683d4bc596995",
+        "node_modules/@ston-fi/funcbox/contracts/interfaces/any.fc": "bda644e92b1bea13add7c96bed1c7b6bda0517e0a0486253ebd6e4d5f0956b06",
+        "node_modules/@ston-fi/funcbox/contracts/interfaces/interfaces.fc": "4e2864fad117bd3e0331193ac8747a11b66b4dbe35509a65e4bf4e7284073ef1",
+        "node_modules/@ston-fi/funcbox/contracts/interfaces/jetton.fc": "d1f678e3912e2e7d426785ce37a5495aeaef35654fdec6f80229d32e64bb06be",
+        "node_modules/@ston-fi/funcbox/contracts/math/fp/fp.fc": "dc64411a1530d69641629bb99314c2631f763f7d4eb9f127eb68e3084226dcfe",
+        "node_modules/@ston-fi/funcbox/contracts/math/int/int.fc": "ad54c6b589920403793d2c8d4ef9c299f8393df34292f51c5fdabf845846684b",
+        "node_modules/@ston-fi/funcbox/contracts/math/math.fc": "05e1fd6ea451625ef4a0a3eaa29ed6d663c76d6ae47a46b1a3ff5d836ab06d13",
+        "node_modules/@ston-fi/funcbox/contracts/message.fc": "d05fe84b0b5c0a21b0d06b4c4949e13c3df8bca86ceb5fcb4040189f28ba7460",
+        "node_modules/@ston-fi/funcbox/contracts/msgs.fc": "de58f1ec9a28d59a5cf357ae67aa572347a7e5153b13fac102852198f8f28f3d",
+        "node_modules/@ston-fi/funcbox/contracts/op.fc": "44d9ddea1eb0539e1110e4c34917cb5549e7c9d1a0cdd3d93d8d3b7a99114dfa",
+        "node_modules/@ston-fi/funcbox/contracts/reserves.fc": "9ab50553009949f44c6e9b708d5b52bbb7c2d3149c65ff552497a37ec524b6c4",
+        "node_modules/@ston-fi/funcbox/contracts/stdlib_ext.fc": "73543f5ef77c297954e52469ffa6d954fa9678bd5d50661fc2827e632416af5b",
+        "node_modules/@ston-fi/funcbox/contracts/stdlib.fc": "1c510f50d92d2a8d012a96baea1af06a2aa00e2c169f2e3f9d65a95f94c24131",
+        "node_modules/@ston-fi/funcbox/contracts/time.fc": "7394f2dc0fc9e2ad3fed02f9635de4f4355051d93dd6a1d6eb785752496a7227",
+        "node_modules/@ston-fi/funcbox/contracts/utils.fc": "0c16d25960936e41bdf37ad7bfd8a484b5d8b4fb5ae39dcb7d1448855055f68f"
+      },
+      "sourceFilesSha256": {
+        "contracts/common/common.fc": "e048d94d9b906a87bcf3bff9ac46d2cbdb26b4d5539ca378bacb75ab6c016a3f",
+        "contracts/common/contracts.fc": "bb43a65a0afc7e763dedcde560c916e620cd20c6cbc46c5fbbb2aa310a1513ed",
+        "contracts/common/errors.fc": "6b2dc3a25f69c50711c1bd844ca312e386e985faaeebd04348179ebf4f9d043c",
+        "contracts/common/gas.fc": "0088f54fa3c47f73c618a513fb0604e3f4398cc8ec9e7e4a880558b3fe63439d",
+        "contracts/common/op.fc": "186b14f8b1c41ad6cf667c99a22831938e2f8e045de112a25be94ce48b32ebe8",
+        "contracts/common/params.fc": "8963c7d673d91036b55c948f3c1ce2faec74227aa4c5978dd6f96e340a598d4c",
+        "contracts/common/utils.fc": "db8d291650ab7c244d5048f5172e1e3ef42a8e12eab772012eb4a22f6db9526a",
+        "contracts/lp_wallet.fc": "cec001ac041acfbbd61fffcd6f04d7f0258ca84c1f0f13712c4f2d8ec4fc1104",
+        "contracts/lp_wallet/jetton-utils.fc": "4b5e5740fe450fcc6812b4b40e3c57299d6a5f5348a9f82b05c0556808ed6375",
+        "contracts/lp_wallet/op.fc": "45659141d1fcbfff1c428eaa98b3bfcddc0990335892806dd8a8a263bcaadfb6",
+        "contracts/lp_wallet/params.fc": "63007c2376e70d88c2fde24aab1365f753c95ecd0a577c1376287071eafaee96",
+        "contracts/lp_wallet/storage.fc": "20889ba1c667b20bf7bacd6512b6bf4015842decee6d9de8683b9541530c6997",
+        "contracts/pool/pools/constant_product/gas.fc": "d49390a34f8160c76a0f4425f2813be6dd3b2bc6c896214a922684a18b8e1eba",
+        "contracts/pool/pools/constant_product/state_init.fc": "e0571ac82760bc90cb986a60a0c72044020a816be6e76e4c068f965a496412f3",
+        "node_modules/@ston-fi/funcbox/autoload.fc": "2d53676b3347d14fe8186a8790402db86f67d2e8c9a49208680c189553ed6c10",
+        "node_modules/@ston-fi/funcbox/contracts/address.fc": "571996c90dc2d8afeffeb3d8c38202c89b8c923246fdcb6cfa73bf677fa637b7",
+        "node_modules/@ston-fi/funcbox/contracts/cell.fc": "79918c350865c0266e9df541b8df177a5e53b894609158217e06a5b5f7518a1b",
+        "node_modules/@ston-fi/funcbox/contracts/console.fc": "d5e1fb87c111ef5d392f120ea18dbfc266a1c307ccaec6887384a07b486d0ac3",
+        "node_modules/@ston-fi/funcbox/contracts/consts.fc": "dd7e02ac1537af0952b4df2823a635180e7091f16e23402b56541da7d69ebfa4",
+        "node_modules/@ston-fi/funcbox/contracts/contracts.fc": "1dcc8ecad29659d871a0fd7204ad92222cc8d7ebdf759457462d4a88020db6f4",
+        "node_modules/@ston-fi/funcbox/contracts/ctx.fc": "e51bc6f079ba76dc6e2fca3b97ec798811514fa6fcab732d10698693dcf04032",
+        "node_modules/@ston-fi/funcbox/contracts/dict.fc": "1b451e267c8467d8b73e9cd71114e73949629fd4aaa77ae00fd39ec2a8a9fba5",
+        "node_modules/@ston-fi/funcbox/contracts/globs.fc": "d3dac293d53074341a800dfe346c9178db7a0b1490d951d5038683d4bc596995",
+        "node_modules/@ston-fi/funcbox/contracts/interfaces/any.fc": "bda644e92b1bea13add7c96bed1c7b6bda0517e0a0486253ebd6e4d5f0956b06",
+        "node_modules/@ston-fi/funcbox/contracts/interfaces/interfaces.fc": "4e2864fad117bd3e0331193ac8747a11b66b4dbe35509a65e4bf4e7284073ef1",
+        "node_modules/@ston-fi/funcbox/contracts/interfaces/jetton.fc": "d1f678e3912e2e7d426785ce37a5495aeaef35654fdec6f80229d32e64bb06be",
+        "node_modules/@ston-fi/funcbox/contracts/math/fp/fp.fc": "dc64411a1530d69641629bb99314c2631f763f7d4eb9f127eb68e3084226dcfe",
+        "node_modules/@ston-fi/funcbox/contracts/math/int/int.fc": "ad54c6b589920403793d2c8d4ef9c299f8393df34292f51c5fdabf845846684b",
+        "node_modules/@ston-fi/funcbox/contracts/math/math.fc": "05e1fd6ea451625ef4a0a3eaa29ed6d663c76d6ae47a46b1a3ff5d836ab06d13",
+        "node_modules/@ston-fi/funcbox/contracts/message.fc": "d05fe84b0b5c0a21b0d06b4c4949e13c3df8bca86ceb5fcb4040189f28ba7460",
+        "node_modules/@ston-fi/funcbox/contracts/msgs.fc": "de58f1ec9a28d59a5cf357ae67aa572347a7e5153b13fac102852198f8f28f3d",
+        "node_modules/@ston-fi/funcbox/contracts/op.fc": "44d9ddea1eb0539e1110e4c34917cb5549e7c9d1a0cdd3d93d8d3b7a99114dfa",
+        "node_modules/@ston-fi/funcbox/contracts/reserves.fc": "9ab50553009949f44c6e9b708d5b52bbb7c2d3149c65ff552497a37ec524b6c4",
+        "node_modules/@ston-fi/funcbox/contracts/stdlib_ext.fc": "73543f5ef77c297954e52469ffa6d954fa9678bd5d50661fc2827e632416af5b",
+        "node_modules/@ston-fi/funcbox/contracts/stdlib.fc": "1c510f50d92d2a8d012a96baea1af06a2aa00e2c169f2e3f9d65a95f94c24131",
+        "node_modules/@ston-fi/funcbox/contracts/time.fc": "7394f2dc0fc9e2ad3fed02f9635de4f4355051d93dd6a1d6eb785752496a7227",
+        "node_modules/@ston-fi/funcbox/contracts/utils.fc": "0c16d25960936e41bdf37ad7bfd8a484b5d8b4fb5ae39dcb7d1448855055f68f"
+      },
+      "rebuiltCodeHash": "c00836440d084e44fb94316132ac5a21417ef4f429ee09b5560b5678b334c3e8",
+      "capturedLibraryTargetHash": "c00836440d084e44fb94316132ac5a21417ef4f429ee09b5560b5678b334c3e8",
+      "capturedWalletWrapperHash": "bf13041750f2beeb688859c75689e2c18b9c90bd78e97b197aad7ad6bc520c84",
+      "matchesCapturedImplementation": true,
+      "independentAudit": false,
+      "supportedInternalOperations": [
+        "TEP-74 transfer",
+        "TEP-74 internal_transfer",
+        "burn",
+        "internal_transfer/burn bounce restoration"
+      ],
+      "authenticatedBalanceQuery": false,
+      "authenticatedFinalDeliveryReceipt": false,
+      "notificationReplayEndpoint": false
+    },
+    "proofScope": {
+      "firstNotificationRecovery": "Authenticated custody LOWER BOUND at LP-wallet emission LT only; not exact current balance or attributed migration issuance",
+      "supportedLock": "Initial 100%-permanent vaults only, no recorded issuance or pending withdrawal",
+      "financialAuthorization": false,
+      "routerCurrentCodeProvenOnChain": false
+    },
+    "remaining": [
+      "Exact operation-attributed initial LP custody proof",
+      "Final foreign LP withdrawal delivery/failure receipts and pending-claim reconciliation",
+      "Independent Router/Pool/source/current-code/upgrade review",
+      "Authenticated live Router code/version evidence or reviewed on-chain state-proof verifier",
+      "Full migration LP authorization and real Testnet verification"
+    ],
+    "implementationFiles": [
+      "minter-contract/build/anlgram-lp-locker-v2.compiled.json",
+      "minter-contract/build/anlgram-migration-v2-plan.compiled.json",
+      "minter-contract/contracts/anlgram-lp-locker-v2.fc",
+      "minter-contract/contracts/anlgram-migration-v2-plan.fc",
+      "minter-contract/contracts/imports/lp-custody-probe-v4.fc",
+      "minter-contract/contracts/imports/lp-locker-v2-code.fc",
+      "minter-contract/contracts/imports/plan-discovery-v4.fc",
+      "minter-contract/scripts/migration-v2-plan.js",
+      "scripts/prepare-migration-v2-plan.js",
+      "scripts/verify-stonfi-lp-source-v4.js",
+      "tests/settlement-runtime/lp-v4.test.js",
+      "tests/settlement-runtime/migration-recovery-support.js",
+      "tests/settlement-runtime/package.json"
+    ],
+    "sourceBuildInstalls": 0,
+    "broadcasts": 0,
+    "spentTON": "0",
+    "developmentCorrection": "A new discovery test initially compared Address objects containing function properties; replaced reference comparison with exact address equality and unchanged scalar-state assertions. No existing test assertion changed."
   }
 }

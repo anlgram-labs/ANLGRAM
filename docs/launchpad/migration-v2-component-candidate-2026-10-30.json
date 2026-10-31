@@ -3,6 +3,9 @@
   "status": "BLOCKED_COMPONENT_CANDIDATE_NOT_DEPLOYMENT_PLAN",
   "broadcastEnabled": false,
   "signaturesRequested": 0,
+  "pairDiscoveryConfigured": true,
+  "pairDiscoveryVerifiedLive": false,
+  "currentRouterCodeProvenOnChain": false,
   "operatorControlVerified": false,
   "accountStateCheckedLive": false,
   "metadataApproved": false,
@@ -20,20 +23,20 @@
   },
   "accounts": {
     "binding": {
-      "raw": "0:1f56440b1c14d5c42f94fbd999cb6cc4cd4ab760226be98c3aedd90327ea1db2",
-      "testnet": "kQAfVkQLHBTVxC-U-9mZy2zEzUq3YCJr6Yw67dkDJ-odsk_o",
-      "codeHash": "df7ed8453b8681ee1ddbee6e97573cca0250fb21405b428b5aacbb709175c755",
-      "dataHash": "5056702027eb016b0798dd32b30dc4a79b393123bc831ab8dadba459ee76718c"
+      "raw": "0:b2ec8960078a10cbcd90e7ad8794710b63182c15e98bf25d833b4f5dd2c7f8c2",
+      "testnet": "kQCy7IlgB4oQy82Q562HlHELYxgsFemL8l2DO09d0sf4wi70",
+      "codeHash": "4467bce59c4cb5c8359bbd94011bd2ebdb5e301a959ff0e0f2f6722fd8650043",
+      "dataHash": "a8bc9f05d5a8acb91517a3757b54a140c41651ef84f47a3648728f6f31bc6964"
     },
     "locker": {
-      "raw": "0:e9bcb7ac85a4683a26c82981736b7a88b80291a17b892d2f055db80b5cea178a",
-      "testnet": "kQDpvLeshaRoOibIKYFza3qIuAKRoXuJLS8FXbgLXOoXimGp",
-      "codeHash": "69ec47a343d3ddd48632d4c6e2b2ec689ba898be77d32e385f1116bc7d5f6780",
-      "dataHash": "3c121344a4c1e701612d6a58bb8093f8b69e6d6bfa475d08130f12bc2626844d"
+      "raw": "0:cb5807713d3f7df121439926ab538a69a6c8945919e974aabeda30798ad368d4",
+      "testnet": "kQDLWAdxPT998SFDmSarU4pppsiUWRnpdKq-2jB5itNo1Ftg",
+      "codeHash": "22d689df2f32d5fd00c72b50f31ab77291117a7625ad1bb654a4b6dbc796e001",
+      "dataHash": "9f7f369c6fdf26b89c09162dd042f47dd2dc6c1d7b8114768ed0d4edc1384d3b"
     }
   },
   "expectedPool": "0:7ed1205c5a848d432440038ab0a97eb021be54b7e6a5444fc069c1384ec412c2",
-  "expectedLpWallet": "0:09f5845fdb9b5db24d044cf41649e9b88f9109b79adc15549d595da9bf2ccc74",
+  "expectedLpWallet": "0:4f17304801d00845a938fe7e07941821ad0161ca28257400ceb259757f05de6c",
   "terms": {
     "version": 2,
     "percent": 100,
