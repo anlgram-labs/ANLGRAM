@@ -1,0 +1,5 @@
+node_modules/
+public/
+.worker-build/
+.wrangler/
+.dev.vars*

@@ -1,5 +1,10 @@
 # Testnet transaction approval sheet — 2026-10-31
 
+**SUPERSEDED FOR EXECUTION:** this V4 sheet is historical only. The owner approved
+V5 preparation; old addresses, messages and transaction approvals are obsolete.
+Use [the active registry](active-testnet-candidate.json) and the
+[blocked V5 sheet](testnet-v5-approval-sheet.md). No signing is authorized.
+
 **Status: preparation only, NOT AUTHORIZED TO SIGN OR BROADCAST.** PR #7 remains
 isolated from production. Read-only PR #6 is deployed at production commit
 `37ee53b483d69b0e301dc7ba8ba62696e2d37e17`;

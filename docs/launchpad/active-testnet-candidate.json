@@ -1,0 +1,14 @@
+{
+  "network": "-3",
+  "activeCandidate": "testnet-v5-candidate.json",
+  "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
+  "version": "V5R1",
+  "readyForSigning": false,
+  "obsoleteForExecution": [
+    "supervised-smoke-candidate-2026-10-31.json",
+    "testnet-candidate-2026-10-30.json",
+    "financial-testnet-plan-2026-10-30.json",
+    "migration-v2-component-candidate-2026-10-30.json"
+  ],
+  "priorTransactionApprovalsInvalid": true
+}

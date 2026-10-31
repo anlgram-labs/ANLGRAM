@@ -1,0 +1,20 @@
+{
+  "name": "anlgram-testnet-preparation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check:deploy": "npm run build && wrangler deploy --dry-run --outdir .worker-build"
+  },
+  "dependencies": {
+    "@ton/core": "0.63.1",
+    "@tonconnect/ui": "2.3.1"
+  },
+  "devDependencies": {
+    "@ton/ton": "16.3.0",
+    "miniflare": "5.20261023.0-beta",
+    "wrangler": "4.153.0"
+  }
+}

@@ -1,5 +1,61 @@
 # MemeLabs isolated sprint: review notes
 
+## V5 Testnet preparation, isolated interface — 2026-10-31
+
+Dedicated branch `codex/testnet-signing-preparation`, based on PR #7 `10e8a83`.
+Production main/PRs #1–#7 remain unchanged. No contract source or bytecode changed;
+all seven artifacts freshly source-compiled and matched while regenerating the
+candidate. All six core/V2 StateInit and dependent wallet/Pool addresses were
+recalculated for V5R1 operator
+`0QCBGet2_2SvVUrX_MZL0w0OuPqlbJtlHT3nbpWaEH2QYbBR` (public-key-derived,
+**not yet owner-proven**). Exact plans/hash evidence are in
+[the V5 sheet](testnet-v5-approval-sheet.md) and
+[active registry](active-testnet-candidate.json). Old V4 execution messages and
+approvals are obsolete; preserved historical generators/tests are not deployment
+authorization. Minter is now `kQA5PEDpb0UPGsGUD0jByO9qNFd6PqyXPpMkTUyngd5-IYq8`.
+
+Official pinned Wallet V5 bytecode independently fetched/matched SDK 16.3.0:
+`20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f`.
+Wallet IDs differ (Testnet 2147483645 / Mainnet 2147483409); actual canonical
+Mainnet account has expected official code and Mainnet ID. The Testnet-address
+clone on Mainnet is uninitialized. No claim of an intrinsic global-ID VM check:
+a deliberate identical-StateInit clone remains a documented limitation.
+
+Separate `testnet-interface/` Worker bundles only five public files and provides
+Testnet-only balance reads plus fixed-key V5 ownership proofs. Exact domain,
+five-minute single-use challenge, Secure/HttpOnly host cookie, timestamp/key/
+StateInit checks and atomic Durable Object consumption reject forged/replayed
+evidence. Session restoration is disabled. There are no transaction/broadcast
+routes or financial signing controls. Production UI/API integrations, donation
+recipient, 0.20+0.02 TON charge, economics and contracts are untouched.
+
+Verified: 18 interface/candidate unit tests + 1 real local workerd/Durable Object
+test + 11 existing smoke/financial-plan/fee regressions = **30 passed, 0 failed**
+in final targeted executions, no skips. Seven source/artifact checks and V5
+candidate reproducibility check passed. Wrangler dry-run built successfully.
+Earlier test-authoring errors (wrong lock-setting field names, new Miniflare API
+and unsupported compatibility date) were corrected; final tests are green.
+These are local tests, not real wallet compatibility or on-chain execution.
+Focused npm production audit reported 2 low entries (SDK/deepmerge), no fix;
+documented rather than suppressed. No full audit/test rerun is claimed.
+
+Live provider observations: proposed operator plus eight dependent Testnet
+addresses uninitialized, zero balance. Fee simulation over an unfunded V5 account
+reported 0.003692402 source TON with no outgoing forwarding/destination costs;
+**incomplete, not approval-ready**. Requote after real ownership/funding. Proposed
+0.12 TON transaction-one review ceiling is unapproved and not a hard enforced cap.
+
+**Not published:** Cloudflare CLI is unauthenticated; no authenticated DNS/zone
+inspection or live HTTPS origin was possible. Reserved target
+`https://testnet.anlgram.com` is not claimed active. Minimum manual login, zone
+checks and dedicated deploy instructions are in [interface README](../../testnet-interface/README.md).
+Actual V5 wallet app selection/compatibility, domain-bound owner proof, Testnet
+funding, fresh fees and explicit new transaction approval remain blockers. No
+signing, broadcasts, spending, contract deployments or production changes made.
+Next step: authenticate the existing Cloudflare account, verify the unused
+subdomain and publish only this non-financial interface; then owner proves the
+exact V5 Testnet account. Mainnet/migration/LP financial gates stay blocked.
+
 ## Analytics published; current Testnet approval preparation — 2026-10-31
 
 Owner-authorized PR #6 deployed successfully at `37ee53b`; actual public Analytics

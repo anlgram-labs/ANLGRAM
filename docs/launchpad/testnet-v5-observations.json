@@ -1,0 +1,191 @@
+{
+  "observedUtc": "2026-10-31T22:39:21.881Z",
+  "network": "-3",
+  "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
+  "officialWallet": {
+    "url": "https://raw.githubusercontent.com/ton-blockchain/wallet-contract-v5/4fab977f4fae3a37c1aac216ed2b7e611a9bc2af/build/wallet_v5.compiled.json",
+    "codeHash": "20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f",
+    "bytecodeMatches": true
+  },
+  "accounts": {
+    "operator": {
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    "minter": {
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:393c40e96f450f1ac1940f48c1c8ef6a34577a3eac973e93244d4ca781de7e21",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    "curve": {
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    "guard": {
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:dd615ad7526f807a8b1e3ae3dfcf757627a564ad6c03df37b10f79429669511f",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    "migration": {
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:5349ce32b585cb3859164a1e8ad3d31dec312488a3165a5bfffb792e381559db",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    "binding": {
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:ae581a7eec55ef743fb94e0840985c067c5153301e03af788425c35c02ad4d58",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    "locker": {
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:7a151b5792dab3e331e1a2ed30778a9515fa258b68b3732f9ea16381c192edbd",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    "curveJettonWallet": {
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:297816db36b367582bcf8c68008264b66d987777b7bd6e0acf9445235d1a1d52",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    "buyerJettonWallet": {
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:7b4288b8e6d439717bde4ad13463c9dec45e6235f8e340d766631eacb7c0bc28",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    }
+  },
+  "ownershipVerified": false,
+  "walletAppCompatibilityVerified": false,
+  "readyForSigning": false,
+  "signed": false,
+  "broadcast": false,
+  "fee": {
+    "observedUtc": "2026-10-31T22:39:38.903Z",
+    "sourceFees": {
+      "@type": "fees",
+      "in_fwd_fee": 3532734,
+      "storage_fee": 0,
+      "gas_fee": 159668,
+      "fwd_fee": 0
+    },
+    "sourceFeeNano": "3692402",
+    "attachmentNano": "100000000",
+    "estimatedSourceDebitNano": "103692402",
+    "destinationFees": [],
+    "completeEndToEnd": false,
+    "guaranteedMaximumDebitNano": null,
+    "estimateExpiry": 1793486497,
+    "invalidZeroSignature": true,
+    "limitation": "No source funding or actual recipient execution is inferred. Requote after owner verification/funding and simulate the exact external transaction before separate approval."
+  },
+  "mainnet": {
+    "canonical": {
+      "address": "0:cec5d92a0661507ab9d8ff521edd10d2596d4cf0b7197658bb84bcecc05902ff",
+      "state": "active",
+      "balanceNano": "483973634804",
+      "codeHash": "20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f",
+      "signatureAllowed": true,
+      "seqno": 26,
+      "walletId": 2147483409
+    },
+    "testnetAddressOnMainnet": {
+      "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+      "state": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "signatureAllowed": null,
+      "seqno": null,
+      "walletId": null
+    }
+  }
+}
