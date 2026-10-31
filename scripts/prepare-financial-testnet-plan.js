@@ -5,8 +5,8 @@ const core=require('../tests/settlement-runtime/node_modules/@ton/core');
 const {buildCandidate,manifest}=require('../minter-contract/prepare-settlement-testnet');
 const {BondingCurveEngine}=require('../minter-contract/scripts/bonding-curve-math');
 const {derive}=require('../minter-contract/scripts/stonfi-v22-addresses');
-function buildPlan(){
- const c=buildCandidate(undefined,core),m=manifest(c),cell=core.beginCell,body=(op,q)=>cell().storeUint(op,32).storeUint(q,64);
+function buildPlan(options={}){
+ const c=buildCandidate(options.operator,core),m=manifest(c),cell=core.beginCell,body=(op,q)=>cell().storeUint(op,32).storeUint(q,64);
  const boc=x=>x.toBoc().toString('base64'),init=x=>boc(cell().store(core.storeStateInit(x)).endCell());
  const steps=[];
  const add=(name,address,value,payload,stateInit)=>steps.push({name,status:'BLOCKED_NOT_APPROVED',requiresSeparateApproval:true,message:{address:address.toString({testOnly:true}),amount:value.toString(),...(payload?{payload:boc(payload)}:{}),...(stateInit?{stateInit:init(stateInit)}:{})}});
