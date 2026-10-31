@@ -1,5 +1,50 @@
 # MemeLabs isolated sprint: review notes
 
+## Analytics published; current Testnet approval preparation — 2026-10-31
+
+Owner-authorized PR #6 deployed successfully at `37ee53b`; actual public Analytics
+metadata/supply/holders/master-history and56/56 packaged file identities verified.
+35 release cases passed. Financial signing controls remain closed; original design,
+donation, contracts and economic parameters are unchanged.
+
+PR #7 continues `b46cc7b`: owner-approved fixed Testnet donation now has its exact
+unsigned message before mint, with no double-counted budget. Public-key/V4 StateInit
+reconstructs the operator address; the owner connected and restored chain -3 in
+the real public read-only browser. No standalone ton_proof signature was requested.
+Current RPC source-fee estimates use invalid all-zero-signature envelopes, never
+sign/broadcast. Shared V4 nonce separation is checked: observed Mainnet44 vs
+planned Testnet0..12; any overlap/change halts preparation. All8 candidate account
+observations were uninitialized/zero; source/artifact identities remain unchanged.
+
+Current balance2.003498553 Testnet TON covers the first0.10 TON attachment plus
+estimated source fees0.006797337. Proposed2.50 envelope shortfall0.496501447;
+this is a conservative reserve target, not a guaranteed minimum full-run cost.
+Future-state destination/sell costs, metadata, execution origin/manifest and exact
+transaction approvals remain pending. No Testnet/Mainnet deployment or spending.
+Latest focused tests18/18 pass, no skips; this includes the donor credit and V4
+nonce-overlap rejection. All prior contract source/bytecode remains unchanged.
+See [current transaction approval sheet](testnet-approval-sheet-2026-10-31.md)
+and adjacent fee/account/session evidence. Migration, LP custody and withdrawals
+remain blocked independently of this component MVP.
+
+## Supervised smoke preparation — 2026-10-31
+
+`codex/testnet-execution-candidate` continues `c8b7a08`. Reuses the seven verified
+artifacts and existing planner, with explicit operator input, a bounded native
+bounce test and a separately approved fresh-quote sell template. Exact serialized
+messages deploy/mint/renounce/activate/buy, reject impossible slippage, replay
+authenticated receipts without resending tokens, and sell in fresh Sandbox.
+Focused tests:12/12 (three smoke, two existing planner, seven component cases);
+final stricter receipt-routing rerun5/5. Source/candidate reproduction passes.
+Existing155/39-suite checkpoint reused; contracts/bytecode/addresses unchanged.
+
+Operator Testnet observation is uninitialized with0.0035 TON, insufficient for
+the proposed2.50 Testnet TON envelope. Actual network fees, signer control,
+metadata, donation recipient, staging manifest and per-stage approval remain
+required. No signing/broadcast/deployment/spending or financial activation.
+V2 LP evidence/finalization blockers remain unchanged. See the exact
+[unsigned proposal and recovery evidence](supervised-smoke-review-2026-10-31.md).
+
 ## Resume after production release — 2026-10-31
 
 Production `61cb4bc` verified directly: exact published files 55/55, valid enforced

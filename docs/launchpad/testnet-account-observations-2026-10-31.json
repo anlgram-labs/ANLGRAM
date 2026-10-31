@@ -1,0 +1,136 @@
+{
+  "observedUtc": "2026-10-31T21:11:47.321Z",
+  "scope": "READ_ONLY_PROVIDER_ACCOUNT_OBSERVATIONS",
+  "operatorOwnershipVerified": false,
+  "accounts": [
+    {
+      "role": "minter",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:f3540de3d6e7be701fd97816605d561288f21b13a179ee7cc7d0ac216c4a1380",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    {
+      "role": "curve",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:d4a3a65ea2f2aea5eaf237bc5be95cbbf79aa887771ed3d6a6302d6ec259a100",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    {
+      "role": "guard",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:8f0f99d7854572e9550c6864a475bab71cfc485bc7b0f542dd0a06381767cb60",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    {
+      "role": "migration",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:9a104cd0850f2f851e1582286940a6c813405eaef1ef0a2e9547f60a682561a3",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    {
+      "role": "binding",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:b2ec8960078a10cbcd90e7ad8794710b63182c15e98bf25d833b4f5dd2c7f8c2",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    {
+      "role": "locker",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:cb5807713d3f7df121439926ab538a69a6c8945919e974aabeda30798ad368d4",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    {
+      "role": "curveJettonWallet",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:60e9c298cbca4b7dc07281dcc4298479e5321b96b6dfaafe828ee879cd63811d",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    {
+      "role": "buyerJettonWallet",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "address": "0:06a7062a7a733b3f2a23e66aea1d04f1e61733f99b894af5afdb50813ff4012b",
+      "status": "uninitialized",
+      "balanceNano": "0",
+      "codeHash": null,
+      "dataHash": null,
+      "lastTransaction": {
+        "lt": "0",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    }
+  ],
+  "broadcast": false
+}
