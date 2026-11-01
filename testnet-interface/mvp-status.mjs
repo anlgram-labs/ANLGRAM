@@ -1,3 +1,4 @@
+import curveIntent from './curve-two-intent.json' with {type:'json'};
 import {Address,Cell,loadStateInit} from '@ton/core';
 import candidate from '../docs/launchpad/testnet-v5-candidate.json' with {type:'json'};
 import {accountRead} from './testnet-rpc.mjs';
@@ -40,7 +41,21 @@ export function analyzeStatus(observations,now=Date.now()){
  const stage=curveState===null?'CURVE_NOT_DEPLOYED':curveState===0?'CURVE_NOT_INITIALIZED':curveState===1?'MINT_AND_CUSTODY_REQUIRED':curveState===2?'RENOUNCEMENT_CONFIRMATION_REQUIRED':curveState===3?'ACTIVE_CONTRACT_OBSERVED_FINANCIAL_ACTIONS_DISABLED':'GRADUATION_OR_RECOVERY_REQUIRES_REVIEW';
  return{network:'-3',observedUtc:new Date(now).toISOString(),scope:'ACCOUNT_AND_GETTER_OBSERVATIONS_NOT_TRANSACTION_RECEIPTS',dataStatus:names.some(n=>observations[n].dataStatus==='SHORT_LIVED_CACHE')?'INCLUDES_SHORT_LIVED_CACHE':'FRESH_PROVIDER_OBSERVATIONS',observations:names.map(name=>({name,observedAt:observations[name].observedAt,dataStatus:observations[name].dataStatus})),stage,minter:{address:candidate.dependentAccounts.minter.testnet,supplyUnits:supply.toString(),decimals:9,symbol:'ANLTEST',name:'ANLGRAM Testnet Settlement',admin:expectedAdmin,renouncedObserved:admin===null},curve:{address:candidate.dependentAccounts.curve.testnet,accountState:curve.state,protocolState:curveState,reserves},curveWallet,buyerWallet,financialSigningEnabled:false,migrationEnabled:false,lpWithdrawalsEnabled:false,transactionOutcome:'NOT_VERIFIED_BY_ACCOUNT_SNAPSHOT'};
 }
+// Public projection of one fixed operation, never a ticket, authorization or
+// chain receipt. Observing an absent lock must never enable a retry.
+export async function readCurveDispatch(env){
+ const base={operation:curveIntent.operation,state:'UNAVAILABLE',fingerprint:null,claimedAt:null,validUntil:null,events:[],chainOutcomeVerified:false,retryPermitted:false,scope:'PERSISTENT_DISPATCH_RECORD_NOT_TRANSACTION_RECEIPT'};
+ try{
+  if(!env.CURVE_OPERATIONS)return base;
+  const stub=env.CURVE_OPERATIONS.get(env.CURVE_OPERATIONS.idFromName(curveIntent.operation+':'+curveIntent.operator));
+  const r=await stub.fetch(new Request('https://curve-operation.internal/',{method:'POST',body:'{"action":"status"}'}));
+  if(!r.ok)return base;const p=await r.json();
+  if(p.status==='NOT_CLAIMED')return{...base,state:'NOT_CLAIMED'};
+  if(p.status!=='LOCKED_PENDING_RECONCILIATION'||!/^[a-f0-9]{64}$/.test(p.fingerprint||'')||!Number.isSafeInteger(p.claimedAt)||!Number.isSafeInteger(p.validUntil))return base;
+  return{...base,state:p.status,fingerprint:p.fingerprint,claimedAt:p.claimedAt,validUntil:p.validUntil,events:[...new Set((Array.isArray(p.events)?p.events:[]).filter(e=>['WALLET_RESPONSE_UNVERIFIED','UNKNOWN_OR_REJECTED'].includes(e)))]};
+ }catch{return base;}
+}
 export async function readMvpStatus(env){
  const observations={};for(const name of ['minter','jettonData','curve','curveWallet','buyerWallet']){const r=await accountRead(env,name,false),j=await r.json();if(!r.ok)return Response.json({...j,financialSigningEnabled:false},{status:r.status,headers:{'Cache-Control':'no-store','Retry-After':r.headers.get('Retry-After')||'1'}});observations[name]=j;}
- return Response.json(analyzeStatus(observations),{headers:{'Cache-Control':'no-store'}});
+ return Response.json({...analyzeStatus(observations),curveDeploymentOperation:await readCurveDispatch(env)},{headers:{'Cache-Control':'no-store'}});
 }

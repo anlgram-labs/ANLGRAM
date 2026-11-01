@@ -45,3 +45,12 @@ test('manual status UI has exact decimals, no fake balance, no wallet invocation
  vm.runInNewContext(source,{document:{getElementById:id=>id==='mvp-refresh'?button:output},BigInt,AbortSignal,fetch:async url=>{calls++;assert.equal(url,'/api/mvp/status');return fail?Response.json({reason:'PROVIDER_RATE_LIMITED',retryAfterSeconds:12},{status:429}):Response.json(j);}});
  assert.equal(calls,0);await button.onclick();assert.equal(calls,1);assert.match(output.textContent,/0\.000000000 ANLTEST/);assert.match(output.textContent,/saldo no disponible/);assert.match(output.textContent,/NO confirman/);fail=true;await button.onclick();assert.match(output.textContent,/429/);assert(!output.textContent.includes('0.000000000 ANLTEST'));assert.equal(button.disabled,false);
 });
+
+test('fixed dispatch status never exposes tickets, authorization data or claims wallet response as finality',async()=>{
+ const {readCurveDispatch}=await import('../mvp-status.mjs');let reads=0;const env={CURVE_OPERATIONS:{idFromName:name=>{assert.equal(name,'ANLTEST_CURVE_TX2:'+p.wallet.raw);return name},get:()=>({fetch:async r=>{reads++;assert.deepEqual(await r.json(),{action:'status'});return Response.json({status:'LOCKED_PENDING_RECONCILIATION',fingerprint:'12'.repeat(32),claimedAt:Date.now(),validUntil:123,events:['UNKNOWN_OR_REJECTED','WALLET_RESPONSE_UNVERIFIED','FAKE_FINALIZED','UNKNOWN_OR_REJECTED'],ticket:'NEVER_PUBLIC',approvalReference:{authorizationId:'NEVER_PUBLIC'}})}})}};
+ const j=await readCurveDispatch(env);assert.equal(reads,1);assert.equal(j.state,'LOCKED_PENDING_RECONCILIATION');assert.equal(j.retryPermitted,false);assert.equal(j.chainOutcomeVerified,false);assert.deepEqual(j.events,['UNKNOWN_OR_REJECTED','WALLET_RESPONSE_UNVERIFIED']);assert(!JSON.stringify(j).includes('NEVER_PUBLIC'));assert(!JSON.stringify(j).includes('FAKE_FINALIZED'));
+});
+test('absent lock, unavailable storage and malformed status remain distinct, never permitting an automatic retry',async()=>{
+ const {readCurveDispatch}=await import('../mvp-status.mjs');assert.equal((await readCurveDispatch({})).state,'UNAVAILABLE');
+ for(const status of [{status:'NOT_CLAIMED'},{status:'LOCKED_PENDING_RECONCILIATION',fingerprint:'bad'},{status:'SUCCESS'}]){const env={CURVE_OPERATIONS:{idFromName:n=>n,get:()=>({fetch:async()=>Response.json(status)})}};const j=await readCurveDispatch(env);assert.equal(j.state,status.status==='NOT_CLAIMED'?'NOT_CLAIMED':'UNAVAILABLE');assert.equal(j.retryPermitted,false);assert.equal(j.chainOutcomeVerified,false);}
+});
