@@ -1,0 +1,47 @@
+{
+  "observedUtc": "2026-11-01T22:01:38.490Z",
+  "network": "-3",
+  "status": "NOT_REQUESTED_QUOTE_EXPIRED_BEFORE_SDK_INVOCATION",
+  "financialRequestInvocationsByAgent": 0,
+  "transactionHash": null,
+  "actualTransactionFeesNano": null,
+  "spentByThisAttemptNano": "0",
+  "operator": {
+    "balanceNano": "5893016464",
+    "seqno": 1,
+    "lastTransaction": {
+      "@type": "internal.transactionId",
+      "lt": "106958981000003",
+      "hash": "0uj9UjPri/BaQoYF6jc11nobUHQYJrtplhVuxJAg3CE="
+    },
+    "providerAuthentication": "TESTNET_KEY_ACCEPTED"
+  },
+  "curve": {
+    "provider": "toncenter",
+    "network": "testnet",
+    "verification": "PROVIDER_OBSERVATION",
+    "financialOutcome": "NOT_VERIFIED",
+    "address": "0:1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee",
+    "status": "uninitialized",
+    "balanceNano": "0",
+    "codeHash": null,
+    "dataHash": null,
+    "lastTransaction": {
+      "lt": "0",
+      "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    }
+  },
+  "secondaryObservation": {
+    "provider": "TonAPI Testnet",
+    "http": 404,
+    "interpretation": "NOT_INDEXED_OR_NOT_FOUND_NOT_TREATED_AS_ZERO_BALANCE_PROOF"
+  },
+  "financialSigningEnabled": false,
+  "curveSigningEnabled": false,
+  "transactionOneRepeated": false,
+  "automaticRetry": false,
+  "authorizationSecretRemoved": true,
+  "cleanupPagesDeployment": "https://ea9cfcee.anlgram-testnet-preparation.pages.dev",
+  "reason": "Exact fingerprint authorization required Pages redeployment. The60-second quote expired before the request button could enable. No request button was invoked and no principal resent.",
+  "blocker": "Need a reviewed exact-request arming mechanism that does not depend on a Pages deployment inside the quote lifetime. Preserve signature guard, exact fingerprint, TTL, fresh proof/state checks and persistent one-attempt lock."
+}
