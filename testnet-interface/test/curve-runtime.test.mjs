@@ -47,3 +47,19 @@ test('private atomic claim rechecks quote revision and authorization binding aft
  assert.equal((await call(claim)).status,409);assert(!h.values.has('operation'));
  await call({action:'reserveQuote',scopeKey:a.quoteScopeKey,maximumValidUntil:j.transaction.validUntil});claim.authorizationBinding.id=a.authorizationId;assert.equal((await call(claim)).status,409);assert(!h.values.has('operation'));
 });
+
+test('post-dispatch outcome recording survives expired proof but still requires exact ticket and never unlocks or authorizes another attempt',async()=>{
+ const h=setup();authorize(h);const j=await(await route('prepare',{},h)).json(),claim=await(await route('claim',input(h,j),h)).json();assert(claim.claimed);
+ const expired={...proof(),expiresAt:Math.floor(Date.now()/1000)},reads=h.reads();
+ assert.equal((await route('record',{ticket:'00'.repeat(32),event:'UNKNOWN_OR_REJECTED'},h,expired)).status,403);
+ assert.equal((await route('record',{ticket:claim.ticket,event:'FINALIZED'},h,expired)).status,403);
+ for(let i=0;i<2;i++){const r=await route('record',{ticket:claim.ticket,event:'UNKNOWN_OR_REJECTED'},h,expired);assert.equal(r.status,200);const status=await r.json();assert.equal(status.status,'LOCKED_PENDING_RECONCILIATION');assert.deepEqual(status.events,['UNKNOWN_OR_REJECTED']);assert.equal(status.ticket,undefined);}
+ assert.equal(h.reads(),reads);assert.equal((await route('claim',input(h,j),h,expired)).status,403);assert.equal((await route('prepare',{},h,expired)).status,403);assert(h.values.has('operation'));
+});
+
+test('Worker records an unverified outcome by ticket without accessing an expired/unavailable proof service',async()=>{
+ const {default:worker}=await import('../worker.mjs'),h=setup();authorize(h);const j=await(await route('prepare',{},h)).json(),claim=await(await route('claim',input(h,j),h)).json();
+ h.env.APP_ORIGIN='https://testnet.anlgram.com';h.env.PROOFS={get(){throw Error('Proof service must not be used for ticket-only record')},idFromName:n=>n};
+ const req=ticket=>new Request('https://testnet.anlgram.com/api/curve-two/record',{method:'POST',headers:{Origin:'https://testnet.anlgram.com','Content-Type':'application/json',Cookie:'__Host-anlgram-testnet-proof='+'12'.repeat(32)},body:JSON.stringify({ticket,event:'UNKNOWN_OR_REJECTED'})});
+ assert.equal((await worker.fetch(req(claim.ticket),h.env)).status,200);assert.equal((await worker.fetch(req('ff'.repeat(32)),h.env)).status,403);assert.equal(h.values.get('operation').status,'LOCKED_PENDING_RECONCILIATION');
+});

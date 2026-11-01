@@ -80,6 +80,7 @@ async function route(request,env) {
     if(u.origin!=='https://testnet.anlgram.com'||request.headers.get('Origin')!==u.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Canonical Curve origin required'},403);
     let input;try{input=JSON.parse(await boundedBody(request));}catch{return json({error:'Invalid operation request'},400);}
     if(path.endsWith('/claim')&&!await currentCurveAuthorization(env))return json({error:'Curve owner authorization absent; signing disabled'},403);
+    if(path.endsWith('/record'))return curveOperationRoute(path,input,env,{verified:false});
     const id=attemptId(request);let proof={verified:false};
     if(/^[a-f0-9]{64}$/.test(id||''))proof=await(await env.PROOFS.get(env.PROOFS.idFromName(id)).fetch(new Request('https://proof.internal/',{method:'POST',body:JSON.stringify({action:'status',domain:origin.hostname})}))).json();
     return curveOperationRoute(path,input,env,proof);

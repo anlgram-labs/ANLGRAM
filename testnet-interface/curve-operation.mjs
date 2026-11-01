@@ -70,6 +70,9 @@ export async function currentCurveAuthorization(env){
 export async function storeCurveAuthorization(env,grant){return call(stubFor(env),{action:'authorize',grant});}
 async function fresh(env,name,validUntil){const r=await accountRead(env,name,true,validUntil),j=await r.json();if(!r.ok||j.network!=='-3'||j.authentication!=='TESTNET_KEY_ACCEPTED'||j.dataStatus!=='FRESH_PROVIDER_OBSERVATION'||Math.abs(Date.now()-j.observedAt)>15000)throw Error('Fresh authenticated Testnet observation required');return j;}
 export async function curveOperationRoute(path,input,env,proof){
+ // A post-dispatch diagnostic is authenticated by its lifetime claim ticket,
+ // not an already-expired signing proof. It can never authorize or unlock funds.
+ if(path.endsWith('/record'))return call(stubFor(env),{action:'record',ticket:input?.ticket,event:input?.event});
  if((path.endsWith('/claim')||path.endsWith('/prepare'))&&input?.runtimeVersion!==execution.sha256)return json({error:'Incompatible Curve execution version; refresh reviewed client'},409);
  if((path.endsWith('/claim')||path.endsWith('/prepare'))&&!await compatibleStorage(env))return json({error:'Incompatible persistent Curve runtime'},409);
  if(path.endsWith('/claim')&&!await currentCurveAuthorization(env))return json({error:'Separate exact Curve #2 owner authorization absent; signing disabled'},403);
@@ -119,7 +122,6 @@ export async function curveOperationRoute(path,input,env,proof){
   const result=await call(stub,{action:'claim',transaction:input.transaction,fingerprint:fp,requirePrepared:true,approvalReference:a,...(authorization.mode===RUNTIME_MODE?{authorizationBinding:{id:authorization.authorizationId,notAfter:authorization.notAfter,requireStored:authorization.stored===true}}:{})});
   return json({...await result.json(),runtimeVersion:execution.sha256},result.status);
  }
- if(path.endsWith('/record'))return call(stub,{action:'record',ticket:input.ticket,event:input.event});
  const lock=await(await call(stub,{action:'status'})).json();
  if(path.endsWith('/reconcile')){const source=(await fresh(env,'operator')).account,destination=(await fresh(env,'curve')).account;return json({lock,source,destination,network:'-3',status:'EXACT_FINALIZED_TRACE_REVIEW_REQUIRED',newOperationAllowed:false});}
  return json({...lock,newOperationAllowed:false});
