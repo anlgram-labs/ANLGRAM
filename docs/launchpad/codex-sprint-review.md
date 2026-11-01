@@ -2118,3 +2118,8 @@ Read-only Curve transaction#2 proposal also simulated successfully from active V
 ## Curve transaction#2 authorization preparation (no broadcast)
 
 Current minter code/admin/supply0/metadata/balance verified using protected live RPC getter plus independent TonAPI. Exact Curve StateInit depends on that minter and remains uninitialized. Source-compiled dispatch/replay/network/gas/preactivation tests and existing local full genesis passed.104 targeted local tests passed, zero failed. Model debit0.117022198 Testnet TON for0.10TON attachment; no hard cap or spending approval. Fresh proof and verified step-specific executor remain required; owner offline, no signature requested. No contract or economic changes. See [exact review sheet](curve-two-authorization.md).
+
+
+## Curve #2 one-attempt preparation published (no signature)
+
+Separate Curve operation/policy/fingerprint/SQLite namespace and exact fresh preparation/claim validation implemented; original first-deployment lifetime lock and fingerprint preserved.91 interface/compiled-wire/UI tests,4 workerd runtime tests,8 source-compiled Sandbox cases and36 public checks passed, zero failures. Live browser domain-bound V5 proof verified and Curve preparation succeeded: model0.117023634 Testnet TON, attachment0.10TON; signing disabled and no request/broadcast/spend. Quote/proof expire and require refresh. TON Connect cannot enforce native seqno atomically or a guaranteed total fee ceiling; separate owner acceptance/exact fingerprint authorization is still required. Production proxy, Pages secret, contracts and economics preserved. See [updated authorization sheet](curve-two-authorization.md) and [machine-readable evidence](curve-two-signing-readiness.json).

@@ -1,5 +1,5 @@
 {
-  "observedUtc": "2026-11-01T05:22:20.621Z",
+  "observedUtc": "2026-11-01T13:53:03.785Z",
   "origin": "https://testnet.anlgram.com",
   "dns": {
     "resolver": "1.1.1.1",
@@ -42,6 +42,14 @@
     },
     {
       "name": "exact deployed bytes transaction-one.js",
+      "passed": true
+    },
+    {
+      "name": "HTTPS asset transaction-two.js",
+      "passed": true
+    },
+    {
+      "name": "exact deployed bytes transaction-two.js",
       "passed": true
     },
     {
@@ -133,6 +141,14 @@
       "passed": true
     },
     {
+      "name": "Curve signing authorization absent",
+      "passed": true
+    },
+    {
+      "name": "Curve signing disabled",
+      "passed": true
+    },
+    {
       "name": "financial operation authorization absent",
       "passed": true
     },
@@ -155,7 +171,7 @@
     "balanceNano": "1893123044",
     "state": "active",
     "source": "TON Center Testnet",
-    "observedUtc": "2026-11-01T05:22:27.632Z",
+    "observedUtc": "2026-11-01T13:53:11.600Z",
     "verification": "PROVIDER_OBSERVATION",
     "dataStatus": "FRESH_PROVIDER_OBSERVATION",
     "ageMs": 0,
