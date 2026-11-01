@@ -1,5 +1,5 @@
 {
-  "observedUtc": "2026-11-01T04:02:50.053Z",
+  "observedUtc": "2026-11-01T04:38:11.076Z",
   "origin": "https://testnet.anlgram.com",
   "dns": {
     "resolver": "1.1.1.1",
@@ -144,10 +144,10 @@
     "http": 200,
     "network": "-3",
     "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
-    "balanceNano": "1999999999",
-    "state": "uninitialized",
+    "balanceNano": "1893123044",
+    "state": "active",
     "source": "TON Center Testnet",
-    "observedUtc": "2026-11-01T04:02:56.539Z",
+    "observedUtc": "2026-11-01T04:38:17.724Z",
     "verification": "PROVIDER_OBSERVATION",
     "dataStatus": "FRESH_PROVIDER_OBSERVATION",
     "ageMs": 0,

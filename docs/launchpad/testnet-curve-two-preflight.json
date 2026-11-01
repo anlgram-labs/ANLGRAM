@@ -1,0 +1,38 @@
+{
+  "observedUtc": "2026-11-01T04:32:06.255Z",
+  "network": "-3",
+  "operation": "PROPOSED_CURVE_DEPLOYMENT_TX2",
+  "status": "SIMULATION_ONLY_NO_WALLET_REQUEST",
+  "operator": "0QCBGet2_2SvVUrX_MZL0w0OuPqlbJtlHT3nbpWaEH2QYbBR",
+  "operatorSeqno": 1,
+  "operatorBalanceNano": "1893123044",
+  "destination": "kQAfBL9a-9BPmFH6GVUYoUz0byuToTRHAwFAgqZXAyRo7kOW",
+  "attachmentNano": "100000000",
+  "stateInitHash": "1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee",
+  "codeHash": "421b1028536b49f6d79eadf872076cc7e7c9afde2aeca0e2868b2706449c3627",
+  "dataHash": "e2f3912b606e55b0cbd88805f0919b5072f69649ded2ce82a0c9bf1c6b768ec4",
+  "simulation": {
+    "complete": true,
+    "block": 95015847,
+    "traceSha256": "6d616b0ac102ffef1765945288a31eb0d4e0c4f24b2c49945a840374b47477a6",
+    "signatureCheckSkippedOnlyInEmulator": true,
+    "externalSourceStateInitIncluded": false,
+    "internalMessages": 1,
+    "modeledSenderDebitNano": "117022106",
+    "modeledSenderFeesNano": "17022106",
+    "curveFeesFromAttachmentNano": "43268",
+    "curveBalanceAfterNano": "99956732"
+  },
+  "providerAuthentication": {
+    "accountReads": "PROTECTED_SERVER_READS",
+    "curveReadAndEmulation": "ANONYMOUS_PACED_READONLY"
+  },
+  "requiresFreshProof": true,
+  "requiresSeparateOwnerApproval": true,
+  "stepSpecificSigningExecutorEnabled": false,
+  "readyForSigning": false,
+  "signed": false,
+  "broadcast": false,
+  "spentNano": "0",
+  "note": "Do not reuse transaction #1 authorization, fingerprint or transport intent. This proposal is not a live deployment or a new spending authorization."
+}

@@ -8,15 +8,16 @@
     "sendTransactionSupported": true,
     "maxMessagesObserved": null
   },
-  "proofExpiresAt": "2026-11-01T03:47:34.000Z",
+  "proofExpiresAt": "2026-11-01T04:22:31.000Z",
   "operator": {
     "address": "0QCBGet2_2SvVUrX_MZL0w0OuPqlbJtlHT3nbpWaEH2QYbBR",
     "raw": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
     "version": "V5R1",
     "walletId": 2147483645,
-    "balanceNano": "1999999999",
-    "state": "uninitialized",
-    "initialSeqno": 0
+    "balanceNano": "1893123044",
+    "state": "active",
+    "initialSeqno": 0,
+    "currentSeqno": 1
   },
   "activeCandidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
   "SDK": {
@@ -31,8 +32,8 @@
   },
   "financialRequestReady": false,
   "financialSigningEnabled": false,
-  "actualFinancialSignatureRequested": false,
-  "broadcast": false,
+  "actualFinancialSignatureRequested": true,
+  "broadcast": true,
   "boundedPolicy": {
     "attachmentNano": "100000000",
     "proposedMaximumTotalNano": "120000000",
@@ -40,13 +41,21 @@
     "requiresOneApplicationAttempt": true,
     "requiresOneTransportAttempt": true,
     "maxValiditySeconds": 120,
-    "ownerAuthorizationGranted": false
+    "ownerAuthorizationGranted": true,
+    "authorizationConsumed": true,
+    "currentSigningAuthorized": false,
+    "authorizationScope": "TESTNET_MINTER_TRANSACTION_ONE_ONLY"
   },
-  "remainingBlocker": "Separate transaction-specific owner approval, fresh exact fingerprint/fee/state snapshot at invocation and unexpired proof. Native wallet financial signing deliberately untested; no guaranteed network-enforced total-debit cap.",
+  "remainingBlocker": "Transaction #1 completed and consumed. No retry. Next Curve deployment requires a different exact operation, fresh active-V5 preflight and individual owner approval. Full LP/migration settlement and independent Mainnet review remain incomplete.",
   "transportVerifiedUtc": "2026-11-01T03:15:51.088Z",
   "singleAttemptTransportVerified": true,
-  "readyForSeparateOwnerApproval": true,
-  "proofCurrentlyFresh": true,
+  "readyForSeparateOwnerApproval": false,
+  "proofCurrentlyFresh": false,
   "transportReadyForReview": true,
-  "providerRateLimitResolved": true
+  "providerRateLimitResolved": true,
+  "latestRealTransactionObservedUtc": "2026-11-01T04:27:12.494Z",
+  "actualFinancialSignatureVerifiedOnTestnet": true,
+  "firstMinterDeployedAndFinalized": true,
+  "lastRealExternalWalletId": 2147483645,
+  "lastRealSeqnoAfter": 1
 }

@@ -2108,3 +2108,9 @@ Fixed missing server-side X-API-Key using owner's Pages-only encrypted TONCENTER
 ## Owner-authorized supervised transaction #1 preparation
 
 Implemented exact Testnet-only prepare/review/explicit-request panel, finite preparation scope, server-generated trace-verified fingerprint approvals and atomic prepared-approval claims in the existing namespace.83 distinct local tests and30 public checks passed. Contracts and production unchanged. Owner proof/financial confirmation pending at this checkpoint; no real transaction claimed successful. See [supervised minter report](supervised-minter-one.md). No automatic transaction#2 or Mainnet authorization.
+
+## First genuine Testnet deployment finalized
+
+ANLTEST minter deployment finalized and independently verified against TON Center and TonAPI. Actual V5 signature/network wallet ID, exact one-message StateInit, code/data/admin/supply0 and fee conservation passed. Actual debit0.106876955 Testnet TON; minter balance0.099966866TON; operator balance1.893123044TON, seqno1. Source83 local regression cases passed separately from real chain evidence. No retry or transaction#2. Finite preparation scope expired; lifetime lock preserved. Mainnet remains blocked. See [execution report](supervised-minter-one.md) and testnet-minter-one-finalized.json.
+
+Read-only Curve transaction#2 proposal also simulated successfully from active V5 seqno1: attachment0.10TON, modeled total0.117022106TON. This is simulation evidence only; no signing executor or financial request for#2 is enabled. The public Testnet page displays the historical finalized first-deployment receipt.

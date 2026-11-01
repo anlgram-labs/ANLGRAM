@@ -31,7 +31,7 @@
           const feature=wallet.device?.features?.find(f=>f==='SendTransaction'||f?.name==='SendTransaction');
           const app=String(wallet.device?.appName||'no declarada').slice(0,80),appVersion=String(wallet.device?.appVersion||'no declarada').slice(0,40);
           const limit=typeof feature==='object'&&Number.isSafeInteger(feature.maxMessages)?String(feature.maxMessages):'no declarado';
-          text('Propiedad verificada hasta '+new Date(result.expiresAt*1000).toISOString()+(config.minterTransactionOnePreparationEnabled?'. Solo transacción #1 supervisada; operaciones generales bloqueadas. Wallet declarada: ':'. Firma financiera bloqueada. Wallet declarada: ')+app+' '+appVersion+'. Capacidad SendTransaction declarada: '+Boolean(feature)+', máximo de mensajes: '+limit+'. No se ha probado ninguna firma transaccional.');
+          text('Propiedad verificada hasta '+new Date(result.expiresAt*1000).toISOString()+(config.minterTransactionOnePreparationEnabled?'. Solo transacción #1 supervisada; operaciones generales bloqueadas. Wallet declarada: ':'. Firma financiera bloqueada. Wallet declarada: ')+app+' '+appVersion+'. Capacidad SendTransaction declarada: '+Boolean(feature)+', máximo de mensajes: '+limit+'. La conexión no solicita transacciones; consulta el comprobante histórico por separado.');
         }
       }catch{if(current===version)text('Prueba rechazada o expirada. Desconecta y vuelve a conectar.');}
     });
