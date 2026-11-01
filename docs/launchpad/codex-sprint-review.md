@@ -1,5 +1,54 @@
 # MemeLabs isolated sprint: review notes
 
+## Final custom domain, V5 ownership and balance API correction — 2026-10-31
+
+`https://testnet.anlgram.com` is live with valid hostname-verified HTTPS. Public DNS
+resolves CNAME `testnet` → `anlgram-testnet-preparation.pages.dev`, TTL 1800. Owner
+added the record; this agent changed no DNS/nameservers. Cloudflare reports domain,
+verification and validation active. Certificate SAN is the exact hostname, expires
+2027-01-30. A local negative DNS cache was bypassed only in the verification script
+using public resolver 1.1.1.1; SNI/certificate verification stayed enabled, and no
+hosts/OS DNS settings were changed. Browser loaded the custom domain normally.
+
+Real owner V5R1 Testnet `ton_proof` passed independently on the exact custom domain,
+displaying expiry `2026-11-01T01:53:56.000Z`; authenticated disconnect cleared the
+UI. Evidence is sanitized in [testnet-domain-owner-proof.json](testnet-domain-owner-proof.json).
+Persistent single-use challenge storage and atomic consumption remain in the same
+external Durable Object; no storage replacement or permission bypass. The exact
+operator/minter match the approved V5 candidate. A proof of ownership is not
+transaction authorization and must be refreshed after expiry.
+
+Fixed demonstrated 503: Cloudflare Workers does not support Fetch
+`redirect:'error'`, throwing TypeError before contacting TON Center. The isolated
+Pages Function now uses `redirect:'manual'` and rejects non-2xx including redirects.
+See [official runtime specification](https://developers.cloudflare.com/workers/runtime-apis/request/).
+No redirect following, Mainnet endpoint, credentials reuse, API proxy or financial
+operation was added. Added regressions for exact read-only Testnet RPC/precision,
+redirect rejection, malformed data, 429 and transport failure. Public API now
+returns 200; browser displayed **1.999999999 Testnet TON**, uninitialized operator.
+The funding arrived externally; this agent sent no transactions.
+
+Final focused results: **24 unit cases passed, 0 failed**, **1 actual cross-Worker
+workerd/Durable Object integration passed, 0 failed**, Pages build passed;
+**27 actual custom-domain DNS/TLS/asset/manifest/proof-rejection/network/closed-route/
+live-balance checks passed**. The byte checker was corrected to concatenate binary
+chunks before hashing UTF-8 assets, rather than corrupt split multibyte sequences.
+No tests were weakened. [Public evidence](testnet-domain-verification.json) contains
+no owner signatures/cookies/challenges/keys. These are not TON deployment results.
+
+Fresh invalid-zero-signature fee simulation (no signature or broadcast): sender
+fees **0.006876937 TON** including forwarding/storage/gas; attachment 0.1 yields
+**0.106876937 TON estimated source debit**. Destination fee array is empty and
+end-to-end execution remains unverified; no guaranteed maximum is claimed. All
+core/dependent Testnet contracts remain uninitialized. Original V5 source/bytecode,
+StateInit, LP settings, production UI/Worker/API credentials, donation and economics
+are unchanged. PRs remain unchanged; fixes stay in `codex/testnet-pages-hosting`.
+
+No manual domain activation remains. Before the first minter deployment: fresh
+unexpired domain proof and chain/seqno checks, complete execution/debit-limit review
+and separate owner authorization for the exact V5 transaction #1. Migration/LP
+financial gates and Mainnet remain blocked. No TON spent or contract deployed.
+
 ## Pages + Spaceship isolated Testnet release — 2026-10-31
 
 Dedicated branch `codex/testnet-pages-hosting`, preserving `473bd0f` and all PRs.

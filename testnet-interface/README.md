@@ -1,13 +1,16 @@
 # Isolated Testnet preparation — published on Cloudflare Pages
 
-Live origin: **https://anlgram-testnet-preparation.pages.dev/**. The project and
+Final live origin: **https://testnet.anlgram.com/**, DNS/CNAME and valid TLS verified.
+Cloudflare custom-domain verification/validation are active; certificate covers
+the exact hostname. No further manual activation is required.
+The separate **https://anlgram-testnet-preparation.pages.dev/** origin also works. The project and
 hostname were returned by the Cloudflare API, not guessed. Its independent
 production branch is `codex/testnet-pages-hosting`; it has no GitHub auto-deploy
 connection. This is not production `anlgram.com`.
 
-Real owner V5 Testnet connection and server-verified `ton_proof` passed on this
-origin; authenticated disconnect cleared the UI. Sanitized, expiring observation:
-`../docs/launchpad/testnet-pages-owner-proof.json`. No proof/session secrets saved.
+Real owner V5 Testnet connection and server-verified `ton_proof` passed independently
+on both origins; authenticated disconnect cleared the UI. Final-domain evidence:
+`../docs/launchpad/testnet-domain-owner-proof.json`. No proof/session secrets saved.
 This is not transaction approval; require a fresh proof before a future request.
 
 Pages advanced-mode Functions (`pages-entry.mjs` → `_worker.js`) reuse the reviewed
@@ -25,15 +28,13 @@ configuration, contract artifacts and transaction endpoints return 404.
 
 ## Minimum manual setup
 
-1. Pages custom domain **testnet.anlgram.com** is registered and awaiting DNS.
-   In Spaceship Advanced DNS add only **CNAME**, name **testnet**, target
-   **anlgram-testnet-preparation.pages.dev**, TTL **3600** (or provider default).
+1. Pages custom domain **testnet.anlgram.com** is active. Owner added **CNAME**,
+   name **testnet**, target **anlgram-testnet-preparation.pages.dev**, TTL **1800**.
    Do not change nameservers, apex/www, existing DNS, Workers or production keys.
    If `testnet` is already occupied when editing, stop and review that record.
-2. Wait for DNS propagation and Pages custom-domain certificate/status to become
-   active, then verify valid HTTPS and the domain-specific manifest at
-   `https://testnet.anlgram.com/tonconnect-manifest.json`. The custom URL is NOT
-   claimed working until those checks pass. No zone transfer is necessary.
+2. DNS/TLS activation is complete. The domain-specific manifest is at
+   `https://testnet.anlgram.com/tonconnect-manifest.json`. Repeat DNS/TLS checks
+   after future DNS/certificate changes. No zone transfer is necessary.
 3. For future maintenance, authenticate Wrangler using the existing Cloudflare
    account; never paste credentials into chat/source. Run `npm ci --ignore-scripts`,
    `npm test`, `npm run check:deploy`, `npm run build:pages`, then
@@ -49,8 +50,12 @@ configuration, contract artifacts and transaction endpoints return 404.
    the external Durable Object binding; preserve that namespace on redeploy.
 5. Run `node verify-pages.mjs` for public HTTPS/byte identity/manifest/closed-route
    checks and disposable unsigned proof rejection requests. Cookies and challenge
-   values are never written to evidence. `/api/operator` currently returns explicit
-   503/provider-unavailable; no fake balance or successful funding is shown.
+   values are never written to evidence. Run `node verify-domain.mjs` for the final
+   custom domain. `/api/operator` now returns real provider observations (200).
+   Root cause of the previous 503 was Workers rejecting `redirect:'error'` before
+   any upstream call. Manual mode with non-2xx rejection fixes it without allowing
+   redirects. Rate limits/transport failures still return explicit unavailable,
+   never a fabricated balance. No production credentials were reused.
 6. Owner selects **V5R1, Testnet, subwallet 0**, checks exact address below, then
    approves only the domain-bound `ton_proof` connection. No financial signature.
    A restored SDK connection never authenticates; restoration is disabled.

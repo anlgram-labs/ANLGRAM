@@ -1,5 +1,5 @@
 {
-  "observedUtc": "2026-10-31T22:39:21.881Z",
+  "observedUtc": "2026-11-01T01:53:32.758Z",
   "network": "-3",
   "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
   "officialWallet": {
@@ -15,12 +15,12 @@
       "financialOutcome": "NOT_VERIFIED",
       "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
       "status": "uninitialized",
-      "balanceNano": "0",
+      "balanceNano": "1999999999",
       "codeHash": null,
       "dataHash": null,
       "lastTransaction": {
-        "lt": "0",
-        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        "lt": "106780009000003",
+        "hash": "/v19NAuvdhVXqIQ/WcCW+K8F8hwCPBTmtST2GzApPco="
       }
     },
     "minter": {
@@ -150,21 +150,21 @@
   "signed": false,
   "broadcast": false,
   "fee": {
-    "observedUtc": "2026-10-31T22:39:38.903Z",
+    "observedUtc": "2026-11-01T01:53:50.182Z",
     "sourceFees": {
       "@type": "fees",
       "in_fwd_fee": 3532734,
-      "storage_fee": 0,
-      "gas_fee": 159668,
-      "fwd_fee": 0
+      "storage_fee": 1,
+      "gas_fee": 329268,
+      "fwd_fee": 3014934
     },
-    "sourceFeeNano": "3692402",
+    "sourceFeeNano": "6876937",
     "attachmentNano": "100000000",
-    "estimatedSourceDebitNano": "103692402",
+    "estimatedSourceDebitNano": "106876937",
     "destinationFees": [],
     "completeEndToEnd": false,
     "guaranteedMaximumDebitNano": null,
-    "estimateExpiry": 1793486497,
+    "estimateExpiry": 1793498148,
     "invalidZeroSignature": true,
     "limitation": "No source funding or actual recipient execution is inferred. Requote after owner verification/funding and simulate the exact external transaction before separate approval."
   },

@@ -68,13 +68,16 @@ async function route(request,env) {
   }
   // One fixed read-only provider call. Never forward caller URLs, RPC methods or BOCs.
   if (request.method==='GET' && path==='/api/operator') {
+    let reason='PROVIDER_TRANSPORT';
     try {
-      const response=await fetch(TESTNET_RPC+'/jsonRPC',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getAddressInformation',params:{address:OPERATOR}}),redirect:'error',signal:AbortSignal.timeout(8000)});
-      if (!response.ok) throw Error();
+      // Workers does not support redirect:'error': it throws before any I/O.
+      // Manual mode plus non-2xx rejection preserves the no-redirect policy.
+      const response=await fetch(TESTNET_RPC+'/jsonRPC',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getAddressInformation',params:{address:OPERATOR}}),redirect:'manual',signal:AbortSignal.timeout(8000)});
+      if (!response.ok) { reason='PROVIDER_HTTP_'+response.status; throw Error(); }
       const data=await response.json(), account=data.result;
-      if (data.ok!==true || !/^\d+$/.test(String(account?.balance))) throw Error();
+      if (data.ok!==true || !/^\d+$/.test(String(account?.balance))) { reason='PROVIDER_RESPONSE_REJECTED'; throw Error(); }
       return json({network:CHAIN,address:OPERATOR,balanceNano:String(account.balance),state:account.state,source:'TON Center Testnet',observedUtc:new Date().toISOString(),verification:'PROVIDER_OBSERVATION'});
-    } catch { return json({error:'Testnet provider unavailable; balance unknown'},503); }
+    } catch { return json({error:'Testnet provider unavailable; balance unknown',reason},503); }
   }
   if (request.method==='GET' && ['/', '/app.js', '/style.css', '/tonconnect-ui.min.js', '/icon.png'].includes(path)) return env.ASSETS.fetch(request);
   return json({error:'Unavailable; financial actions are disabled'},404);

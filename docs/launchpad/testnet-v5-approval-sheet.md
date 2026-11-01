@@ -1,5 +1,19 @@
 # V5 Testnet candidate — blocked, unsigned
 
+**Domain/API checkpoint update:** `https://testnet.anlgram.com` is active with
+valid TLS and an exact-domain manifest. Real V5 `ton_proof` and disconnect passed
+on this domain; a fresh proof is still required before any later execution.
+The balance API 503 was corrected (unsupported Workers `redirect:'error'` replaced
+by manual mode with redirect rejection). Latest Testnet operator balance:
+**1.999999999 TON**, wallet uninitialized; minter uninitialized. Fresh source-fee
+estimate: **0.006876937 TON**, plus unchanged attachment **0.100000000 TON** =
+**0.106876937 TON estimated**. Destination fees/execution remain unverified; no
+hard maximum or transaction approval is inferred. This supersedes the historical
+unfunded quote/readiness observations below. See
+[domain evidence](testnet-domain-verification.json),
+[owner evidence](testnet-domain-owner-proof.json), and
+[fresh fee observation](testnet-v5-observations.json). No signing/broadcast authorized.
+
 Preparation authorized; signing, spending, deployment and transaction #2 are not.
 Active registry: [active-testnet-candidate.json](active-testnet-candidate.json).
 All previous V4 transaction details/approvals are obsolete for execution; the

@@ -1,0 +1,142 @@
+{
+  "observedUtc": "2026-11-01T01:53:55.393Z",
+  "origin": "https://testnet.anlgram.com",
+  "dns": {
+    "resolver": "1.1.1.1",
+    "cname": [
+      "anlgram-testnet-preparation.pages.dev"
+    ],
+    "ipv4": [
+      "172.66.44.224",
+      "172.66.47.32"
+    ]
+  },
+  "checks": [
+    {
+      "name": "expected DNS CNAME",
+      "passed": true
+    },
+    {
+      "name": "HTTP redirects to HTTPS",
+      "passed": true
+    },
+    {
+      "name": "HTTPS asset index.html",
+      "passed": true
+    },
+    {
+      "name": "exact deployed bytes index.html",
+      "passed": true
+    },
+    {
+      "name": "HTTPS asset app.js",
+      "passed": true
+    },
+    {
+      "name": "exact deployed bytes app.js",
+      "passed": true
+    },
+    {
+      "name": "HTTPS asset style.css",
+      "passed": true
+    },
+    {
+      "name": "exact deployed bytes style.css",
+      "passed": true
+    },
+    {
+      "name": "HTTPS asset tonconnect-ui.min.js",
+      "passed": true
+    },
+    {
+      "name": "exact deployed bytes tonconnect-ui.min.js",
+      "passed": true
+    },
+    {
+      "name": "HTTPS asset icon.png",
+      "passed": true
+    },
+    {
+      "name": "exact deployed bytes icon.png",
+      "passed": true
+    },
+    {
+      "name": "exact domain-bound manifest",
+      "passed": true
+    },
+    {
+      "name": "approved V5 Testnet configuration",
+      "passed": true
+    },
+    {
+      "name": "persistent domain challenge",
+      "passed": true
+    },
+    {
+      "name": "secure origin-specific cookie",
+      "passed": true
+    },
+    {
+      "name": "forged proof rejected on -239",
+      "passed": true
+    },
+    {
+      "name": "forged proof rejected on -3",
+      "passed": true
+    },
+    {
+      "name": "pages.dev Origin cannot use custom-domain challenge",
+      "passed": true
+    },
+    {
+      "name": "Mainnet query override blocked",
+      "passed": true
+    },
+    {
+      "name": "closed route /api/sendTransaction",
+      "passed": true
+    },
+    {
+      "name": "closed route /api/sendBoc",
+      "passed": true
+    },
+    {
+      "name": "closed route /api/deploy",
+      "passed": true
+    },
+    {
+      "name": "closed route /_worker.js",
+      "passed": true
+    },
+    {
+      "name": "closed route /proof.mjs",
+      "passed": true
+    },
+    {
+      "name": "closed route /wrangler.toml",
+      "passed": true
+    },
+    {
+      "name": "live operator balance",
+      "passed": true
+    }
+  ],
+  "financialSigningEnabled": false,
+  "broadcasts": 0,
+  "tls": {
+    "authorized": true,
+    "subjectAltName": "DNS:testnet.anlgram.com",
+    "expires": "Jan 30 01:47:07 2027 GMT"
+  },
+  "balance": {
+    "http": 200,
+    "network": "-3",
+    "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "balanceNano": "1999999999",
+    "state": "uninitialized",
+    "source": "TON Center Testnet",
+    "observedUtc": "2026-11-01T01:53:59.807Z",
+    "verification": "PROVIDER_OBSERVATION"
+  },
+  "ownershipEvidence": "testnet-domain-owner-proof.json"
+}

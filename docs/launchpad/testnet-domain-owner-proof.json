@@ -1,0 +1,19 @@
+{
+  "recordedUtc": "2026-11-01T01:55:11.137Z",
+  "origin": "https://testnet.anlgram.com",
+  "network": "-3",
+  "operator": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+  "walletVersion": "V5R1",
+  "walletId": 2147483645,
+  "ownerConfirmedConnection": true,
+  "cryptographicTonProofVerified": true,
+  "verificationDisplayedExpiresAt": "2026-11-01T01:53:56.000Z",
+  "source": "Actual browser on exact custom domain; reviewed server ton_proof success and owner confirmation",
+  "authenticatedDisconnectUiCleared": true,
+  "financialSigningEnabled": false,
+  "financialSignaturesRequested": 0,
+  "blockchainBroadcasts": 0,
+  "spentTON": "0",
+  "sensitiveProofDataStored": false,
+  "scope": "Historical expiring ownership observation only. Fresh proof and separate transaction-specific approval required before financial requests."
+}
