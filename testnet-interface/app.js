@@ -48,6 +48,15 @@
       }catch{text('No se pudo preparar la prueba. No firmes transacciones.');}finally{start.disabled=false;}
     };
     disconnect.onclick=async()=>{try{await ui.disconnect();}catch{text('Desconexión no confirmada.');}};
+    document.getElementById('curve-report-button').onclick=async()=>{
+      const button=document.getElementById('curve-report-button'),output=document.getElementById('curve-report');button.disabled=true;output.textContent='Consultando informe de solo lectura…';
+      try{const response=await fetch('/curve-two-preflight.json',{cache:'no-store'}),j=await response.json();
+        if(!response.ok||j.network!=='-3'||j.operation!=='ANLTEST_CURVE_TX2'||j.readyForSigning!==false||j.signed!==false||j.broadcast!==false||j.stepSpecificSigningExecutorEnabled!==false)throw Error();
+        const ton=value=>{const n=BigInt(value);return String(n/1000000000n)+'.'+String(n%1000000000n).padStart(9,'0');};
+        const time=new Date(j.observedUtc).toLocaleString('es',{timeZone:'America/New_York',timeZoneName:'short'});
+        output.textContent='Informe observado: '+time+' (Nueva York). No es una cotización vigente ni autorización.\nMinter '+j.minter.metadata.symbol+': activo, suministro '+j.minter.supply+', decimales '+j.minter.metadata.decimals+'. Admin V5; getters y código compatibles.\nCurve aún sin inicializar. Destino: '+j.destination+'\nStateInit SHA256: '+j.stateInitHash+'\nAdjunto propuesto: '+ton(j.attachmentNano)+' Testnet TON.\nFees modelados: '+ton(j.simulation.modeledSenderFeesNano)+' TON; débito total modelado: '+ton(j.simulation.modeledSenderDebitNano)+' TON.\n0.12 TON es una propuesta de política, NO un máximo garantizado ni una aprobación.\nSandbox: '+(j.sandbox?.evidence==='LOCAL_SOURCE_COMPILED_SANDBOX_ONLY'?'despacho local verificado; no cambia la blockchain':'ver detalle técnico')+'. Emulación Testnet: completa, no es despliegue.\nFirma BLOQUEADA: faltan prueba de propiedad fresca, autorización individual y ejecutor específico #2. Migración y retiros LP siguen bloqueados.';
+      }catch{output.textContent='Informe no disponible o rechazado. No se sustituyen datos por muestras ni se solicita firma.';}finally{button.disabled=false;}
+    };
     document.getElementById('refresh').onclick=async()=>{
       const el=document.getElementById('balance');el.textContent='Consultando Testnet…';
       try{

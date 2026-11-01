@@ -1,38 +1,95 @@
 {
-  "observedUtc": "2026-11-01T04:32:06.255Z",
+  "observedUtc": "2026-11-01T05:05:41.798Z",
   "network": "-3",
-  "operation": "PROPOSED_CURVE_DEPLOYMENT_TX2",
-  "status": "SIMULATION_ONLY_NO_WALLET_REQUEST",
+  "operation": "ANLTEST_CURVE_TX2",
+  "status": "TECHNICAL_READONLY_PREFLIGHT_PASS_FINANCIAL_SIGNING_BLOCKED",
   "operator": "0QCBGet2_2SvVUrX_MZL0w0OuPqlbJtlHT3nbpWaEH2QYbBR",
   "operatorSeqno": 1,
   "operatorBalanceNano": "1893123044",
+  "operatorCodeHash": "20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f",
+  "operatorDataHash": "8e81171a05b561cc3b7be81be60ffda079495902da8021381d0b8963f4a6fc08",
+  "operatorLastTransaction": {
+    "@type": "internal.transactionId",
+    "lt": "106801931000001",
+    "hash": "G8O0tt/FFcSVVy0HcRRESuz9RXPriTZo17EFAnBOnB4="
+  },
   "destination": "kQAfBL9a-9BPmFH6GVUYoUz0byuToTRHAwFAgqZXAyRo7kOW",
   "attachmentNano": "100000000",
   "stateInitHash": "1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee",
   "codeHash": "421b1028536b49f6d79eadf872076cc7e7c9afde2aeca0e2868b2706449c3627",
   "dataHash": "e2f3912b606e55b0cbd88805f0919b5072f69649ded2ce82a0c9bf1c6b768ec4",
+  "minter": {
+    "address": "kQA5PEDpb0UPGsGUD0jByO9qNFd6PqyXPpMkTUyngd5-IYq8",
+    "state": "active",
+    "codeHash": "90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec",
+    "dataHash": "0e8b1bae1b7c8f68c4d713b24b1a7c0542c56c44f199987ad3360a78991f684a",
+    "supply": "0",
+    "admin": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "balanceNano": "99966866",
+    "metadata": {
+      "name": "ANLGRAM Testnet Settlement",
+      "symbol": "ANLTEST",
+      "decimals": "9"
+    },
+    "onChainGetterExitCode": 0,
+    "independentTonapiCodeDataBalanceConfirmed": true,
+    "settlementWalletCodeHash": "e21136c0ea3074a48addec49215af2d8d20125b4cc61a564a1a37d37667b58a2",
+    "protocolCompatibility": "PINNED_MASTER_AND_SETTLEMENT_WALLET_MATCH_CURVE_CODE",
+    "authorityRenounced": false
+  },
+  "initialCurve": {
+    "state": 0,
+    "protocolFeeBps": 100,
+    "treasury": "0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d",
+    "realTonReserveNano": "0",
+    "allocatedCurveTokenUnits": "800000000000000000",
+    "accruedProtocolFeesNano": "0",
+    "pendingRefundTokenUnits": "0",
+    "virtualTonNano": "166666666666",
+    "virtualTokenUnits": "266666666665600000",
+    "graduationThresholdNano": "500000000000",
+    "dexAllocationUnits": "200000000000000000",
+    "allocationIsNotProofOfMintedCustody": true,
+    "requiresInitializationMintAndRenounce": true
+  },
   "simulation": {
     "complete": true,
-    "block": 95015847,
-    "traceSha256": "6d616b0ac102ffef1765945288a31eb0d4e0c4f24b2c49945a840374b47477a6",
+    "block": 95020892,
+    "traceSha256": "30776f33d932a9de7c5b1fc3e90ba078bead9b3ddff6d97965a05da616734ac3",
     "signatureCheckSkippedOnlyInEmulator": true,
     "externalSourceStateInitIncluded": false,
     "internalMessages": 1,
-    "modeledSenderDebitNano": "117022106",
-    "modeledSenderFeesNano": "17022106",
+    "seqnoBefore": 1,
+    "seqnoAfter": 2,
+    "modeledSenderDebitNano": "117022198",
+    "modeledSenderFeesNano": "17022198",
     "curveFeesFromAttachmentNano": "43268",
-    "curveBalanceAfterNano": "99956732"
+    "curveBalanceAfterNano": "99956732",
+    "operatorBalanceAfterNano": "1776100846",
+    "hardMaximumDebitEnforced": false
   },
-  "providerAuthentication": {
-    "accountReads": "PROTECTED_SERVER_READS",
-    "curveReadAndEmulation": "ANONYMOUS_PACED_READONLY"
+  "providerAuthentication": "TESTNET_KEY_ACCEPTED_FOR_ALL_FIVE_OBSERVATIONS",
+  "ownership": {
+    "freshProofVerified": false,
+    "lastObservedProofExpiresAt": "2026-11-01T04:22:31.000Z",
+    "status": "FRESH_DOMAIN_BOUND_PROOF_REQUIRED_WHEN_OWNER_RETURNS"
   },
-  "requiresFreshProof": true,
   "requiresSeparateOwnerApproval": true,
   "stepSpecificSigningExecutorEnabled": false,
   "readyForSigning": false,
   "signed": false,
   "broadcast": false,
   "spentNano": "0",
-  "note": "Do not reuse transaction #1 authorization, fingerprint or transport intent. This proposal is not a live deployment or a new spending authorization."
+  "policy": {
+    "attachmentNano": "100000000",
+    "maximumTotalPolicyProposalNano": "120000000",
+    "policyApprovedForTransactionTwo": false,
+    "hardMaximumDebitEnforced": false
+  },
+  "limitations": [
+    "Local Sandbox and provider emulation are development evidence, not Curve deployment.",
+    "TON Connect transaction-one authorization/lock/intent cannot be reused for transaction two.",
+    "Fresh proof, state/fee refresh, step-specific one-attempt authorization and owner native-wallet approval required.",
+    "Migration and LP withdrawals remain blocked."
+  ]
 }

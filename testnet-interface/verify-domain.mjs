@@ -27,7 +27,7 @@ function request(path,{method='GET',headers={},body,plain=false}={}){
 }
 check('expected DNS CNAME',cname.includes('anlgram-testnet-preparation.pages.dev'));
 const redirect=await request('/',{plain:true});check('HTTP redirects to HTTPS',[301,302,307,308].includes(redirect.status)&&redirect.headers.location===origin+'/');
-for(const file of ['index.html','app.js','transaction-one.js','style.css','tonconnect-ui.min.js','icon.png']){
+for(const file of ['index.html','app.js','transaction-one.js','style.css','tonconnect-ui.min.js','icon.png','curve-two-preflight.json']){
  const r=await request(file==='index.html'?'/':'/'+file);check('HTTPS asset '+file,r.status===200);
  check('exact deployed bytes '+file,createHash('sha256').update(r.bytes).digest('hex')===createHash('sha256').update(readFileSync(new URL('public-pages/'+file,import.meta.url))).digest('hex'));
 }

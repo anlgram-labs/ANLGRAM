@@ -1,0 +1,26 @@
+{
+  "observedUtc": "2026-11-01T05:02:26.254Z",
+  "evidence": "LOCAL_SOURCE_COMPILED_SANDBOX_ONLY",
+  "networkStateChanged": false,
+  "signatureVerificationSkippedOnlyInEmulator": true,
+  "compiledContracts": {
+    "anlgram-bonding-curve": "421b1028536b49f6d79eadf872076cc7e7c9afde2aeca0e2868b2706449c3627",
+    "anlgram-launchpad-jetton-minter": "90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec",
+    "anlgram-settlement-wallet": "e21136c0ea3074a48addec49215af2d8d20125b4cc61a564a1a37d37667b58a2"
+  },
+  "sourceSeqnoBefore": 1,
+  "sourceSeqnoAfter": 2,
+  "transactions": 2,
+  "internalDeploymentMessages": 1,
+  "curveState": 0,
+  "curveDestination": "kQAfBL9a-9BPmFH6GVUYoUz0byuToTRHAwFAgqZXAyRo7kOW",
+  "curveDataHash": "e2f3912b606e55b0cbd88805f0919b5072f69649ded2ce82a0c9bf1c6b768ec4",
+  "localSenderDebitNano": "117022070",
+  "localSenderFeesNano": "17022070",
+  "localCurveGasNano": "43268",
+  "localCurveBalanceNano": "99956732",
+  "realLiquidityReserveNano": "0",
+  "logicalTokenAllocationIsNotMintedCustody": true,
+  "minterSupplyUnchanged": "0",
+  "mainnetEnabled": false
+}
