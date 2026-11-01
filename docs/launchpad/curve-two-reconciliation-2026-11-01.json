@@ -1,0 +1,1210 @@
+{
+  "observedUtc": "2026-11-01T23:45:34.855Z",
+  "network": "-3",
+  "scope": "READ_ONLY_RECONCILIATION_AND_PASSIVE_DESIGN_REVIEW",
+  "startingCommit": "5657bc5",
+  "operation": "ANLTEST_CURVE_TX2",
+  "fingerprint": "508c80f62122112cbda6af7a1fdad53a4a1bc86bad009bdd66f212988055bb28",
+  "checks": {
+    "sameBalance": true,
+    "sameCode": true,
+    "sameData": true,
+    "sameLastTransaction": true,
+    "sameMasterBlockRoot": true,
+    "sameMasterBlockFile": true,
+    "blockTimeAfterRequestExpiry": true,
+    "officialV5R1CodeHashMatches": true,
+    "canonicalOldFingerprintMatches": true,
+    "persistentLockUnchanged": true,
+    "historyLatestHashMatchesBothProviders": true,
+    "sourceHistoryAllBeforeClaim": true,
+    "curveHistoryEmpty": true,
+    "passiveCostCrossCheckedWithProviderEvent": true,
+    "sourceCodeUnchangedSinceAttempt": true,
+    "sourceDataUnchangedSinceAttempt": true,
+    "sourceLastTransactionUnchangedSinceAttempt": true,
+    "sourceBalanceUnchangedSinceAttempt": true,
+    "sourceSeqnoAndKeyMatch": true,
+    "transactionBocHashesAndHistoryLinksVerified": true,
+    "historyVerifiedToGenesis": true
+  },
+  "providers": {
+    "toncenter": {
+      "url": "https://testnet.anlgram.com/api/preflight/accounts",
+      "http": 200,
+      "authentication": "TESTNET_KEY_ACCEPTED",
+      "observationStatus": "FRESH_PROVIDER_OBSERVATION",
+      "account": {
+        "@type": "raw.fullAccountState",
+        "balance": "5893016464",
+        "extra_currencies": [],
+        "last_transaction_id": {
+          "@type": "internal.transactionId",
+          "lt": "106958981000003",
+          "hash": "0uj9UjPri/BaQoYF6jc11nobUHQYJrtplhVuxJAg3CE="
+        },
+        "block_id": {
+          "@type": "ton.blockIdExt",
+          "workchain": -1,
+          "shard": "-9223372036854775808",
+          "seqno": 95188622,
+          "root_hash": "GUT8YhdyGgtX66k/IW4ai6etEeeDy/3YNck7AZMs7uc=",
+          "file_hash": "IQOQ5C9V/PdDU8VGDFa+S3UCwX/M1tS64z+bUT3peOo="
+        },
+        "code": "te6cckECFAEAAoEAART/APSkE/S88sgLAQIBIAIDAgFIBAUBAvIOAtzQINdJwSCRW49jINcLHyCCEGV4dG69IYIQc2ludL2wkl8D4IIQZXh0brqOtIAg1yEB0HTXIfpAMPpE+Cj6RDBYvZFb4O1E0IEBQdch9AWDB/QOb6ExkTDhgEDXIXB/2zzgMSDXSYECgLmRMOBw4hAPAgEgBgcCASAICQAZvl8PaiaECAoOuQ+gLAIBbgoLAgFIDA0AGa3OdqJoQCDrkOuF/8AAGa8d9qJoQBDrkOuFj8AAF7Ml+1E0HHXIdcLH4AARsmL7UTQ1woAgAR4g1wsfghBzaWduuvLgin8PAeaO8O2i7fshgwjXIgKDCNcjIIAg1yHTH9Mf0x/tRNDSANMfINMf0//XCgAK+QFAzPkQmiiUXwrbMeHywIffArNQB7Dy0IRRJbry4IVQNrry4Ib4I7vy0IgikvgA3gGkf8jKAMsfAc8Wye1UIJL4D95w2zzYEAP27aLt+wL0BCFukmwhjkwCIdc5MHCUIccAs44tAdcoIHYeQ2wg10nACPLgkyDXSsAC8uCTINcdBscSwgBSMLDy0InXTNc5MAGk6GwShAe78uCT10rAAPLgk+1V4tIAAcAAkVvg69csCBQgkXCWAdcsCBwS4lIQseMPINdKERITAJYB+kAB+kT4KPpEMFi68uCR7UTQgQFB1xj0BQSdf8jKAEAEgwf0U/Lgi44UA4MH9Fvy4Iwi1woAIW4Bs7Dy0JDiyFADzxYS9ADJ7VQAcjDXLAgkji0h8uCS0gDtRNDSAFETuvLQj1RQMJExnAGBAUDXIdcKAPLgjuLIygBYzxbJ7VST8sCN4gAQk1vbMeHXTNCon9ZI",
+        "data": "te6cckEBAQEAKwAAUYAAAAC////+ylAIX4mF/nd+5dNPjuDBMBO/DR6DnbGW6rxc4cWhDQSg9AFjJQ==",
+        "frozen_hash": "",
+        "sync_utime": 1793576541,
+        "state": "active",
+        "suspended": false
+      }
+    },
+    "tonapi": {
+      "operator": {
+        "url": "https://testnet.tonapi.io/v2/blockchain/accounts/0%3A8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+        "http": 200,
+        "observedUtc": "2026-11-01T23:45:26.887Z",
+        "body": {
+          "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+          "balance": 5893016464,
+          "code": "b5ee9c7201021401000281000114ff00f4a413f4bcf2c80b01020120020302014804050102f20e02dcd020d749c120915b8f6320d70b1f2082106578746ebd21821073696e74bdb0925f03e082106578746eba8eb48020d72101d074d721fa4030fa44f828fa443058bd915be0ed44d0810141d721f4058307f40e6fa1319130e18040d721707fdb3ce03120d749810280b99130e070e2100f020120060702012008090019be5f0f6a2684080a0eb90fa02c02016e0a0b0201480c0d0019adce76a2684020eb90eb85ffc00019af1df6a2684010eb90eb858fc00017b325fb51341c75c875c2c7e00011b262fb513435c28020011e20d70b1f82107369676ebaf2e08a7f0f01e68ef0eda2edfb218308d722028308d723208020d721d31fd31fd31fed44d0d200d31f20d31fd3ffd70a000af90140ccf9109a28945f0adb31e1f2c087df02b35007b0f2d0845125baf2e0855036baf2e086f823bbf2d0882292f800de01a47fc8ca00cb1f01cf16c9ed542092f80fde70db3cd81003f6eda2edfb02f404216e926c218e4c0221d73930709421c700b38e2d01d72820761e436c20d749c008f2e09320d74ac002f2e09320d71d06c712c2005230b0f2d089d74cd7393001a4e86c128407bbf2e093d74ac000f2e093ed55e2d20001c000915be0ebd72c08142091709601d72c081c12e25210b1e30f20d74a111213009601fa4001fa44f828fa443058baf2e091ed44d0810141d718f405049d7fc8ca0040048307f453f2e08b8e14038307f45bf2e08c22d70a00216e01b3b0f2d090e2c85003cf1612f400c9ed54007230d72c08248e2d21f2e092d200ed44d0d2005113baf2d08f54503091319c01810140d721d70a00f2e08ee2c8ca0058cf16c9ed5493f2c08de20010935bdb31e1d74cd0",
+          "data": "b5ee9c7201010101002b00005180000000bffffffeca50085f8985fe777ee5d34f8ee0c13013bf0d1e839db196eabc5ce1c5a10d04a0",
+          "last_transaction_lt": 106958981000003,
+          "last_transaction_hash": "d2e8fd5233eb8bf05a428605ea3735d67a1b50741826bb6996156ec49020dc21",
+          "status": "active",
+          "storage": {
+            "used_cells": 22,
+            "used_bits": 5020,
+            "used_public_cells": 0,
+            "last_paid": 1793569465,
+            "due_payment": 0
+          }
+        }
+      },
+      "curve": {
+        "url": "https://testnet.tonapi.io/v2/blockchain/accounts/0%3A1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee",
+        "http": 404,
+        "observedUtc": "2026-11-01T23:45:28.245Z",
+        "body": {
+          "error": "entity not found"
+        }
+      },
+      "anchoredBlock": {
+        "url": "https://testnet.tonapi.io/v2/blockchain/blocks/(-1%2C8000000000000000%2C95188622)",
+        "http": 200,
+        "observedUtc": "2026-11-01T23:45:32.283Z",
+        "body": {
+          "tx_quantity": 3,
+          "value_flow": {
+            "from_prev_blk": {
+              "grams": 5197409853584607000,
+              "other": [
+                {
+                  "id": -17,
+                  "value": "1000000000000"
+                },
+                {
+                  "id": 100,
+                  "value": "1400000000"
+                },
+                {
+                  "id": 239,
+                  "value": "666666666666"
+                }
+              ]
+            },
+            "to_next_blk": {
+              "grams": 5197409856284607000,
+              "other": [
+                {
+                  "id": -17,
+                  "value": "1000000000000"
+                },
+                {
+                  "id": 100,
+                  "value": "1400000000"
+                },
+                {
+                  "id": 239,
+                  "value": "666666666666"
+                }
+              ]
+            },
+            "imported": {
+              "grams": 0,
+              "other": []
+            },
+            "exported": {
+              "grams": 0,
+              "other": []
+            },
+            "fees_collected": {
+              "grams": 2700000000,
+              "other": []
+            },
+            "fees_imported": {
+              "grams": 1000000000,
+              "other": []
+            },
+            "recovered": {
+              "grams": 2700000000,
+              "other": []
+            },
+            "created": {
+              "grams": 1700000000,
+              "other": []
+            },
+            "minted": {
+              "grams": 0,
+              "other": []
+            }
+          },
+          "workchain_id": -1,
+          "shard": "8000000000000000",
+          "seqno": 95188622,
+          "root_hash": "1944fc6217721a0b57eba93f216e1a8ba7ad11e783cbfdd835c93b01932ceee7",
+          "file_hash": "210390e42f55fcf74353c5460c56be4b7502c17fccd6d4bae33f9b513de978ea",
+          "global_id": -3,
+          "version": 0,
+          "after_merge": false,
+          "before_split": false,
+          "after_split": false,
+          "want_split": false,
+          "want_merge": true,
+          "key_block": false,
+          "gen_utime": 1793576542,
+          "start_lt": 106976699000000,
+          "end_lt": 106976699000004,
+          "vert_seqno": 0,
+          "gen_catchain_seqno": 600463,
+          "min_ref_mc_seqno": 95188619,
+          "prev_key_block_seqno": 95186651,
+          "gen_software_version": 17,
+          "gen_software_capabilities": 1006,
+          "prev_refs": [
+            "(-1,8000000000000000,95188621)"
+          ],
+          "in_msg_descr_length": 1,
+          "out_msg_descr_length": 0,
+          "rand_seed": "b121d98848a31670ed01309376a76a69e5b0b4b0772d15dbd41fa0c2211c7881",
+          "created_by": "886596526aaf20073bd93bf975a97538be5694c628681807a51606478badbe41"
+        }
+      },
+      "masterchainHead": {
+        "url": "https://testnet.tonapi.io/v2/blockchain/masterchain-head",
+        "http": 200,
+        "observedUtc": "2026-11-01T23:45:33.637Z",
+        "body": {
+          "tx_quantity": 3,
+          "value_flow": {
+            "from_prev_blk": {
+              "grams": 5197411141554815000,
+              "other": [
+                {
+                  "id": -17,
+                  "value": "1000000000000"
+                },
+                {
+                  "id": 100,
+                  "value": "1400000000"
+                },
+                {
+                  "id": 239,
+                  "value": "666666666666"
+                }
+              ]
+            },
+            "to_next_blk": {
+              "grams": 5197411144254815000,
+              "other": [
+                {
+                  "id": -17,
+                  "value": "1000000000000"
+                },
+                {
+                  "id": 100,
+                  "value": "1400000000"
+                },
+                {
+                  "id": 239,
+                  "value": "666666666666"
+                }
+              ]
+            },
+            "imported": {
+              "grams": 0,
+              "other": []
+            },
+            "exported": {
+              "grams": 0,
+              "other": []
+            },
+            "fees_collected": {
+              "grams": 2700000000,
+              "other": []
+            },
+            "fees_imported": {
+              "grams": 1000000000,
+              "other": []
+            },
+            "recovered": {
+              "grams": 2700000000,
+              "other": []
+            },
+            "created": {
+              "grams": 1700000000,
+              "other": []
+            },
+            "minted": {
+              "grams": 0,
+              "other": []
+            }
+          },
+          "workchain_id": -1,
+          "shard": "8000000000000000",
+          "seqno": 95189099,
+          "root_hash": "bb5c6f7ea096e08a4afccdf2ad1d79ba51b998bd352b8ce714fc68b59f084000",
+          "file_hash": "8c7c27e454395d19776cbf359192e3e8882a7a94699e3ce6bb63233e6a597e70",
+          "global_id": -3,
+          "version": 0,
+          "after_merge": false,
+          "before_split": false,
+          "after_split": false,
+          "want_split": false,
+          "want_merge": true,
+          "key_block": false,
+          "gen_utime": 1793576733,
+          "start_lt": 106977176000000,
+          "end_lt": 106977176000004,
+          "vert_seqno": 0,
+          "gen_catchain_seqno": 600463,
+          "min_ref_mc_seqno": 95189096,
+          "prev_key_block_seqno": 95186651,
+          "gen_software_version": 17,
+          "gen_software_capabilities": 1006,
+          "prev_refs": [
+            "(-1,8000000000000000,95189098)"
+          ],
+          "in_msg_descr_length": 1,
+          "out_msg_descr_length": 0,
+          "rand_seed": "c71c73d7d33506c44069f33ca4b977db0bd3dad8761946cb44bf522ea9e9f2fe",
+          "created_by": "2d9462851fa4119a0b01d206122486d6df7c23159bbae37a17982d14c818df96"
+        }
+      },
+      "operatorHistory": {
+        "url": "https://testnet.tonapi.io/v2/blockchain/accounts/0%3A8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061/transactions?limit=100&sort_order=desc",
+        "http": 200,
+        "observedUtc": "2026-11-01T23:45:29.612Z",
+        "body": {
+          "transactions": [
+            {
+              "hash": "d2e8fd5233eb8bf05a428605ea3735d67a1b50741826bb6996156ec49020dc21",
+              "lt": 106958981000003,
+              "account": {
+                "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+                "is_scam": false,
+                "is_wallet": true
+              },
+              "success": true,
+              "utime": 1793569465,
+              "orig_status": "active",
+              "end_status": "active",
+              "total_fees": 53144,
+              "end_balance": 5893016464,
+              "transaction_type": "TransOrd",
+              "state_update_old": "da72d5b4e19977ce4ed364b45311eaf3eef1b0dd63092450ef2ec38a9e9af9a6",
+              "state_update_new": "2c9a3c46e7d68b6dcfa350699e82306aca04a009a957e53ff71725c082593058",
+              "in_msg": {
+                "msg_type": "int_msg",
+                "created_lt": 106958981000002,
+                "ihr_disabled": true,
+                "bounce": false,
+                "bounced": false,
+                "value": 2000000000,
+                "fwd_fee": 44446,
+                "ihr_fee": 0,
+                "destination": {
+                  "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+                  "is_scam": false,
+                  "is_wallet": true
+                },
+                "source": {
+                  "address": "0:92112d13658a9c56482882e8486fc88c128e1cbda130988ad4e6a6d082737c7e",
+                  "is_scam": false,
+                  "is_wallet": true
+                },
+                "import_fee": 0,
+                "created_at": 1793569465,
+                "op_code": "0x00000000",
+                "hash": "e7f6f48b70fe10abb57294d51f78e03d0f4d00a6ca723fdec0a29fd5a3bfe5e0",
+                "raw_body": "b5ee9c720101010100240000440000000068747470733a2f2f742e6d652f7465737467697665725f746f6e5f626f74",
+                "decoded_op_name": "text_comment",
+                "decoded_body": {
+                  "text": "https://t.me/testgiver_ton_bot"
+                }
+              },
+              "out_msgs": [],
+              "block": "(0,8000000000000000,100361370)",
+              "prev_trans_hash": "bc811f33c07ee03bad0da830cc8556ec8f7a090c3799530187831c17fb2b4927",
+              "prev_trans_lt": 106888530000003,
+              "compute_phase": {
+                "skipped": false,
+                "success": true,
+                "gas_fees": 51868,
+                "gas_used": 778,
+                "vm_steps": 23,
+                "exit_code": 0,
+                "exit_code_description": "Ok"
+              },
+              "storage_phase": {
+                "fees_collected": 1276,
+                "status_change": "acst_unchanged"
+              },
+              "credit_phase": {
+                "fees_collected": 0,
+                "credit": 2000000000
+              },
+              "action_phase": {
+                "success": true,
+                "result_code": 0,
+                "total_actions": 0,
+                "skipped_actions": 0,
+                "fwd_fees": 0,
+                "total_fees": 0
+              },
+              "aborted": false,
+              "destroyed": false,
+              "raw": "b5ee9c72010207010001b30003b378119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d90610000614754116b43bc811f33c07ee03bad0da830cc8556ec8f7a090c3799530187831c17fb2b492700006136ecdc78836ae7b2b90001459f3080102030101a004008272da72d5b4e19977ce4ed364b45311eaf3eef1b0dd63092450ef2ec38a9e9af9a62c9a3c46e7d68b6dcfa350699e82306aca04a009a957e53ff71725c08259305802170c813f091dcd650018595391050600f3480124225a26cb1538ac905105d090df9118251c397b42613115a9cd4da104e6f8fd0020467addbfd92bd552b5ff3192f4c343ae3ea95b26d9474f79dba566841f641851dcd65000055b3c0000c28ea822d684d5cf657200000000343a3a38399d1797ba1736b297ba32b9ba33b4bb32b92fba37b72fb137ba40009e40614c3d090000000000000000001700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005bc00000000000000000000000012d452da449e50b8cf7dd27861f146122afe1b546bb8b70fc8216f0c614139f8e04"
+            },
+            {
+              "hash": "bc811f33c07ee03bad0da830cc8556ec8f7a090c3799530187831c17fb2b4927",
+              "lt": 106888530000003,
+              "account": {
+                "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+                "is_scam": false,
+                "is_wallet": true
+              },
+              "success": true,
+              "utime": 1793541326,
+              "orig_status": "active",
+              "end_status": "active",
+              "total_fees": 53436,
+              "end_balance": 3893069608,
+              "transaction_type": "TransOrd",
+              "state_update_old": "285c8c2b03ec92391e9ed25920201ba83ddb8159d8d894f6346d7fcb8b3d4f44",
+              "state_update_new": "da72d5b4e19977ce4ed364b45311eaf3eef1b0dd63092450ef2ec38a9e9af9a6",
+              "in_msg": {
+                "msg_type": "int_msg",
+                "created_lt": 106888530000002,
+                "ihr_disabled": true,
+                "bounce": false,
+                "bounced": false,
+                "value": 2000000000,
+                "fwd_fee": 44446,
+                "ihr_fee": 0,
+                "destination": {
+                  "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+                  "is_scam": false,
+                  "is_wallet": true
+                },
+                "source": {
+                  "address": "0:92112d13658a9c56482882e8486fc88c128e1cbda130988ad4e6a6d082737c7e",
+                  "is_scam": false,
+                  "is_wallet": true
+                },
+                "import_fee": 0,
+                "created_at": 1793541326,
+                "op_code": "0x00000000",
+                "hash": "b2135be3d8c3b6e2059feb1279957d99e4d75c4f1bdf03c5c2101aba147e0d99",
+                "raw_body": "b5ee9c720101010100240000440000000068747470733a2f2f742e6d652f7465737467697665725f746f6e5f626f74",
+                "decoded_op_name": "text_comment",
+                "decoded_body": {
+                  "text": "https://t.me/testgiver_ton_bot"
+                }
+              },
+              "out_msgs": [],
+              "block": "(0,8000000000000000,100291132)",
+              "prev_trans_hash": "1bc3b4b6dfc515c495572d077114444aecfd4573eb893668d7b10502704e9c1e",
+              "prev_trans_lt": 106801931000001,
+              "compute_phase": {
+                "skipped": false,
+                "success": true,
+                "gas_fees": 51868,
+                "gas_used": 778,
+                "vm_steps": 23,
+                "exit_code": 0,
+                "exit_code_description": "Ok"
+              },
+              "storage_phase": {
+                "fees_collected": 1568,
+                "status_change": "acst_unchanged"
+              },
+              "credit_phase": {
+                "fees_collected": 0,
+                "credit": 2000000000
+              },
+              "action_phase": {
+                "success": true,
+                "result_code": 0,
+                "total_actions": 0,
+                "skipped_actions": 0,
+                "fwd_fees": 0,
+                "total_fees": 0
+              },
+              "aborted": false,
+              "destroyed": false,
+              "raw": "b5ee9c72010207010001b30003b378119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d906100006136ecdc78831bc3b4b6dfc515c495572d077114444aecfd4573eb893668d7b10502704e9c1e00006122c32898c16ae744ce000145a17880102030101a004008272285c8c2b03ec92391e9ed25920201ba83ddb8159d8d894f6346d7fcb8b3d4f44da72d5b4e19977ce4ed364b45311eaf3eef1b0dd63092450ef2ec38a9e9af9a602170c8188091dcd650018595391050600f3480124225a26cb1538ac905105d090df9118251c397b42613115a9cd4da104e6f8fd0020467addbfd92bd552b5ff3192f4c343ae3ea95b26d9474f79dba566841f641851dcd65000055b3c0000c26dd9b8f104d5ce899c00000000343a3a38399d1797ba1736b297ba32b9ba33b4bb32b92fba37b72fb137ba40009e40614c3d090000000000000000001700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005bc00000000000000000000000012d452da449e50b8cf7dd27861f146122afe1b546bb8b70fc8216f0c614139f8e04"
+            },
+            {
+              "hash": "1bc3b4b6dfc515c495572d077114444aecfd4573eb893668d7b10502704e9c1e",
+              "lt": 106801931000001,
+              "account": {
+                "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+                "is_scam": false,
+                "is_wallet": true
+              },
+              "success": true,
+              "utime": 1793506736,
+              "orig_status": "uninit",
+              "end_status": "active",
+              "total_fees": 4866983,
+              "end_balance": 1893123044,
+              "transaction_type": "TransOrd",
+              "state_update_old": "12c9529ea28042379a226458499d45b033f08e59d20f4189369e50b55da0d67d",
+              "state_update_new": "285c8c2b03ec92391e9ed25920201ba83ddb8159d8d894f6346d7fcb8b3d4f44",
+              "in_msg": {
+                "msg_type": "ext_in_msg",
+                "created_lt": 0,
+                "ihr_disabled": false,
+                "bounce": false,
+                "bounced": false,
+                "value": 0,
+                "fwd_fee": 0,
+                "ihr_fee": 0,
+                "destination": {
+                  "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+                  "is_scam": false,
+                  "is_wallet": true
+                },
+                "import_fee": 0,
+                "created_at": 0,
+                "op_code": "0x7369676e",
+                "init": {
+                  "boc": "b5ee9c72010216010002b10002013401020114ff00f4a413f4bcf2c80b030051800000003ffffffeca50085f8985fe777ee5d34f8ee0c13013bf0d1e839db196eabc5ce1c5a10d04a0020120040502014806070102f21002dcd020d749c120915b8f6320d70b1f2082106578746ebd21821073696e74bdb0925f03e082106578746eba8eb48020d72101d074d721fa4030fa44f828fa443058bd915be0ed44d0810141d721f4058307f40e6fa1319130e18040d721707fdb3ce03120d749810280b99130e070e2121102012008090201200a0b0019be5f0f6a2684080a0eb90fa02c02016e0c0d0201480e0f0019adce76a2684020eb90eb85ffc00019af1df6a2684010eb90eb858fc00017b325fb51341c75c875c2c7e00011b262fb513435c28020011e20d70b1f82107369676ebaf2e08a7f1101e68ef0eda2edfb218308d722028308d723208020d721d31fd31fd31fed44d0d200d31f20d31fd3ffd70a000af90140ccf9109a28945f0adb31e1f2c087df02b35007b0f2d0845125baf2e0855036baf2e086f823bbf2d0882292f800de01a47fc8ca00cb1f01cf16c9ed542092f80fde70db3cd81203f6eda2edfb02f404216e926c218e4c0221d73930709421c700b38e2d01d72820761e436c20d749c008f2e09320d74ac002f2e09320d71d06c712c2005230b0f2d089d74cd7393001a4e86c128407bbf2e093d74ac000f2e093ed55e2d20001c000915be0ebd72c08142091709601d72c081c12e25210b1e30f20d74a131415009601fa4001fa44f828fa443058baf2e091ed44d0810141d718f405049d7fc8ca0040048307f453f2e08b8e14038307f45bf2e08c22d70a00216e01b3b0f2d090e2c85003cf1612f400c9ed54007230d72c08248e2d21f2e092d200ed44d0d2005113baf2d08f54503091319c01810140d721d70a00f2e08ee2c8ca0058cf16c9ed5493f2c08de20010935bdb31e1d74cd0",
+                  "interfaces": [
+                    "wallet_v5r1"
+                  ]
+                },
+                "hash": "be789a0854eb7bc14da9b3ca287a63b817a7081bf2405afa7c8fd810a7fa5e44",
+                "raw_body": "b5ee9c720102540100134e0001a17369676e7ffffffd6ae6bdf2000000008016ea5a7e6dbc8b9077b1fff3519fd4b4acd5832893db05fff495eda4eb68b69734bffaa306a6c5b85ab56cd550da7bf2380e60323ab2b80bee82e6021584826001020a0ec3c86d0302030000026962001c9e2074b7a2878d60ca07a460e477b51a2bbd1f564b9f499226a653c0ef3f10a02faf0800000000000000000000000000023204050114ff00f4a413f4bcf2c80b06024308010233d6edfec95eaa95aff98c97a61a1d71f54ad936ca3a7bcedd2b3420fb20c3131402016207080202cc090a02037a60111201edd906380492f81f000e8698180b8d8492f81f07d207d2018fd0018b8eb90fd0018fd001801698fe99ff6a2687d007d206a6a18400aa9385d471e1a9a9b1b126b8580e000796824a89a6382f97024817d207d006a18106840306b90fd001812881a282178050a502819e428027d012c678b666664f6aa7040b0093b5f0508806e0a84026a8280790a009f404b19e2c039e2d99924591960225e801e80196019241f200e0e9919605940f97ff93a0ef003191960ab19e2ca009f4042796d625999992e3f60104fe82107bdd97de5270ba8ee036373701fa00fa40f82854120670542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c9f9007074c8cb02ca07cbffc9d05006c705f2e04aa1034545c85004fa0258cf16ccccc9ed5401fa403020d70b01c300915be30de082102c76b9735270bae302383824c003e302370c0d0e0f003e8210d53276db708010c8cb055003cf1622fa0212cb6acb1fcb3fc98042fb0001fe365f03820898968015a015bcf2e04b02fa40d3003095c821cf16c9916de28210d1735400708018c8cb055005cf1624fa0214cb6a13cb1f14cb3f23fa443070ba8e33f828440370542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c9f9007074c8cb02ca07cbffc9d0cf16966c227001cb01e2f4001000ce3423d70b01c000f2d0495244c705f2e049fa402354423718c85004fa0258cf16ccccc9ed5423d749c2019f03fa403020d70b01c30091329130e29133e282107a3e810fc8cb1f13cb3f5003cf1601fa02c9718010c8cb055003cf1670fa0212cb6accc98040fb0000ca23c0048e236c2224d70b01c000f2d0495124c705f2e049d4304303c85004fa0258cf16ccccc9ed54e0313401821051c9d381ba8e2982107a3e810fc8cb1fcb3f5003cf1601fa02c9718010c8cb055003cf1670fa0212cb6accc98040fb00e05f04840ff2f0000ac98040fb00007dadbcf6a2687d007d206a6a183618fc1400b82a1009aa0a01e428027d012c678b00e78b666491646580897a007a00658064fc80383a6465816503e5ffe4e840001faf16f6a2687d007d206a6a183faa9040010300c0150114ff00f4a413f4bcf2c80b1d020158161702012018190142bfae80fd2f1e03480e2282363596ee752d7bb27f50776b95086a0279189675923e1c0141bf4546a6ffe1b79cfdd86bad3db874313dcde2fb05e6a74aa7f3552d9617c79d131a0141bf6ed4f942a7848ce2cb066b77a1128c6a1ff8c43f438a2dce24612ba9ffab8b031b003600414e4c4752414d20546573746e657420536574746c656d656e74001000414e4c54455354000400390201621e1f0202cb20210201204f500201ce2223020120262701f73b68bb7ec831c02497c138087434c0fe90009c6c238f0c54c475d2708fe38b200835c874c7c86084105394c0aea68c5b089408dc7c05b6cc780c0d0d00a084105394c1aea517c0f6cc7804a4cc0cccf8bc0738007e900c7e800c5c75c87e800c7e800c1cea6d0000b4c7c86084105394c06ea5cc4cd104c0bc0538202400113e910c1c2ebcb8536001fe218210414e5302ba973133441359f015e0218210414e5303ba98316c22502370f016e0218210414e5305ba966c410270f017e0218210414e5306ba97316c225023f018e0218210414e5308ba98316c22502371f012e0218210414e5309ba98316c22502370f012e082100f8a7ea55220ba9631353212f019e08210178d45192500425220ba9631055043f01ae034358210595f07bc15ba944330f01be05f04840ff2f002012028290201203d3e02f7688a0822625a02fbcb8b14134cffb51343e803e903e90350c0cd45c71c17cb8b07b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a084115410d209407232c7f2cff27e4014c060c1fd039be854d2e64c01be90087c00541df781f46385cc4ccdc07e903e8034cff44265d44c71c17cb8b1244cf8b8c3a2a2b0201202c2d00d03009f2e2c7547034821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e2f825c826cf1622fa025210cb3f40b38307f443ed44d0fa00fa40fa40d4305f03544335541a05c85005fa025003cf1601cf16cc216e913192f400e2c9ed54460600e6543663821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e258a1ed44d0fa00fa40fa40d4305f038210414e530ac8cb1f14cb3f17cb3f5005cf165005fa025004fa02c95033a1128208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb000201202e2f020120383902f50134cffe803e90087c007e903d010c7e800835d270803cb8b10835c2c0278835d270004875d2b0006c3cb8b137bb51343e803e903e90350c1470b1c17cb8b0545471c17cb8b13b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a08413d5d3944a407232c7f2cff27e400860c1fd039be878c08c09e0303101f70134cffe803e903e800835d270803cb8b10835c2c0278835d270004875d2b0006c3cb8b137bb51343e803e903e90350c151d841c150804d50500f214013e809633c58073c5b33248b232c044bd003d0032c0327e401c1d3232c0b281f2fff27414b031c17cb8b0c9f0803cb8b0a0822625a014eae8685c2d825498203502d46c333706d33f3082104f5554472101c8cb1fcb3fc9f90050078307f40e6fa130d301d33f31fa00fa40305262ba454a70542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c9f9007074c8cb02ca07cbffc9d05220c70518b0f2e2c421c301e30f323301f6c2005338beb0f2e2c22491729171e2500aa85240a08209c9c380a052a0bcf2e2c5f82554365b70542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c920f9007074c8cb02ca07cbffc9d027c8cb3f82104f574e512b01c8cb1fcb3fc9f900410c8307f44371c8cb011acb3f28fa022acf1634007e305064a1144550138210414e5304c8cb1f15cb3f13cb3f01fa02cb01c9018208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb000068365f038210414e5306c8cb1fcb3fc95033a112710170fb027101928018928010e2c8cb055003cf1670fa0212cb6accc98306fb0000ea82104f5554472801c8cb1fcb3fc9f900410a8307f4435127a154414346c0c85005fa025003cf1601cf16cc216e913192f400e2c9ed548210414e5302c8cb1f13cb3f5003fa0258cf1601fa025004cf16c95042a18208989680b60970fb02778018c8cb055004cf1670fa0213cb6bccccc98306fb0002d2a08208989680a00daa001da052a0bcf2e2c5ed44d0fa0031fa4031fa4031d43120d74993f4043092306de253b88210494e434dc8cb1f58cf16cb3fc9f90053018307f40e6fa19c3e5f0805fa003025baf2e2c4e30e8210414e5303c8cb1fcb3f5004fa02c95033a112363700be30c829fa02028307f4435137a0513250ddc85005fa025003cf1601cf16cc216e913192f400e2c9ed54218e2e82107362d09cc8cb1f5250cb3f24fa025003cf1658cf16c9718010c8cb055009cf1658fa0217cb6a16ccc973fb00935f0335e200428208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb0001f50134cffe8009a44c247478bb51343e800c7e900c7e900c750c4835d264fd010c248c1b78a08413d55511c8c07232c7f2cff27e4014c060c1fd039be87cb8b1f4c074cffe803e900c146ab1c17cb8b0d4942ebcb8b10070c06497c2783b51343e803e903e90350c0b245ce45cb8883232c0549832cfca7e809403603a02f10c0860822625a02fbcb8b140b4cff47b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a08413d5d39448807232c7f2cff27e400860c1fd039be878c0f4cfcc208413d55511c8407232c7f2cff27e401620c1fd039be84c34c074cfcc7e803e900c3b51343e803e903e90350c0408d7c0c8f0c0603b3c00d4cf1640678307f4430b91259170e212a0544143451bc85005fa025003cf1601cf16cc216e913192f400e2c9ed545034a11315148210414e5304c8cb1f15cb3f13cb3f01fa02cb01c9018208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb0000805bed44d0fa00fa40fa40d43010235f038210414e5307c8cb1f12cb3fc95aa1700170fb027101928018928010e2c8cb055003cf1670fa0212cb6accc98306fb0000f28e41315065a11045103410238210414e5304c8cb1f15cb3f13cb3f01fa02cb01c9018208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb008e33135f03328210414e5306c8cb1fcb3fc95aa1710170fb027101928018928010e2c8cb055003cf1670fa0212cb6accc98306fb00e20201203f4002f7d0140106b90f6a2687d007d207d206a1802698fc1080bc6a28ca9105d41083deecbef29185d58f97162e99ffd001876a2687d0018fd2018fd2018ea18906ba4c9fa0218491836f104fc80410821272198e4658fe5ffe4fc802984c183fa0737d098c92f857041080bc6a28c8a5d4c98a8b16382f97161837186b8e444d4e0201204142020120454600e300f4cff454c82084125390d37232c7d633c5b2cff27e403b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a0c1fd039be87cb8b1fe800c2084105394c0f232c7c4b2cfc07e80b2540ce8449c005c3ec09c4064a00624a00438b232c15400f3c59c3e8084b2dab33260c1bec02001ed00f4cffe803e90087c007b51343e803e903e90350c144da8548ab1c17cb8b04a30bffcb8b0950d109c150804d50500f214013e809633c58073c5b33248b232c044bd003d0032c032483e401c1d3232c0b281f2fff274013e903d010c7e800835d270803cb8b11de0063232c14a33c59c3e80b2dac533204301f68210178d4519c8cb1f52a0cb3f29fa0225cf165003cf1621fa025003cf16c901cc2191729171e2500ba8a08209c9c380a017bcf2e2c507c98040fb00ed44d0fa0031fa4031fa4031d43120d74993f4043092306de223c2009410246c31e30d10344130c85005fa025003cf1601cf16cc216e913192f400e2c9ed5444005c0482105354444fc8cb1f58cf16cb3fc9f90053038307f40e6fa193fa0030923070e2c804a013fa0240038307f44301f33b68bb7efb51343e803e903e90350c0274cffe80145468017e903e9014d731c1551cdb9c150804d50500f214013e809633c58073c5b33248b232c044bd003d0032c0327e401c1d3232c0b281f2fff2741403b1c1476c7cb8b0fb51343e800c7e900c7e900c750c4835d264fd010c248c1b78a084115410d209604701b93b51343e803e903e90350c01f4cffe803e900c145468549271c17cb8b049f0bffcb8b08160824c4b402805af3cb8b0e0841ef765f7b232c7c572cfd400fe8088b3c58073c5b25c60063232c14933c59c3e80b2dab33260103ec01004e04c04f401c8cb1fcb3fc9f900218307f40e6fa1209b30fa403023c70524c200b09131e29138e30d0bfa0051b9a182089896805cb608a1208208989680a023a023912c9170e2a052b0bef2e2c5018208989680b60972fb028208989680a019a12897104a1039385f04e30d26d70b01c30024c200b09410266c32e30d504348494a4b00d808f90082105354444dc8cb1fcbffc9f90053088307f40e6fa131945f0edb31e071c8cb0040198307f443547013821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e223a0c801fa025324821043524454c8cb1f58cf16cb3fc9f900588307f443070070528aa019a182107362d09cc8cb1f5230cb3f58fa025008cf165008cf16c9718010c8cb0524cf165007fa0216cb6a15ccc973fb001035103400468210d53276db708010c8cb055009cf165005fa0217cb6a13cb1f13cb3fc972fb0050030030c85005fa025003cf1601cf16cc216e913192f400e2c9ed540062ed44d0fa0031fa4031fa4031d43120d74993f4043092306de2c85005fa025003cf1601cf16cc216e913192f400e2c9ed54006e507782105354444fc8cb1f58cf16cb3fc9f90053078307f40e6fa1f2e2c3fa003027c2005381bbb0f2e2c4c85118a1fa0240188307f443004ccb0040778307f4435024a0444403c85005fa025003cf1601cf16cc216e913192f400e2c9ed54020120515200b9bc8abf6a2687d0018fd2018fd2018ea18906ba4c9fa0218491836f1410827aba728ac00e4658fe59fe4fc8010c183fa0737d0ca2db8298070e99f98410827aaaa239080e4658fe59fe4fc802c4183fa0737d0986980e99f98fd001809401f9bb8e5ed44d0fa0031fa4031fa4031d43120d74993f4043092306de28210455043482201c8cb1fcb3fc9f900218307f40e6fa1ed44d0fa00fa40fa40d4305f03019c6c3170c8cb01c9d070542013e101fa40fa00d33f30542426821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e25003a1853001bbbb02ed44d0fa00fa40fa40d430800044300",
+                "decoded_op_name": "wallet_signed_external_v5_r1",
+                "decoded_body": {
+                  "wallet_id": 2147483645,
+                  "valid_until": 1793506802,
+                  "seqno": 0,
+                  "actions": [
+                    {
+                      "magic": "0xec3c86d",
+                      "mode": 3,
+                      "msg": {
+                        "sum_type": "MessageInternal",
+                        "message_internal": {
+                          "ihr_disabled": true,
+                          "bounce": true,
+                          "bounced": false,
+                          "src": "",
+                          "dest": "0:393c40e96f450f1ac1940f48c1c8ef6a34577a3eac973e93244d4ca781de7e21",
+                          "value": {
+                            "grams": "100000000",
+                            "other": {}
+                          },
+                          "ihr_fee": "0",
+                          "fwd_fee": "0",
+                          "created_lt": 0,
+                          "created_at": 0,
+                          "init": {
+                            "is_right": false,
+                            "value": {
+                              "split_depth": null,
+                              "special": null,
+                              "code": {
+                                "value": "b5ee9c7201020e01000335000114ff00f4a413f4bcf2c80b0102016202030202cc040502037a600c0d01edd906380492f81f000e8698180b8d8492f81f07d207d2018fd0018b8eb90fd0018fd001801698fe99ff6a2687d007d206a6a18400aa9385d471e1a9a9b1b126b8580e000796824a89a6382f97024817d207d006a18106840306b90fd001812881a282178050a502819e428027d012c678b666664f6aa704060093b5f0508806e0a84026a8280790a009f404b19e2c039e2d99924591960225e801e80196019241f200e0e9919605940f97ff93a0ef003191960ab19e2ca009f4042796d625999992e3f60104fe82107bdd97de5270ba8ee036373701fa00fa40f82854120670542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c9f9007074c8cb02ca07cbffc9d05006c705f2e04aa1034545c85004fa0258cf16ccccc9ed5401fa403020d70b01c300915be30de082102c76b9735270bae302383824c003e302370708090a003e8210d53276db708010c8cb055003cf1622fa0212cb6acb1fcb3fc98042fb0001fe365f03820898968015a015bcf2e04b02fa40d3003095c821cf16c9916de28210d1735400708018c8cb055005cf1624fa0214cb6a13cb1f14cb3f23fa443070ba8e33f828440370542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c9f9007074c8cb02ca07cbffc9d0cf16966c227001cb01e2f4000b00ce3423d70b01c000f2d0495244c705f2e049fa402354423718c85004fa0258cf16ccccc9ed5423d749c2019f03fa403020d70b01c30091329130e29133e282107a3e810fc8cb1f13cb3f5003cf1601fa02c9718010c8cb055003cf1670fa0212cb6accc98040fb0000ca23c0048e236c2224d70b01c000f2d0495124c705f2e049d4304303c85004fa0258cf16ccccc9ed54e0313401821051c9d381ba8e2982107a3e810fc8cb1fcb3f5003cf1601fa02c9718010c8cb055003cf1670fa0212cb6accc98040fb00e05f04840ff2f0000ac98040fb00007dadbcf6a2687d007d206a6a183618fc1400b82a1009aa0a01e428027d012c678b00e78b666491646580897a007a00658064fc80383a6465816503e5ffe4e840001faf16f6a2687d007d206a6a183faa9040"
+                              },
+                              "data": {
+                                "value": "b5ee9c7201024201000f8100024308010233d6edfec95eaa95aff98c97a61a1d71f54ad936ca3a7bcedd2b3420fb20c30102010300c0030114ff00f4a413f4bcf2c80b0b020158040502012006070142bfae80fd2f1e03480e2282363596ee752d7bb27f50776b95086a0279189675923e0a0141bf4546a6ffe1b79cfdd86bad3db874313dcde2fb05e6a74aa7f3552d9617c79d13080141bf6ed4f942a7848ce2cb066b77a1128c6a1ff8c43f438a2dce24612ba9ffab8b0309003600414e4c4752414d20546573746e657420536574746c656d656e74001000414e4c54455354000400390201620c0d0202cb0e0f0201203d3e0201ce1011020120141501f73b68bb7ec831c02497c138087434c0fe90009c6c238f0c54c475d2708fe38b200835c874c7c86084105394c0aea68c5b089408dc7c05b6cc780c0d0d00a084105394c1aea517c0f6cc7804a4cc0cccf8bc0738007e900c7e800c5c75c87e800c7e800c1cea6d0000b4c7c86084105394c06ea5cc4cd104c0bc0538201200113e910c1c2ebcb8536001fe218210414e5302ba973133441359f015e0218210414e5303ba98316c22502370f016e0218210414e5305ba966c410270f017e0218210414e5306ba97316c225023f018e0218210414e5308ba98316c22502371f012e0218210414e5309ba98316c22502370f012e082100f8a7ea55220ba9631353212f019e08210178d45191300425220ba9631055043f01ae034358210595f07bc15ba944330f01be05f04840ff2f002012016170201202b2c02f7688a0822625a02fbcb8b14134cffb51343e803e903e90350c0cd45c71c17cb8b07b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a084115410d209407232c7f2cff27e4014c060c1fd039be854d2e64c01be90087c00541df781f46385cc4ccdc07e903e8034cff44265d44c71c17cb8b1244cf8b8c3a18190201201a1b00d03009f2e2c7547034821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e2f825c826cf1622fa025210cb3f40b38307f443ed44d0fa00fa40fa40d4305f03544335541a05c85005fa025003cf1601cf16cc216e913192f400e2c9ed54460600e6543663821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e258a1ed44d0fa00fa40fa40d4305f038210414e530ac8cb1f14cb3f17cb3f5005cf165005fa025004fa02c95033a1128208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb000201201c1d020120262702f50134cffe803e90087c007e903d010c7e800835d270803cb8b10835c2c0278835d270004875d2b0006c3cb8b137bb51343e803e903e90350c1470b1c17cb8b0545471c17cb8b13b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a08413d5d3944a407232c7f2cff27e400860c1fd039be878c08c09e01e1f01f70134cffe803e903e800835d270803cb8b10835c2c0278835d270004875d2b0006c3cb8b137bb51343e803e903e90350c151d841c150804d50500f214013e809633c58073c5b33248b232c044bd003d0032c0327e401c1d3232c0b281f2fff27414b031c17cb8b0c9f0803cb8b0a0822625a014eae8685c2d825498202302d46c333706d33f3082104f5554472101c8cb1fcb3fc9f90050078307f40e6fa130d301d33f31fa00fa40305262ba454a70542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c9f9007074c8cb02ca07cbffc9d05220c70518b0f2e2c421c301e30f202101f6c2005338beb0f2e2c22491729171e2500aa85240a08209c9c380a052a0bcf2e2c5f82554365b70542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c920f9007074c8cb02ca07cbffc9d027c8cb3f82104f574e512b01c8cb1fcb3fc9f900410c8307f44371c8cb011acb3f28fa022acf1622007e305064a1144550138210414e5304c8cb1f15cb3f13cb3f01fa02cb01c9018208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb000068365f038210414e5306c8cb1fcb3fc95033a112710170fb027101928018928010e2c8cb055003cf1670fa0212cb6accc98306fb0000ea82104f5554472801c8cb1fcb3fc9f900410a8307f4435127a154414346c0c85005fa025003cf1601cf16cc216e913192f400e2c9ed548210414e5302c8cb1f13cb3f5003fa0258cf1601fa025004cf16c95042a18208989680b60970fb02778018c8cb055004cf1670fa0213cb6bccccc98306fb0002d2a08208989680a00daa001da052a0bcf2e2c5ed44d0fa0031fa4031fa4031d43120d74993f4043092306de253b88210494e434dc8cb1f58cf16cb3fc9f90053018307f40e6fa19c3e5f0805fa003025baf2e2c4e30e8210414e5303c8cb1fcb3f5004fa02c95033a112242500be30c829fa02028307f4435137a0513250ddc85005fa025003cf1601cf16cc216e913192f400e2c9ed54218e2e82107362d09cc8cb1f5250cb3f24fa025003cf1658cf16c9718010c8cb055009cf1658fa0217cb6a16ccc973fb00935f0335e200428208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb0001f50134cffe8009a44c247478bb51343e800c7e900c7e900c750c4835d264fd010c248c1b78a08413d55511c8c07232c7f2cff27e4014c060c1fd039be87cb8b1f4c074cffe803e900c146ab1c17cb8b0d4942ebcb8b10070c06497c2783b51343e803e903e90350c0b245ce45cb8883232c0549832cfca7e809403602802f10c0860822625a02fbcb8b140b4cff47b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a08413d5d39448807232c7f2cff27e400860c1fd039be878c0f4cfcc208413d55511c8407232c7f2cff27e401620c1fd039be84c34c074cfcc7e803e900c3b51343e803e903e90350c0408d7c0c8f0c060292a00d4cf1640678307f4430b91259170e212a0544143451bc85005fa025003cf1601cf16cc216e913192f400e2c9ed545034a11315148210414e5304c8cb1f15cb3f13cb3f01fa02cb01c9018208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb0000805bed44d0fa00fa40fa40d43010235f038210414e5307c8cb1f12cb3fc95aa1700170fb027101928018928010e2c8cb055003cf1670fa0212cb6accc98306fb0000f28e41315065a11045103410238210414e5304c8cb1f15cb3f13cb3f01fa02cb01c9018208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb008e33135f03328210414e5306c8cb1fcb3fc95aa1710170fb027101928018928010e2c8cb055003cf1670fa0212cb6accc98306fb00e20201202d2e02f7d0140106b90f6a2687d007d207d206a1802698fc1080bc6a28ca9105d41083deecbef29185d58f97162e99ffd001876a2687d0018fd2018fd2018ea18906ba4c9fa0218491836f104fc80410821272198e4658fe5ffe4fc802984c183fa0737d098c92f857041080bc6a28c8a5d4c98a8b16382f97161837186b8e443b3c0201202f30020120333400e300f4cff454c82084125390d37232c7d633c5b2cff27e403b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a0c1fd039be87cb8b1fe800c2084105394c0f232c7c4b2cfc07e80b2540ce8449c005c3ec09c4064a00624a00438b232c15400f3c59c3e8084b2dab33260c1bec02001ed00f4cffe803e90087c007b51343e803e903e90350c144da8548ab1c17cb8b04a30bffcb8b0950d109c150804d50500f214013e809633c58073c5b33248b232c044bd003d0032c032483e401c1d3232c0b281f2fff274013e903d010c7e800835d270803cb8b11de0063232c14a33c59c3e80b2dac533203101f68210178d4519c8cb1f52a0cb3f29fa0225cf165003cf1621fa025003cf16c901cc2191729171e2500ba8a08209c9c380a017bcf2e2c507c98040fb00ed44d0fa0031fa4031fa4031d43120d74993f4043092306de223c2009410246c31e30d10344130c85005fa025003cf1601cf16cc216e913192f400e2c9ed5432005c0482105354444fc8cb1f58cf16cb3fc9f90053038307f40e6fa193fa0030923070e2c804a013fa0240038307f44301f33b68bb7efb51343e803e903e90350c0274cffe80145468017e903e9014d731c1551cdb9c150804d50500f214013e809633c58073c5b33248b232c044bd003d0032c0327e401c1d3232c0b281f2fff2741403b1c1476c7cb8b0fb51343e800c7e900c7e900c750c4835d264fd010c248c1b78a084115410d209603501b93b51343e803e903e90350c01f4cffe803e900c145468549271c17cb8b049f0bffcb8b08160824c4b402805af3cb8b0e0841ef765f7b232c7c572cfd400fe8088b3c58073c5b25c60063232c14933c59c3e80b2dab33260103ec01004e03a04f401c8cb1fcb3fc9f900218307f40e6fa1209b30fa403023c70524c200b09131e29138e30d0bfa0051b9a182089896805cb608a1208208989680a023a023912c9170e2a052b0bef2e2c5018208989680b60972fb028208989680a019a12897104a1039385f04e30d26d70b01c30024c200b09410266c32e30d50433637383900d808f90082105354444dc8cb1fcbffc9f90053088307f40e6fa131945f0edb31e071c8cb0040198307f443547013821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e223a0c801fa025324821043524454c8cb1f58cf16cb3fc9f900588307f443070070528aa019a182107362d09cc8cb1f5230cb3f58fa025008cf165008cf16c9718010c8cb0524cf165007fa0216cb6a15ccc973fb001035103400468210d53276db708010c8cb055009cf165005fa0217cb6a13cb1f13cb3fc972fb0050030030c85005fa025003cf1601cf16cc216e913192f400e2c9ed540062ed44d0fa0031fa4031fa4031d43120d74993f4043092306de2c85005fa025003cf1601cf16cc216e913192f400e2c9ed54006e507782105354444fc8cb1f58cf16cb3fc9f90053078307f40e6fa1f2e2c3fa003027c2005381bbb0f2e2c4c85118a1fa0240188307f443004ccb0040778307f4435024a0444403c85005fa025003cf1601cf16cc216e913192f400e2c9ed540201203f4000b9bc8abf6a2687d0018fd2018fd2018ea18906ba4c9fa0218491836f1410827aba728ac00e4658fe59fe4fc8010c183fa0737d0ca2db8298070e99f98410827aaaa239080e4658fe59fe4fc802c4183fa0737d0986980e99f98fd001809401f9bb8e5ed44d0fa0031fa4031fa4031d43120d74993f4043092306de28210455043482201c8cb1fcb3fc9f900218307f40e6fa1ed44d0fa00fa40fa40d4305f03019c6c3170c8cb01c9d070542013e101fa40fa00d33f30542426821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e25003a1841001bbbb02ed44d0fa00fa40fa40d430800044300"
+                              },
+                              "library": {}
+                            }
+                          },
+                          "body": {
+                            "is_right": false,
+                            "value": {}
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "extended": null,
+                  "signature": "005ba969f9b6f22e41dec7ffcd467f52d2b3560ca24f6c17ffd257b693ada2da5cd2ffea8c1a9b16e16ad5b3554369efc8e03980c8eacae02fba0b9808561209"
+                }
+              },
+              "out_msgs": [
+                {
+                  "msg_type": "int_msg",
+                  "created_lt": 106801931000002,
+                  "ihr_disabled": true,
+                  "bounce": true,
+                  "bounced": false,
+                  "value": 100000000,
+                  "fwd_fee": 2009972,
+                  "ihr_fee": 0,
+                  "destination": {
+                    "address": "0:393c40e96f450f1ac1940f48c1c8ef6a34577a3eac973e93244d4ca781de7e21",
+                    "is_scam": false,
+                    "is_wallet": false
+                  },
+                  "source": {
+                    "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+                    "is_scam": false,
+                    "is_wallet": true
+                  },
+                  "import_fee": 0,
+                  "created_at": 1793506736,
+                  "init": {
+                    "boc": "b5ee9c72010251010012bb0002013401020114ff00f4a413f4bcf2c80b03024308010233d6edfec95eaa95aff98c97a61a1d71f54ad936ca3a7bcedd2b3420fb20c3101102016204050202cc060702037a600e0f01edd906380492f81f000e8698180b8d8492f81f07d207d2018fd0018b8eb90fd0018fd001801698fe99ff6a2687d007d206a6a18400aa9385d471e1a9a9b1b126b8580e000796824a89a6382f97024817d207d006a18106840306b90fd001812881a282178050a502819e428027d012c678b666664f6aa704080093b5f0508806e0a84026a8280790a009f404b19e2c039e2d99924591960225e801e80196019241f200e0e9919605940f97ff93a0ef003191960ab19e2ca009f4042796d625999992e3f60104fe82107bdd97de5270ba8ee036373701fa00fa40f82854120670542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c9f9007074c8cb02ca07cbffc9d05006c705f2e04aa1034545c85004fa0258cf16ccccc9ed5401fa403020d70b01c300915be30de082102c76b9735270bae302383824c003e30237090a0b0c003e8210d53276db708010c8cb055003cf1622fa0212cb6acb1fcb3fc98042fb0001fe365f03820898968015a015bcf2e04b02fa40d3003095c821cf16c9916de28210d1735400708018c8cb055005cf1624fa0214cb6a13cb1f14cb3f23fa443070ba8e33f828440370542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c9f9007074c8cb02ca07cbffc9d0cf16966c227001cb01e2f4000d00ce3423d70b01c000f2d0495244c705f2e049fa402354423718c85004fa0258cf16ccccc9ed5423d749c2019f03fa403020d70b01c30091329130e29133e282107a3e810fc8cb1f13cb3f5003cf1601fa02c9718010c8cb055003cf1670fa0212cb6accc98040fb0000ca23c0048e236c2224d70b01c000f2d0495124c705f2e049d4304303c85004fa0258cf16ccccc9ed54e0313401821051c9d381ba8e2982107a3e810fc8cb1fcb3f5003cf1601fa02c9718010c8cb055003cf1670fa0212cb6accc98040fb00e05f04840ff2f0000ac98040fb00007dadbcf6a2687d007d206a6a183618fc1400b82a1009aa0a01e428027d012c678b00e78b666491646580897a007a00658064fc80383a6465816503e5ffe4e840001faf16f6a2687d007d206a6a183faa9040010300c0120114ff00f4a413f4bcf2c80b1a020158131402012015160142bfae80fd2f1e03480e2282363596ee752d7bb27f50776b95086a0279189675923e190141bf4546a6ffe1b79cfdd86bad3db874313dcde2fb05e6a74aa7f3552d9617c79d13170141bf6ed4f942a7848ce2cb066b77a1128c6a1ff8c43f438a2dce24612ba9ffab8b0318003600414e4c4752414d20546573746e657420536574746c656d656e74001000414e4c54455354000400390201621b1c0202cb1d1e0201204c4d0201ce1f20020120232401f73b68bb7ec831c02497c138087434c0fe90009c6c238f0c54c475d2708fe38b200835c874c7c86084105394c0aea68c5b089408dc7c05b6cc780c0d0d00a084105394c1aea517c0f6cc7804a4cc0cccf8bc0738007e900c7e800c5c75c87e800c7e800c1cea6d0000b4c7c86084105394c06ea5cc4cd104c0bc0538202100113e910c1c2ebcb8536001fe218210414e5302ba973133441359f015e0218210414e5303ba98316c22502370f016e0218210414e5305ba966c410270f017e0218210414e5306ba97316c225023f018e0218210414e5308ba98316c22502371f012e0218210414e5309ba98316c22502370f012e082100f8a7ea55220ba9631353212f019e08210178d45192200425220ba9631055043f01ae034358210595f07bc15ba944330f01be05f04840ff2f002012025260201203a3b02f7688a0822625a02fbcb8b14134cffb51343e803e903e90350c0cd45c71c17cb8b07b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a084115410d209407232c7f2cff27e4014c060c1fd039be854d2e64c01be90087c00541df781f46385cc4ccdc07e903e8034cff44265d44c71c17cb8b1244cf8b8c3a2728020120292a00d03009f2e2c7547034821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e2f825c826cf1622fa025210cb3f40b38307f443ed44d0fa00fa40fa40d4305f03544335541a05c85005fa025003cf1601cf16cc216e913192f400e2c9ed54460600e6543663821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e258a1ed44d0fa00fa40fa40d4305f038210414e530ac8cb1f14cb3f17cb3f5005cf165005fa025004fa02c95033a1128208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb000201202b2c020120353602f50134cffe803e90087c007e903d010c7e800835d270803cb8b10835c2c0278835d270004875d2b0006c3cb8b137bb51343e803e903e90350c1470b1c17cb8b0545471c17cb8b13b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a08413d5d3944a407232c7f2cff27e400860c1fd039be878c08c09e02d2e01f70134cffe803e903e800835d270803cb8b10835c2c0278835d270004875d2b0006c3cb8b137bb51343e803e903e90350c151d841c150804d50500f214013e809633c58073c5b33248b232c044bd003d0032c0327e401c1d3232c0b281f2fff27414b031c17cb8b0c9f0803cb8b0a0822625a014eae8685c2d825498203202d46c333706d33f3082104f5554472101c8cb1fcb3fc9f90050078307f40e6fa130d301d33f31fa00fa40305262ba454a70542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c9f9007074c8cb02ca07cbffc9d05220c70518b0f2e2c421c301e30f2f3001f6c2005338beb0f2e2c22491729171e2500aa85240a08209c9c380a052a0bcf2e2c5f82554365b70542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c920f9007074c8cb02ca07cbffc9d027c8cb3f82104f574e512b01c8cb1fcb3fc9f900410c8307f44371c8cb011acb3f28fa022acf1631007e305064a1144550138210414e5304c8cb1f15cb3f13cb3f01fa02cb01c9018208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb000068365f038210414e5306c8cb1fcb3fc95033a112710170fb027101928018928010e2c8cb055003cf1670fa0212cb6accc98306fb0000ea82104f5554472801c8cb1fcb3fc9f900410a8307f4435127a154414346c0c85005fa025003cf1601cf16cc216e913192f400e2c9ed548210414e5302c8cb1f13cb3f5003fa0258cf1601fa025004cf16c95042a18208989680b60970fb02778018c8cb055004cf1670fa0213cb6bccccc98306fb0002d2a08208989680a00daa001da052a0bcf2e2c5ed44d0fa0031fa4031fa4031d43120d74993f4043092306de253b88210494e434dc8cb1f58cf16cb3fc9f90053018307f40e6fa19c3e5f0805fa003025baf2e2c4e30e8210414e5303c8cb1fcb3f5004fa02c95033a112333400be30c829fa02028307f4435137a0513250ddc85005fa025003cf1601cf16cc216e913192f400e2c9ed54218e2e82107362d09cc8cb1f5250cb3f24fa025003cf1658cf16c9718010c8cb055009cf1658fa0217cb6a16ccc973fb00935f0335e200428208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb0001f50134cffe8009a44c247478bb51343e800c7e900c7e900c750c4835d264fd010c248c1b78a08413d55511c8c07232c7f2cff27e4014c060c1fd039be87cb8b1f4c074cffe803e900c146ab1c17cb8b0d4942ebcb8b10070c06497c2783b51343e803e903e90350c0b245ce45cb8883232c0549832cfca7e809403603702f10c0860822625a02fbcb8b140b4cff47b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a08413d5d39448807232c7f2cff27e400860c1fd039be878c0f4cfcc208413d55511c8407232c7f2cff27e401620c1fd039be84c34c074cfcc7e803e900c3b51343e803e903e90350c0408d7c0c8f0c060383900d4cf1640678307f4430b91259170e212a0544143451bc85005fa025003cf1601cf16cc216e913192f400e2c9ed545034a11315148210414e5304c8cb1f15cb3f13cb3f01fa02cb01c9018208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb0000805bed44d0fa00fa40fa40d43010235f038210414e5307c8cb1f12cb3fc95aa1700170fb027101928018928010e2c8cb055003cf1670fa0212cb6accc98306fb0000f28e41315065a11045103410238210414e5304c8cb1f15cb3f13cb3f01fa02cb01c9018208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb008e33135f03328210414e5306c8cb1fcb3fc95aa1710170fb027101928018928010e2c8cb055003cf1670fa0212cb6accc98306fb00e20201203c3d02f7d0140106b90f6a2687d007d207d206a1802698fc1080bc6a28ca9105d41083deecbef29185d58f97162e99ffd001876a2687d0018fd2018fd2018ea18906ba4c9fa0218491836f104fc80410821272198e4658fe5ffe4fc802984c183fa0737d098c92f857041080bc6a28c8a5d4c98a8b16382f97161837186b8e444a4b0201203e3f020120424300e300f4cff454c82084125390d37232c7d633c5b2cff27e403b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a0c1fd039be87cb8b1fe800c2084105394c0f232c7c4b2cfc07e80b2540ce8449c005c3ec09c4064a00624a00438b232c15400f3c59c3e8084b2dab33260c1bec02001ed00f4cffe803e90087c007b51343e803e903e90350c144da8548ab1c17cb8b04a30bffcb8b0950d109c150804d50500f214013e809633c58073c5b33248b232c044bd003d0032c032483e401c1d3232c0b281f2fff274013e903d010c7e800835d270803cb8b11de0063232c14a33c59c3e80b2dac533204001f68210178d4519c8cb1f52a0cb3f29fa0225cf165003cf1621fa025003cf16c901cc2191729171e2500ba8a08209c9c380a017bcf2e2c507c98040fb00ed44d0fa0031fa4031fa4031d43120d74993f4043092306de223c2009410246c31e30d10344130c85005fa025003cf1601cf16cc216e913192f400e2c9ed5441005c0482105354444fc8cb1f58cf16cb3fc9f90053038307f40e6fa193fa0030923070e2c804a013fa0240038307f44301f33b68bb7efb51343e803e903e90350c0274cffe80145468017e903e9014d731c1551cdb9c150804d50500f214013e809633c58073c5b33248b232c044bd003d0032c0327e401c1d3232c0b281f2fff2741403b1c1476c7cb8b0fb51343e800c7e900c7e900c750c4835d264fd010c248c1b78a084115410d209604401b93b51343e803e903e90350c01f4cffe803e900c145468549271c17cb8b049f0bffcb8b08160824c4b402805af3cb8b0e0841ef765f7b232c7c572cfd400fe8088b3c58073c5b25c60063232c14933c59c3e80b2dab33260103ec01004e04904f401c8cb1fcb3fc9f900218307f40e6fa1209b30fa403023c70524c200b09131e29138e30d0bfa0051b9a182089896805cb608a1208208989680a023a023912c9170e2a052b0bef2e2c5018208989680b60972fb028208989680a019a12897104a1039385f04e30d26d70b01c30024c200b09410266c32e30d50434546474800d808f90082105354444dc8cb1fcbffc9f90053088307f40e6fa131945f0edb31e071c8cb0040198307f443547013821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e223a0c801fa025324821043524454c8cb1f58cf16cb3fc9f900588307f443070070528aa019a182107362d09cc8cb1f5230cb3f58fa025008cf165008cf16c9718010c8cb0524cf165007fa0216cb6a15ccc973fb001035103400468210d53276db708010c8cb055009cf165005fa0217cb6a13cb1f13cb3fc972fb0050030030c85005fa025003cf1601cf16cc216e913192f400e2c9ed540062ed44d0fa0031fa4031fa4031d43120d74993f4043092306de2c85005fa025003cf1601cf16cc216e913192f400e2c9ed54006e507782105354444fc8cb1f58cf16cb3fc9f90053078307f40e6fa1f2e2c3fa003027c2005381bbb0f2e2c4c85118a1fa0240188307f443004ccb0040778307f4435024a0444403c85005fa025003cf1601cf16cc216e913192f400e2c9ed540201204e4f00b9bc8abf6a2687d0018fd2018fd2018ea18906ba4c9fa0218491836f1410827aba728ac00e4658fe59fe4fc8010c183fa0737d0ca2db8298070e99f98410827aaaa239080e4658fe59fe4fc802c4183fa0737d0986980e99f98fd001809401f9bb8e5ed44d0fa0031fa4031fa4031d43120d74993f4043092306de28210455043482201c8cb1fcb3fc9f900218307f40e6fa1ed44d0fa00fa40fa40d4305f03019c6c3170c8cb01c9d070542013e101fa40fa00d33f30542426821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e25003a1850001bbbb02ed44d0fa00fa40fa40d430800044300",
+                    "interfaces": [
+                      "jetton_master"
+                    ]
+                  },
+                  "hash": "714ab54f42fc89a5f78159668f1fe1057f9305621edf4eb416e4302a975bdbce"
+                }
+              ],
+              "block": "(0,8000000000000000,100204825)",
+              "prev_trans_hash": "fefd7d340baf761557a8843f59c096f8af05f21c023c14e6b524f61b30293dca",
+              "prev_trans_lt": 106780009000003,
+              "compute_phase": {
+                "skipped": false,
+                "success": true,
+                "gas_fees": 329268,
+                "gas_used": 4939,
+                "vm_steps": 143,
+                "exit_code": 0,
+                "exit_code_description": "Ok"
+              },
+              "storage_phase": {
+                "fees_collected": 19,
+                "status_change": "acst_unchanged"
+              },
+              "action_phase": {
+                "success": true,
+                "result_code": 0,
+                "total_actions": 1,
+                "skipped_actions": 0,
+                "fwd_fees": 3014934,
+                "total_fees": 1004962
+              },
+              "aborted": false,
+              "destroyed": false,
+              "raw": "b5ee9c72010271010017bf0003b578119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d906100006122c32898c1fefd7d340baf761557a8843f59c096f8af05f21c023c14e6b524f61b30293dca0000611da8816c436ae6bdb000024694874e80102030201e0040500827212c9529ea28042379a226458499d45b033f08e59d20f4189369e50b55da0d67d285c8c2b03ec92391e9ed25920201ba83ddb8159d8d894f6346d7fcb8b3d4f44020f0c44c6182831a440070803e788010233d6edfec95eaa95aff98c97a61a1d71f54ad936ca3a7bcedd2b3420fb20c2118e6d2cedcfffffffad5cd7be400000001002dd4b4fcdb791720ef63ffe6a33fa96959ab065127b60bffe92bdb49d6d16d2e697ff5460d4d8b70b56ad9aaa1b4f7e4701cc06475657017dd05cc042b0904c090a0b0101df0602b168010233d6edfec95eaa95aff98c97a61a1d71f54ad936ca3a7bcedd2b3420fb20c3000e4f103a5bd143c6b06503d230723bda8d15de8fab25cfa4c9135329e0779f885017d78400063d56e80000c24586513184d5cd7b61192122009d4269631388000000000000000023c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020006fc997008b4c3d5688000000000002000000000002bfd8cde27e8e3a2b66c4744e255857488d177e723f5da4771a1d845b77dfbc2c5454823c0114ff00f4a413f4bcf2c80b0c0051800000003ffffffeca50085f8985fe777ee5d34f8ee0c13013bf0d1e839db196eabc5ce1c5a10d04a0020a0ec3c86d031f200201200d0e0201480f100102f21902dcd020d749c120915b8f6320d70b1f2082106578746ebd21821073696e74bdb0925f03e082106578746eba8eb48020d72101d074d721fa4030fa44f828fa443058bd915be0ed44d0810141d721f4058307f40e6fa1319130e18040d721707fdb3ce03120d749810280b99130e070e21b1a020120111202012013140019be5f0f6a2684080a0eb90fa02c02016e151602014817180019adce76a2684020eb90eb85ffc00019af1df6a2684010eb90eb858fc00017b325fb51341c75c875c2c7e00011b262fb513435c28020011e20d70b1f82107369676ebaf2e08a7f1a01e68ef0eda2edfb218308d722028308d723208020d721d31fd31fd31fed44d0d200d31f20d31fd3ffd70a000af90140ccf9109a28945f0adb31e1f2c087df02b35007b0f2d0845125baf2e0855036baf2e086f823bbf2d0882292f800de01a47fc8ca00cb1f01cf16c9ed542092f80fde70db3cd81b03f6eda2edfb02f404216e926c218e4c0221d73930709421c700b38e2d01d72820761e436c20d749c008f2e09320d74ac002f2e09320d71d06c712c2005230b0f2d089d74cd7393001a4e86c128407bbf2e093d74ac000f2e093ed55e2d20001c000915be0ebd72c08142091709601d72c081c12e25210b1e30f20d74a1c1d1e009601fa4001fa44f828fa443058baf2e091ed44d0810141d718f405049d7fc8ca0040048307f453f2e08b8e14038307f45bf2e08c22d70a00216e01b3b0f2d090e2c85003cf1612f400c9ed54007230d72c08248e2d21f2e092d200ed44d0d2005113baf2d08f54503091319c01810140d721d70a00f2e08ee2c8ca0058cf16c9ed5493f2c08de20010935bdb31e1d74cd00000026962001c9e2074b7a2878d60ca07a460e477b51a2bbd1f564b9f499226a653c0ef3f10a02faf0800000000000000000000000000023221220114ff00f4a413f4bcf2c80b23024308010233d6edfec95eaa95aff98c97a61a1d71f54ad936ca3a7bcedd2b3420fb20c3303102016224250202cc262702037a602e2f01edd906380492f81f000e8698180b8d8492f81f07d207d2018fd0018b8eb90fd0018fd001801698fe99ff6a2687d007d206a6a18400aa9385d471e1a9a9b1b126b8580e000796824a89a6382f97024817d207d006a18106840306b90fd001812881a282178050a502819e428027d012c678b666664f6aa704280093b5f0508806e0a84026a8280790a009f404b19e2c039e2d99924591960225e801e80196019241f200e0e9919605940f97ff93a0ef003191960ab19e2ca009f4042796d625999992e3f60104fe82107bdd97de5270ba8ee036373701fa00fa40f82854120670542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c9f9007074c8cb02ca07cbffc9d05006c705f2e04aa1034545c85004fa0258cf16ccccc9ed5401fa403020d70b01c300915be30de082102c76b9735270bae302383824c003e30237292a2b2c003e8210d53276db708010c8cb055003cf1622fa0212cb6acb1fcb3fc98042fb0001fe365f03820898968015a015bcf2e04b02fa40d3003095c821cf16c9916de28210d1735400708018c8cb055005cf1624fa0214cb6a13cb1f14cb3f23fa443070ba8e33f828440370542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c9f9007074c8cb02ca07cbffc9d0cf16966c227001cb01e2f4002d00ce3423d70b01c000f2d0495244c705f2e049fa402354423718c85004fa0258cf16ccccc9ed5423d749c2019f03fa403020d70b01c30091329130e29133e282107a3e810fc8cb1f13cb3f5003cf1601fa02c9718010c8cb055003cf1670fa0212cb6accc98040fb0000ca23c0048e236c2224d70b01c000f2d0495124c705f2e049d4304303c85004fa0258cf16ccccc9ed54e0313401821051c9d381ba8e2982107a3e810fc8cb1fcb3f5003cf1601fa02c9718010c8cb055003cf1670fa0212cb6accc98040fb00e05f04840ff2f0000ac98040fb00007dadbcf6a2687d007d206a6a183618fc1400b82a1009aa0a01e428027d012c678b00e78b666491646580897a007a00658064fc80383a6465816503e5ffe4e840001faf16f6a2687d007d206a6a183faa9040010300c0320114ff00f4a413f4bcf2c80b3a020158333402012035360142bfae80fd2f1e03480e2282363596ee752d7bb27f50776b95086a0279189675923e390141bf4546a6ffe1b79cfdd86bad3db874313dcde2fb05e6a74aa7f3552d9617c79d13370141bf6ed4f942a7848ce2cb066b77a1128c6a1ff8c43f438a2dce24612ba9ffab8b0338003600414e4c4752414d20546573746e657420536574746c656d656e74001000414e4c54455354000400390201623b3c0202cb3d3e0201206c6d0201ce3f40020120434401f73b68bb7ec831c02497c138087434c0fe90009c6c238f0c54c475d2708fe38b200835c874c7c86084105394c0aea68c5b089408dc7c05b6cc780c0d0d00a084105394c1aea517c0f6cc7804a4cc0cccf8bc0738007e900c7e800c5c75c87e800c7e800c1cea6d0000b4c7c86084105394c06ea5cc4cd104c0bc0538204100113e910c1c2ebcb8536001fe218210414e5302ba973133441359f015e0218210414e5303ba98316c22502370f016e0218210414e5305ba966c410270f017e0218210414e5306ba97316c225023f018e0218210414e5308ba98316c22502371f012e0218210414e5309ba98316c22502370f012e082100f8a7ea55220ba9631353212f019e08210178d45194200425220ba9631055043f01ae034358210595f07bc15ba944330f01be05f04840ff2f002012045460201205a5b02f7688a0822625a02fbcb8b14134cffb51343e803e903e90350c0cd45c71c17cb8b07b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a084115410d209407232c7f2cff27e4014c060c1fd039be854d2e64c01be90087c00541df781f46385cc4ccdc07e903e8034cff44265d44c71c17cb8b1244cf8b8c3a4748020120494a00d03009f2e2c7547034821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e2f825c826cf1622fa025210cb3f40b38307f443ed44d0fa00fa40fa40d4305f03544335541a05c85005fa025003cf1601cf16cc216e913192f400e2c9ed54460600e6543663821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e258a1ed44d0fa00fa40fa40d4305f038210414e530ac8cb1f14cb3f17cb3f5005cf165005fa025004fa02c95033a1128208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb000201204b4c020120555602f50134cffe803e90087c007e903d010c7e800835d270803cb8b10835c2c0278835d270004875d2b0006c3cb8b137bb51343e803e903e90350c1470b1c17cb8b0545471c17cb8b13b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a08413d5d3944a407232c7f2cff27e400860c1fd039be878c08c09e04d4e01f70134cffe803e903e800835d270803cb8b10835c2c0278835d270004875d2b0006c3cb8b137bb51343e803e903e90350c151d841c150804d50500f214013e809633c58073c5b33248b232c044bd003d0032c0327e401c1d3232c0b281f2fff27414b031c17cb8b0c9f0803cb8b0a0822625a014eae8685c2d825498205202d46c333706d33f3082104f5554472101c8cb1fcb3fc9f90050078307f40e6fa130d301d33f31fa00fa40305262ba454a70542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c9f9007074c8cb02ca07cbffc9d05220c70518b0f2e2c421c301e30f4f5001f6c2005338beb0f2e2c22491729171e2500aa85240a08209c9c380a052a0bcf2e2c5f82554365b70542013541403c85004fa0258cf1601cf16ccc922c8cb0112f400f400cb00c920f9007074c8cb02ca07cbffc9d027c8cb3f82104f574e512b01c8cb1fcb3fc9f900410c8307f44371c8cb011acb3f28fa022acf1651007e305064a1144550138210414e5304c8cb1f15cb3f13cb3f01fa02cb01c9018208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb000068365f038210414e5306c8cb1fcb3fc95033a112710170fb027101928018928010e2c8cb055003cf1670fa0212cb6accc98306fb0000ea82104f5554472801c8cb1fcb3fc9f900410a8307f4435127a154414346c0c85005fa025003cf1601cf16cc216e913192f400e2c9ed548210414e5302c8cb1f13cb3f5003fa0258cf1601fa025004cf16c95042a18208989680b60970fb02778018c8cb055004cf1670fa0213cb6bccccc98306fb0002d2a08208989680a00daa001da052a0bcf2e2c5ed44d0fa0031fa4031fa4031d43120d74993f4043092306de253b88210494e434dc8cb1f58cf16cb3fc9f90053018307f40e6fa19c3e5f0805fa003025baf2e2c4e30e8210414e5303c8cb1fcb3f5004fa02c95033a112535400be30c829fa02028307f4435137a0513250ddc85005fa025003cf1601cf16cc216e913192f400e2c9ed54218e2e82107362d09cc8cb1f5250cb3f24fa025003cf1658cf16c9718010c8cb055009cf1658fa0217cb6a16ccc973fb00935f0335e200428208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb0001f50134cffe8009a44c247478bb51343e800c7e900c7e900c750c4835d264fd010c248c1b78a08413d55511c8c07232c7f2cff27e4014c060c1fd039be87cb8b1f4c074cffe803e900c146ab1c17cb8b0d4942ebcb8b10070c06497c2783b51343e803e903e90350c0b245ce45cb8883232c0549832cfca7e809403605702f10c0860822625a02fbcb8b140b4cff47b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a08413d5d39448807232c7f2cff27e400860c1fd039be878c0f4cfcc208413d55511c8407232c7f2cff27e401620c1fd039be84c34c074cfcc7e803e900c3b51343e803e903e90350c0408d7c0c8f0c060585900d4cf1640678307f4430b91259170e212a0544143451bc85005fa025003cf1601cf16cc216e913192f400e2c9ed545034a11315148210414e5304c8cb1f15cb3f13cb3f01fa02cb01c9018208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb0000805bed44d0fa00fa40fa40d43010235f038210414e5307c8cb1f12cb3fc95aa1700170fb027101928018928010e2c8cb055003cf1670fa0212cb6accc98306fb0000f28e41315065a11045103410238210414e5304c8cb1f15cb3f13cb3f01fa02cb01c9018208989680b60972fb02718010c8cb055003cf1670fa0212cb6accc9810082fb008e33135f03328210414e5306c8cb1fcb3fc95aa1710170fb027101928018928010e2c8cb055003cf1670fa0212cb6accc98306fb00e20201205c5d02f7d0140106b90f6a2687d007d207d206a1802698fc1080bc6a28ca9105d41083deecbef29185d58f97162e99ffd001876a2687d0018fd2018fd2018ea18906ba4c9fa0218491836f104fc80410821272198e4658fe5ffe4fc802984c183fa0737d098c92f857041080bc6a28c8a5d4c98a8b16382f97161837186b8e446a6b0201205e5f020120626300e300f4cff454c82084125390d37232c7d633c5b2cff27e403b51343e800c7e900c7e900c750c4835d264fd010c248c1b78a0c1fd039be87cb8b1fe800c2084105394c0f232c7c4b2cfc07e80b2540ce8449c005c3ec09c4064a00624a00438b232c15400f3c59c3e8084b2dab33260c1bec02001ed00f4cffe803e90087c007b51343e803e903e90350c144da8548ab1c17cb8b04a30bffcb8b0950d109c150804d50500f214013e809633c58073c5b33248b232c044bd003d0032c032483e401c1d3232c0b281f2fff274013e903d010c7e800835d270803cb8b11de0063232c14a33c59c3e80b2dac533206001f68210178d4519c8cb1f52a0cb3f29fa0225cf165003cf1621fa025003cf16c901cc2191729171e2500ba8a08209c9c380a017bcf2e2c507c98040fb00ed44d0fa0031fa4031fa4031d43120d74993f4043092306de223c2009410246c31e30d10344130c85005fa025003cf1601cf16cc216e913192f400e2c9ed5461005c0482105354444fc8cb1f58cf16cb3fc9f90053038307f40e6fa193fa0030923070e2c804a013fa0240038307f44301f33b68bb7efb51343e803e903e90350c0274cffe80145468017e903e9014d731c1551cdb9c150804d50500f214013e809633c58073c5b33248b232c044bd003d0032c0327e401c1d3232c0b281f2fff2741403b1c1476c7cb8b0fb51343e800c7e900c7e900c750c4835d264fd010c248c1b78a084115410d209606401b93b51343e803e903e90350c01f4cffe803e900c145468549271c17cb8b049f0bffcb8b08160824c4b402805af3cb8b0e0841ef765f7b232c7c572cfd400fe8088b3c58073c5b25c60063232c14933c59c3e80b2dab33260103ec01004e06904f401c8cb1fcb3fc9f900218307f40e6fa1209b30fa403023c70524c200b09131e29138e30d0bfa0051b9a182089896805cb608a1208208989680a023a023912c9170e2a052b0bef2e2c5018208989680b60972fb028208989680a019a12897104a1039385f04e30d26d70b01c30024c200b09410266c32e30d50436566676800d808f90082105354444dc8cb1fcbffc9f90053088307f40e6fa131945f0edb31e071c8cb0040198307f443547013821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e223a0c801fa025324821043524454c8cb1f58cf16cb3fc9f900588307f443070070528aa019a182107362d09cc8cb1f5230cb3f58fa025008cf165008cf16c9718010c8cb0524cf165007fa0216cb6a15ccc973fb001035103400468210d53276db708010c8cb055009cf165005fa0217cb6a13cb1f13cb3fc972fb0050030030c85005fa025003cf1601cf16cc216e913192f400e2c9ed540062ed44d0fa0031fa4031fa4031d43120d74993f4043092306de2c85005fa025003cf1601cf16cc216e913192f400e2c9ed54006e507782105354444fc8cb1f58cf16cb3fc9f90053078307f40e6fa1f2e2c3fa003027c2005381bbb0f2e2c4c85118a1fa0240188307f443004ccb0040778307f4435024a0444403c85005fa025003cf1601cf16cc216e913192f400e2c9ed540201206e6f00b9bc8abf6a2687d0018fd2018fd2018ea18906ba4c9fa0218491836f1410827aba728ac00e4658fe59fe4fc8010c183fa0737d0ca2db8298070e99f98410827aaaa239080e4658fe59fe4fc802c4183fa0737d0986980e99f98fd001809401f9bb8e5ed44d0fa0031fa4031fa4031d43120d74993f4043092306de28210455043482201c8cb1fcb3fc9f900218307f40e6fa1ed44d0fa00fa40fa40d4305f03019c6c3170c8cb01c9d070542013e101fa40fa00d33f30542426821043524454c8cb1f58cf16cb3fc9f900018307f40e6fa193fa0030923070e25003a1870001bbbb02ed44d0fa00fa40fa40d430800044300"
+            },
+            {
+              "hash": "fefd7d340baf761557a8843f59c096f8af05f21c023c14e6b524f61b30293dca",
+              "lt": 106780009000003,
+              "account": {
+                "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+                "is_scam": false,
+                "is_wallet": true
+              },
+              "success": false,
+              "utime": 1793497979,
+              "orig_status": "uninit",
+              "end_status": "uninit",
+              "total_fees": 22222,
+              "end_balance": 1999999999,
+              "transaction_type": "TransOrd",
+              "state_update_old": "0b4b55159b1de2ebf9520de4c75e69556f3cce7d8b2492663c963e1dc5ff8398",
+              "state_update_new": "12c9529ea28042379a226458499d45b033f08e59d20f4189369e50b55da0d67d",
+              "in_msg": {
+                "msg_type": "int_msg",
+                "created_lt": 106780009000002,
+                "ihr_disabled": true,
+                "bounce": true,
+                "bounced": false,
+                "value": 1000000,
+                "fwd_fee": 64890,
+                "ihr_fee": 0,
+                "destination": {
+                  "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+                  "is_scam": false,
+                  "is_wallet": true
+                },
+                "source": {
+                  "address": "0:b111a976236e3b5e990a250406098be60ea7c1a242cd4055a774b106dab968e7",
+                  "name": "testnet-market.ton",
+                  "is_scam": false,
+                  "is_wallet": true
+                },
+                "import_fee": 0,
+                "created_at": 1793497979,
+                "op_code": "0x00000000",
+                "hash": "5cf62696a2000722b77baca1cde8d0b935df751a5ced31bb8836db67c3f27a59",
+                "raw_body": "b5ee9c7201010101002f00005a000000004765742033303020746573746e657420544f4e207c2054473a2040746573746e65745f6d61726b6574",
+                "decoded_op_name": "text_comment",
+                "decoded_body": {
+                  "text": "Get 300 testnet TON | TG: @testnet_market"
+                }
+              },
+              "out_msgs": [
+                {
+                  "msg_type": "int_msg",
+                  "created_lt": 106780009000004,
+                  "ihr_disabled": true,
+                  "bounce": false,
+                  "bounced": true,
+                  "value": 933333,
+                  "fwd_fee": 44446,
+                  "ihr_fee": 0,
+                  "destination": {
+                    "address": "0:b111a976236e3b5e990a250406098be60ea7c1a242cd4055a774b106dab968e7",
+                    "name": "testnet-market.ton",
+                    "is_scam": false,
+                    "is_wallet": true
+                  },
+                  "source": {
+                    "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+                    "is_scam": false,
+                    "is_wallet": true
+                  },
+                  "import_fee": 0,
+                  "created_at": 1793497979,
+                  "op_code": "0xffffffff",
+                  "hash": "22a4f37f8c54f1d59ceae0169f4260b3832272b6e55c0d5739ec25077b366f45",
+                  "raw_body": "b5ee9c72010101010026000048ffffffff000000004765742033303020746573746e657420544f4e207c2054473a204074",
+                  "decoded_op_name": "bounce",
+                  "decoded_body": {
+                    "payload": "b5ee9c72010101010022000040000000004765742033303020746573746e657420544f4e207c2054473a204074"
+                  }
+                }
+              ],
+              "block": "(0,8000000000000000,100182966)",
+              "prev_trans_hash": "430e5adf180c3d9166859cce9bdc6953942602fda76de6d169da7f594c7c4564",
+              "prev_trans_lt": 106779922000003,
+              "compute_phase": {
+                "skipped": true,
+                "skip_reason": "cskip_no_state"
+              },
+              "storage_phase": {
+                "fees_collected": 1,
+                "status_change": "acst_unchanged"
+              },
+              "credit_phase": {
+                "fees_collected": 0,
+                "credit": 1000000
+              },
+              "bounce_phase": "TrPhaseBounceOk",
+              "aborted": true,
+              "destroyed": false,
+              "raw": "b5ee9c72010208010001c10003b378119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d90610000611da8816c43430e5adf180c3d9166859cce9bdc6953942602fda76de6d169da7f594c7c45640000611da351e8836ae69b7b000204ad9c80102030201e004050082720b4b55159b1de2ebf9520de4c75e69556f3cce7d8b2492663c963e1dc5ff839812c9529ea28042379a226458499d45b033f08e59d20f4189369e50b55da0d67d001b044048c3d09001c0256cd2ad9e4001ad6801622352ec46dc76bd32144a080c1317cc1d4f8344859a80ab4ee9620db572d1cf0020467addbfd92bd552b5ff3192f4c343ae3ea95b26d9474f79dba566841f64184c3d090005faf40000c23b5102d884d5cd36f6c0060101df07005a000000004765742033303020746573746e657420544f4e207c2054473a2040746573746e65745f6d61726b657400f558010233d6edfec95eaa95aff98c97a61a1d71f54ad936ca3a7bcedd2b3420fb20c3002c446a5d88db8ed7a6428941018262f983a9f06890b3501569dd2c41b6ae5a39cc38f754055b3c0000c23b5102d888d5cd36f67fffffff8000000023b2ba10199818103a32b9ba3732ba102a27a7103e102a239d10203a40"
+            },
+            {
+              "hash": "430e5adf180c3d9166859cce9bdc6953942602fda76de6d169da7f594c7c4564",
+              "lt": 106779922000003,
+              "account": {
+                "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+                "is_scam": false,
+                "is_wallet": true
+              },
+              "success": true,
+              "utime": 1793497944,
+              "orig_status": "nonexist",
+              "end_status": "uninit",
+              "total_fees": 0,
+              "end_balance": 2000000000,
+              "transaction_type": "TransOrd",
+              "state_update_old": "90aec8965afabb16ebc3cb9b408ebae71b618d78788bc80d09843593cac98da4",
+              "state_update_new": "0b4b55159b1de2ebf9520de4c75e69556f3cce7d8b2492663c963e1dc5ff8398",
+              "in_msg": {
+                "msg_type": "int_msg",
+                "created_lt": 106779922000002,
+                "ihr_disabled": true,
+                "bounce": false,
+                "bounced": false,
+                "value": 2000000000,
+                "fwd_fee": 44446,
+                "ihr_fee": 0,
+                "destination": {
+                  "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+                  "is_scam": false,
+                  "is_wallet": true
+                },
+                "source": {
+                  "address": "0:92112d13658a9c56482882e8486fc88c128e1cbda130988ad4e6a6d082737c7e",
+                  "is_scam": false,
+                  "is_wallet": true
+                },
+                "import_fee": 0,
+                "created_at": 1793497944,
+                "op_code": "0x00000000",
+                "hash": "d7c0788c7dfc088072753f076974fdc3e6dd9421213876478ddf3ca5e30656c7",
+                "raw_body": "b5ee9c720101010100240000440000000068747470733a2f2f742e6d652f7465737467697665725f746f6e5f626f74",
+                "decoded_op_name": "text_comment",
+                "decoded_body": {
+                  "text": "https://t.me/testgiver_ton_bot"
+                }
+              },
+              "out_msgs": [],
+              "block": "(0,8000000000000000,100182879)",
+              "compute_phase": {
+                "skipped": true,
+                "skip_reason": "cskip_no_state"
+              },
+              "credit_phase": {
+                "fees_collected": 0,
+                "credit": 2000000000
+              },
+              "aborted": true,
+              "destroyed": false,
+              "raw": "b5ee9c720102050100012a0003af78119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d90610000611da351e883000000000000000000000000000000000000000000000000000000000000000000000000000000006ae69b5800018080102030101a00400827290aec8965afabb16ebc3cb9b408ebae71b618d78788bc80d09843593cac98da40b4b55159b1de2ebf9520de4c75e69556f3cce7d8b2492663c963e1dc5ff8398000f0c091dcd6500012000f3480124225a26cb1538ac905105d090df9118251c397b42613115a9cd4da104e6f8fd0020467addbfd92bd552b5ff3192f4c343ae3ea95b26d9474f79dba566841f641851dcd65000055b3c0000c23b46a3d104d5cd36b000000000343a3a38399d1797ba1736b297ba32b9ba33b4bb32b92fba37b72fb137ba40"
+            }
+          ]
+        }
+      },
+      "curveHistory": {
+        "url": "https://testnet.tonapi.io/v2/blockchain/accounts/0%3A1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee/transactions?limit=100&sort_order=desc",
+        "http": 200,
+        "observedUtc": "2026-11-01T23:45:30.944Z",
+        "body": {
+          "transactions": []
+        }
+      }
+    }
+  },
+  "operator": {
+    "signatureAllowed": true,
+    "seqno": 1,
+    "walletId": 2147483645,
+    "publicKey": "94a010bf130bfceefdcba69f1dc18260277e1a3d073b632dd578b9c38b421a09",
+    "extensionsPresent": false
+  },
+  "curve": {
+    "address": "kQAfBL9a-9BPmFH6GVUYoUz0byuToTRHAwFAgqZXAyRo7kOW",
+    "accountState": "uninitialized",
+    "protocolState": null,
+    "reserves": null
+  },
+  "minter": {
+    "address": "kQA5PEDpb0UPGsGUD0jByO9qNFd6PqyXPpMkTUyngd5-IYq8",
+    "supplyUnits": "0",
+    "decimals": 9,
+    "symbol": "ANLTEST",
+    "name": "ANLGRAM Testnet Settlement",
+    "admin": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "renouncedObserved": false
+  },
+  "persistentLock": {
+    "operation": "ANLTEST_CURVE_TX2",
+    "state": "LOCKED_PENDING_RECONCILIATION",
+    "fingerprint": "508c80f62122112cbda6af7a1fdad53a4a1bc86bad009bdd66f212988055bb28",
+    "claimedAt": 1793573585344,
+    "validUntil": 1793573616,
+    "events": [],
+    "chainOutcomeVerified": false,
+    "retryPermitted": false,
+    "scope": "PERSISTENT_DISPATCH_RECORD_NOT_TRANSACTION_RECEIPT"
+  },
+  "historyCoverage": {
+    "requestedLimit": 100,
+    "returnedCount": 5,
+    "latestTransactionUtc": "2026-11-01T21:44:25.000Z",
+    "oldestPreviousLt": null,
+    "oldestPreviousHash": null,
+    "decodedBocChain": [
+      {
+        "hash": "d2e8fd5233eb8bf05a428605ea3735d67a1b50741826bb6996156ec49020dc21",
+        "lt": "106958981000003",
+        "prevLt": "106888530000003",
+        "prevHash": "bc811f33c07ee03bad0da830cc8556ec8f7a090c3799530187831c17fb2b4927",
+        "utc": "2026-11-01T21:44:25.000Z"
+      },
+      {
+        "hash": "bc811f33c07ee03bad0da830cc8556ec8f7a090c3799530187831c17fb2b4927",
+        "lt": "106888530000003",
+        "prevLt": "106801931000001",
+        "prevHash": "1bc3b4b6dfc515c495572d077114444aecfd4573eb893668d7b10502704e9c1e",
+        "utc": "2026-11-01T13:55:26.000Z"
+      },
+      {
+        "hash": "1bc3b4b6dfc515c495572d077114444aecfd4573eb893668d7b10502704e9c1e",
+        "lt": "106801931000001",
+        "prevLt": "106780009000003",
+        "prevHash": "fefd7d340baf761557a8843f59c096f8af05f21c023c14e6b524f61b30293dca",
+        "utc": "2026-11-01T04:18:56.000Z"
+      },
+      {
+        "hash": "fefd7d340baf761557a8843f59c096f8af05f21c023c14e6b524f61b30293dca",
+        "lt": "106780009000003",
+        "prevLt": "106779922000003",
+        "prevHash": "430e5adf180c3d9166859cce9bdc6953942602fda76de6d169da7f594c7c4564",
+        "utc": "2026-11-01T01:52:59.000Z"
+      },
+      {
+        "hash": "430e5adf180c3d9166859cce9bdc6953942602fda76de6d169da7f594c7c4564",
+        "lt": "106779922000003",
+        "prevLt": "0",
+        "prevHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "utc": "2026-11-01T01:52:24.000Z"
+      }
+    ],
+    "completeToGenesis": true
+  },
+  "signedEvidenceSearch": {
+    "network": "-3",
+    "scannedJsonFiles": 55,
+    "scope": "Existing project launchpad JSON evidence and task-named temporary JSON only; no wallet private storage or credentials searched",
+    "walletBodies": [
+      {
+        "file": "../docs/launchpad/tonkeeper-emulation-diagnostic-2026-11-01.json",
+        "path": ".results[0].result.trace.transaction.in_msg.raw_body",
+        "bodyHash": "94df145981455edbf13541862778a61702a3c6b8e046cf8f6b09844733903db5",
+        "walletId": 2147483645,
+        "validUntil": 1793574366,
+        "seqno": 1,
+        "signatureAllZero": true,
+        "signatureValidForApprovedOperator": false,
+        "targets": [
+          {
+            "address": "0:1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee",
+            "amountNano": "100000000"
+          }
+        ]
+      },
+      {
+        "file": "C:\\Users\\maino\\AppData\\Local\\Temp\\anlgram-curve-execution-preflight.json",
+        "path": ".snapshot.observations.curveFees.trace.transactions.WMKYsYwvHQnFyyeLjQm8WlFWs/XaacWFHFwvvBQ6tH4=.in_msg.message_content.body",
+        "bodyHash": "168265b249a3ea1b572d4e43a71da3dce577bbcd89c92c9e383c6e56339a117a",
+        "walletId": 2147483645,
+        "validUntil": 1793570237,
+        "seqno": 1,
+        "signatureAllZero": true,
+        "signatureValidForApprovedOperator": false,
+        "targets": [
+          {
+            "address": "0:1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee",
+            "amountNano": "100000000"
+          }
+        ]
+      },
+      {
+        "file": "C:\\Users\\maino\\AppData\\Local\\Temp\\anlgram-curve-two-readonly-snapshot.json",
+        "path": ".observations.curveFees.trace.transactions.ZQukWTvoNcOqgkVeSPpiqtJRY+zKJyxHN+6HThlCu14=.in_msg.message_content.body",
+        "bodyHash": "ea543f0e76a43648d879813688529daa5c6615dd53bf3d23dce8f3670ed26fff",
+        "walletId": 2147483645,
+        "validUntil": 1793572973,
+        "seqno": 1,
+        "signatureAllZero": true,
+        "signatureValidForApprovedOperator": false,
+        "targets": [
+          {
+            "address": "0:1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee",
+            "amountNano": "100000000"
+          }
+        ]
+      },
+      {
+        "file": "C:\\Users\\maino\\AppData\\Local\\Temp\\anlgram-minter-real-trace.json",
+        "path": ".traces[0].transactions.G8O0tt/FFcSVVy0HcRRESuz9RXPriTZo17EFAnBOnB4=.in_msg.message_content.body",
+        "bodyHash": "622e18070423ab11b8f78007141ab4512ded87e4f6d78898311878ea9791ec02",
+        "walletId": 2147483645,
+        "validUntil": 1793506802,
+        "seqno": 0,
+        "signatureAllZero": false,
+        "signatureValidForApprovedOperator": true,
+        "targets": [
+          {
+            "address": "0:393c40e96f450f1ac1940f48c1c8ef6a34577a3eac973e93244d4ca781de7e21",
+            "amountNano": "100000000"
+          }
+        ]
+      }
+    ],
+    "authenticCurveBodies": []
+  },
+  "passiveSequenceInvalidationModel": {
+    "observedUtc": "2026-11-01T23:48:26.689Z",
+    "network": "-3",
+    "scope": "PASSIVE_UNSIGNED_FEE_MODEL_NOT_APPROVED_TRANSACTION",
+    "signature": "ALL_ZERO_INVALID",
+    "walletRequests": 0,
+    "broadcasts": 0,
+    "operator": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "expectedSeqno": 1,
+    "message": {
+      "address": "0QCBGet2_2SvVUrX_MZL0w0OuPqlbJtlHT3nbpWaEH2QYbBR",
+      "amountNano": "10000000",
+      "purpose": "ANLGRAM TESTNET nonce invalidation; Curve #2 remains locked",
+      "stateInitIncluded": false
+    },
+    "validUntilOfSimulation": 1793576996,
+    "emulated": true,
+    "breakdown": [
+      {
+        "account": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+        "success": true,
+        "transactionFeesNano": "515384",
+        "forwardFeesNano": "71290",
+        "childMessageValueNano": "10000000",
+        "incomingForwardFeeNano": "0"
+      },
+      {
+        "account": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+        "success": true,
+        "transactionFeesNano": "51868",
+        "forwardFeesNano": "0",
+        "childMessageValueNano": "0",
+        "incomingForwardFeeNano": "71290"
+      }
+    ],
+    "modeledNetworkFeesNano": "638542",
+    "modeledGrossInitialDebitNano": "10586674",
+    "modeledNetSelfTransferCostNano": "638542",
+    "hardMaximumEnforced": false,
+    "authorizationGranted": false,
+    "feeMethod": "Sum all transaction fees plus remaining forward fees of each consumed internal message via child.in_msg, and any pending internal out_msgs; no fee counted twice",
+    "providerEventExtra": -638542
+  },
+  "walletRules": {
+    "officialSourceCommit": "ff2a9cdb5abe3efdba1e773e4d03a53dea1550b1",
+    "url": "https://github.com/ton-blockchain/wallet-contract-v5/blob/ff2a9cdb5abe3efdba1e773e4d03a53dea1550b1/contracts/wallet_v5.fc",
+    "sourceSha256": "b2ac76071f1cef914ecff601cafa6ec6e015857c6bbde993d255851df62d6a8f",
+    "publishedV5CodeIdentity": "https://github.com/ton-blockchain/docs/blob/main/content/contracts/standard/wallets/v5-api.mdx",
+    "expiryExitCode": 136,
+    "seqnoMismatchExitCode": 133,
+    "codeMatchToDeployedState": true,
+    "recompiledOfficialWalletSource": false
+  },
+  "conclusion": {
+    "acceptedCurveExecutionObserved": false,
+    "noAcceptedExecutionThroughCorroboratedAnchor": true,
+    "authenticCurveSignedMessageFound": false,
+    "signatureExistenceEstablished": false,
+    "actualNativeSignedExpiryEstablished": false,
+    "knownReviewedRequestExpired": true,
+    "unchangedSeqnoDoesNotInvalidateOtherUnexpiredSignatures": true,
+    "fullOffchainAttemptConclusivelyReconciled": false,
+    "retryPermitted": false
+  },
+  "finalityLimitations": [
+    "Two-provider agreement on recognized masterchain block/root/file and finalized account/history records; no local validator quorum or account Merkle proof verification performed.",
+    "TonAPI Curve raw-account 404 is not used as proof of zero balance; TON Center reports uninitialized and TonAPI history is empty.",
+    "No actual native Curve signature/BOC or broadcast hash was available; local request fingerprints and emulation hashes are not live transaction IDs."
+  ],
+  "financialRequests": 0,
+  "signaturesRequested": 0,
+  "broadcasts": 0,
+  "spentNano": "0",
+  "activeRecoveryImplemented": false,
+  "lockModified": false,
+  "deployments": 0,
+  "directCurveObservation": {
+    "url": "https://testnet.toncenter.com/api/v2/getAddressInformation?address=kQAfBL9a-9BPmFH6GVUYoUz0byuToTRHAwFAgqZXAyRo7kOW",
+    "http": 200,
+    "observedUtc": "2026-11-01T23:53:38.632Z",
+    "authentication": "PUBLIC_READ_ONLY_NO_KEY",
+    "body": {
+      "ok": true,
+      "result": {
+        "@type": "raw.fullAccountState",
+        "balance": "0",
+        "extra_currencies": [],
+        "last_transaction_id": {
+          "@type": "internal.transactionId",
+          "lt": "0",
+          "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        },
+        "block_id": {
+          "@type": "ton.blockIdExt",
+          "workchain": -1,
+          "shard": "-9223372036854775808",
+          "seqno": 95190314,
+          "root_hash": "V8WMTlmoK7LwyLj0IpNIkrlfgXDLB2s/3C8oGHTTlIM=",
+          "file_hash": "X3riNU4CTlHy7uSWzf8chPMQARovqcY/OV/ybzctMK4="
+        },
+        "code": "",
+        "data": "",
+        "frozen_hash": "",
+        "sync_utime": 1793577217,
+        "state": "uninitialized",
+        "suspended": false
+      },
+      "@extra": "1793577218:3:8.712"
+    }
+  },
+  "finalCrossProviderObservation": {
+    "observedUtc": "2026-11-01T23:54:16.827Z",
+    "primary": {
+      "url": "https://testnet.toncenter.com/api/v2/getAddressInformation?address=0%3A8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+      "http": 200,
+      "observedUtc": "2026-11-01T23:54:15.271Z",
+      "body": {
+        "ok": true,
+        "result": {
+          "@type": "raw.fullAccountState",
+          "balance": "5893016464",
+          "extra_currencies": [],
+          "last_transaction_id": {
+            "@type": "internal.transactionId",
+            "lt": "106958981000003",
+            "hash": "0uj9UjPri/BaQoYF6jc11nobUHQYJrtplhVuxJAg3CE="
+          },
+          "block_id": {
+            "@type": "ton.blockIdExt",
+            "workchain": -1,
+            "shard": "-9223372036854775808",
+            "seqno": 95190406,
+            "root_hash": "LcAoYNzvng5c/LUzGfogQzagaziChsDzeuLdEqrQQT4=",
+            "file_hash": "n/B9mDL2RxYZoEbgnGbba9/fSE7Fyp35KsdYuY8mMt4="
+          },
+          "code": "te6cckECFAEAAoEAART/APSkE/S88sgLAQIBIAIDAgFIBAUBAvIOAtzQINdJwSCRW49jINcLHyCCEGV4dG69IYIQc2ludL2wkl8D4IIQZXh0brqOtIAg1yEB0HTXIfpAMPpE+Cj6RDBYvZFb4O1E0IEBQdch9AWDB/QOb6ExkTDhgEDXIXB/2zzgMSDXSYECgLmRMOBw4hAPAgEgBgcCASAICQAZvl8PaiaECAoOuQ+gLAIBbgoLAgFIDA0AGa3OdqJoQCDrkOuF/8AAGa8d9qJoQBDrkOuFj8AAF7Ml+1E0HHXIdcLH4AARsmL7UTQ1woAgAR4g1wsfghBzaWduuvLgin8PAeaO8O2i7fshgwjXIgKDCNcjIIAg1yHTH9Mf0x/tRNDSANMfINMf0//XCgAK+QFAzPkQmiiUXwrbMeHywIffArNQB7Dy0IRRJbry4IVQNrry4Ib4I7vy0IgikvgA3gGkf8jKAMsfAc8Wye1UIJL4D95w2zzYEAP27aLt+wL0BCFukmwhjkwCIdc5MHCUIccAs44tAdcoIHYeQ2wg10nACPLgkyDXSsAC8uCTINcdBscSwgBSMLDy0InXTNc5MAGk6GwShAe78uCT10rAAPLgk+1V4tIAAcAAkVvg69csCBQgkXCWAdcsCBwS4lIQseMPINdKERITAJYB+kAB+kT4KPpEMFi68uCR7UTQgQFB1xj0BQSdf8jKAEAEgwf0U/Lgi44UA4MH9Fvy4Iwi1woAIW4Bs7Dy0JDiyFADzxYS9ADJ7VQAcjDXLAgkji0h8uCS0gDtRNDSAFETuvLQj1RQMJExnAGBAUDXIdcKAPLgjuLIygBYzxbJ7VST8sCN4gAQk1vbMeHXTNCon9ZI",
+          "data": "te6cckEBAQEAKwAAUYAAAAC////+ylAIX4mF/nd+5dNPjuDBMBO/DR6DnbGW6rxc4cWhDQSg9AFjJQ==",
+          "frozen_hash": "",
+          "sync_utime": 1793577254,
+          "state": "active",
+          "suspended": false
+        },
+        "@extra": "1793577255:3:2.685"
+      }
+    },
+    "secondary": {
+      "url": "https://testnet.tonapi.io/v2/blockchain/accounts/0%3A8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+      "http": 200,
+      "observedUtc": "2026-11-01T23:54:15.475Z",
+      "body": {
+        "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+        "balance": 5893016464,
+        "code": "b5ee9c7201021401000281000114ff00f4a413f4bcf2c80b01020120020302014804050102f20e02dcd020d749c120915b8f6320d70b1f2082106578746ebd21821073696e74bdb0925f03e082106578746eba8eb48020d72101d074d721fa4030fa44f828fa443058bd915be0ed44d0810141d721f4058307f40e6fa1319130e18040d721707fdb3ce03120d749810280b99130e070e2100f020120060702012008090019be5f0f6a2684080a0eb90fa02c02016e0a0b0201480c0d0019adce76a2684020eb90eb85ffc00019af1df6a2684010eb90eb858fc00017b325fb51341c75c875c2c7e00011b262fb513435c28020011e20d70b1f82107369676ebaf2e08a7f0f01e68ef0eda2edfb218308d722028308d723208020d721d31fd31fd31fed44d0d200d31f20d31fd3ffd70a000af90140ccf9109a28945f0adb31e1f2c087df02b35007b0f2d0845125baf2e0855036baf2e086f823bbf2d0882292f800de01a47fc8ca00cb1f01cf16c9ed542092f80fde70db3cd81003f6eda2edfb02f404216e926c218e4c0221d73930709421c700b38e2d01d72820761e436c20d749c008f2e09320d74ac002f2e09320d71d06c712c2005230b0f2d089d74cd7393001a4e86c128407bbf2e093d74ac000f2e093ed55e2d20001c000915be0ebd72c08142091709601d72c081c12e25210b1e30f20d74a111213009601fa4001fa44f828fa443058baf2e091ed44d0810141d718f405049d7fc8ca0040048307f453f2e08b8e14038307f45bf2e08c22d70a00216e01b3b0f2d090e2c85003cf1612f400c9ed54007230d72c08248e2d21f2e092d200ed44d0d2005113baf2d08f54503091319c01810140d721d70a00f2e08ee2c8ca0058cf16c9ed5493f2c08de20010935bdb31e1d74cd0",
+        "data": "b5ee9c7201010101002b00005180000000bffffffeca50085f8985fe777ee5d34f8ee0c13013bf0d1e839db196eabc5ce1c5a10d04a0",
+        "last_transaction_lt": 106958981000003,
+        "last_transaction_hash": "d2e8fd5233eb8bf05a428605ea3735d67a1b50741826bb6996156ec49020dc21",
+        "status": "active",
+        "storage": {
+          "used_cells": 22,
+          "used_bits": 5020,
+          "used_public_cells": 0,
+          "last_paid": 1793569465,
+          "due_payment": 0
+        }
+      }
+    },
+    "header": {
+      "url": "https://testnet.tonapi.io/v2/blockchain/blocks/(-1%2C8000000000000000%2C95190406)",
+      "http": 200,
+      "observedUtc": "2026-11-01T23:54:16.821Z",
+      "body": {
+        "tx_quantity": 3,
+        "value_flow": {
+          "from_prev_blk": {
+            "grams": 5197414667517401000,
+            "other": [
+              {
+                "id": -17,
+                "value": "1000000000000"
+              },
+              {
+                "id": 100,
+                "value": "1400000000"
+              },
+              {
+                "id": 239,
+                "value": "666666666666"
+              }
+            ]
+          },
+          "to_next_blk": {
+            "grams": 5197414670217401000,
+            "other": [
+              {
+                "id": -17,
+                "value": "1000000000000"
+              },
+              {
+                "id": 100,
+                "value": "1400000000"
+              },
+              {
+                "id": 239,
+                "value": "666666666666"
+              }
+            ]
+          },
+          "imported": {
+            "grams": 0,
+            "other": []
+          },
+          "exported": {
+            "grams": 0,
+            "other": []
+          },
+          "fees_collected": {
+            "grams": 2700000000,
+            "other": []
+          },
+          "fees_imported": {
+            "grams": 1000000000,
+            "other": []
+          },
+          "recovered": {
+            "grams": 2700000000,
+            "other": []
+          },
+          "created": {
+            "grams": 1700000000,
+            "other": []
+          },
+          "minted": {
+            "grams": 0,
+            "other": []
+          }
+        },
+        "workchain_id": -1,
+        "shard": "8000000000000000",
+        "seqno": 95190406,
+        "root_hash": "2dc02860dcef9e0e5cfcb53319fa204336a06b388286c0f37ae2dd12aad0413e",
+        "file_hash": "9ff07d9832f6471619a046e09c66db6bdfdf484ec5ca9df92ac758b98f2632de",
+        "global_id": -3,
+        "version": 0,
+        "after_merge": false,
+        "before_split": false,
+        "after_split": false,
+        "want_split": false,
+        "want_merge": true,
+        "key_block": false,
+        "gen_utime": 1793577254,
+        "start_lt": 106978483000000,
+        "end_lt": 106978483000004,
+        "vert_seqno": 0,
+        "gen_catchain_seqno": 600466,
+        "min_ref_mc_seqno": 95190403,
+        "prev_key_block_seqno": 95186651,
+        "gen_software_version": 17,
+        "gen_software_capabilities": 1006,
+        "prev_refs": [
+          "(-1,8000000000000000,95190405)"
+        ],
+        "in_msg_descr_length": 1,
+        "out_msg_descr_length": 0,
+        "rand_seed": "ac92777e624c71effee1e20cd5554ffaf0d28cf3de2929d9760f83965d743e2d",
+        "created_by": "21e04350b0a4973f7709c1b0005106f7e97a56d0b610f258c1f9114c627dad0b"
+      }
+    },
+    "checks": {
+      "unchangedCode": true,
+      "unchangedData": true,
+      "unchangedBalance": true,
+      "unchangedLastTransaction": true,
+      "masterchainRootMatches": true,
+      "masterchainFileMatches": true
+    },
+    "providerAuthentication": "PUBLIC_READS; prior protected observation separately authenticated",
+    "validatorProofsVerifiedLocally": false
+  }
+}
