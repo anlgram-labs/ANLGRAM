@@ -10,7 +10,7 @@ const active=JSON.parse(readFileSync(new URL('../docs/launchpad/active-testnet-c
 assert.equal(createHash('sha256').update(JSON.stringify(candidate)).digest('hex'),active.candidateSha256);
 assert.equal(intent.candidateSha256,active.candidateSha256);assert.equal(intent.operator,candidate.wallet.raw);assert.equal(intent.walletId,2147483645);assert.equal(intent.network,'-3');assert.equal(intent.publicKey,candidate.wallet.publicKey);assert.equal(intent.walletStateInit,candidate.wallet.stateInit);assert.deepEqual(intent.message,candidate.smokePlan.steps[0].message);assert.equal(intent.message.amount,'100000000');
 mkdirSync(new URL('./public/',import.meta.url),{recursive:true});
-for(const file of ['index.html','app.js','style.css'])cpSync(new URL(file,import.meta.url),new URL('public/'+file,import.meta.url));
+for(const file of ['index.html','app.js','transaction-one.js','style.css'])cpSync(new URL(file,import.meta.url),new URL('public/'+file,import.meta.url));
 let patched=0;
 await build({entryPoints:[fileURLToPath(new URL('client-entry.mjs',import.meta.url))],bundle:true,platform:'browser',format:'iife',globalName:'TON_CONNECT_UI',minify:true,target:'es2022',outfile:fileURLToPath(new URL('public/tonconnect-ui.min.js',import.meta.url)),plugins:[{name:'pinned-single-attempt-sdk',setup(b){b.onLoad({filter:/[\\/]@tonconnect[\\/]sdk[\\/]lib[\\/]esm[\\/]index\.mjs$/},args=>{patched++;return{contents:patchSdk(readFileSync(args.path,'utf8'),fileURLToPath(new URL('single-attempt.mjs',import.meta.url))),loader:'js',resolveDir:fileURLToPath(new URL('node_modules/@tonconnect/sdk/lib/esm/',import.meta.url))};});}}]});
 if(patched!==1)throw Error('Application did not use exactly one patched SDK module');

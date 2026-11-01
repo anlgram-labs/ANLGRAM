@@ -1,3 +1,4 @@
+import {prepareMinterOne,preparationEnabled} from './prepare-minter-one.mjs';
 import { approvedOrigin, CHAIN, MINTER, OPERATOR, TESTNET_RPC, TTL } from './config.mjs';
 import { verifyProof } from './proof.mjs';
 import {accountRead} from './testnet-rpc.mjs';
@@ -62,14 +63,16 @@ async function route(request,env) {
   const path=u.pathname;
   if (request.method==='GET' && path==='/tonconnect-manifest.json') return json({url:origin.origin+'/',name:'ANLGRAM TESTNET ONLY — ownership proof',iconUrl:origin.origin+'/icon.png'},200,{'Access-Control-Allow-Origin':'*'});
   if (request.method==='GET' && path==='/api/config') return json({network:CHAIN,operator:OPERATOR,minter:MINTER,
-    manifestUrl:origin.origin+'/tonconnect-manifest.json',financialSigningEnabled:false,replayIsolationVerified:false});
-  if(request.method==='POST'&&['/api/operation/claim','/api/operation/record','/api/operation/status','/api/operation/reconcile'].includes(path)){
+    manifestUrl:origin.origin+'/tonconnect-manifest.json',financialSigningEnabled:false,minterTransactionOnePreparationEnabled:preparationEnabled(env,u.origin),replayIsolationVerified:false});
+  if(request.method==='POST'&&['/api/operation/prepare','/api/operation/claim','/api/operation/record','/api/operation/status','/api/operation/reconcile'].includes(path)){
     if(request.headers.get('Origin')!==origin.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Origin/content type rejected'},403);
     let input;try{input=JSON.parse(await boundedBody(request));}catch{return json({error:'Invalid operation request'},400);}
     // Fail before touching any storage/provider when no exact approval exists.
-    if(path.endsWith('/claim')&&!env.MINTER_TX1_APPROVAL)return json({error:'Financial authorization absent; signing disabled'},403);
+    if((path.endsWith('/claim')||path.endsWith('/prepare'))&&!env.MINTER_TX1_APPROVAL&&!preparationEnabled(env,u.origin))return json({error:'Financial authorization absent; signing disabled'},403);
     const id=attemptId(request);let proofState={verified:false};
     if(/^[a-f0-9]{64}$/.test(id||''))proofState=await(await env.PROOFS.get(env.PROOFS.idFromName(id)).fetch(new Request('https://proof.internal/',{method:'POST',body:JSON.stringify({action:'status',domain:origin.hostname})}))).json();
+    if(path.endsWith('/prepare'))return prepareMinterOne(input,env,proofState);
+    if(!env.MINTER_TX1_APPROVAL&&path.endsWith('/claim')&&!preparationEnabled(env,u.origin))return json({error:'Wrong signing origin'},403);
     return operationRoute(path,input,env,proofState);
   }
   if (request.method==='POST' && ['/api/proof/challenge','/api/proof/verify'].includes(path)) {
@@ -104,7 +107,7 @@ async function route(request,env) {
     for(const name of ['operator','minter']){const r=await accountRead(env,name,true);const data=await r.json();if(!r.ok)return json(data,r.status,{'Retry-After':r.headers.get('Retry-After')||'1'});observations[name]=data;}
     return json({network:CHAIN,observations,financialSigningEnabled:false});
   }
-  if (request.method==='GET' && ['/', '/app.js', '/style.css', '/tonconnect-ui.min.js', '/icon.png'].includes(path)) return env.ASSETS.fetch(request);
+  if (request.method==='GET' && ['/', '/app.js', '/transaction-one.js', '/style.css', '/tonconnect-ui.min.js', '/icon.png'].includes(path)) return env.ASSETS.fetch(request);
   return json({error:'Unavailable; financial actions are disabled'},404);
 }
 export default {

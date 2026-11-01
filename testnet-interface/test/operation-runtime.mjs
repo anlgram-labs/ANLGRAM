@@ -12,10 +12,11 @@ test('real SQLite Durable Object admits one concurrent claim and survives proces
   const options=convertV4MiniflareOptions({scriptPath:fileURLToPath(new URL('../.worker-build/worker.js',import.meta.url)),modules:true,compatibilityDate:'2026-10-30',compatibilityFlags:['nodejs_compat'],bindings:{APP_ORIGIN:'https://testnet.anlgram.com'},durableObjects:{OPERATIONS:{className:'FinancialOperation',useSQLite:true}}});options.resourcePersistencePath=persist;return new Miniflare(options);
  };
  const transaction={network:'-3',from:intent.operator,validUntil:Math.floor(Date.now()/1000)+110,messages:[structuredClone(intent.message)]},hash=await fingerprint(transaction);
- const claim=stub=>stub.fetch(new Request('https://operation.internal/',{method:'POST',body:JSON.stringify({action:'claim',transaction,fingerprint:hash})}));
+ const claim=stub=>stub.fetch(new Request('https://operation.internal/',{method:'POST',body:JSON.stringify({action:'claim',transaction,fingerprint:hash,requirePrepared:true})}));
  let mf=make(),ticket;
  try{
   const ns=await mf.getDurableObjectNamespace('OPERATIONS'),stub=ns.get(ns.idFromName('isolated-fixture-lifetime-operation'));
+  const prepared=await stub.fetch(new Request('https://operation.internal/',{method:'POST',body:JSON.stringify({action:'prepare',transaction,approval:{fingerprint:hash,validUntil:transaction.validUntil,observedAt:Math.floor(Date.now()/1000)}})}));assert.equal(prepared.status,200);
   const results=await Promise.all([claim(stub),claim(stub),claim(stub)]);assert.deepEqual(results.map(r=>r.status).sort(),[200,409,409]);ticket=(await results.find(r=>r.status===200).json()).ticket;
   for(let i=0;i<2;i++)await stub.fetch(new Request('https://operation.internal/',{method:'POST',body:JSON.stringify({action:'record',ticket,event:'UNKNOWN_OR_REJECTED'})}));
   const status=await(await stub.fetch(new Request('https://operation.internal/',{method:'POST',body:'{"action":"status"}'}))).json();assert.deepEqual(status.events,['UNKNOWN_OR_REJECTED']);assert.equal(status.ticket,undefined);assert.equal(status.status,'LOCKED_PENDING_RECONCILIATION');
