@@ -1,5 +1,5 @@
 {
-  "observedUtc": "2026-11-01T22:28:49.407Z",
+  "observedUtc": "2026-11-01T22:48:19.761Z",
   "origin": "https://testnet.anlgram.com",
   "dns": {
     "resolver": "1.1.1.1",
@@ -101,6 +101,14 @@
       "passed": true
     },
     {
+      "name": "server and compiled client execution version agree",
+      "passed": true
+    },
+    {
+      "name": "runtime administrative binding configured without financial authorization",
+      "passed": true
+    },
+    {
       "name": "persistent domain challenge",
       "passed": true
     },
@@ -179,7 +187,7 @@
     "balanceNano": "5893016464",
     "state": "active",
     "source": "TON Center Testnet",
-    "observedUtc": "2026-11-01T22:28:58.214Z",
+    "observedUtc": "2026-11-01T22:48:24.966Z",
     "verification": "PROVIDER_OBSERVATION",
     "dataStatus": "FRESH_PROVIDER_OBSERVATION",
     "ageMs": 0,
