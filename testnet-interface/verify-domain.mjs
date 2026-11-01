@@ -41,7 +41,12 @@ for(const chain of ['-239','-3']){const r=await request('/api/proof/verify',{met
 check('pages.dev Origin cannot use custom-domain challenge',(await request('/api/proof/challenge',{method:'POST',headers:{...headers,Origin:'https://anlgram-testnet-preparation.pages.dev'},body:'{}'})).status===403);
 check('Mainnet query override blocked',(await request('/api/config?network=-239')).status===400);
 for(const path of ['/api/sendTransaction','/api/sendBoc','/api/deploy','/_worker.js','/proof.mjs','/wrangler.toml'])check('closed route '+path,(await request(path)).status===404);
+check('financial operation authorization absent',(await request('/api/operation/claim',{method:'POST',headers,body:'{}'})).status===403);
 const balance=await request('/api/operator');evidence.balance={http:balance.status,...JSON.parse(balance.text)};
+evidence.ownershipEvidence='testnet-domain-owner-proof.json';
+evidence.liveBalancePassed=balance.status===200;
+evidence.remainingFailure=balance.status===200?null:'Read-only provider unavailable; no financial authorization allowed';
+writeFileSync(new URL('../docs/launchpad/testnet-domain-verification.json',import.meta.url),JSON.stringify(evidence,null,2)+'\n');
 check('live operator balance',balance.status===200&&evidence.balance.network==='-3'&&evidence.balance.address===OPERATOR&&/^\d+$/.test(evidence.balance.balanceNano));
 evidence.ownershipEvidence='testnet-domain-owner-proof.json';
 writeFileSync(new URL('../docs/launchpad/testnet-domain-verification.json',import.meta.url),JSON.stringify(evidence,null,2)+'\n');

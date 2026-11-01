@@ -23,10 +23,11 @@
     "uiVersion": "2.3.1",
     "sdkVersion": "3.3.1",
     "sdkEsmSha256": "2aebf1039a9fd15e42b4229828bda288160c6610ed4166ce1fae24d0e7c4f880",
-    "publicUiBundleSha256": "bbd171213cd16b0c681485232cce6d46d2dcd1fa42810244b9c6f8ef8027b5f0",
+    "publicUiBundleSha256": "f84fe4c54031fb1f6becc7e5c788cf8004cd40a42a5f1953f6b3081a60b505be",
     "httpSendDefaultsToMaxSafeIntegerAttempts": true,
     "publicSendTransactionDoesNotForwardAttempts": true,
-    "retriesReuseEncryptedRpcId": true
+    "retriesReuseEncryptedRpcId": true,
+    "buildTimePatchVerified": true
   },
   "financialRequestReady": false,
   "financialSigningEnabled": false,
@@ -41,5 +42,10 @@
     "maxValiditySeconds": 120,
     "ownerAuthorizationGranted": false
   },
-  "remainingBlocker": "One-attempt transport guard is not implemented/verified; actual financial signing remains deliberately untested."
+  "remainingBlocker": "Public read-only provider currently rate-limited (429/503); expired owner proof; fresh exact authorization/state/fee snapshot required. Native financial signing untested; no hard fee cap.",
+  "transportVerifiedUtc": "2026-11-01T03:15:51.088Z",
+  "singleAttemptTransportVerified": true,
+  "readyForSeparateOwnerApproval": false,
+  "proofCurrentlyFresh": false,
+  "transportReadyForReview": true
 }

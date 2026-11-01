@@ -2094,3 +2094,9 @@ test-lp-locker-trust-boundary.js
 test-vesting-confirmation-regression.js
 docs/launchpad/codex-sprint-review.md
 ```
+
+## Single-attempt TON Connect transport
+
+Pinned build-time UI2.3.1/SDK3.3.1 patch, exact immutable minter intent and persistent SQLite operation lock implemented. 61 local tests passed, zero failed. Measured loopback HTTP: patched one POST; denied requests zero; unpatched control four repeated POSTs with same RPC ID. No blockchain execution inferred. Non-signing Testnet preparation deployed, approval absent; production proxy and proof namespace preserved. See [full new evidence](tonconnect-single-attempt-implementation.md). No financial signature, broadcast or TON expenditure.
+
+Live check limitation: TON Center returned HTTP429 to the deployed interface, which correctly returned503 with unknown balance. All preceding TLS, exact bundle/assets, manifest, domain challenge, forged-proof/network rejection and closed-route checks passed; financial claim403. No fallback values or financial authorization enabled. The direct read-only complete emulation passed with modeled sender debit0.106876947 Testnet TON. A fresh successful provider read and owner proof are required before any future financial request.

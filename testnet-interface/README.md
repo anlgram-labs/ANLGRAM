@@ -91,3 +91,7 @@ Rollback of this isolated interface: roll back only this separate Pages deployme
 or disable its custom-domain association; preserve the proof storage namespace,
 production and blockchain state. No signed external BOCs,
 owner proofs, cookies, API keys or session secrets should be committed or logged.
+
+## Auditable single-attempt preparation
+
+The bundled SDK now uses a pinned build-time patch and persistent SQLite FinancialOperation lock. MINTER_TX1_APPROVAL remains absent and all financial controls remain disabled. See ../docs/launchpad/tonconnect-single-attempt-implementation.md for exact tests, fresh authorization prerequisites and recovery restrictions. Never reset the operation namespace after an uncertain outcome. A wallet response is not blockchain confirmation.

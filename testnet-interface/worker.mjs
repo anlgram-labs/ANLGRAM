@@ -1,5 +1,7 @@
 import { approvedOrigin, CHAIN, MINTER, OPERATOR, TESTNET_RPC, TTL } from './config.mjs';
 import { verifyProof } from './proof.mjs';
+import {operationRoute} from './operation-lock.mjs';
+export {FinancialOperation} from './operation-lock.mjs';
 
 const json = (body, status=200, extra={}) => new Response(JSON.stringify(body), {status,headers:{'Content-Type':'application/json','Cache-Control':'no-store',...extra}});
 const random = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), b=>b.toString(16).padStart(2,'0')).join('');
@@ -29,6 +31,10 @@ export class ProofAttempt {
   constructor(state) { this.state=state; }
   async fetch(request) {
     const body=await request.json(), now=Math.floor(Date.now()/1000);
+    if(body.action==='status'){
+      const verified=await this.state.storage.get('verified');
+      return verified&&verified.domain===body.domain&&verified.expiresAt>now?json({...verified,verified:true}):json({verified:false});
+    }
     if (body.action==='create') {
       const challenge={payload:random(),createdAt:now,expiresAt:now+TTL,used:false};
       await this.state.storage.put('challenge',challenge);
@@ -39,6 +45,7 @@ export class ProofAttempt {
     if (!await verifyProof(body.proofBody,current,body.domain,now)) return json({error:'Ownership proof rejected; reconnect'},401);
     // Signature checked first, then single-use consumption is serialized atomically.
     const accepted=await consumeChallenge(this.state.storage,current,now);
+    if(accepted)await this.state.storage.put('verified',{address:OPERATOR,network:CHAIN,domain:body.domain,expiresAt:current.expiresAt});
     return accepted ? json({verified:true,address:OPERATOR,network:CHAIN,expiresAt:current.expiresAt,
       scope:'OWNERSHIP_ONLY',financialSigningEnabled:false,replayIsolationVerified:false}) : json({error:'Expired/replayed proof'},401);
   }
@@ -54,6 +61,15 @@ async function route(request,env) {
   if (request.method==='GET' && path==='/tonconnect-manifest.json') return json({url:origin.origin+'/',name:'ANLGRAM TESTNET ONLY — ownership proof',iconUrl:origin.origin+'/icon.png'},200,{'Access-Control-Allow-Origin':'*'});
   if (request.method==='GET' && path==='/api/config') return json({network:CHAIN,operator:OPERATOR,minter:MINTER,
     manifestUrl:origin.origin+'/tonconnect-manifest.json',financialSigningEnabled:false,replayIsolationVerified:false});
+  if(request.method==='POST'&&['/api/operation/claim','/api/operation/record','/api/operation/status','/api/operation/reconcile'].includes(path)){
+    if(request.headers.get('Origin')!==origin.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Origin/content type rejected'},403);
+    let input;try{input=JSON.parse(await boundedBody(request));}catch{return json({error:'Invalid operation request'},400);}
+    // Fail before touching any storage/provider when no exact approval exists.
+    if(path.endsWith('/claim')&&!env.MINTER_TX1_APPROVAL)return json({error:'Financial authorization absent; signing disabled'},403);
+    const id=attemptId(request);let proofState={verified:false};
+    if(/^[a-f0-9]{64}$/.test(id||''))proofState=await(await env.PROOFS.get(env.PROOFS.idFromName(id)).fetch(new Request('https://proof.internal/',{method:'POST',body:JSON.stringify({action:'status',domain:origin.hostname})}))).json();
+    return operationRoute(path,input,env,proofState);
+  }
   if (request.method==='POST' && ['/api/proof/challenge','/api/proof/verify'].includes(path)) {
     if (request.headers.get('Origin')!==origin.origin || !request.headers.get('Content-Type')?.startsWith('application/json')) return json({error:'Origin/content type rejected'},403);
     let raw; try { raw=await boundedBody(request); } catch { return json({error:'Body too large'},413); }

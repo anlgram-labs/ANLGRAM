@@ -1,3 +1,5 @@
+> Current update: the single-attempt transport blocker is resolved by the pinned build-time SDK patch and persistent SQLite lock; see [implementation and measured tests](tonconnect-single-attempt-implementation.md). Financial signing remains disabled. The earlier SDK blocker statements below are historical. Fresh owner proof, current fees/state, exact short-lived request and separate approval are still required. No hard total-debit cap exists.
+
 # V5 transaction #1 — signer compatibility and bounded approval procedure
 
 **Financial signing remains BLOCKED. This is a procedure for separate owner

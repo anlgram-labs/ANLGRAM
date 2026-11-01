@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node build.mjs",
     "build:pages": "node build-pages.mjs",
-    "test": "node --test test/*.test.mjs",
+    "test": "node build.mjs && node --test test/*.test.mjs",
     "check:deploy": "npm run build && wrangler deploy --dry-run --outdir .worker-build"
   },
   "dependencies": {
@@ -14,6 +14,8 @@
     "@tonconnect/ui": "2.3.1"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
+    "@tonconnect/protocol": "2.3.0",
     "@ton/ton": "16.3.0",
     "miniflare": "5.20261023.0-beta",
     "wrangler": "4.153.0"

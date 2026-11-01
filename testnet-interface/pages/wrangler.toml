@@ -10,3 +10,7 @@ APP_ORIGIN = "https://anlgram-testnet-preparation.pages.dev"
 name = "PROOFS"
 class_name = "ProofAttempt"
 script_name = "anlgram-testnet-preparation"
+[[durable_objects.bindings]]
+name = "OPERATIONS"
+class_name = "FinancialOperation"
+script_name = "anlgram-testnet-preparation"
