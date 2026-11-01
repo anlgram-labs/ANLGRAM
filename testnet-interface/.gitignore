@@ -1,5 +1,7 @@
 node_modules/
 public/
+public-pages/
+.pages-worker-build/
 .worker-build/
 .wrangler/
 .dev.vars*

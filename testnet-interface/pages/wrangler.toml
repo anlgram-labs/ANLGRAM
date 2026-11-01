@@ -1,0 +1,12 @@
+name = "anlgram-testnet-preparation"
+pages_build_output_dir = "../public-pages"
+compatibility_date = "2026-10-30"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+APP_ORIGIN = "https://anlgram-testnet-preparation.pages.dev"
+
+[[durable_objects.bindings]]
+name = "PROOFS"
+class_name = "ProofAttempt"
+script_name = "anlgram-testnet-preparation"

@@ -1,0 +1,20 @@
+{
+  "observedUtc": "2026-11-01T01:35:43.049Z",
+  "origin": "https://anlgram-testnet-preparation.pages.dev",
+  "network": "-3",
+  "operator": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+  "walletVersion": "V5R1",
+  "walletId": 2147483645,
+  "source": "Owner-approved actual browser connection; reviewed server ton_proof verification returned success",
+  "ownerConfirmedConnection": true,
+  "cryptographicTonProofVerified": true,
+  "verificationDisplayedExpiresAt": "2026-11-01T01:37:34.000Z",
+  "disconnectedAndUiCleared": true,
+  "financialSigningEnabled": false,
+  "financialSignaturesRequested": 0,
+  "blockchainBroadcasts": 0,
+  "spentTON": "0",
+  "scope": "Ownership verification only; expired proof must never authorize a future request. A fresh domain-bound proof and separate transaction approval remain required.",
+  "initialAttemptRejected": true,
+  "sensitiveProofDataStored": false
+}

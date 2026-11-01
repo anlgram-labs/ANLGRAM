@@ -1,0 +1,123 @@
+{
+  "observedUtc": "2026-11-01T01:32:19.710Z",
+  "origin": "https://anlgram-testnet-preparation.pages.dev",
+  "checks": [
+    {
+      "name": "HTTP redirects to exact HTTPS origin",
+      "passed": true
+    },
+    {
+      "name": "HTTPS asset index.html",
+      "passed": true
+    },
+    {
+      "name": "exact published bytes index.html",
+      "passed": true
+    },
+    {
+      "name": "HTTPS asset app.js",
+      "passed": true
+    },
+    {
+      "name": "exact published bytes app.js",
+      "passed": true
+    },
+    {
+      "name": "HTTPS asset style.css",
+      "passed": true
+    },
+    {
+      "name": "exact published bytes style.css",
+      "passed": true
+    },
+    {
+      "name": "HTTPS asset tonconnect-ui.min.js",
+      "passed": true
+    },
+    {
+      "name": "exact published bytes tonconnect-ui.min.js",
+      "passed": true
+    },
+    {
+      "name": "HTTPS asset icon.png",
+      "passed": true
+    },
+    {
+      "name": "exact published bytes icon.png",
+      "passed": true
+    },
+    {
+      "name": "isolated manifest",
+      "passed": true
+    },
+    {
+      "name": "V5 chain/operator/minter and closed financial gate",
+      "passed": true
+    },
+    {
+      "name": "persistent challenge created",
+      "passed": true
+    },
+    {
+      "name": "secure isolated login attempt cookie",
+      "passed": true
+    },
+    {
+      "name": "forged proof rejected on -239",
+      "passed": true
+    },
+    {
+      "name": "forged proof rejected on -3",
+      "passed": true
+    },
+    {
+      "name": "foreign Origin rejected",
+      "passed": true
+    },
+    {
+      "name": "network override rejected",
+      "passed": true
+    },
+    {
+      "name": "closed route /api/sendTransaction",
+      "passed": true
+    },
+    {
+      "name": "closed route /api/sendBoc",
+      "passed": true
+    },
+    {
+      "name": "closed route /api/deploy",
+      "passed": true
+    },
+    {
+      "name": "closed route /_worker.js",
+      "passed": true
+    },
+    {
+      "name": "closed route /proof.mjs",
+      "passed": true
+    },
+    {
+      "name": "closed route /wrangler.toml",
+      "passed": true
+    },
+    {
+      "name": "balance is explicit data or explicit unavailable",
+      "passed": true
+    }
+  ],
+  "ownershipVerified": false,
+  "financialSigningEnabled": false,
+  "signaturesRequested": 0,
+  "broadcasts": 0,
+  "balanceObservation": {
+    "http": 503,
+    "error": "Testnet provider unavailable; balance unknown"
+  },
+  "limits": [
+    "Real V5 owner ton_proof pending; rejection tests are not ownership proof.",
+    "No financial request/broadcast/deployment permission.",
+    "Custom domain still requires Spaceship DNS and Cloudflare certificate activation."
+  ]
+}

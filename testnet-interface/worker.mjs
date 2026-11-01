@@ -46,9 +46,9 @@ export class ProofAttempt {
 }
 
 async function route(request,env) {
-  let origin; try { origin=approvedOrigin(env.APP_ORIGIN); } catch { return json({error:'Origin not approved'},503); }
+  try { approvedOrigin(env.APP_ORIGIN); } catch { return json({error:'Origin not approved'},503); }
   const u=new URL(request.url);
-  if (u.origin!==origin.origin) return json({error:'Wrong Testnet origin'},403);
+  let origin; try { origin=approvedOrigin(u.origin); } catch { return json({error:'Wrong Testnet origin'},403); }
   if (u.search) return json({error:'Query overrides are forbidden'},400);
   const path=u.pathname;
   if (request.method==='GET' && path==='/tonconnect-manifest.json') return json({url:origin.origin+'/',name:'ANLGRAM TESTNET ONLY — ownership proof',iconUrl:origin.origin+'/icon.png'},200,{'Access-Control-Allow-Origin':'*'});
@@ -69,7 +69,7 @@ async function route(request,env) {
   // One fixed read-only provider call. Never forward caller URLs, RPC methods or BOCs.
   if (request.method==='GET' && path==='/api/operator') {
     try {
-      const response=await fetch(TESTNET_RPC+'/getAddressInformation?address='+encodeURIComponent(OPERATOR),{redirect:'error',signal:AbortSignal.timeout(8000)});
+      const response=await fetch(TESTNET_RPC+'/jsonRPC',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getAddressInformation',params:{address:OPERATOR}}),redirect:'error',signal:AbortSignal.timeout(8000)});
       if (!response.ok) throw Error();
       const data=await response.json(), account=data.result;
       if (data.ok!==true || !/^\d+$/.test(String(account?.balance))) throw Error();
@@ -83,7 +83,7 @@ export default {
   async fetch(request,env) {
     let result; try { result=await route(request,env); } catch { result=json({error:'Request failed safely'},503); }
     const headers=new Headers(result.headers);
-    headers.set('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.tonconnect.org https://*.tonapi.io https://*.tonkeeper.com https://*.tonhubapi.com https://raw.githubusercontent.com; font-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+    headers.set('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://config.ton.org https://*.tonconnect.org https://*.tonapi.io https://*.tonkeeper.com https://*.tonhubapi.com https://tonconnectbridge.mytonwallet.org https://walletbot.me https://raw.githubusercontent.com; font-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
     headers.set('X-Content-Type-Options','nosniff'); headers.set('Referrer-Policy','no-referrer');
     headers.set('Strict-Transport-Security','max-age=31536000');
     headers.set('Permissions-Policy','camera=(), microphone=(), geolocation=()');

@@ -13,7 +13,10 @@
     ui.onStatusChange(async wallet=>{
       const current=++version; disconnect.disabled=!wallet;
       if(!wallet){text('Sin conexión autenticada.');return;}
-      if(wallet.account.chain!=='-3'||wallet.account.address!==config.operator){await ui.disconnect();text('Red o cuenta incorrecta. Se requiere el operador aprobado en Testnet.');return;}
+      if(wallet.account.chain!=='-3'||wallet.account.address!==config.operator){
+        const received=`Red recibida: ${wallet.account.chain}. Cuenta recibida: ${wallet.account.address}.`;
+        await ui.disconnect();text('Conexión rechazada. '+received+' Se requiere el operador V5 aprobado en Testnet (-3).');return;
+      }
       const item=wallet.connectItems?.tonProof;
       if(!item||!('proof' in item)){text('Prueba no disponible. Reconecta con una wallet compatible con ton_proof.');return;}
       text('Verificando prueba de propiedad…');

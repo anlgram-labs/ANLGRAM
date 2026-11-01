@@ -1,5 +1,61 @@
 # MemeLabs isolated sprint: review notes
 
+## Pages + Spaceship isolated Testnet release — 2026-10-31
+
+Dedicated branch `codex/testnet-pages-hosting`, preserving `473bd0f` and all PRs.
+Actual Pages project API returned **anlgram-testnet-preparation.pages.dev**;
+HTTPS app and manifest are live at that exact origin. Custom domain
+`testnet.anlgram.com` was associated successfully, awaiting external DNS/certificate
+validation. In Spaceship add only CNAME `testnet` →
+`anlgram-testnet-preparation.pages.dev`, TTL 3600/default. No nameserver, production
+DNS, API secrets or production Worker was changed.
+
+Pages advanced-mode Function reuses the existing router/proof validation. Strong
+challenge persistence remains an external SQLite Durable Object namespace hosted
+by the new private `anlgram-testnet-preparation` Worker, with no public target.
+Wrangler initially delegated Pages project creation to Workers, creating that
+private storage host but failing domain routing; Pages was then created via the
+explicit Pages API. Existing `anlgram-ton-proxy` was not modified. Pages binds to
+the real external `ProofAttempt` class; no ephemeral in-memory replacement.
+
+Only the actual Pages origin and reserved custom origin are accepted; manifests
+and proof domain validation follow the request's exact approved origin. Arbitrary
+previews, production hosts, Mainnet/network overrides and financial routes reject.
+Fixed V5 operator, contracts, donation and financial gates remain unchanged. The
+public package is five static assets plus the server Function; source/config
+paths return 404. SDK wallet-list CSP was corrected to permit its official
+`config.ton.org` source; connection rejection now displays received chain/address.
+
+Final focused local results: **21 unit/candidate/isolation cases passed, 0 failed**;
+**1 cross-Worker workerd/Durable Object integration passed, 0 failed**; Pages build
+passed. Actual public verification: **26 checks passed**, including valid HTTPS,
+HTTP redirect, exact five-asset hashes, manifest/operator/minter/chain, persistent
+challenge creation, secure cookie, forged/Mainnet proof rejection and closed source/
+transaction routes. This includes correct explicit-unavailable handling, not a
+claim that the balance provider works: `/api/operator` returned **503**, no fake zero.
+See [sanitized live evidence](testnet-pages-release.json); no challenge, cookie,
+owner signature or credentials are saved there. Original dependency low-severity
+SDK/deepmerge warnings remain documented; no full contract audit rerun.
+
+Actual browser rendered the page and TON Connect QR. The first owner-approved
+connection was safely rejected for network/account mismatch. The second fresh
+connection **passed real server-side cryptographic ton_proof verification** for
+the pinned V5R1 operator on chain -3, with displayed expiry
+`2026-11-01T01:37:34.000Z`. Owner confirmed this connection; authenticated disconnect
+then cleared the UI and disabled disconnect. See [sanitized ownership evidence](testnet-pages-owner-proof.json).
+No signature, challenge, cookie or keys were stored. This proves actual wallet
+compatibility/control for that session, not perpetual authorization. Financial
+controls remain disabled, with no
+transaction/sign-data API exposed. No TON contracts, signatures, broadcasts,
+spending, production merge or original-directory edits occurred.
+
+Remaining blockers before any first contract request: a fresh unexpired
+domain-bound ton_proof when executing, working chain-state/fee observation,
+Testnet-only funding, fresh bounded-debit review and separate exact transaction
+approval. CNAME/custom HTTPS activation is pending manual Spaceship configuration;
+the Pages origin already provides the isolated HTTPS environment. Proof sessions
+are origin-specific and must be re-established after switching domains.
+
 ## V5 Testnet preparation, isolated interface — 2026-10-31
 
 Dedicated branch `codex/testnet-signing-preparation`, based on PR #7 `10e8a83`.
