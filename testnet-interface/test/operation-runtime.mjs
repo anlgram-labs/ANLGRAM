@@ -77,3 +77,20 @@ test('Curve runtime authorization and quote epochs persist in real SQLite; stale
  }finally{await mf.dispose();}
  mf=make();try{assert.equal((await call(await stub(),saved)).status,409);}finally{await mf.dispose();}
 });
+
+test('exact reviewed quote adoption survives a real SQLite restart without changing fingerprint or expiry',async()=>{
+ const persist=mkdtempSync(join(tmpdir(),'anlgram-exact-quote-'));
+ const make=()=>{const options=convertV4MiniflareOptions({scriptPath:fileURLToPath(new URL('../.worker-build/worker.js',import.meta.url)),modules:true,compatibilityDate:'2026-10-30',compatibilityFlags:['nodejs_compat'],durableObjects:{CURVE_OPERATIONS:{className:'CurveFinancialOperation',useSQLite:true}}});options.resourcePersistencePath=persist;return new Miniflare(options);};
+ const {setup,authorize,route}=await import('./curve-fixture.mjs'),h=setup(),preview=await(await route('prepare',{},h)).json(),p=h.values.get('prepared');
+ const grant={...authorize(h),preparedFingerprint:preview.fingerprint,notAfter:preview.transaction.validUntil};
+ let mf=make();const stub=async()=>{const ns=await mf.getDurableObjectNamespace('CURVE_OPERATIONS');return ns.get(ns.idFromName('exact-reviewed-quote'));};
+ const call=(s,b)=>s.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify({runtimeVersion:execution.sha256,...b})}));
+ try{const s=await stub(),q=await(await call(s,{action:'reserveQuote',scopeKey:'preview',maximumValidUntil:preview.transaction.validUntil})).json();assert.equal(q.validUntil,preview.transaction.validUntil);p.approval.quoteRevision=q.revision;
+  assert.equal((await call(s,{action:'prepare',transaction:p.transaction,approval:p.approval})).status,200);
+  assert.equal((await call(s,{action:'authorize',grant})).status,200);
+ }finally{await mf.dispose();}
+ mf=make();try{const s=await stub(),restored=await(await call(s,{action:'prepared'})).json();assert.equal(restored.approval.fingerprint,p.approval.fingerprint);assert.equal(restored.approval.quoteExpiresAt,p.approval.quoteExpiresAt);assert.equal(restored.approval.observedAt,p.approval.observedAt);assert.deepEqual(restored.transaction,p.transaction);
+  assert.equal((await call(s,{action:'claim',transaction:p.transaction,fingerprint:p.approval.fingerprint,requirePrepared:true,authorizationBinding:{id:grant.authorizationId,notAfter:grant.notAfter,requireStored:true}})).status,200);
+  assert.equal((await call(s,{action:'authorize',grant})).status,409);
+ }finally{await mf.dispose();}
+});

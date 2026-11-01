@@ -11,6 +11,7 @@ export function curveAuthorization(env,now=Math.floor(Date.now()/1000)){
   const a=JSON.parse(env.CURVE_TX2_SIGNING_AUTH||'null');
   if(!a||a.runtimeVersion!==execution.sha256||a.operation!==intent.operation||a.candidateSha256!==intent.candidateSha256||a.origin!=='https://testnet.anlgram.com'||a.network!=='-3'||a.operator!==intent.operator||a.destination!==intent.message.address||a.stateInitHash!==hash(intent.message.stateInit)||a.bodyHash!==hash(intent.message.payload)||a.amountNano!=='100000000'||a.expectedSeqno!==1||a.walletId!==intent.walletId||a.policyCeilingNano!=='120000000'||a.acceptNativeSeqnoLimitation!==true||a.hardMaximumDebitEnforced!==false||!Number.isSafeInteger(a.notAfter)||a.notAfter<=now)return null;
   if(a.mode===RUNTIME_MODE){
+   if(a.preparedFingerprint!==undefined&&!/^[a-f0-9]{64}$/.test(a.preparedFingerprint))return null;
    if(!/^[a-f0-9]{64}$/.test(a.authorizationId||'')||!Number.isSafeInteger(a.issuedAt)||a.issuedAt>now||a.notAfter<=a.issuedAt||a.notAfter-a.issuedAt>GRANT_SECONDS||'fingerprint'in a||'validUntil'in a)return null;
    return a;
   }
@@ -23,7 +24,7 @@ export function curveAuthorization(env,now=Math.floor(Date.now()/1000)){
 export const curveAuthorized=(env,now)=>curveAuthorization(env,now)!==null;
 export function matchesAuthorization(a,approval,fp,validUntil){
  if(!a)return false;
- if(a.mode===RUNTIME_MODE)return approval.authorizationMode===RUNTIME_MODE&&approval.authorizationId===a.authorizationId&&approval.authorizationNotAfter===a.notAfter&&validUntil<=a.notAfter;
+ if(a.mode===RUNTIME_MODE)return (!a.preparedFingerprint||a.preparedFingerprint===fp)&&approval.authorizationMode===RUNTIME_MODE&&approval.authorizationId===a.authorizationId&&approval.authorizationNotAfter===a.notAfter&&validUntil<=a.notAfter;
  return a.fingerprint===fp&&a.validUntil===validUntil;
 }
 

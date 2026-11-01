@@ -205,3 +205,13 @@ test('complete controller with absent/expired grant or changed balance never rea
 test('stale compiled Curve client rejects a mismatched claim response with ZERO bridge POSTs and preserves the uncertain lock',async()=>{
  const h=await harness({curve:true,responseVersion:'00'.repeat(32)});try{await assert.rejects(h.sdk.sendTransaction(h.transaction()),/Incompatible Curve runtime/);assert.equal(h.posts.length,0);assert(h.store.values.has('operation'));await assert.rejects(h.sdk.sendTransaction(h.transaction()));assert.equal(h.posts.length,0);}finally{await h.close();}
 });
+
+test('review then exact runtime authorization retains browser fingerprint through ONE actual encrypted SDK POST',async()=>{
+ const backend=curveServer(),h=await harness({curve:true,server:backend});try{
+  const c=h.controller();await c.els['prepare-two'].onclick();assert(c.els['accept-two'].disabled);const reviewed=structuredClone(backend.values.get('prepared'));
+  const grant={...authorize(backend),preparedFingerprint:reviewed.approval.fingerprint,notAfter:reviewed.transaction.validUntil};delete backend.env.CURVE_TX2_SIGNING_AUTH;
+  const stored=await backend.object.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify({runtimeVersion:execution.sha256,action:'authorize',grant})}));assert.equal(stored.status,200);
+  await c.els['prepare-two'].onclick();assert(!c.els['accept-two'].disabled);assert.equal(backend.values.get('prepared').approval.fingerprint,reviewed.approval.fingerprint);assert.equal(backend.values.get('prepared').approval.quoteExpiresAt,reviewed.approval.quoteExpiresAt);
+  c.els['accept-two'].checked=true;c.els['accept-two'].onchange();await c.els['request-two'].onclick();assert.equal(h.posts.length,1);assert.equal(h.decoded.length,1);assert.equal(backend.values.get('operation').status,'LOCKED_PENDING_RECONCILIATION');
+ }finally{await h.close();}
+});

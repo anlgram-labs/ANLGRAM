@@ -34,3 +34,19 @@ test('new finite authorization after quote expiry needs no redeploy and old prep
  const a=h.values.get('prepared').approval;
  const r=await h.object.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify({runtimeVersion:execution.sha256,action:'claim',transaction:fresh.transaction,fingerprint:fresh.fingerprint,requirePrepared:true,authorizationBinding:{id:a.authorizationId,notAfter:a.authorizationNotAfter,requireStored:true}})}));assert.equal(r.status,409);assert(!h.values.has('operation'));
 });
+
+test('administrative grant adopts the EXACT owner-reviewed private quote without changing fingerprint, deadline or observation time',async()=>{
+ const {h,g}=admin();const preview=await(await route('prepare',{},h)).json();assert.equal(preview.requestAllowed,false);
+ const original=structuredClone(h.values.get('prepared'));
+ const grant={...g,preparedFingerprint:preview.fingerprint,notAfter:preview.transaction.validUntil};assert.equal((await submit(h,grant)).status,200);
+ const ready=await(await route('prepare',{},h)).json();assert(ready.requestAllowed);assert(ready.authorizationRefreshOnly);assert.equal(ready.fingerprint,preview.fingerprint);assert.deepEqual(ready.transaction,preview.transaction);assert.equal(ready.quoteExpiresAt,preview.quoteExpiresAt);assert.equal(h.values.get('prepared').approval.observedAt,original.approval.observedAt);assert.equal(h.values.get('quote').revision,original.approval.quoteRevision);
+ assert.equal((await route('claim',{transaction:ready.transaction,fingerprint:ready.fingerprint,walletAccount:h.walletAccount},h)).status,200);
+});
+test('forged or expired adoption cannot create authority, reset freshness or manufacture another exact quote',async t=>{
+ let now=Math.floor(Date.now()/1000);t.mock.method(Date,'now',()=>now*1000);const {h,g}=admin(),preview=await(await route('prepare',{},h)).json();
+ assert.equal((await submit(h,{...g,preparedFingerprint:'00'.repeat(32)})).status,409);assert(!h.values.has('runtimeAuthorization'));
+ assert.equal((await submit(h,{...g,preparedFingerprint:preview.fingerprint,notAfter:preview.transaction.validUntil})).status,200);
+ now+=61;assert.equal((await route('prepare',{},h)).status,409);assert(!h.values.has('operation'));assert.equal(h.values.get('quote').revision,1);
+ const other=admin();const j=await(await route('prepare',{},other.h)).json();now+=61;
+ assert.equal((await submit(other.h,{...other.g,preparedFingerprint:j.fingerprint,notAfter:j.transaction.validUntil})).status,409);assert(!other.h.values.has('runtimeAuthorization'));
+});

@@ -26,10 +26,16 @@ export class CurveFinancialOperation extends FinancialOperation {
     if(await tx.get('operation'))return false;
     const prior=await tx.get('runtimeAuthorization');
     if(prior&&(grant.issuedAt<=prior.issuedAt||grant.authorizationId===prior.authorizationId))return false;
-    await tx.put('runtimeAuthorization',grant);await tx.put('prepared',null);return true;
+    if(grant.preparedFingerprint){
+     const p=await tx.get('prepared'),q=await tx.get('quote'),a=p?.approval,now=Math.floor(Date.now()/1000);
+     if(!a||a.runtimeVersion!==execution.sha256||a.fingerprint!==grant.preparedFingerprint||a.quoteRevision!==q?.revision||a.observedAt>now||now-a.observedAt>60||a.quoteExpiresAt<=now||p.transaction.validUntil>grant.notAfter||!a.simulation)return false;
+     await tx.put('prepared',{...p,approval:{...a,authorizationMode:RUNTIME_MODE,authorizationId:grant.authorizationId,authorizationNotAfter:grant.notAfter}});
+    }else await tx.put('prepared',null);
+    await tx.put('runtimeAuthorization',grant);return true;
    });
    return accepted?json({stored:true,notAfter:grant.notAfter}):json({error:'Replayed authorization or lifetime operation locked'},409);
   }
+  if(b.action==='prepared')return json(await this.state.storage.get('prepared')??null);
   if(b.action==='authorization')return json(await this.state.storage.get('runtimeAuthorization')??null);
   if(b.action!=='reserveQuote')return super.fetch(request);
   const now=Math.floor(Date.now()/1000);
@@ -73,6 +79,12 @@ export async function curveOperationRoute(path,input,env,proof){
   if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(k=>k!=='runtimeVersion'))return json({error:'Caller transaction parameters forbidden'},400);
   const lock=await(await call(stub,{action:'status'})).json();if(lock.status!=='NOT_CLAIMED')return json({error:'Attempt already locked; exact trace reconciliation required'},409);
   const authorization=await currentCurveAuthorization(env);
+  if(authorization?.preparedFingerprint){
+   const p=await(await call(stub,{action:'prepared'})).json(),a=p?.approval,now=Math.floor(Date.now()/1000);
+   if(!a||a.quoteExpiresAt<=now||a.observedAt>now||now-a.observedAt>60||a.runtimeVersion!==execution.sha256||!a.simulation||!matchesAuthorization(authorization,a,a.fingerprint,p.transaction.validUntil))return json({error:'Exact approved quote expired or superseded; new owner review required'},409);
+   validateIntent(p.transaction);if(await fingerprint(p.transaction)!==a.fingerprint)throw Error('Private prepared fingerprint changed');
+   return json({runtimeVersion:execution.sha256,prepared:true,notSigned:true,transaction:p.transaction,fingerprint:a.fingerprint,simulation:a.simulation,stateInitHash:hash(intent.message.stateInit),expectedSeqno:1,quoteExpiresAt:a.quoteExpiresAt,requestAllowed:true,authorizationRefreshOnly:true,policyCeilingIsNotEnforcedMaximum:true,nativeSeqnoIsNotEnforced:true});
+  }
   const observations={};for(const name of ['operator','minter','curve','jettonData'])observations[name]=await fresh(env,name);
   const now=Math.floor(Date.now()/1000);
   const maximumValidUntil=Math.min(now+90,proof.expiresAt,authorization?.notAfter??Infinity,authorization?.validUntil??Infinity);
@@ -90,7 +102,7 @@ export async function curveOperationRoute(path,input,env,proof){
   if(quote.validUntil!==deadline)throw Error('Wrong quote deadline');
   const observedAt=Math.floor(Date.now()/1000),quoteExpiresAt=Math.min(observedAt+60,deadline,proof.expiresAt);
   if(quoteExpiresAt<=observedAt)return json({error:'Quote expired during preparation'},403);
-  const fp=await fingerprint(transaction),approval={runtimeVersion:execution.sha256,fingerprint:fp,validUntil:transaction.validUntil,candidateSha256:intent.candidateSha256,observedAt,quoteExpiresAt,quoteRevision:reservation.revision,quoteScopeKey:scopeKey,expectedSeqno:1,walletId:intent.walletId,sourceDataHash:hash(checks.source.data),sourceBalanceNano:checks.source.balance,sourceLastTransactionHash:checks.source.last_transaction_id.hash,minterDataHash:hash(checks.minter.data),traceSha256:simulation.traceSha256,modeledDebitNano:simulation.modeledSenderDebitNano,...(authorization?.mode===RUNTIME_MODE?{authorizationMode:RUNTIME_MODE,authorizationId:authorization.authorizationId,authorizationNotAfter:authorization.notAfter}:{})};
+  const fp=await fingerprint(transaction),approval={runtimeVersion:execution.sha256,simulation,fingerprint:fp,validUntil:transaction.validUntil,candidateSha256:intent.candidateSha256,observedAt,quoteExpiresAt,quoteRevision:reservation.revision,quoteScopeKey:scopeKey,expectedSeqno:1,walletId:intent.walletId,sourceDataHash:hash(checks.source.data),sourceBalanceNano:checks.source.balance,sourceLastTransactionHash:checks.source.last_transaction_id.hash,minterDataHash:hash(checks.minter.data),traceSha256:simulation.traceSha256,modeledDebitNano:simulation.modeledSenderDebitNano,...(authorization?.mode===RUNTIME_MODE?{authorizationMode:RUNTIME_MODE,authorizationId:authorization.authorizationId,authorizationNotAfter:authorization.notAfter}:{})};
   const saved=await call(stub,{action:'prepare',transaction,approval});if(!saved.ok)return saved;
   return json({runtimeVersion:execution.sha256,prepared:true,notSigned:true,transaction,fingerprint:fp,simulation,stateInitHash:hash(intent.message.stateInit),expectedSeqno:1,quoteExpiresAt,requestAllowed:validProof(proof)&&matchesAuthorization(await currentCurveAuthorization(env),approval,fp,transaction.validUntil),policyCeilingIsNotEnforcedMaximum:true,nativeSeqnoIsNotEnforced:true});
  }

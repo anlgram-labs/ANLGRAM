@@ -31,3 +31,11 @@ Legacy exact-fingerprint environment grants remain supported for compatibility b
 The 0.120000000 Testnet TON ceiling is a **policy**, not a guaranteed network fee cap. Native TON Connect does not atomically enforce the expected seqno; fresh state validation plus exclusive operator use remains necessary. The owner must manually inspect and confirm Tonkeeper. This change neither signs nor transmits Curve #2 and does not enable subsequent operations, migration, LP withdrawals or Mainnet.
 
 Local browser fixtures explicitly simulate wallet responses; encrypted SDK loopback tests count received HTTP requests. Neither is real on-chain evidence. The local fixture is excluded from the ten-file Pages publication allowlist.
+
+## Exact review and version binding
+
+Every financial preparation/claim carries the source-derived `execution-version.json` ID from the actual compiled SDK. The app rejects a mismatched server/SDK pair; Pages also checks the private persistent Worker's version. Prepared records and finite grants pin that version. The administrator CLI checks the deployed version before sending a grant. An incompatible or obsolete version cannot acquire a signing claim. This identifier concerns execution infrastructure only: contract bytecode and deterministic addresses are unchanged.
+
+For the exact owner-review path, a runtime grant may include `preparedFingerprint` naming the **already stored, unexpired private quote**. The administrative HMAC covers it. The persistent transaction verifies that exact quote/revision and adopts it without changing its transaction, fingerprint, quote expiration or observation time. A manual preparation refresh then displays that same quote with server permission. Unknown, superseded or expired fingerprints are rejected; expired exact grants never manufacture another quote. The final claim still performs fresh live state/proof checks and atomically claims once. No client-supplied authorization is trusted.
+
+If the owner has not authorized an exact quote, no grant is installed. A preview does not request a signature or consume the attempt. If owner review takes longer than the quote lifetime, a genuinely fresh quote and renewed owner review are required; expiry is never extended to accommodate review.

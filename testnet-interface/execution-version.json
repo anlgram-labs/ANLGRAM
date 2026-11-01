@@ -8,8 +8,8 @@
     "single-attempt.mjs": "8f2c0c4bfcb59f8013b6d72ae8efdf322c3e48421831c70593c360d51dbbc88f",
     "sdk-patch.mjs": "31485e363b8dc5e6cc4c7c86db9262922c0823f53262ab0d58b11314a4e92161",
     "transaction-two.js": "cab919700aa4e76bc52fc1841b28a3faa7b4ee81f058686f5bd64caa8d085386",
-    "curve-operation.mjs": "d62840ed385adcf569132705a8336fec36a8d1f97e50f33ce38888087930e899",
-    "curve-authorization.mjs": "be62248324ec626502b6ecf13461d8f72bff336bb4fec4c6d033f21fe0227a0a",
+    "curve-operation.mjs": "24d6f0c48a6d4d4c576100333fddb34da43593dda4a68e5aa53c041774648d2f",
+    "curve-authorization.mjs": "30ea523575ac9fb10ba678c0f97238352f713c09f4e4b2aadd69d652a1c579bf",
     "curve-policy.mjs": "541f81be3f130c4151f5dc14985b46862b65c577a051c3ad1214b0f5853fa944",
     "transaction-policy.mjs": "0dfb1d526590d7c90f5971d58c19cec03d79a86fc9d5d391492bdeaa1602dd0a",
     "curve-two-intent.json": "69397276553cc185d7f342df67995dd58bcf54f8569e2d25d511bc1660eb40ec",
@@ -22,5 +22,5 @@
     "config.mjs": "fc3dd5a9ee733d81678f124a39e6584ff4941cdd82ed4d6130169541ac3901cd",
     "package-lock.json": "34a3b1477d33de0226c8639463b6eca50033093a4f88cc0504fe675d4a9dc642"
   },
-  "sha256": "715cabb162d7adb37ba3b5662b4e865c5d2c536e7a919c49d98264e90238985c"
+  "sha256": "737bb6958b631215198261456c0f467d24768fd0b8b48165facfac528aa86a2c"
 }
