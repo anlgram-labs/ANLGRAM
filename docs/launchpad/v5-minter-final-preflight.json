@@ -1,0 +1,198 @@
+{
+  "observedUtc": "2026-11-01T02:04:41.219Z",
+  "commitBaseline": "7ebe087",
+  "network": "-3",
+  "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
+  "sourceVerification": {
+    "compilerPackageVersion": "0.11.0",
+    "contracts": {
+      "anlgram-settlement-wallet": {
+        "codeHash": "e21136c0ea3074a48addec49215af2d8d20125b4cc61a564a1a37d37667b58a2",
+        "sourceFilesSha256": {
+          "anlgram-settlement-wallet.fc": "d6460470a9558397d42a43d5f78ef7a1f5383955293677e8a3b4477bfbbd6075",
+          "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+          "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+          "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+          "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+          "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653",
+          "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+          "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+        }
+      },
+      "anlgram-launchpad-jetton-minter": {
+        "codeHash": "90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec",
+        "sourceFilesSha256": {
+          "anlgram-launchpad-jetton-minter.fc": "47be0eb15f264f0c8933d9c2f4e9de2a317d3d5b0107c9802aa77e462c4195a1",
+          "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+          "imports/discovery-params.fc": "215e8d75ed135cb2a3ac0b6c33c3d99d7bfb370d2834f3b09e5e4566a2fce31b",
+          "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+          "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+          "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+          "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+          "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+        }
+      },
+      "anlgram-bonding-curve": {
+        "codeHash": "421b1028536b49f6d79eadf872076cc7e7c9afde2aeca0e2868b2706449c3627",
+        "sourceFilesSha256": {
+          "anlgram-bonding-curve.fc": "bc2942ea836929fa1b73b2691bae31517964606416873099ae9fad440a95b6dc",
+          "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+          "imports/curve-lifecycle-v3.fc": "50b8006b4168f4fef812175c284543683d739fb00c57d29d56902945121dd963",
+          "imports/curve-return-v2.fc": "3eedf570e5430198b47343222de8d879633eee82fd6223cf4272f0974be088c8",
+          "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+          "imports/lp-auth-guard-code.fc": "5c17bff288052136c4176343f2685c918546d3fb3e4995e3dc7da547838657e2",
+          "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+          "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+          "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653",
+          "imports/settlement-wallet-code.fc": "b5f16e35d6fb285636b209167c87617006f59b3f6ec3501a38b2a7cde13d6b28",
+          "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+          "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+        }
+      },
+      "anlgram-migration-router": {
+        "codeHash": "e9124986c48a9b070ed8e617447b7f4529c10e1f8d7698f0fbc6493dc090ec4a",
+        "sourceFilesSha256": {
+          "anlgram-migration-router.fc": "b563472048047eef8a644e6aed772c2392cbf8bf0e4e9032f87421bae73b6f82",
+          "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+          "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+          "imports/migration-lifecycle-v3.fc": "8d5df22f51069444c759f3b0adae86ea61d7e5f0810a6019c2e3a8d1a98b79f8",
+          "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+          "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+          "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653",
+          "imports/settlement-wallet-code.fc": "b5f16e35d6fb285636b209167c87617006f59b3f6ec3501a38b2a7cde13d6b28",
+          "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+          "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+        }
+      },
+      "anlgram-lp-auth-guard": {
+        "codeHash": "113108a0c8e7a48729e3da01dd2e2a4067955561ad8bfc19f1fba90db084a967",
+        "sourceFilesSha256": {
+          "anlgram-lp-auth-guard.fc": "d16d2f8b50a4f1dbcc9cd625a283a54d861793327ee1ed6855010627f66af1d9",
+          "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+          "imports/discovery-params.fc": "215e8d75ed135cb2a3ac0b6c33c3d99d7bfb370d2834f3b09e5e4566a2fce31b",
+          "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+          "imports/lp-custody-receipts.fc": "152c14f4c51b9c5f7fd211c81f8816b2f725e2d29e3b4725c54d2ea8d165850e",
+          "imports/migration-router-code.fc": "539f787d221ea996dfb49c471a6188717720b91e7a69d4b2c98391798a110d29",
+          "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+          "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+          "imports/settlement-wallet-code.fc": "b5f16e35d6fb285636b209167c87617006f59b3f6ec3501a38b2a7cde13d6b28",
+          "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+          "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728",
+          "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+        }
+      },
+      "anlgram-lp-locker-v2": {
+        "codeHash": "22d689df2f32d5fd00c72b50f31ab77291117a7625ad1bb654a4b6dbc796e001",
+        "sourceFilesSha256": {
+          "anlgram-lp-locker-v2.fc": "da2e6b55d7536049c1254f5a751c9c4ab49a4bf54ef3559a496561c6f5ea7474",
+          "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+          "imports/lp-custody-probe-v4.fc": "62bcf17fa4fcacc0955757ed0a03f5a7f008cd10bb10dba8099af062572bdf7f",
+          "imports/lp-v2-receipt.fc": "494cdcc77cbe5df715a15a5c818bb39783095c704625afeb7d5aea2e00b00813",
+          "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+          "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+          "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728"
+        }
+      },
+      "anlgram-migration-v2-plan": {
+        "codeHash": "4467bce59c4cb5c8359bbd94011bd2ebdb5e301a959ff0e0f2f6722fd8650043",
+        "sourceFilesSha256": {
+          "anlgram-migration-v2-plan.fc": "dd52ba32d9378281601785d449d2a3cab0451a8a540bd6e0525f6ba5c37015a7",
+          "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+          "imports/lp-locker-v2-code.fc": "d6ad285d03e77a4017fc378e1c8ac18fa50a1abf8a2ca9154e71128f7b8b40cb",
+          "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+          "imports/plan-discovery-v4.fc": "999503c1d6fa91d3d200a6b57389cfee37048b9e2500663e91e2d62f51d8c8d3",
+          "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+          "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728"
+        }
+      }
+    }
+  },
+  "operator": {
+    "address": "0QCBGet2_2SvVUrX_MZL0w0OuPqlbJtlHT3nbpWaEH2QYbBR",
+    "raw": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "version": "V5R1",
+    "walletId": 2147483645,
+    "balanceNano": "1999999999",
+    "state": "uninitialized",
+    "initialSeqno": 0
+  },
+  "destination": {
+    "address": "kQA5PEDpb0UPGsGUD0jByO9qNFd6PqyXPpMkTUyngd5-IYq8",
+    "raw": "0:393c40e96f450f1ac1940f48c1c8ef6a34577a3eac973e93244d4ca781de7e21",
+    "state": "uninitialized",
+    "codeHash": "90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec",
+    "dataHash": "0e8b1bae1b7c8f68c4d713b24b1a7c0542c56c44f199987ad3360a78991f684a",
+    "stateInitHash": "393c40e96f450f1ac1940f48c1c8ef6a34577a3eac973e93244d4ca781de7e21",
+    "metadata": {
+      "name": "ANLGRAM Testnet Settlement",
+      "symbol": "ANLTEST",
+      "decimals": 9
+    },
+    "admin": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "supply": "0"
+  },
+  "simulation": {
+    "masterchainBlock": 94993699,
+    "traceSha256": "6bc9bbc1df9c3966750348d2ffa46461bb0dd85f7b6621d058dcaa7208aba1c3",
+    "complete": true,
+    "signatureCheckSkippedOnlyInEmulator": true,
+    "transactions": 2,
+    "outgoingDeploymentMessages": 1,
+    "minterDescendants": 0,
+    "operatorWalletAlsoActivates": true,
+    "seqnoBefore": 0,
+    "seqnoAfter": 1,
+    "operatorBalanceBeforeNano": "1999999999",
+    "operatorBalanceAfterNano": "1893123061",
+    "attachmentNano": "100000000",
+    "walletTransactionFeesNano": "4866966",
+    "remainingForwardFeesNano": "2009972",
+    "modeledSenderFeesNano": "6876938",
+    "modeledSenderDebitNano": "106876938",
+    "minterFeesFromAttachmentNano": "33134",
+    "minterBalanceAfterNano": "99966866",
+    "totalNetworkFeesNano": "6910072",
+    "ceilingNano": "120000000",
+    "fitsReviewCeiling": true,
+    "ceilingMarginNano": "13123062",
+    "hardCapEnforced": false
+  },
+  "requestIntent": {
+    "messages": 1,
+    "attachmentNano": "100000000",
+    "sendMode": 3,
+    "maxFutureValiditySeconds": 120,
+    "noAutomaticRetries": true,
+    "onlyTransactionOne": true,
+    "bodyHash": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+    "notASigningRequest": true
+  },
+  "replay": {
+    "canonicalMainnetSeqno": 26,
+    "canonicalMainnetWalletId": 2147483409,
+    "sameNonceWrongWalletIdEmulationRejected": true,
+    "rejectionStatus": 500,
+    "rejection": "failed to emulate shard block: EmulationExternalNotAccepted: 134",
+    "testnetCloneOnMainnetUninitializedAndUnfunded": true,
+    "limitation": "V5 wallet_id separates canonical configurations, not an intrinsic global-ID VM check. A deliberately funded identical-StateInit clone remains replay-capable; no absolute cross-network non-replay guarantee is claimed.",
+    "equalNonceNegativeCheckObservedUtc": "2026-11-01T02:05:52.468Z"
+  },
+  "ownership": {
+    "freshAtObservation": true,
+    "domain": "https://testnet.anlgram.com",
+    "expiresAt": "2026-11-01T02:06:47.000Z",
+    "actualTransactionSigningTested": false
+  },
+  "readyForBroadcast": false,
+  "signed": false,
+  "broadcast": false,
+  "spentNano": "0",
+  "financialControlsEnabled": false,
+  "limitations": [
+    "Provider emulation skips signature verification; genuine owner ton_proof is separate evidence, not an executed transaction.",
+    "Actual wallet transaction signing is deliberately untested; do not claim it was verified by ton_proof.",
+    "0.12 TON is a proposed policy ceiling, not a cap enforced by V5/TON Connect. Revalidate state, fees and proof before any future signing.",
+    "The first external request also activates the currently uninitialized operator wallet. Only one internal deployment message targets the minter.",
+    "No absolute Mainnet replay guarantee against a funded identical-StateInit clone."
+  ]
+}

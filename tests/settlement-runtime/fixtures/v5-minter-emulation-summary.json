@@ -1,0 +1,111 @@
+{
+  "evidenceKind": "REAL_PROVIDER_EMULATION_NOT_ONCHAIN",
+  "mc_block_seqno": 94992891,
+  "is_incomplete": false,
+  "transactions": {
+    "faFJdSgS9eXGPKAGj6+JgsHO7LjRtRJV1zg33q4xMLw=": {
+      "account": "0:8119EB76FF64AF554AD7FCC64BD30D0EB8FAA56C9B651D3DE76E959A107D9061",
+      "orig_status": "uninit",
+      "end_status": "active",
+      "emulated": true,
+      "total_fees": "4866965",
+      "description": {
+        "aborted": false,
+        "compute_ph": {
+          "success": true,
+          "exit_code": 0
+        },
+        "action": {
+          "success": true,
+          "result_code": 0,
+          "msgs_created": 1
+        }
+      },
+      "account_state_before": {
+        "hash": "EslSnqKAQjeaImRYSZ1FsDPwjlnSD0GJNp5QtV2g1n0=",
+        "balance": "1999999999",
+        "extra_currencies": null,
+        "account_status": "uninit",
+        "frozen_hash": null,
+        "data_hash": null,
+        "code_hash": null
+      },
+      "account_state_after": {
+        "hash": "Q4nJHyysRROYuWL+k08LiRRHllnpaKXSLPoGv1nZIMQ=",
+        "balance": "1893123062",
+        "extra_currencies": null,
+        "account_status": "active",
+        "frozen_hash": null,
+        "data_hash": "joEXGgW1Ycw7e+gb5g/9oHlJWQLagCE4HQuJY/Sm/Ag=",
+        "code_hash": "IINLe3KxEhR+Gy+0V7hOdNGjDwT3N9T2KmaOlVLSty8="
+      },
+      "in_msg": {
+        "hash": "Ond7b6wkaMHb/hhpU9Rk+5QmfErvR48bpUbj8Da90OU=",
+        "message_content": {
+          "hash": "dWhcrR5SMYXdM6ZyubMJrLmXYBJ7HhUi7vK+IYS2Oc4="
+        }
+      },
+      "out_msgs": [
+        {
+          "hash": "lkiC+2obWOnqR+S5M8aXHsUs76H8Q0mdfbTNKAu0rWU=",
+          "destination": "0:393C40E96F450F1AC1940F48C1C8EF6A34577A3EAC973E93244D4CA781DE7E21",
+          "value": "100000000",
+          "fwd_fee": "2009972",
+          "message_content": {
+            "hash": "lqKW0iTyhcZ77pPDD4owkVfw2qNdxbh+QQt4YwoJz8c="
+          },
+          "init_state": {
+            "hash": "OTxA6W9FDxrBlA9IwcjvajRXej6slz6TJE1Mp4HefiE="
+          }
+        }
+      ]
+    },
+    "w7bpSgjAmXp046oS2uTpGG+eTNnqxQvou9UEfylTfFs=": {
+      "account": "0:393C40E96F450F1AC1940F48C1C8EF6A34577A3EAC973E93244D4CA781DE7E21",
+      "orig_status": "nonexist",
+      "end_status": "active",
+      "emulated": true,
+      "total_fees": "33134",
+      "description": {
+        "aborted": false,
+        "compute_ph": {
+          "success": true,
+          "exit_code": 0
+        },
+        "action": {
+          "success": true,
+          "result_code": 0,
+          "msgs_created": 0
+        }
+      },
+      "account_state_before": {
+        "hash": "kK7Illr6uxbrw8ubQI665xthjXh4i8gNCYQ1k8rJjaQ=",
+        "balance": "0",
+        "extra_currencies": null,
+        "account_status": "nonexist",
+        "frozen_hash": null,
+        "data_hash": null,
+        "code_hash": null
+      },
+      "account_state_after": {
+        "hash": "rr/2jnAO0106wdEHcszFQWRKW9dAoyhtYUX03ub2izI=",
+        "balance": "99966866",
+        "extra_currencies": null,
+        "account_status": "active",
+        "frozen_hash": null,
+        "data_hash": "Dosbrht8j2jE1xOySxp8BULFbETxmZh60zYKeJkfaEo=",
+        "code_hash": "kLUGnxmfzqVu9GfdJc+EIMXphIug/MDME5QkxcrBeuw="
+      },
+      "in_msg": {
+        "hash": "lkiC+2obWOnqR+S5M8aXHsUs76H8Q0mdfbTNKAu0rWU=",
+        "message_content": {
+          "hash": "lqKW0iTyhcZ77pPDD4owkVfw2qNdxbh+QQt4YwoJz8c="
+        }
+      },
+      "out_msgs": []
+    }
+  },
+  "data_cells": {
+    "joEXGgW1Ycw7e+gb5g/9oHlJWQLagCE4HQuJY/Sm/Ag=": "te6cckEBAQEAKwAAUYAAAAC////+ylAIX4mF/nd+5dNPjuDBMBO/DR6DnbGW6rxc4cWhDQSg9AFjJQ=="
+  }
+}

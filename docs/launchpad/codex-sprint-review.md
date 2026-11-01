@@ -1,5 +1,43 @@
 # MemeLabs isolated sprint: review notes
 
+## Transaction #1 complete current-state V5 minter emulation — 2026-10-31
+
+Final preflight from `7ebe087` is recorded in the
+[authorization sheet](v5-minter-final-authorization-sheet.md) and
+[machine evidence](v5-minter-final-preflight.json). Seven artifacts freshly
+source-compiled; active V5 candidate checksum, metadata/admin, embedded wallet,
+StateInit and destination verified independently. Operator remains uninitialized
+with 1.999999999 Testnet TON, initial seqno 0; minter remains uninitialized and zero.
+Owner renewed real exact-domain ton_proof, displayed expiry 2026-11-01T02:06:47Z;
+proof is expiring observation, not ongoing financial authority.
+
+Obtained complete Testnet TON Center `/api/emulate/v1/emulateTrace` using an invalid
+zero-signature external envelope and `ignore_chksig=true`. This is **provider
+emulation, never a real deployment**. Both compute/action paths succeed, exactly
+one outgoing deployment message and no minter descendants. The external request
+also activates the operator V5 wallet, disclosed explicitly. Simulated minter
+code/data remain exact; supply zero, expected operator admin; wallet nonce becomes
+1. Fee/balance conservation passes through both accounts.
+
+Modeled sender debit **0.106876938 Testnet TON** = 0.100000000 attachment +
+0.006876938 sender fees. Minter gas **0.000033134** is drawn from attachment, not
+charged twice; minter retains 0.099966866 in the simulation. Proposed 0.12 ceiling
+has 0.013123062 modeled headroom, **not an enforced spending limit**. The matching-
+nonce canonical Mainnet negative emulation rejects Testnet wallet ID with code
+134; the Testnet-address clone on Mainnet is uninitialized/unfunded. No absolute
+intrinsic chain binding is claimed for deliberately funded identical-StateInit
+clones. Actual wallet transaction signing is deliberately untested and must not
+be inferred from ton_proof. Financial interface/gates remain disabled.
+
+Added a read-only reproducible preflight and minimized real-provider fixture;
+**6 financial validation regressions passed, 0 failed**, including incomplete/
+aborted traces, extra/substituted messages, fee drift, wrong hashes and unsigned
+negative probe construction. Earlier unrelated suites were not repeated. No
+production, hosting, DNS, contract source/bytecode/economics or donation changes.
+No signing, broadcast, spending or transaction #2. Ready for informed owner review;
+not ready for an automatic financial request until the sheet's signer/risk/
+freshness conditions and separate authorization are satisfied.
+
 ## Final custom domain, V5 ownership and balance API correction — 2026-10-31
 
 `https://testnet.anlgram.com` is live with valid hostname-verified HTTPS. Public DNS
