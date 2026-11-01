@@ -1,0 +1,67 @@
+{
+  "checkpoint": "65841e4",
+  "branch": "codex/curve-two-signing-readiness",
+  "operation": "ANLTEST_CURVE_TX2",
+  "status": "PREPARATION_PASS_SEPARATE_OWNER_APPROVAL_REQUIRED",
+  "network": "-3",
+  "operator": "0QCBGet2_2SvVUrX_MZL0w0OuPqlbJtlHT3nbpWaEH2QYbBR",
+  "operatorSeqnoObserved": 1,
+  "operatorBalanceNanoObserved": "1893123044",
+  "domain": "https://testnet.anlgram.com",
+  "ownership": {
+    "verifiedInBrowser": true,
+    "domain": "testnet.anlgram.com",
+    "proofExpiresAt": "2026-11-01T13:58:03.000Z",
+    "walletDeclared": "Tonkeeper 26.10.4",
+    "requiresFreshProofBeforeAnySigning": true
+  },
+  "destination": "kQAfBL9a-9BPmFH6GVUYoUz0byuToTRHAwFAgqZXAyRo7kOW",
+  "stateInitHash": "1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee",
+  "attachmentNano": "100000000",
+  "browserPreparedEvidence": {
+    "modeledSenderFeesNano": "17023634",
+    "modeledSenderDebitNano": "117023634",
+    "fingerprint": "1865523ecf87f2fa6c101e345b424400aad5ceb8c50883db071a4823eb6e48c4",
+    "quoteExpiresAt": "2026-11-01T13:54:58.000Z",
+    "requestAllowed": false,
+    "historicalObservationNotSigningAuthorization": true
+  },
+  "policyThresholdNano": "120000000",
+  "hardMaximumDebitEnforced": false,
+  "nativeSeqnoEnforcedByTonConnect": false,
+  "exclusiveOperatorUseRequired": true,
+  "singleAttempt": {
+    "sdk": "3.3.1",
+    "ui": "2.3.1",
+    "separatePersistentNamespace": "7156708f328444748a01f04d3f1eebef",
+    "firstNamespacePreserved": "ac09a6ee93b74bb4ba713f84837cf892",
+    "testedBridgePostsPerAllowedFixture": 1,
+    "deniedOrLostClaimPosts": 0,
+    "automaticRetry": false,
+    "automaticUnlock": false
+  },
+  "tests": {
+    "interfaceUnitBundleWireUI": 91,
+    "workerdRuntime": 4,
+    "sourceCompiledSandbox": 8,
+    "publicHttpsAssetsApisGates": 36,
+    "failed": 0
+  },
+  "deployment": {
+    "pages": "https://5234b5b2.anlgram-testnet-preparation.pages.dev",
+    "privateWorkerVersion": "d4f3c439-6957-4628-9622-0a50482c3527",
+    "pagesSecretPreserved": true,
+    "signingAuthorizationConfigured": false,
+    "productionProxyModifiedOnUnchanged": "2026-10-27T04:37:56.362791Z"
+  },
+  "signed": false,
+  "broadcast": false,
+  "spentNano": "0",
+  "transactionOneRepeated": false,
+  "blockers": [
+    "Separate exact owner approval for transaction #2 is absent.",
+    "Fresh proof, live state/fees and short transaction fingerprint must be regenerated at approval time; recorded quote is historical.",
+    "TON Connect request schema cannot impose a native wallet seqno or guaranteed total fee cap. Approve the exclusive-operator policy or require a different signer workflow.",
+    "Any ambiguous request remains locked pending exact finalized on-chain trace verification."
+  ]
+}

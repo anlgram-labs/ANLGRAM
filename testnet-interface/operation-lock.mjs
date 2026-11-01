@@ -1,11 +1,13 @@
 import {accountRead} from './testnet-rpc.mjs';
 import {preparationEnabled,validProof} from './prepare-minter-one.mjs';
-import {intent,validateIntent,fingerprint} from './minter-policy.mjs';
+import * as minterPolicy from './minter-policy.mjs';
+const {intent,validateIntent,fingerprint}=minterPolicy;
 const json=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
 const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
 export class FinancialOperation {
- constructor(state){this.state=state;}
+ constructor(state){this.state=state;this.policy=minterPolicy;}
  async fetch(request){
+  const {intent,validateIntent,fingerprint}=this.policy;
   const body=await request.json();
   if(body.action==='prepare'){
    validateIntent(body.transaction);const hash=await fingerprint(body.transaction);

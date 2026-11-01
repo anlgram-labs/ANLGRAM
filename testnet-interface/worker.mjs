@@ -1,3 +1,5 @@
+import {curveOperationRoute,curveAuthorized} from './curve-operation.mjs';
+export {CurveFinancialOperation} from './curve-operation.mjs';
 import {prepareMinterOne,preparationEnabled} from './prepare-minter-one.mjs';
 import { approvedOrigin, CHAIN, MINTER, OPERATOR, TESTNET_RPC, TTL } from './config.mjs';
 import { verifyProof } from './proof.mjs';
@@ -63,7 +65,15 @@ async function route(request,env) {
   const path=u.pathname;
   if (request.method==='GET' && path==='/tonconnect-manifest.json') return json({url:origin.origin+'/',name:'ANLGRAM TESTNET ONLY — ownership proof',iconUrl:origin.origin+'/icon.png'},200,{'Access-Control-Allow-Origin':'*'});
   if (request.method==='GET' && path==='/api/config') return json({network:CHAIN,operator:OPERATOR,minter:MINTER,
-    manifestUrl:origin.origin+'/tonconnect-manifest.json',financialSigningEnabled:false,minterTransactionOnePreparationEnabled:preparationEnabled(env,u.origin),replayIsolationVerified:false});
+    manifestUrl:origin.origin+'/tonconnect-manifest.json',financialSigningEnabled:false,minterTransactionOnePreparationEnabled:preparationEnabled(env,u.origin),curveTransactionTwoPreparationEnabled:u.origin==='https://testnet.anlgram.com',curveTransactionTwoSigningEnabled:curveAuthorized(env),replayIsolationVerified:false});
+  if(request.method==='POST'&&['/api/curve-two/prepare','/api/curve-two/claim','/api/curve-two/record','/api/curve-two/status','/api/curve-two/reconcile'].includes(path)){
+    if(u.origin!=='https://testnet.anlgram.com'||request.headers.get('Origin')!==u.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Canonical Curve origin required'},403);
+    let input;try{input=JSON.parse(await boundedBody(request));}catch{return json({error:'Invalid operation request'},400);}
+    if(path.endsWith('/claim')&&!curveAuthorized(env))return json({error:'Curve owner authorization absent; signing disabled'},403);
+    const id=attemptId(request);let proof={verified:false};
+    if(/^[a-f0-9]{64}$/.test(id||''))proof=await(await env.PROOFS.get(env.PROOFS.idFromName(id)).fetch(new Request('https://proof.internal/',{method:'POST',body:JSON.stringify({action:'status',domain:origin.hostname})}))).json();
+    return curveOperationRoute(path,input,env,proof);
+  }
   if(request.method==='POST'&&['/api/operation/prepare','/api/operation/claim','/api/operation/record','/api/operation/status','/api/operation/reconcile'].includes(path)){
     if(request.headers.get('Origin')!==origin.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Origin/content type rejected'},403);
     let input;try{input=JSON.parse(await boundedBody(request));}catch{return json({error:'Invalid operation request'},400);}
@@ -115,7 +125,7 @@ async function route(request,env) {
     for(const name of ['operator','minter']){const r=await accountRead(env,name,true);const data=await r.json();if(!r.ok)return json(data,r.status,{'Retry-After':r.headers.get('Retry-After')||'1'});observations[name]=data;}
     return json({network:CHAIN,observations,financialSigningEnabled:false});
   }
-  if (request.method==='GET' && ['/', '/app.js', '/transaction-one.js', '/style.css', '/tonconnect-ui.min.js', '/icon.png', '/curve-two-preflight.json'].includes(path)) return env.ASSETS.fetch(request);
+  if (request.method==='GET' && ['/', '/app.js', '/transaction-one.js', '/transaction-two.js', '/style.css', '/tonconnect-ui.min.js', '/icon.png', '/curve-two-preflight.json'].includes(path)) return env.ASSETS.fetch(request);
   return json({error:'Unavailable; financial actions are disabled'},404);
 }
 export default {

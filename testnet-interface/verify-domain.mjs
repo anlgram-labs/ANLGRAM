@@ -27,7 +27,7 @@ function request(path,{method='GET',headers={},body,plain=false}={}){
 }
 check('expected DNS CNAME',cname.includes('anlgram-testnet-preparation.pages.dev'));
 const redirect=await request('/',{plain:true});check('HTTP redirects to HTTPS',[301,302,307,308].includes(redirect.status)&&redirect.headers.location===origin+'/');
-for(const file of ['index.html','app.js','transaction-one.js','style.css','tonconnect-ui.min.js','icon.png','curve-two-preflight.json']){
+for(const file of ['index.html','app.js','transaction-one.js','transaction-two.js','style.css','tonconnect-ui.min.js','icon.png','curve-two-preflight.json']){
  const r=await request(file==='index.html'?'/':'/'+file);check('HTTPS asset '+file,r.status===200);
  check('exact deployed bytes '+file,createHash('sha256').update(r.bytes).digest('hex')===createHash('sha256').update(readFileSync(new URL('public-pages/'+file,import.meta.url))).digest('hex'));
 }
@@ -41,6 +41,8 @@ for(const chain of ['-239','-3']){const r=await request('/api/proof/verify',{met
 check('pages.dev Origin cannot use custom-domain challenge',(await request('/api/proof/challenge',{method:'POST',headers:{...headers,Origin:'https://anlgram-testnet-preparation.pages.dev'},body:'{}'})).status===403);
 check('Mainnet query override blocked',(await request('/api/config?network=-239')).status===400);
 for(const path of ['/api/sendTransaction','/api/sendBoc','/api/deploy','/_worker.js','/proof.mjs','/wrangler.toml'])check('closed route '+path,(await request(path)).status===404);
+check('Curve signing authorization absent',(await request('/api/curve-two/claim',{method:'POST',headers,body:'{}'})).status===403);
+check('Curve signing disabled',c.curveTransactionTwoSigningEnabled===false);
 check('financial operation authorization absent',(await request('/api/operation/claim',{method:'POST',headers,body:'{}'})).status===403);
 const balance=await request('/api/operator');evidence.balance={http:balance.status,...JSON.parse(balance.text)};
 evidence.ownershipEvidence='testnet-domain-owner-proof.json';

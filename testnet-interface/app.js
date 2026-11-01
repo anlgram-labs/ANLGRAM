@@ -11,8 +11,9 @@
     document.getElementById('minter').textContent=config.minter;
     ui=new TON_CONNECT_UI.TonConnectUI({manifestUrl:config.manifestUrl,restoreConnection:false});
     const transactionOne=window.ANLGRAM_TRANSACTION_ONE(config,ui);
+    const transactionTwo=window.ANLGRAM_TRANSACTION_TWO?.(config,ui);
     ui.onStatusChange(async wallet=>{
-      transactionOne.invalidate();
+      transactionOne.invalidate();transactionTwo?.invalidate();
       const current=++version; disconnect.disabled=!wallet;
       if(!wallet){text('Sin conexión autenticada.');return;}
       if(wallet.account.chain!=='-3'||wallet.account.address!==config.operator){
@@ -27,7 +28,7 @@
         const result=await response.json();
         if(!response.ok||result.verified!==true||result.address!==config.operator||result.network!=='-3')throw Error();
         if(current===version){
-          transactionOne.authenticate(wallet,result);
+          transactionOne.authenticate(wallet,result);transactionTwo?.authenticate(wallet,result);
           const feature=wallet.device?.features?.find(f=>f==='SendTransaction'||f?.name==='SendTransaction');
           const app=String(wallet.device?.appName||'no declarada').slice(0,80),appVersion=String(wallet.device?.appVersion||'no declarada').slice(0,40);
           const limit=typeof feature==='object'&&Number.isSafeInteger(feature.maxMessages)?String(feature.maxMessages):'no declarado';

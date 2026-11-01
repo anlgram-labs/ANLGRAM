@@ -1,4 +1,5 @@
-import {intent,validateIntent,fingerprint} from './minter-policy.mjs';
+import * as minterPolicy from './minter-policy.mjs';
+import * as curvePolicy from './curve-policy.mjs';
 const executing=new Set();
 async function api(path,body,signal){
  if(signal?.aborted)throw Error('Operation expired or aborted');
@@ -10,11 +11,15 @@ async function api(path,body,signal){
  }finally{clearTimeout(timer);signal?.removeEventListener('abort',forward);}
 }
 export async function guardedMinterSend(tx,wallet,options,invoke){
+ let policy;try{minterPolicy.validateIntent(tx);policy=minterPolicy;}catch{curvePolicy.validateIntent(tx);policy=curvePolicy;}
+ const {intent,validateIntent,fingerprint}=policy,isCurve=policy===curvePolicy,prefix=isCurve?'/api/curve-two':'/api/operation';
  validateIntent(tx);
  Object.freeze(tx.messages[0]);Object.freeze(tx.messages);Object.freeze(tx);
  if(!['https://testnet.anlgram.com','https://anlgram-testnet-preparation.pages.dev'].includes(location.origin))throw Error('Wrong signing origin');
  if(wallet?.account?.chain!==intent.network||wallet.account.address!==intent.operator||wallet.provider!=='http')throw Error('Unapproved wallet/transport');
  if(wallet.account.publicKey!==undefined&&wallet.account.publicKey.toLowerCase()!==intent.publicKey)throw Error('Wrong key');
+ if(isCurve&&(location.origin!=='https://testnet.anlgram.com'||wallet.account.publicKey?.toLowerCase()!==intent.publicKey||typeof wallet.account.walletStateInit!=='string'))throw Error('Exact Curve signing account required');
+ const walletAccount=isCurve?{chain:wallet.account.chain,address:wallet.account.address,publicKey:wallet.account.publicKey,walletStateInit:wallet.account.walletStateInit}:undefined;
  if(executing.has(intent.operation))throw Error('Operation already invoked in this page');
  const supplied=typeof options==='function'?{onRequestSent:options}:options||{};
  if(Object.keys(supplied).some(k=>!['onRequestSent','signal'].includes(k)))throw Error('Unsupported signing options');
@@ -27,18 +32,18 @@ export async function guardedMinterSend(tx,wallet,options,invoke){
   abortListener=()=>controller.abort();supplied.signal?.addEventListener('abort',abortListener,{once:true});
   timer=setTimeout(()=>controller.abort(),Math.max(0,tx.validUntil*1000-Date.now()));
   const hash=await fingerprint(tx);
-  claim=await api('/api/operation/claim',{transaction:tx,fingerprint:hash},controller.signal);
+  claim=await api(prefix+'/claim',{transaction:tx,fingerprint:hash,...(isCurve?{walletAccount}:{})},controller.signal);
   if(claim.claimed!==true||claim.fingerprint!==hash||typeof claim.ticket!=='string'||!/^[a-f0-9]{64}$/.test(claim.ticket))throw Error('Invalid persistent claim');
   validateIntent(tx);if(controller.signal.aborted||supplied.signal?.aborted)throw Error('Aborted after claim');
   const aborted=new Promise((_,reject)=>controller.signal.addEventListener('abort',()=>reject(Error('Operation outcome unknown after abort/expiry')),{once:true}));
   let notified=false;
   const result=await Promise.race([Promise.resolve().then(()=>invoke({signal:controller.signal,onRequestSent:()=>{if(!notified){notified=true;supplied.onRequestSent?.();}}})),aborted]);
   // A BOC is not delivery/finality. Never clear the lock or claim deployment.
-  await api('/api/operation/record',{ticket:claim.ticket,event:'WALLET_RESPONSE_UNVERIFIED'},controller.signal).catch(()=>{});
+  await api(prefix+'/record',{ticket:claim.ticket,event:'WALLET_RESPONSE_UNVERIFIED'},controller.signal).catch(()=>{});
   return result;
  }catch(e){
   controller.abort();
-  if(claim?.ticket)await api('/api/operation/record',{ticket:claim.ticket,event:'UNKNOWN_OR_REJECTED'}).catch(()=>{});
+  if(claim?.ticket)await api(prefix+'/record',{ticket:claim.ticket,event:'UNKNOWN_OR_REJECTED'}).catch(()=>{});
   throw e;
  }finally{
   clearTimeout(timer);if(abortListener)supplied.signal?.removeEventListener('abort',abortListener);

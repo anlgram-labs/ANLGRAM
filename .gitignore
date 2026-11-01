@@ -10,3 +10,6 @@ audit-real-wallet.js
 *.bak
 
 backups_*/
+
+# Local Wrangler runtime/cache; never publish credentials or simulator state.
+.wrangler/

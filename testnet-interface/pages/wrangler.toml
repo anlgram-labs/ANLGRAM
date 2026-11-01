@@ -19,3 +19,8 @@ script_name = "anlgram-testnet-preparation"
 name = "TESTNET_READS"
 class_name = "TestnetReads"
 script_name = "anlgram-testnet-preparation"
+
+[[durable_objects.bindings]]
+name = "CURVE_OPERATIONS"
+class_name = "CurveFinancialOperation"
+script_name = "anlgram-testnet-preparation"
