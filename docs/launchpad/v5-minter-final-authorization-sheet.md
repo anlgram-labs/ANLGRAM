@@ -1,5 +1,15 @@
 # Transaction #1 — final V5 Testnet preflight
 
+**Signer review update:** authenticated connection declared Tonkeeper 26.10.4 and
+SendTransaction support; no actual financial signing tested. Installed SDK HTTP
+bridge automatically retries and the public sendTransaction wrapper does not
+forward an attempts limit. Therefore financial execution remains **NO-GO** pending
+a reviewed one-attempt transport guard. Latest hash-only/current-state refresh:
+**0.106876940 TON** modeled debit; no enforced 0.12 total cap. Use the
+[bounded procedure](v5-single-attempt-signing-procedure.md) and
+[compatibility evidence](v5-signing-compatibility.json). Earlier simulation values
+below are historical. This update grants no spending/signing authorization.
+
 **Execution simulation PASS. Ready for owner review, NOT authorized or ready for
 automatic signing/broadcast.** Exact data: [preflight evidence](v5-minter-final-preflight.json).
 Baseline `7ebe087`; no production, interface, financial gate, contract or economics

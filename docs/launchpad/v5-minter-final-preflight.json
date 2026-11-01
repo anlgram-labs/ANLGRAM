@@ -1,5 +1,5 @@
 {
-  "observedUtc": "2026-11-01T02:04:41.219Z",
+  "observedUtc": "2026-11-01T02:19:47.816Z",
   "commitBaseline": "7ebe087",
   "network": "-3",
   "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
@@ -132,8 +132,8 @@
     "supply": "0"
   },
   "simulation": {
-    "masterchainBlock": 94993699,
-    "traceSha256": "6bc9bbc1df9c3966750348d2ffa46461bb0dd85f7b6621d058dcaa7208aba1c3",
+    "masterchainBlock": 94995970,
+    "traceSha256": "58e08f407e27f387dbfa45b54a7b4a499a67c741407fe2cfb0ca19d3ca3b1ba2",
     "complete": true,
     "signatureCheckSkippedOnlyInEmulator": true,
     "transactions": 2,
@@ -143,18 +143,18 @@
     "seqnoBefore": 0,
     "seqnoAfter": 1,
     "operatorBalanceBeforeNano": "1999999999",
-    "operatorBalanceAfterNano": "1893123061",
+    "operatorBalanceAfterNano": "1893123059",
     "attachmentNano": "100000000",
-    "walletTransactionFeesNano": "4866966",
+    "walletTransactionFeesNano": "4866968",
     "remainingForwardFeesNano": "2009972",
-    "modeledSenderFeesNano": "6876938",
-    "modeledSenderDebitNano": "106876938",
+    "modeledSenderFeesNano": "6876940",
+    "modeledSenderDebitNano": "106876940",
     "minterFeesFromAttachmentNano": "33134",
     "minterBalanceAfterNano": "99966866",
-    "totalNetworkFeesNano": "6910072",
+    "totalNetworkFeesNano": "6910074",
     "ceilingNano": "120000000",
     "fitsReviewCeiling": true,
-    "ceilingMarginNano": "13123062",
+    "ceilingMarginNano": "13123060",
     "hardCapEnforced": false
   },
   "requestIntent": {
@@ -162,10 +162,11 @@
     "attachmentNano": "100000000",
     "sendMode": 3,
     "maxFutureValiditySeconds": 120,
-    "noAutomaticRetries": true,
     "onlyTransactionOne": true,
     "bodyHash": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
-    "notASigningRequest": true
+    "notASigningRequest": true,
+    "requiresNoAutomaticRetries": true,
+    "oneAttemptExecutorVerified": false
   },
   "replay": {
     "canonicalMainnetSeqno": 26,
@@ -174,15 +175,21 @@
     "rejectionStatus": 500,
     "rejection": "failed to emulate shard block: EmulationExternalNotAccepted: 134",
     "testnetCloneOnMainnetUninitializedAndUnfunded": true,
-    "limitation": "V5 wallet_id separates canonical configurations, not an intrinsic global-ID VM check. A deliberately funded identical-StateInit clone remains replay-capable; no absolute cross-network non-replay guarantee is claimed.",
-    "equalNonceNegativeCheckObservedUtc": "2026-11-01T02:05:52.468Z"
+    "limitation": "V5 wallet_id separates canonical configurations, not an intrinsic global-ID VM check. A deliberately funded identical-StateInit clone remains replay-capable; no absolute cross-network non-replay guarantee is claimed."
   },
   "ownership": {
     "freshAtObservation": true,
     "domain": "https://testnet.anlgram.com",
-    "expiresAt": "2026-11-01T02:06:47.000Z",
-    "actualTransactionSigningTested": false
+    "expiresAt": "2026-11-01T02:23:03.000Z",
+    "actualTransactionSigningTested": false,
+    "walletApplicationDeclared": {
+      "appName": "Tonkeeper",
+      "appVersion": "26.10.4",
+      "sendTransactionSupported": true,
+      "maxMessagesObserved": null
+    }
   },
+  "sourceCheckMode": "SOURCE_AND_ARTIFACT_HASHES_AGAINST_PREVIOUSLY_COMPILED_CANDIDATE",
   "readyForBroadcast": false,
   "signed": false,
   "broadcast": false,
@@ -194,5 +201,12 @@
     "0.12 TON is a proposed policy ceiling, not a cap enforced by V5/TON Connect. Revalidate state, fees and proof before any future signing.",
     "The first external request also activates the currently uninitialized operator wallet. Only one internal deployment message targets the minter.",
     "No absolute Mainnet replay guarantee against a funded identical-StateInit clone."
-  ]
+  ],
+  "signingCompatibility": {
+    "actualFinancialSignatureRequested": false,
+    "actualSignedWalletIdVerified": false,
+    "bridgeRetriesGuarded": false,
+    "procedure": "v5-single-attempt-signing-procedure.md",
+    "financialRequestReady": false
+  }
 }

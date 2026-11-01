@@ -3,6 +3,11 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const {analyze,external}=require('./scripts/preflight-v5-minter'),{wallets}=require('./scripts/prepare-testnet-v5');
 const fixture=require('./tests/settlement-runtime/fixtures/v5-minter-emulation-summary.json'),p=require('./docs/launchpad/testnet-v5-candidate.json');
 const fresh=()=>structuredClone(fixture);
+test('hash-only refresh refuses changed source or artifact identity without recompilation',()=>{
+ const {verifyUnchangedSources}=require('./scripts/preflight-v5-minter');assert.equal(Object.keys(verifyUnchangedSources(p).contracts).length,7);
+ const changed=structuredClone(p),entry=Object.values(changed.sourceVerification.contracts)[0];entry.sourceFilesSha256[Object.keys(entry.sourceFilesSha256)[0]]='0'.repeat(64);assert.throws(()=>verifyUnchangedSources(changed));
+ const wrong=structuredClone(p);Object.values(wrong.sourceVerification.contracts)[0].codeHash='0'.repeat(64);assert.throws(()=>verifyUnchangedSources(wrong));
+});
 test('actual provider emulation reconciles complete sender/recipient fees without double counting destination gas',()=>{
  const r=analyze(fresh(),p);assert.equal(r.modeledSenderDebitNano,'106876937');assert.equal(r.modeledSenderFeesNano,'6876937');assert.equal(r.minterFeesFromAttachmentNano,'33134');assert.equal(r.minterBalanceAfterNano,'99966866');assert.equal(r.fitsReviewCeiling,true);assert.equal(r.hardCapEnforced,false);assert.equal(r.operatorWalletAlsoActivates,true);
 });

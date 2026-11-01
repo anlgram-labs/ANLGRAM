@@ -1,5 +1,5 @@
 {
-  "recordedUtc": "2026-11-01T02:04:24.781Z",
+  "recordedUtc": "2026-11-01T02:19:37.241Z",
   "origin": "https://testnet.anlgram.com",
   "network": "-3",
   "operator": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
@@ -7,13 +7,20 @@
   "walletId": 2147483645,
   "ownerConfirmedConnection": true,
   "cryptographicTonProofVerified": true,
-  "verificationDisplayedExpiresAt": "2026-11-01T02:06:47.000Z",
-  "source": "Fresh owner-confirmed Keeper V5 Testnet connection on exact domain; actual browser displayed server-verified ton_proof success during transaction-one preflight",
+  "verificationDisplayedExpiresAt": "2026-11-01T02:23:03.000Z",
+  "source": "Actual custom-domain UI displayed fresh server-verified proof and connection-declared Tonkeeper 26.10.4 / SendTransaction true",
   "authenticatedDisconnectUiCleared": false,
   "financialSigningEnabled": false,
   "financialSignaturesRequested": 0,
   "blockchainBroadcasts": 0,
   "spentTON": "0",
   "sensitiveProofDataStored": false,
-  "scope": "Historical expiring ownership observation only. Fresh proof and separate transaction-specific approval required before financial requests."
+  "scope": "Historical expiring ownership observation only. Fresh proof and separate transaction-specific approval required before financial requests.",
+  "walletApplicationDeclared": {
+    "appName": "Tonkeeper",
+    "appVersion": "26.10.4",
+    "sendTransactionSupported": true,
+    "maxMessagesObserved": null,
+    "metadataOnlyNotTransactionSignatureEvidence": true
+  }
 }

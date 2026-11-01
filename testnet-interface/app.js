@@ -24,7 +24,12 @@
         const response=await fetch('/api/proof/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account:wallet.account,proof:item.proof})});
         const result=await response.json();
         if(!response.ok||result.verified!==true||result.address!==config.operator||result.network!=='-3')throw Error();
-        if(current===version)text('Propiedad verificada hasta '+new Date(result.expiresAt*1000).toISOString()+'. Firma financiera bloqueada.');
+        if(current===version){
+          const feature=wallet.device?.features?.find(f=>f==='SendTransaction'||f?.name==='SendTransaction');
+          const app=String(wallet.device?.appName||'no declarada').slice(0,80),appVersion=String(wallet.device?.appVersion||'no declarada').slice(0,40);
+          const limit=typeof feature==='object'&&Number.isSafeInteger(feature.maxMessages)?String(feature.maxMessages):'no declarado';
+          text('Propiedad verificada hasta '+new Date(result.expiresAt*1000).toISOString()+'. Firma financiera bloqueada. Wallet declarada: '+app+' '+appVersion+'. Capacidad SendTransaction declarada: '+Boolean(feature)+', máximo de mensajes: '+limit+'. No se ha probado ninguna firma transaccional.');
+        }
       }catch{if(current===version)text('Prueba rechazada o expirada. Desconecta y vuelve a conectar.');}
     });
     start.onclick=async()=>{

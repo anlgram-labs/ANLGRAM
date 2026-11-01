@@ -46,9 +46,20 @@ function analyze(trace,p,bodyHash){
   modeledSenderDebitNano:debit.toString(),minterFeesFromAttachmentNano:minterFees.toString(),minterBalanceAfterNano:minter.account_state_after.balance,
   totalNetworkFeesNano:(sourceFees+forwardRemainder+minterFees).toString(),ceilingNano:'120000000',fitsReviewCeiling:debit<=120000000n,ceilingMarginNano:(120000000n-debit).toString(),hardCapEnforced:false};
 }
-async function run(){
+function verifyUnchangedSources(p){
+ for(const [name,entry]of Object.entries(p.sourceVerification.contracts)){
+  for(const [file,expected]of Object.entries(entry.sourceFilesSha256)){
+   const value=fs.readFileSync(path.join(root,'minter-contract/contracts',file),'utf8').replace(/\r\n/g,'\n');
+   assert.equal(crypto.createHash('sha256').update(value).digest('hex'),expected,'Changed compiled source: '+file);
+  }
+  const artifact=JSON.parse(fs.readFileSync(path.join(root,'minter-contract/build',name+'.compiled.json'),'utf8'));
+  const code=core.Cell.fromBase64(artifact.codeBocBase64);assert.equal(code.hash().toString('hex'),entry.codeHash);assert.equal(artifact.codeCellHash||artifact.codeHash,entry.codeHash);
+ }
+ assert.equal(Object.keys(p.sourceVerification.contracts).length,7);return p.sourceVerification;
+}
+async function run({hashOnly=false}={}){
  const p=require('../docs/launchpad/testnet-v5-candidate.json'),active=require('../docs/launchpad/active-testnet-candidate.json'),w=wallets();assert.equal(sha(p),active.candidateSha256);assert.equal(p.network,'-3');assert.equal(p.readyForSigning,false);
- const source=await verifyArtifacts();assert.deepEqual(source,p.sourceVerification);
+ const source=hashOnly?verifyUnchangedSources(p):await verifyArtifacts();assert.deepEqual(source,p.sourceVerification);
  const m=p.smokePlan.steps[0].message,init=core.loadStateInit(core.Cell.fromBase64(m.stateInit).beginParse()),to=core.Address.parseFriendly(m.address);
  assert.equal(to.isTestOnly,true);assert.equal(core.contractAddress(0,init).toRawString(),p.dependentAccounts.minter.raw);assert.equal(m.amount,'100000000');
  const data=init.data.beginParse();assert.equal(data.loadCoins(),0n);assert.equal(data.loadAddress().toRawString(),p.wallet.raw);
@@ -72,12 +83,12 @@ async function run(){
  return{observedUtc:new Date().toISOString(),commitBaseline:'7ebe087',network:'-3',candidateSha256:sha(p),sourceVerification:source,
   operator:{address:p.wallet.address,raw:p.wallet.raw,version:'V5R1',walletId:2147483645,balanceNano:operator.balance,state:operator.state,initialSeqno:0},
   destination:{address:m.address,raw:p.dependentAccounts.minter.raw,state:destination.state,codeHash:init.code.hash().toString('hex'),dataHash:init.data.hash().toString('hex'),stateInitHash:core.Cell.fromBase64(m.stateInit).hash().toString('hex'),metadata:{name:'ANLGRAM Testnet Settlement',symbol:'ANLTEST',decimals:9},admin:p.wallet.raw,supply:'0'},
-  simulation,requestIntent:{messages:1,attachmentNano:m.amount,sendMode:3,maxFutureValiditySeconds:120,noAutomaticRetries:true,onlyTransactionOne:true,bodyHash:core.Cell.fromBase64(m.payload).hash().toString('hex'),notASigningRequest:true},
+  simulation,requestIntent:{messages:1,attachmentNano:m.amount,sendMode:3,maxFutureValiditySeconds:120,requiresNoAutomaticRetries:true,oneAttemptExecutorVerified:false,simulatedValidUntilUnix:expiry,onlyTransactionOne:true,bodyHash:core.Cell.fromBase64(m.payload).hash().toString('hex'),notASigningRequest:true},
   replay:{canonicalMainnetSeqno:mainSeqno,canonicalMainnetWalletId:2147483409,sameNonceWrongWalletIdEmulationRejected:mainnetWrongIdRejected,rejectionStatus:rejected.status,rejection:rejected.value.error||null,testnetCloneOnMainnetUninitializedAndUnfunded:true,
    limitation:'V5 wallet_id separates canonical configurations, not an intrinsic global-ID VM check. A deliberately funded identical-StateInit clone remains replay-capable; no absolute cross-network non-replay guarantee is claimed.'},
-  ownership:{freshAtObservation:proofFresh,domain:owner.origin,expiresAt:owner.verificationDisplayedExpiresAt,actualTransactionSigningTested:false},
+  ownership:{freshAtObservation:proofFresh,domain:owner.origin,expiresAt:owner.verificationDisplayedExpiresAt,actualTransactionSigningTested:false},sourceCheckMode:hashOnly?'SOURCE_AND_ARTIFACT_HASHES_AGAINST_PREVIOUSLY_COMPILED_CANDIDATE':'FRESH_COMPILATION',
   readyForBroadcast:false,signed:false,broadcast:false,spentNano:'0',financialControlsEnabled:false,
   limitations:['Provider emulation skips signature verification; genuine owner ton_proof is separate evidence, not an executed transaction.','Actual wallet transaction signing is deliberately untested; do not claim it was verified by ton_proof.','0.12 TON is a proposed policy ceiling, not a cap enforced by V5/TON Connect. Revalidate state, fees and proof before any future signing.','The first external request also activates the currently uninitialized operator wallet. Only one internal deployment message targets the minter.','No absolute Mainnet replay guarantee against a funded identical-StateInit clone.']};
 }
-if(require.main===module){if(!process.argv.includes('--read-only'))throw Error('Explicit --read-only required');run().then(r=>{if(process.argv.includes('--write'))fs.writeFileSync(path.join(root,'docs/launchpad/v5-minter-final-preflight.json'),JSON.stringify(r,null,2)+'\n');console.log(JSON.stringify({...r,sourceVerification:{contracts:Object.keys(r.sourceVerification.contracts).length}},null,2));}).catch(e=>{console.error(e.message);process.exitCode=1;});}
-module.exports={analyze,external,run};
+if(require.main===module){if(!process.argv.includes('--read-only'))throw Error('Explicit --read-only required');run({hashOnly:process.argv.includes('--hash-only')}).then(r=>{if(process.argv.includes('--write'))fs.writeFileSync(path.join(root,'docs/launchpad/v5-minter-final-preflight.json'),JSON.stringify(r,null,2)+'\n');console.log(JSON.stringify({...r,sourceVerification:{contracts:Object.keys(r.sourceVerification.contracts).length}},null,2));}).catch(e=>{console.error(e.message);process.exitCode=1;});}
+module.exports={analyze,external,run,verifyUnchangedSources};

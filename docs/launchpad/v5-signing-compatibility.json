@@ -1,0 +1,45 @@
+{
+  "observedUtc": "2026-11-01T02:23:16.495Z",
+  "checkpointPushed": "a4aa50c4aa234faa2aea517cb27e3de643e32743",
+  "origin": "https://testnet.anlgram.com",
+  "walletDeclared": {
+    "appName": "Tonkeeper",
+    "appVersion": "26.10.4",
+    "sendTransactionSupported": true,
+    "maxMessagesObserved": null
+  },
+  "proofExpiresAt": "2026-11-01T02:23:03.000Z",
+  "operator": {
+    "address": "0QCBGet2_2SvVUrX_MZL0w0OuPqlbJtlHT3nbpWaEH2QYbBR",
+    "raw": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "version": "V5R1",
+    "walletId": 2147483645,
+    "balanceNano": "1999999999",
+    "state": "uninitialized",
+    "initialSeqno": 0
+  },
+  "activeCandidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
+  "SDK": {
+    "uiVersion": "2.3.1",
+    "sdkVersion": "3.3.1",
+    "sdkEsmSha256": "2aebf1039a9fd15e42b4229828bda288160c6610ed4166ce1fae24d0e7c4f880",
+    "publicUiBundleSha256": "bbd171213cd16b0c681485232cce6d46d2dcd1fa42810244b9c6f8ef8027b5f0",
+    "httpSendDefaultsToMaxSafeIntegerAttempts": true,
+    "publicSendTransactionDoesNotForwardAttempts": true,
+    "retriesReuseEncryptedRpcId": true
+  },
+  "financialRequestReady": false,
+  "financialSigningEnabled": false,
+  "actualFinancialSignatureRequested": false,
+  "broadcast": false,
+  "boundedPolicy": {
+    "attachmentNano": "100000000",
+    "proposedMaximumTotalNano": "120000000",
+    "hardCapEnforced": false,
+    "requiresOneApplicationAttempt": true,
+    "requiresOneTransportAttempt": true,
+    "maxValiditySeconds": 120,
+    "ownerAuthorizationGranted": false
+  },
+  "remainingBlocker": "One-attempt transport guard is not implemented/verified; actual financial signing remains deliberately untested."
+}

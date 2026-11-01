@@ -1,5 +1,54 @@
 # MemeLabs isolated sprint: review notes
 
+## Exact connected wallet / SDK retry review — 2026-10-31
+
+Verified local checkpoint `a4aa50c` source, tests and documentation, then pushed it
+without force to the same development branch; remote full hash
+`a4aa50c4aa234faa2aea517cb27e3de643e32743` confirmed. Production main and all PRs
+unchanged. No contract audit repeated: added fail-closed hash-only refresh against
+the seven already source-compiled identities. Source changes or bytecode mismatch
+stop that path. Added a regression for stale-source/artifact detection.
+
+Published only read-only connection diagnostics on the existing isolated Testnet
+Pages interface; no signing method/button was added. Actual owner renewed
+exact-domain ton_proof; connection declared **Tonkeeper 26.10.4**, SendTransaction
+support true, message maximum not observed in the displayed feature. Proof expiry
+2026-11-01T02:23:03Z; this is a declared application capability plus independently
+verified V5 account/key/StateInit, not a successful financial signature or native
+app binary audit. No signatures/proof/session secrets were saved.
+
+Confirmed a remaining blocker in actual installed/public SDK code: UI 2.3.1 / SDK
+3.3.1 HTTP bridge defaults send attempts to Number.MAX_SAFE_INTEGER; public
+sendTransaction passes signal/onRequestSent but not attempts. The same encrypted
+RPC/ID is retried, so no duplicate on-chain send is asserted. Nevertheless, one
+application call is not proof of one transport attempt or wallet-side deduplication.
+Current non-financial interface never invokes this path. No SDK monkey-patch,
+financial gate bypass, actual financial request or wallet transaction was used.
+
+[Strict bounded approval procedure](v5-single-attempt-signing-procedure.md) and
+[SDK/capability fingerprints](v5-signing-compatibility.json) document exact message,
+unforced 0.12 ceiling, fresh emulation, persistent one-use attempt consumption,
+required one-POST transport mitigation, short expiry, unknown-outcome stop and
+post-transaction reconciliation. The guard is a requirement, NOT claimed shipped.
+TON Connect may sign+broadcast before returning; post-return BOC validation cannot
+be advertised as a pre-broadcast guard. Financial execution remains NO-GO.
+
+Fresh Testnet complete emulation at block 94995970: wallet uninitialized/nonce 0,
+balance **1.999999999 Testnet TON**, minter uninitialized; sender modeled debit
+**0.106876940 TON** including unchanged 0.1 attachment and 0.006876940 sender fees.
+Destination execution 0.000033134 is paid from the attachment; no double counting.
+Canonical Mainnet same-nonce ID check still rejects 134; funded same-StateInit
+clone limitation remains. Future validUntil must be generated at execution, <=120
+seconds; no cached emulated deadline becomes a financial request.
+
+Actual focused results: **7 preflight regressions + 24 interface unit cases = 31
+passed, 0 failed**, plus **27 public custom-domain checks passed**; Pages build and
+read-only diagnostic deployment succeeded. No current tests fabricated native
+signing, hard fee cap, one-attempt guard or live contract deployment. No spending,
+broadcast, contract/production/DNS/Worker/credential/economic/donation change.
+Next step is narrowly reviewing/testing the transport guard and then obtaining
+separate exact transaction authorization, not a signature merely to test support.
+
 ## Transaction #1 complete current-state V5 minter emulation — 2026-10-31
 
 Final preflight from `7ebe087` is recorded in the
