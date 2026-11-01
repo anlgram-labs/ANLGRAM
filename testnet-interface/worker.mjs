@@ -93,6 +93,14 @@ async function route(request,env) {
     if(!r.ok)return json(data,r.status,{'Retry-After':r.headers.get('Retry-After')||'1'});
     return json({network:CHAIN,address:OPERATOR,balanceNano:String(data.account.balance),state:data.account.state,source:'TON Center Testnet',observedUtc:data.observedUtc,verification:'PROVIDER_OBSERVATION',dataStatus:data.dataStatus,ageMs:data.ageMs,authentication:data.authentication});
   }
+  if(request.method==='POST' && path==='/api/preflight/curve'){
+    if(request.headers.get('Origin')!==origin.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Origin/content type rejected'},403);
+    let input;try{input=JSON.parse(await boundedBody(request));}catch{return json({error:'Invalid read'},400);}
+    if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length)return json({error:'Parameters forbidden'},400);
+    const observations={};
+    for(const name of ['operator','minter','curve','jettonData','curveFees']){const r=await accountRead(env,name,true),j=await r.json();if(!r.ok)return json(j,r.status,{'Retry-After':r.headers.get('Retry-After')||'1'});observations[name]=j;}
+    return json({network:CHAIN,observations,financialSigningEnabled:false,curveSigningEnabled:false});
+  }
   if(request.method==='POST' && path==='/api/preflight/fees'){
     if(request.headers.get('Origin')!==origin.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Origin/content type rejected'},403);
     let input;try{input=JSON.parse(await boundedBody(request));}catch{return json({error:'Invalid read'},400);}
@@ -107,7 +115,7 @@ async function route(request,env) {
     for(const name of ['operator','minter']){const r=await accountRead(env,name,true);const data=await r.json();if(!r.ok)return json(data,r.status,{'Retry-After':r.headers.get('Retry-After')||'1'});observations[name]=data;}
     return json({network:CHAIN,observations,financialSigningEnabled:false});
   }
-  if (request.method==='GET' && ['/', '/app.js', '/transaction-one.js', '/style.css', '/tonconnect-ui.min.js', '/icon.png'].includes(path)) return env.ASSETS.fetch(request);
+  if (request.method==='GET' && ['/', '/app.js', '/transaction-one.js', '/style.css', '/tonconnect-ui.min.js', '/icon.png', '/curve-two-preflight.json'].includes(path)) return env.ASSETS.fetch(request);
   return json({error:'Unavailable; financial actions are disabled'},404);
 }
 export default {
