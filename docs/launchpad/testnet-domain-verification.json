@@ -1,5 +1,5 @@
 {
-  "observedUtc": "2026-11-01T22:48:19.761Z",
+  "observedUtc": "2026-11-01T23:34:55.761Z",
   "origin": "https://testnet.anlgram.com",
   "dns": {
     "resolver": "1.1.1.1",
@@ -187,7 +187,7 @@
     "balanceNano": "5893016464",
     "state": "active",
     "source": "TON Center Testnet",
-    "observedUtc": "2026-11-01T22:48:24.966Z",
+    "observedUtc": "2026-11-01T23:35:01.261Z",
     "verification": "PROVIDER_OBSERVATION",
     "dataStatus": "FRESH_PROVIDER_OBSERVATION",
     "ageMs": 0,
