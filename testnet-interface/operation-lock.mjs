@@ -12,7 +12,7 @@ export class FinancialOperation {
   if(body.action==='prepare'){
    validateIntent(body.transaction);const hash=await fingerprint(body.transaction);
    if(hash!==body.approval?.fingerprint||body.approval.validUntil!==body.transaction.validUntil)return json({error:'Invalid prepared request'},400);
-   const accepted=await this.state.storage.transaction(async tx=>{if(await tx.get('operation'))return false;await tx.put('prepared',{transaction:body.transaction,approval:body.approval});return true;});
+   const accepted=await this.state.storage.transaction(async tx=>{if(await tx.get('operation'))return false;if(body.approval.quoteRevision!==undefined){const q=await tx.get('quote');if(q?.revision!==body.approval.quoteRevision||q.validUntil!==body.transaction.validUntil||q.scopeKey!==body.approval.quoteScopeKey)return false;}await tx.put('prepared',{transaction:body.transaction,approval:body.approval});return true;});
    return accepted?json({prepared:true}):json({error:'Operation already attempted'},409);
   }
   if(body.action==='approval'){
@@ -23,7 +23,7 @@ export class FinancialOperation {
    validateIntent(body.transaction);const hash=await fingerprint(body.transaction);
    if(hash!==body.fingerprint) return json({error:'Fingerprint mismatch'},409);
    const ticket=token(),record={fingerprint:hash,ticket,status:'LOCKED_PENDING_RECONCILIATION',claimedAt:Date.now(),validUntil:body.transaction.validUntil,approvalReference:body.approvalReference,events:[]};
-   const accepted=await this.state.storage.transaction(async tx=>{if(await tx.get('operation'))return false;if(body.requirePrepared){const p=await tx.get('prepared');if(p?.approval.fingerprint!==hash||Math.floor(Date.now()/1000)-p.approval.observedAt>60)return false;}await tx.put('operation',record);return true;});
+   const accepted=await this.state.storage.transaction(async tx=>{if(await tx.get('operation'))return false;if(body.requirePrepared){const p=await tx.get('prepared');const now=Math.floor(Date.now()/1000);if(p?.approval.fingerprint!==hash||now-p.approval.observedAt>60||p.approval.observedAt>now||(p.approval.quoteExpiresAt!==undefined&&now>=p.approval.quoteExpiresAt))return false;if(p.approval.quoteRevision!==undefined&&(await tx.get('quote'))?.revision!==p.approval.quoteRevision)return false;if(body.authorizationBinding&&(p.approval.authorizationId!==body.authorizationBinding.id||p.approval.authorizationNotAfter!==body.authorizationBinding.notAfter||now>=body.authorizationBinding.notAfter))return false;}if(body.authorizationBinding?.requireStored){const a=await tx.get('runtimeAuthorization');if(a?.authorizationId!==body.authorizationBinding.id||a.notAfter!==body.authorizationBinding.notAfter||Math.floor(Date.now()/1000)>=a.notAfter)return false;}await tx.put('operation',record);return true;});
    return accepted?json({claimed:true,fingerprint:hash,ticket}):json({error:'Lifetime operation already claimed; no automatic retry'},409);
   }
   let record=await this.state.storage.get('operation');

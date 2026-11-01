@@ -50,3 +50,29 @@ test('real Curve SQLite namespace is independent and survives concurrent claims 
   const forbidden=await stub.fetch(new Request('https://operation.internal/',{method:'POST',body:JSON.stringify({action:'record',ticket:'wrong',event:'WALLET_RESPONSE_UNVERIFIED'})}));assert.equal(forbidden.status,403);
  }finally{await mf.dispose();}
 });
+
+test('Curve runtime authorization and quote epochs persist in real SQLite; stale revision, grant rotation and restart never unlock a claim',async()=>{
+ const persist=mkdtempSync(join(tmpdir(),'anlgram-runtime-quotes-'));
+ const make=()=>{const options=convertV4MiniflareOptions({scriptPath:fileURLToPath(new URL('../.worker-build/worker.js',import.meta.url)),modules:true,compatibilityDate:'2026-10-30',compatibilityFlags:['nodejs_compat'],durableObjects:{CURVE_OPERATIONS:{className:'CurveFinancialOperation',useSQLite:true}}});options.resourcePersistencePath=persist;return new Miniflare(options);};
+ let mf=make(),saved;
+ const now=Math.floor(Date.now()/1000),deadline=now+85;
+ const {setup,authorize}=await import('./curve-fixture.mjs');const h=setup(),g=authorize(h,now,'65'.repeat(32));
+ const call=(stub,body)=>stub.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify(body)}));
+ const stub=async()=>{const ns=await mf.getDurableObjectNamespace('CURVE_OPERATIONS');return ns.get(ns.idFromName('runtime-epoch-fixture'));};
+ try{
+  const s=await stub();assert.equal((await call(s,{action:'authorize',grant:g})).status,200);assert.equal((await call(s,{action:'authorize',grant:g})).status,409);
+  const a=await(await call(s,{action:'reserveQuote',scopeKey:'runtime:'+g.authorizationId,maximumValidUntil:deadline})).json();
+  const b=await(await call(s,{action:'reserveQuote',scopeKey:'runtime:'+g.authorizationId,maximumValidUntil:deadline})).json();assert(b.revision>a.revision);assert(b.validUntil<a.validUntil);
+  const transaction={network:'-3',from:curveIntent.operator,validUntil:b.validUntil,messages:[structuredClone(curveIntent.message)]},fp=await curveFingerprint(transaction);
+  const approval={fingerprint:fp,validUntil:b.validUntil,observedAt:now,quoteExpiresAt:now+60,quoteRevision:b.revision,quoteScopeKey:b.scopeKey,authorizationId:g.authorizationId,authorizationNotAfter:g.notAfter};
+  assert.equal((await call(s,{action:'prepare',transaction,approval:{...approval,quoteRevision:a.revision}})).status,409);
+  assert.equal((await call(s,{action:'prepare',transaction,approval})).status,200);saved={action:'claim',transaction,fingerprint:fp,requirePrepared:true,authorizationBinding:{id:g.authorizationId,notAfter:g.notAfter,requireStored:true}};
+ }finally{await mf.dispose();}
+ mf=make();try{
+  const s=await stub();assert.equal((await(await call(s,{action:'authorization'})).json()).authorizationId,g.authorizationId);
+  assert.equal((await call(s,{...saved,authorizationBinding:{...saved.authorizationBinding,id:'66'.repeat(32)}})).status,409);
+  const rs=await Promise.all([call(s,saved),call(s,saved)]);assert.deepEqual(rs.map(r=>r.status).sort(),[200,409]);
+  assert.equal((await call(s,{action:'authorize',grant:g})).status,409);assert.equal((await call(s,{action:'reserveQuote',scopeKey:'runtime:'+g.authorizationId,maximumValidUntil:deadline})).status,409);
+ }finally{await mf.dispose();}
+ mf=make();try{assert.equal((await call(await stub(),saved)).status,409);}finally{await mf.dispose();}
+});

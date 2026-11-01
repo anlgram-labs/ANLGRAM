@@ -52,3 +52,12 @@ test('Mainnet, arbitrary methods, financial payloads and foreign origins fail cl
 test('missing binding fails closed; seconds and HTTP-date Retry-After respected',async()=>{
  const r=await worker.fetch(new Request('https://testnet.anlgram.com/api/operator'),{APP_ORIGIN:'https://testnet.anlgram.com'});assert.equal(r.status,503);assert.equal((await r.json()).reason,'READ_SERVICE_MISSING');assert.equal(retryAfter('30',0),30000);assert.equal(retryAfter(new Date(60000).toUTCString(),1000),59000);assert.equal(retryAfter('garbage',0),0);
 });
+// Server-only deadline is part of the deduplication key and exact emulator body.
+test('Curve runtime deadlines reject caller extensions and emulate distinct deadlines without sharing the wrong fingerprint',()=>controlled(async()=>{
+ const h=harness('fixture'),now=Math.floor(Date.now()/1000),base={network:'-3',account:'curveFees',fresh:true,validUntil:now+80};
+ const run=b=>h.object.fetch(new Request('https://internal/',{method:'POST',headers:{'X-Internal-Testnet-Key':'fixture'},body:JSON.stringify(b)}));
+ for(const patch of [{validUntil:now},{validUntil:now+91},{validUntil:now+1.5},{account:'operator'},{fresh:false}])assert.equal((await run({...base,...patch})).status,400);
+ let calls=0;const bodies=[];globalThis.fetch=async(_,o)=>{calls++;bodies.push(JSON.parse(o.body));return Response.json({is_incomplete:false,transactions:{}});};
+ const first=await Promise.all([run(base),run(base)]);assert.equal(calls,1);const j=await first[0].json();assert.equal(j.validUntil,base.validUntil);
+ const next=await(await run({...base,validUntil:now+79})).json();assert.equal(calls,2);assert.notEqual(next.bodyHash,j.bodyHash);assert.notDeepEqual(bodies[0],bodies[1]);
+}));

@@ -16,11 +16,12 @@ export class TestnetReads {
  constructor(state,env){this.state=state;this.env=env;this.tail=Promise.resolve();this.inflight=new Map();}
  async fetch(request){
   let input;try{input=await request.json();}catch{return json({error:'Invalid read'},400);}
-  if(!input||typeof input!=='object'||Array.isArray(input)||input.network!=='-3'||!['operator','minter','fees','curve','jettonData','curveFees','curveWallet','buyerWallet'].includes(input.account)||typeof input.fresh!=='boolean'||Object.keys(input).some(k=>!['network','account','fresh'].includes(k)))return json({error:'Read not permitted'},400);
+  if(!input||typeof input!=='object'||Array.isArray(input)||input.network!=='-3'||!['operator','minter','fees','curve','jettonData','curveFees','curveWallet','buyerWallet'].includes(input.account)||typeof input.fresh!=='boolean'||Object.keys(input).some(k=>!['network','account','fresh','validUntil'].includes(k)))return json({error:'Read not permitted'},400);
+  if(input.validUntil!==undefined&&(input.account!=='curveFees'||input.fresh!==true||!Number.isSafeInteger(input.validUntil)||input.validUntil<=Math.floor(Date.now()/1000)||input.validUntil>Math.floor(Date.now()/1000)+90))return json({error:'Invalid server quote deadline'},400);
   // Same-account readers share only an unfinished provider observation, never
   // a previously completed cached read when fresh=true.
   const key=request.headers.get('X-Internal-Testnet-Key')?.trim()||this.env.TONCENTER_TESTNET_API_KEY?.trim();
-  const inflightKey=input.account+':'+input.fresh+':'+(key||'anonymous');let pending=this.inflight.get(inflightKey);
+  const inflightKey=input.account+':'+input.fresh+':'+(input.validUntil??'default')+':'+(key||'anonymous');let pending=this.inflight.get(inflightKey);
   if(!pending){pending=this.tail.then(()=>this.read(input,key));this.tail=pending.catch(()=>{});this.inflight.set(inflightKey,pending);pending.finally(()=>{if(this.inflight.get(inflightKey)===pending)this.inflight.delete(inflightKey);}).catch(()=>{});}
   const result=await pending;return json(result.body,result.status,result.headers);
  }
@@ -30,7 +31,7 @@ export class TestnetReads {
   if(!input.fresh&&cached&&now()-cached.observedAt<TTL)return {status:200,body:{...cached,network:'-3',dataStatus:'SHORT_LIVED_CACHE',ageMs:now()-cached.observedAt}};
   // Explicitly no fallback to a Mainnet key, TONAPI_KEY, URL parameter or client key.
   const headers={'Content-Type':'application/json',...(key?{'X-API-Key':key}:{})};
-  const emulation=input.account==='fees'?await minterEmulation():input.account==='curveFees'?await curveEmulation():null;
+  const emulation=input.account==='fees'?await minterEmulation():input.account==='curveFees'?await curveEmulation(input.validUntil):null;
   const getter=input.account==='jettonData';
   const rpc={jsonrpc:'2.0',id:1,method:getter?'runGetMethod':'getAddressInformation',params:getter?{address:MINTER,method:'get_jetton_data',stack:[]}:{address:input.account==='operator'?OPERATOR:input.account==='curve'?curveIntent.message.address:input.account==='curveWallet'?candidate.curveJettonWallet:input.account==='buyerWallet'?candidate.buyerJettonWallet:MINTER}};
   let gate=await this.state.storage.get('gate')||{nextAt:0,failures:0};
@@ -62,7 +63,7 @@ export class TestnetReads {
  }
  unavailable(gate,status,reason,cached){const seconds=Math.max(1,Math.ceil((gate.nextAt-Date.now())/1000));return {status,headers:{'Retry-After':String(seconds)},body:{error:'Testnet provider unavailable; balance unknown',network:'-3',reason,retryAfterSeconds:seconds,dataStatus:cached?'STALE_NOT_SERVED':'UNAVAILABLE',lastObservationUtc:cached?.observedUtc}};}
 }
-export async function accountRead(env,account,fresh){
+export async function accountRead(env,account,fresh,validUntil){
  if(!env.TESTNET_READS)return json({error:'Testnet read scheduler not configured',reason:'READ_SERVICE_MISSING',network:'-3',dataStatus:'UNAVAILABLE'},503);
- return env.TESTNET_READS.get(env.TESTNET_READS.idFromName('toncenter-testnet-readonly-v1')).fetch(new Request('https://testnet-read.internal/',{method:'POST',headers:env.TONCENTER_TESTNET_API_KEY?.trim()?{'X-Internal-Testnet-Key':env.TONCENTER_TESTNET_API_KEY.trim()}:{},body:JSON.stringify({network:'-3',account,fresh})}));
+ return env.TESTNET_READS.get(env.TESTNET_READS.idFromName('toncenter-testnet-readonly-v1')).fetch(new Request('https://testnet-read.internal/',{method:'POST',headers:env.TONCENTER_TESTNET_API_KEY?.trim()?{'X-Internal-Testnet-Key':env.TONCENTER_TESTNET_API_KEY.trim()}:{},body:JSON.stringify({network:'-3',account,fresh,...(validUntil===undefined?{}:{validUntil})})}));
 }

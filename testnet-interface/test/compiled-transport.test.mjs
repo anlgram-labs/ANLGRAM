@@ -11,6 +11,7 @@ import {FinancialOperation} from '../operation-lock.mjs';
 import {intent} from '../minter-policy.mjs';
 import {intent as curveIntent} from '../curve-policy.mjs';
 import {CurveFinancialOperation} from '../curve-operation.mjs';
+import {setup as curveServer,proof as operatorProof,route as curveRoute,authorize} from './curve-fixture.mjs';
 const bundle=readFileSync(new URL('../public/tonconnect-ui.min.js',import.meta.url),'utf8');
 const build=JSON.parse(readFileSync(new URL('../client-build.json',import.meta.url)));
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
@@ -26,7 +27,8 @@ function persistentStore(){
  const tx={get:async k=>structuredClone(values.get(k)),put:async(k,v)=>values.set(k,structuredClone(v))};
  return{...tx,transaction(fn){const next=queue.then(()=>fn(tx));queue=next.catch(()=>{});return next;},values};
 }
-async function harness({curve=false,mode='success',store=persistentStore(),claimDenied=false,claimLost=false,claimHanging=false,claimBodyHanging=false,recordLost=false,recordHanging=false,chain='-3',account=intent.operator,bundleOverride=null,control=false}={}){
+async function harness({server:backend=null,curve=false,mode='success',store=persistentStore(),claimDenied=false,claimLost=false,claimHanging=false,claimBodyHanging=false,recordLost=false,recordHanging=false,chain='-3',account=intent.operator,bundleOverride=null,control=false}={}){
+ if(backend)store={values:backend.values};
  const selected=curve?curveIntent:intent;
  const walletCrypto=new SessionCrypto(),streams=[],posts=[],decoded=[],events=[];let dappId,walletResultBoc;
  const operation=new (curve?CurveFinancialOperation:FinancialOperation)({storage:store});
@@ -60,15 +62,16 @@ async function harness({curve=false,mode='success',store=persistentStore(),claim
  await new Promise(r=>server.listen(0,'127.0.0.1',r));localOrigin='http://127.0.0.1:'+server.address().port;
  const fetch=async(url,options={})=>{
   const u=String(url);
+  if(backend&&u==='/api/curve-two/prepare')return curveRoute('prepare',JSON.parse(options.body),backend);
   if(u===(curve?'/api/curve-two/claim':'/api/operation/claim')){
    if(claimDenied)return Response.json({error:'No owner financial approval'},{status:403});
-   const response=await operation.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify({...JSON.parse(options.body),action:'claim'})}));
+   const response=backend?await curveRoute('claim',JSON.parse(options.body),backend):await operation.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify({...JSON.parse(options.body),action:'claim'})}));
    if(claimLost)throw Error('Claim response lost after persistent commit');if(claimHanging)return new Promise(()=>{});if(claimBodyHanging)return new Response(new ReadableStream({start(){}}),{status:200,headers:{'Content-Type':'application/json'}});return response;
   }
   if(u===(curve?'/api/curve-two/record':'/api/operation/record')){
    if(recordLost)throw Error('lost record response');
    if(recordHanging)return new Promise(()=>{});
-   return operation.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify({...JSON.parse(options.body),action:'record'})}));
+   return backend?curveRoute('record',JSON.parse(options.body),backend):operation.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify({...JSON.parse(options.body),action:'record'})}));
   }
   if(u.startsWith('https://bridge.fixture.test/bridge/message')){
    const parsed=new URL(u);if(parsed.searchParams.get('topic')!=='sendTransaction')throw Error('Unexpected RPC topic');
@@ -80,7 +83,7 @@ async function harness({curve=false,mode='success',store=persistentStore(),claim
   throw Error('Unapproved controlled network request '+u);
  };
  const quiet={log(){},debug(){},warn(){},error(){},info(){}};
- const context=vm.createContext({console:quiet,crypto:webcrypto,Uint8Array,ArrayBuffer,CustomEvent,Event,TextEncoder,TextDecoder,URL,AbortController,AbortSignal,Response,Request,Headers,fetch,EventSource,queueMicrotask,
+ const context=vm.createContext({Date,console:quiet,crypto:webcrypto,Uint8Array,ArrayBuffer,CustomEvent,Event,TextEncoder,TextDecoder,URL,AbortController,AbortSignal,Response,Request,Headers,fetch,EventSource,queueMicrotask,
   // Accelerates timeout and the old SDK's 5s retry delay; a retrying bundle would
   // produce extra counted POSTs before the accelerated expiry aborts it.
   setTimeout:(fn,ms,...args)=>setTimeout(fn,ms===5000&&!fn.toString().includes('abort')?2:Math.min(ms,500),...args),clearTimeout,setInterval,clearInterval,atob,btoa,
@@ -96,7 +99,15 @@ async function harness({curve=false,mode='success',store=persistentStore(),claim
  incoming({event:'connect',id:1,payload:{items:[{name:'ton_addr',address:account,network:chain,publicKey:selected.publicKey,walletStateInit:(selected.walletStateInit||intent.walletStateInit)}],device:{platform:'iphone',appName:'Tonkeeper',appVersion:'26.10.4',maxProtocolVersion:2,features:[{name:'SendTransaction',maxMessages:1}]}}});
  await until(()=>connected);assert.equal(connected.provider,'http');
  const transaction=()=>({network:'-3',from:selected.operator,validUntil:Math.floor(Date.now()/1000)+60,messages:[structuredClone(selected.message)]});
- return{sdk,posts,decoded,store,events,streams,transaction,incoming,get walletResultBoc(){return walletResultBoc;},close:async()=>{sdk.pauseConnection();server.closeAllConnections();await new Promise(r=>server.close(r));assert.deepEqual(events,[]);}};
+ const controller=()=>{
+  const els=Object.fromEntries(['prepare-two','request-two','review-two','accept-two'].map(id=>[id,{disabled:true,checked:false,textContent:''}]));
+  context.document={getElementById:id=>els[id]};context.window={};
+  vm.runInContext(readFileSync(new URL('../transaction-two.js',import.meta.url),'utf8'),context);
+  const ui={get wallet(){return sdk.wallet;},sendTransaction:tx=>sdk.sendTransaction(tx)};
+  const gate=context.window.ANLGRAM_TRANSACTION_TWO({operator:curveIntent.operator,curveTransactionTwoPreparationEnabled:true,curveTransactionTwoSigningEnabled:false},ui);gate.authenticate(sdk.wallet,operatorProof());
+  return{els,ui,gate};
+ };
+ return{controller,sdk,posts,decoded,store,events,streams,transaction,incoming,get walletResultBoc(){return walletResultBoc;},close:async()=>{sdk.pauseConnection();server.closeAllConnections();await new Promise(r=>server.close(r));assert.deepEqual(events,[]);}};
 }
 test('tested client is the exact application bundle with one pinned patched SDK',()=>{
  assert.equal(createHash('sha256').update(bundle).digest('hex'),build.bundleSha256);assert.equal(build.patchedModules,1);assert.equal(build.sdk,'3.3.1');assert.equal(build.ui,'2.3.1');
@@ -170,4 +181,22 @@ test('Curve #2 wrong network/StateInit/body/account and absent approval produce 
 test('Curve #2 lost persistent claim acknowledgement produces zero POSTs across reload',async()=>{
  const store=persistentStore(),a=await harness({curve:true,store,claimLost:true});try{await assert.rejects(a.sdk.sendTransaction(a.transaction()));assert.equal(a.posts.length,0);}finally{await a.close();}
  const b=await harness({curve:true,store});try{await assert.rejects(b.sdk.sendTransaction(b.transaction()));assert.equal(b.posts.length,0);}finally{await b.close();}
+});
+
+
+for(const mode of ['success','rejected','timeout','lost','duplicate'])test('complete Curve browser controller -> server grant/quote/claim -> encrypted SDK '+mode+' has ONE received POST and no retry',async()=>{
+ const backend=curveServer(),grant=authorize(backend);backend.values.set('runtimeAuthorization',grant);delete backend.env.CURVE_TX2_SIGNING_AUTH;const h=await harness({curve:true,server:backend,mode});
+ try{const c=h.controller();await c.els['prepare-two'].onclick();assert.equal(c.els['accept-two'].disabled,false,c.els['review-two'].textContent);assert.equal(h.posts.length,0);c.els['accept-two'].checked=true;c.els['accept-two'].onchange();await Promise.all([c.els['request-two'].onclick(),c.els['request-two'].onclick()]);assert.equal(h.posts.length,1);assert.equal(backend.values.get('operation').status,'LOCKED_PENDING_RECONCILIATION');await c.els['request-two'].onclick();await c.els['prepare-two'].onclick();assert.equal(h.posts.length,1);assert(c.els['request-two'].disabled);}finally{await h.close();}
+ const reload=await harness({curve:true,server:backend});try{const c=reload.controller();await c.els['prepare-two'].onclick();assert(c.els['request-two'].disabled);assert.equal(reload.posts.length,0);}finally{await reload.close();}
+});
+test('complete browser workflow requotes after expiry under the SAME grant, without reload/deployment or stale fingerprint revival',async t=>{
+ let now=Math.floor(Date.now()/1000);t.mock.method(Date,'now',()=>now*1000);const backend=curveServer();authorize(backend);const grant=backend.env.CURVE_TX2_SIGNING_AUTH,h=await harness({curve:true,server:backend});
+ try{const c=h.controller();await c.els['prepare-two'].onclick();const first=structuredClone(backend.values.get('prepared'));assert.equal(h.posts.length,0);now+=61;c.els['accept-two'].checked=true;c.els['accept-two'].onchange();await c.els['request-two'].onclick();assert.equal(h.posts.length,0);await c.els['prepare-two'].onclick();assert.notEqual(backend.values.get('prepared').approval.fingerprint,first.approval.fingerprint);assert.equal(backend.env.CURVE_TX2_SIGNING_AUTH,grant);c.els['accept-two'].checked=true;c.els['accept-two'].onchange();await c.els['request-two'].onclick();assert.equal(h.posts.length,1);}finally{await h.close();}
+});
+test('complete workflow with a lost persistent claim response has ZERO financial POSTs and remains locked across reload',async()=>{
+ const backend=curveServer();authorize(backend);const h=await harness({curve:true,server:backend,claimLost:true});try{const c=h.controller();await c.els['prepare-two'].onclick();c.els['accept-two'].checked=true;c.els['accept-two'].onchange();await c.els['request-two'].onclick();assert.equal(h.posts.length,0);assert(backend.values.has('operation'));}finally{await h.close();}
+ const reload=await harness({curve:true,server:backend});try{const c=reload.controller();await c.els['prepare-two'].onclick();assert.equal(reload.posts.length,0);assert(c.els['request-two'].disabled);}finally{await reload.close();}
+});
+test('complete controller with absent/expired grant or changed balance never reaches the financial bridge',async()=>{
+ for(const variant of ['absent','expired','balance']){const backend=curveServer();if(variant!=='absent'){const g=authorize(backend);if(variant==='expired')backend.env.CURVE_TX2_SIGNING_AUTH=JSON.stringify({...g,notAfter:g.issuedAt});}const h=await harness({curve:true,server:backend});try{const c=h.controller();await c.els['prepare-two'].onclick();if(variant==='balance')backend.source.balance='1';c.els['accept-two'].checked=true;c.els['accept-two'].onchange();await c.els['request-two'].onclick();assert.equal(h.posts.length,0);assert(!backend.values.has('operation'));}finally{await h.close();}}
 });
