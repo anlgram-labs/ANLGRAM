@@ -1520,11 +1520,11 @@
               <span style="font-size:24px;">🧪</span>
               <span class="glass-card-title" style="font-size:20px; color:#fff;">MemeLabs Supervised Bonding Curve Launchpad</span>
             </div>
-            <p style="color:var(--text-muted); font-size:13px; margin:4px 0 0 0;">Mathematical AMM Bonding Curve with Automated STON.fi DEX Migration & Permanent LP Lock</p>
+            <p style="color:var(--text-muted); font-size:13px; margin:4px 0 0 0;">Off-chain AMM model. STON.fi migration and LP locking are unverified design targets.</p>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="background:rgba(0,210,255,0.12); color:var(--accent-cyan); border:1px solid rgba(0,210,255,0.3); padding:4px 10px; border-radius:12px; font-size:11px; font-family:var(--font-mono);">TON Testnet (-3)</span>
-            <span style="background:rgba(0,255,100,0.1); color:#00ff66; border:1px solid rgba(0,255,100,0.3); padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600;">Architecture Verified (TON Testnet -3)</span>
+            <span style="background:rgba(0,255,100,0.1); color:#00ff66; border:1px solid rgba(0,255,100,0.3); padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600;">Read-only model - execution unavailable</span>
           </div>
         </div>
 
@@ -1568,7 +1568,7 @@
               </div>
               <div style="margin-top:8px; font-size:12px; color:var(--text-sub);">
                 You receive: <strong id="calc-buy-tokens-output" style="color:var(--accent-cyan);">~6,298,568</strong> TKN
-                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Net applied: <span id="calc-buy-net-ton">0.99</span> TON (0.01 TON fee)</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Net applied: <span id="calc-buy-net-ton">0.99</span> TON (<span id="calc-buy-fee-ton">0.01</span> TON model fee; gas excluded)</div>
               </div>
             </div>
 
@@ -1580,7 +1580,7 @@
               </div>
               <div style="margin-top:8px; font-size:12px; color:var(--text-sub);">
                 You receive: <strong id="calc-sell-ton-output" style="color:#00ff66;">~1.55</strong> TON
-                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Net payout after 1.00% protocol fee</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Illustrative sell scenario: 10 TON reserve, 50M tokens sold; not live liquidity. Net after 1.00% model fee.</div>
               </div>
             </div>
           </div>
@@ -1588,7 +1588,7 @@
           <!-- Graduation Progress Bar Indicator -->
           <div style="margin-top:18px;">
             <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;">
-              <span style="color:var(--text-muted);">Bonding Curve Graduation Target (0.00 / 500.00 TON)</span>
+              <span id="calc-grad-label" style="color:var(--text-muted);">Off-chain reserve projection after this buy (not live progress)</span>
               <span id="calc-grad-pct" style="color:var(--accent-cyan); font-family:var(--font-mono);">0.00%</span>
             </div>
             <div style="width:100%; height:8px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden;">
@@ -1599,7 +1599,7 @@
 
         <div style="margin-top:16px; padding:12px 16px; background:rgba(0,210,255,0.04); border-radius:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div style="font-size:12px; color:var(--text-muted);">
-            🔐 <strong>Supervised Execution Policy:</strong> All 8 deployment operations require individual operator wallet confirmation. Zero automated mainnet transactions.
+            🔐 <strong>Supervised Execution Policy:</strong> Wallet signing is disabled in this read-only release. Deployment and trading are unavailable.
           </div>
           <button class="btn-ent" style="padding:6px 14px; font-size:12px;" onclick="window.labsSwitchSection ? window.labsSwitchSection('labs') : null">
             🚀 Open MemeLabs Wizard
@@ -1616,7 +1616,7 @@
 
         // Buy calculation
         const buyTonInput = parseFloat(document.getElementById('calc-buy-ton-input')?.value || '0');
-        if (buyTonInput > 0) {
+        if (Number.isFinite(buyTonInput) && buyTonInput > 0 && buyTonInput <= 500) {
           const fee = buyTonInput * 0.01;
           const netTon = buyTonInput - fee;
           const newTonReserve = V_TON + netTon;
@@ -1627,17 +1627,25 @@
           const netEl = document.getElementById('calc-buy-net-ton');
           if (outEl) outEl.textContent = '~' + Math.floor(tokensOut).toLocaleString();
           if (netEl) netEl.textContent = netTon.toFixed(2);
+          const feeEl=document.getElementById('calc-buy-fee-ton'); if(feeEl) feeEl.textContent=fee.toFixed(2);
 
           const gradPct = Math.min(100, (netTon / 500.0) * 100);
           const gradPctEl = document.getElementById('calc-grad-pct');
+          const gradLabel = document.getElementById('calc-grad-label');
+          if (gradLabel) gradLabel.textContent = 'Off-chain projection after this buy (' + netTon.toFixed(2) + ' / 500.00 TON; not live progress)';
           const gradBarEl = document.getElementById('calc-grad-bar');
           if (gradPctEl) gradPctEl.textContent = gradPct.toFixed(2) + '%';
           if (gradBarEl) gradBarEl.style.width = gradPct.toFixed(2) + '%';
+        } else {
+          for (const id of ['calc-buy-tokens-output','calc-buy-net-ton','calc-buy-fee-ton','calc-grad-pct']) { const el=document.getElementById(id); if(el) el.textContent='Unavailable'; }
+          const label=document.getElementById('calc-grad-label'),bar=document.getElementById('calc-grad-bar');
+          if(label) label.textContent='Off-chain projection unavailable: enter a buy amount above 0 and at most 500 TON.';
+          if(bar) bar.style.width='0%';
         }
 
         // Sell calculation
         const sellTknInput = parseFloat(document.getElementById('calc-sell-token-input')?.value || '0');
-        if (sellTknInput > 0) {
+        if (Number.isFinite(sellTknInput) && sellTknInput > 0) {
           const currentTonPool = 10.0;
           const currentTknPool = (V_TKN + TOTAL_CURVE) - 50000000.0;
           const newTknReserve = currentTknPool + sellTknInput;
@@ -1647,6 +1655,8 @@
 
           const sellOutEl = document.getElementById('calc-sell-ton-output');
           if (sellOutEl) sellOutEl.textContent = '~' + netTonOut.toFixed(2);
+        } else {
+          const el=document.getElementById('calc-sell-ton-output'); if(el) el.textContent='Unavailable';
         }
       }
       if (typeof window !== 'undefined') {
