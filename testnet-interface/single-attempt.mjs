@@ -1,3 +1,4 @@
+import execution from './execution-version.json' with {type:'json'};
 import * as minterPolicy from './minter-policy.mjs';
 import * as curvePolicy from './curve-policy.mjs';
 const executing=new Set();
@@ -32,7 +33,8 @@ export async function guardedMinterSend(tx,wallet,options,invoke){
   abortListener=()=>controller.abort();supplied.signal?.addEventListener('abort',abortListener,{once:true});
   timer=setTimeout(()=>controller.abort(),Math.max(0,tx.validUntil*1000-Date.now()));
   const hash=await fingerprint(tx);
-  claim=await api(prefix+'/claim',{transaction:tx,fingerprint:hash,...(isCurve?{walletAccount}:{})},controller.signal);
+  claim=await api(prefix+'/claim',{transaction:tx,fingerprint:hash,...(isCurve?{walletAccount,runtimeVersion:execution.sha256}:{})},controller.signal);
+  if(isCurve&&claim.runtimeVersion!==execution.sha256)throw Error('Incompatible Curve runtime; claim outcome requires reconciliation');
   if(claim.claimed!==true||claim.fingerprint!==hash||typeof claim.ticket!=='string'||!/^[a-f0-9]{64}$/.test(claim.ticket))throw Error('Invalid persistent claim');
   validateIntent(tx);if(controller.signal.aborted||supplied.signal?.aborted)throw Error('Aborted after claim');
   const aborted=new Promise((_,reject)=>controller.signal.addEventListener('abort',()=>reject(Error('Operation outcome unknown after abort/expiry')),{once:true}));

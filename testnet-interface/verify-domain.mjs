@@ -33,6 +33,9 @@ for(const file of ['index.html','app.js','transaction-one.js','transaction-two.j
 }
 const m=JSON.parse((await request('/tonconnect-manifest.json')).text);check('exact domain-bound manifest',m.url===origin+'/'&&m.iconUrl===origin+'/icon.png');
 const c=JSON.parse((await request('/api/config')).text);check('approved V5 Testnet configuration',c.network==='-3'&&c.operator===OPERATOR&&c.minter===MINTER&&c.financialSigningEnabled===false);
+const execution=JSON.parse(readFileSync(new URL('execution-version.json',import.meta.url)));
+check('server and compiled client execution version agree',c.curveExecutionVersion===execution.sha256);
+check('runtime administrative binding configured without financial authorization',c.curveTransactionTwoRuntimeAuthorizationAvailable===true&&c.curveTransactionTwoSigningEnabled===false);
 const headers={Origin:origin,'Content-Type':'application/json'};
 const challenge=await request('/api/proof/challenge',{method:'POST',headers,body:'{}'}),payload=JSON.parse(challenge.text),cookie=challenge.headers['set-cookie']?.[0];
 check('persistent domain challenge',challenge.status===200&&/^[a-f0-9]{64}$/.test(payload.payload));

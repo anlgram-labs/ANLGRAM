@@ -32,6 +32,6 @@ test('actual Pages runtime authenticates finite HMAC grant into external Curve S
   assert.equal((await mf.dispatchFetch(origin+'/api/curve-two/authorize',{method:'POST',headers,body:raw})).status,200);
   assert.equal((await config()).curveTransactionTwoSigningEnabled,true);assert.equal((await config()).financialSigningEnabled,false);
   assert.equal((await mf.dispatchFetch(origin+'/api/curve-two/authorize',{method:'POST',headers,body:raw})).status,409);
-  assert.equal((await mf.dispatchFetch(origin+'/api/curve-two/claim',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:'{}'})).status,403);
+  assert.equal((await mf.dispatchFetch(origin+'/api/curve-two/claim',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({runtimeVersion:g.runtimeVersion})})).status,403);
  }finally{await mf.dispose();}
 });

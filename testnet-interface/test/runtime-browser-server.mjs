@@ -1,3 +1,4 @@
+import execution from '../execution-version.json' with {type:'json'};
 // LOCAL-ONLY browser fixture. Never published; no real wallet, key or chain send.
 import {createServer} from 'node:http';
 import {readFileSync} from 'node:fs';
@@ -14,7 +15,7 @@ let now=Date.now();const RealDate=Date;class TestDate extends RealDate{static no
 const api=async(path,input={})=>{const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});const j=await r.json();now=j.now||now;return {r,j}};
 const ui={wallet:{account:${JSON.stringify(h.walletAccount)}},sendTransaction:async transaction=>{const {r,j}=await api('/simulate',{transaction});await status();if(!r.ok||j.error)throw Error('SIMULATED '+j.error);return j}};
 const sandboxWindow={};new Function('window','document','location','Date',${JSON.stringify(source)})(sandboxWindow,document,{origin:'https://testnet.anlgram.com'},TestDate);
-const controller=sandboxWindow.ANLGRAM_TRANSACTION_TWO({operator:${JSON.stringify(h.walletAccount.address)},curveTransactionTwoPreparationEnabled:true,curveTransactionTwoSigningEnabled:false},ui);
+const controller=sandboxWindow.ANLGRAM_TRANSACTION_TWO({curveExecutionVersion:${JSON.stringify(execution.sha256)},operator:${JSON.stringify(h.walletAccount.address)},curveTransactionTwoPreparationEnabled:true,curveTransactionTwoSigningEnabled:false},ui);
 async function status(){const r=await fetch('/stats');const j=await r.json();now=j.now;document.getElementById('stats').textContent=JSON.stringify(j,null,2)}
 for(const action of ['reset','expire','renew','reject','uncertain'])document.getElementById(action).onclick=async()=>{await api('/'+action);if(action==='reset')location.reload();await status()};
 (async()=>{const {j}=await api('/proof');controller.authenticate(ui.wallet,j);await status()})();

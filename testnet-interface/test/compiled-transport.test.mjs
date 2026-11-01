@@ -1,3 +1,4 @@
+import execution from '../execution-version.json' with {type:'json'};
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -27,7 +28,7 @@ function persistentStore(){
  const tx={get:async k=>structuredClone(values.get(k)),put:async(k,v)=>values.set(k,structuredClone(v))};
  return{...tx,transaction(fn){const next=queue.then(()=>fn(tx));queue=next.catch(()=>{});return next;},values};
 }
-async function harness({server:backend=null,curve=false,mode='success',store=persistentStore(),claimDenied=false,claimLost=false,claimHanging=false,claimBodyHanging=false,recordLost=false,recordHanging=false,chain='-3',account=intent.operator,bundleOverride=null,control=false}={}){
+async function harness({server:backend=null,responseVersion=execution.sha256,curve=false,mode='success',store=persistentStore(),claimDenied=false,claimLost=false,claimHanging=false,claimBodyHanging=false,recordLost=false,recordHanging=false,chain='-3',account=intent.operator,bundleOverride=null,control=false}={}){
  if(backend)store={values:backend.values};
  const selected=curve?curveIntent:intent;
  const walletCrypto=new SessionCrypto(),streams=[],posts=[],decoded=[],events=[];let dappId,walletResultBoc;
@@ -62,11 +63,11 @@ async function harness({server:backend=null,curve=false,mode='success',store=per
  await new Promise(r=>server.listen(0,'127.0.0.1',r));localOrigin='http://127.0.0.1:'+server.address().port;
  const fetch=async(url,options={})=>{
   const u=String(url);
-  if(backend&&u==='/api/curve-two/prepare')return curveRoute('prepare',JSON.parse(options.body),backend);
+  if(backend&&u==='/api/curve-two/prepare'){assert.equal(JSON.parse(options.body).runtimeVersion,execution.sha256);return curveRoute('prepare',JSON.parse(options.body),backend);}
   if(u===(curve?'/api/curve-two/claim':'/api/operation/claim')){
    if(claimDenied)return Response.json({error:'No owner financial approval'},{status:403});
    const response=backend?await curveRoute('claim',JSON.parse(options.body),backend):await operation.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify({...JSON.parse(options.body),action:'claim'})}));
-   if(claimLost)throw Error('Claim response lost after persistent commit');if(claimHanging)return new Promise(()=>{});if(claimBodyHanging)return new Response(new ReadableStream({start(){}}),{status:200,headers:{'Content-Type':'application/json'}});return response;
+   if(claimLost)throw Error('Claim response lost after persistent commit');if(claimHanging)return new Promise(()=>{});if(claimBodyHanging)return new Response(new ReadableStream({start(){}}),{status:200,headers:{'Content-Type':'application/json'}});return curve&&!backend?Response.json({...await response.json(),runtimeVersion:responseVersion},{status:response.status}):response;
   }
   if(u===(curve?'/api/curve-two/record':'/api/operation/record')){
    if(recordLost)throw Error('lost record response');
@@ -86,7 +87,7 @@ async function harness({server:backend=null,curve=false,mode='success',store=per
  const context=vm.createContext({Date,console:quiet,crypto:webcrypto,Uint8Array,ArrayBuffer,CustomEvent,Event,TextEncoder,TextDecoder,URL,AbortController,AbortSignal,Response,Request,Headers,fetch,EventSource,queueMicrotask,
   // Accelerates timeout and the old SDK's 5s retry delay; a retrying bundle would
   // produce extra counted POSTs before the accelerated expiry aborts it.
-  setTimeout:(fn,ms,...args)=>setTimeout(fn,ms===5000&&!fn.toString().includes('abort')?2:Math.min(ms,500),...args),clearTimeout,setInterval,clearInterval,atob,btoa,
+  setTimeout:(fn,ms,...args)=>setTimeout(fn,ms===5000&&!fn.toString().includes('abort')?2:Math.min(ms,1500),...args),clearTimeout,setInterval,clearInterval,atob,btoa,
   location:{origin:'https://testnet.anlgram.com'},navigator:{userAgent:'controlled-transport-fixture'}});
  context.self=context;
  vm.runInContext(bundleOverride||bundle,context,{filename:control?'UNPATCHED-NEGATIVE-CONTROL.js':'ACTUAL-published-client-bundle.js'});
@@ -104,7 +105,7 @@ async function harness({server:backend=null,curve=false,mode='success',store=per
   context.document={getElementById:id=>els[id]};context.window={};
   vm.runInContext(readFileSync(new URL('../transaction-two.js',import.meta.url),'utf8'),context);
   const ui={get wallet(){return sdk.wallet;},sendTransaction:tx=>sdk.sendTransaction(tx)};
-  const gate=context.window.ANLGRAM_TRANSACTION_TWO({operator:curveIntent.operator,curveTransactionTwoPreparationEnabled:true,curveTransactionTwoSigningEnabled:false},ui);gate.authenticate(sdk.wallet,operatorProof());
+  const gate=context.window.ANLGRAM_TRANSACTION_TWO({curveExecutionVersion:execution.sha256,operator:curveIntent.operator,curveTransactionTwoPreparationEnabled:true,curveTransactionTwoSigningEnabled:false},ui);gate.authenticate(sdk.wallet,operatorProof());
   return{els,ui,gate};
  };
  return{controller,sdk,posts,decoded,store,events,streams,transaction,incoming,get walletResultBoc(){return walletResultBoc;},close:async()=>{sdk.pauseConnection();server.closeAllConnections();await new Promise(r=>server.close(r));assert.deepEqual(events,[]);}};
@@ -199,4 +200,8 @@ test('complete workflow with a lost persistent claim response has ZERO financial
 });
 test('complete controller with absent/expired grant or changed balance never reaches the financial bridge',async()=>{
  for(const variant of ['absent','expired','balance']){const backend=curveServer();if(variant!=='absent'){const g=authorize(backend);if(variant==='expired')backend.env.CURVE_TX2_SIGNING_AUTH=JSON.stringify({...g,notAfter:g.issuedAt});}const h=await harness({curve:true,server:backend});try{const c=h.controller();await c.els['prepare-two'].onclick();if(variant==='balance')backend.source.balance='1';c.els['accept-two'].checked=true;c.els['accept-two'].onchange();await c.els['request-two'].onclick();assert.equal(h.posts.length,0);assert(!backend.values.has('operation'));}finally{await h.close();}}
+});
+
+test('stale compiled Curve client rejects a mismatched claim response with ZERO bridge POSTs and preserves the uncertain lock',async()=>{
+ const h=await harness({curve:true,responseVersion:'00'.repeat(32)});try{await assert.rejects(h.sdk.sendTransaction(h.transaction()),/Incompatible Curve runtime/);assert.equal(h.posts.length,0);assert(h.store.values.has('operation'));await assert.rejects(h.sdk.sendTransaction(h.transaction()));assert.equal(h.posts.length,0);}finally{await h.close();}
 });

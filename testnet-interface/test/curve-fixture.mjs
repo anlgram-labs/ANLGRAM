@@ -1,3 +1,4 @@
+import execution from '../execution-version.json' with {type:'json'};
 import {RUNTIME_MODE} from '../curve-authorization.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -16,7 +17,7 @@ export function setup(){
  const sender=Object.values(fixture.transactions).find(t=>core.Address.parse(t.account).toRawString()===intent.operator),source={state:'active',code:wi.code.toBoc().toString('base64'),data:data.toBoc().toString('base64'),balance:sender.account_state_before.balance,last_transaction_id:{hash:'controlled-source-last'}};
  const md=mi.data.beginParse();md.loadCoins();const admin=md.loadAddress(),content=md.loadRef(),wc=md.loadRef();
  const stack=[['num','0x0'],['num','-0x1'],['slice',{bytes:core.beginCell().storeAddress(admin).endCell().toBoc().toString('base64')}],... [content,wc].map(c=>['cell',{bytes:c.toBoc().toString('base64')}])];
- const scope={operation:intent.operation,candidateSha256:intent.candidateSha256,origin:'https://testnet.anlgram.com',network:'-3',operator:intent.operator,destination:intent.message.address,stateInitHash:core.Cell.fromBase64(intent.message.stateInit).hash().toString('hex'),bodyHash:core.Cell.fromBase64(intent.message.payload).hash().toString('hex'),amountNano:'100000000',expectedSeqno:1,walletId:intent.walletId,policyCeilingNano:'120000000',acceptNativeSeqnoLimitation:true,hardMaximumDebitEnforced:false,notAfter:Math.floor(Date.now()/1000)+300};
+ const scope={runtimeVersion:execution.sha256,operation:intent.operation,candidateSha256:intent.candidateSha256,origin:'https://testnet.anlgram.com',network:'-3',operator:intent.operator,destination:intent.message.address,stateInitHash:core.Cell.fromBase64(intent.message.stateInit).hash().toString('hex'),bodyHash:core.Cell.fromBase64(intent.message.payload).hash().toString('hex'),amountNano:'100000000',expectedSeqno:1,walletId:intent.walletId,policyCeilingNano:'120000000',acceptNativeSeqnoLimitation:true,hardMaximumDebitEnforced:false,notAfter:Math.floor(Date.now()/1000)+300};
  const env={CURVE_OPERATIONS:{idFromName:n=>{assert(n.startsWith('ANLTEST_CURVE_TX2:'));return n;},get:()=>({fetch:r=>object.fetch(r)})},TESTNET_READS:{idFromName:n=>n,get:()=>({fetch:async r=>{
   reads++;const input=await r.json();assert.equal(input.fresh,true);const base={network:'-3',authentication:'TESTNET_KEY_ACCEPTED',dataStatus:'FRESH_PROVIDER_OBSERVATION',observedAt:Date.now()};
   if(input.account==='operator')return Response.json({...base,account:source});
@@ -27,7 +28,7 @@ export function setup(){
  }})}};
  return{env,values,object,source,scope,reads:()=>reads,walletAccount:{chain:'-3',address:intent.operator,publicKey:intent.publicKey,walletStateInit:p.wallet.stateInit}};
 }
-export const route=(path,input,h,pr=proof())=>curveOperationRoute('/api/curve-two/'+path,input,h.env,pr);
+export const route=(path,input,h,pr=proof())=>curveOperationRoute('/api/curve-two/'+path,{runtimeVersion:execution.sha256,...input},h.env,pr);
 
 export function authorize(h,now=Math.floor(Date.now()/1000),id='ab'.repeat(32)){
  const grant={...h.scope,mode:RUNTIME_MODE,authorizationId:id,issuedAt:now,notAfter:now+90};delete grant.fingerprint;delete grant.validUntil;

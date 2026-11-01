@@ -8,7 +8,7 @@ window.ANLGRAM_TRANSACTION_TWO=function(config,ui){
  prepare.onclick=async()=>{
   if(attempted||busy||!valid())return;busy=true;disable();update();const current=generation;review.textContent='Consultando estado y emulación frescos; no se solicita firma.';
   try{
-   const r=await fetch('/api/curve-two/prepare',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',redirect:'manual',signal:AbortSignal.timeout(40000)}),j=await r.json();
+   const r=await fetch('/api/curve-two/prepare',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runtimeVersion:config.curveExecutionVersion}),redirect:'manual',signal:AbortSignal.timeout(40000)}),j=await r.json();
    if(current!==generation||!valid())return;
    if(!r.ok||j.prepared!==true||j.notSigned!==true||j.expectedSeqno!==1||j.transaction?.network!=='-3'||j.transaction.from!==config.operator||j.transaction.messages?.length!==1||j.transaction.messages[0].address!=='kQAfBL9a-9BPmFH6GVUYoUz0byuToTRHAwFAgqZXAyRo7kOW'||j.transaction.messages[0].amount!=='100000000'||j.stateInitHash!=='1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee'||j.policyCeilingIsNotEnforcedMaximum!==true||j.nativeSeqnoIsNotEnforced!==true||!Number.isSafeInteger(j.quoteExpiresAt)||j.quoteExpiresAt<=Math.floor(Date.now()/1000))throw Error(j.error||'Preparación incompatible o caducada.');
    const nano=BigInt(j.simulation.modeledSenderDebitNano);if(nano<=100000000n||nano>120000000n)throw Error('Fuera de política.');

@@ -1,3 +1,4 @@
+import execution from '../execution-version.json' with {type:'json'};
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {setup,proof,route,authorize} from './curve-fixture.mjs';
@@ -41,7 +42,7 @@ test('new reservation supersedes old quote immediately; failed upstream cannot r
 });
 test('private atomic claim rechecks quote revision and authorization binding after asynchronous validation',async()=>{
  const h=setup();authorize(h);const j=await(await route('prepare',{},h)).json(),a=h.values.get('prepared').approval;
- const call=b=>h.object.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify(b)}));
+ const call=b=>h.object.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify({runtimeVersion:execution.sha256,...b})}));
  const claim={action:'claim',transaction:j.transaction,fingerprint:j.fingerprint,requirePrepared:true,approvalReference:a,authorizationBinding:{id:'ff'.repeat(32),notAfter:a.authorizationNotAfter}};
  assert.equal((await call(claim)).status,409);assert(!h.values.has('operation'));
  await call({action:'reserveQuote',scopeKey:a.quoteScopeKey,maximumValidUntil:j.transaction.validUntil});claim.authorizationBinding.id=a.authorizationId;assert.equal((await call(claim)).status,409);assert(!h.values.has('operation'));

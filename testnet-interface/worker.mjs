@@ -1,3 +1,4 @@
+import execution from './execution-version.json' with {type:'json'};
 import {verifyRuntimeAuthorization} from './curve-authorization.mjs';
 import {readMvpStatus} from './mvp-status.mjs';
 import {curveOperationRoute,currentCurveAuthorization,storeCurveAuthorization} from './curve-operation.mjs';
@@ -66,7 +67,7 @@ async function route(request,env) {
   if (u.search) return json({error:'Query overrides are forbidden'},400);
   const path=u.pathname;
   if (request.method==='GET' && path==='/tonconnect-manifest.json') return json({url:origin.origin+'/',name:'ANLGRAM TESTNET ONLY — ownership proof',iconUrl:origin.origin+'/icon.png'},200,{'Access-Control-Allow-Origin':'*'});
-  if (request.method==='GET' && path==='/api/config') return json({network:CHAIN,operator:OPERATOR,minter:MINTER,
+  if (request.method==='GET' && path==='/api/config') return json({curveExecutionVersion:execution.sha256,network:CHAIN,operator:OPERATOR,minter:MINTER,
     manifestUrl:origin.origin+'/tonconnect-manifest.json',financialSigningEnabled:false,minterTransactionOnePreparationEnabled:preparationEnabled(env,u.origin),curveTransactionTwoPreparationEnabled:u.origin==='https://testnet.anlgram.com',curveTransactionTwoSigningEnabled:!!await currentCurveAuthorization(env),curveTransactionTwoRuntimeAuthorizationAvailable:/^[a-f0-9]{64}$/.test(env.CURVE_TX2_RUNTIME_AUTH_KEY||''),replayIsolationVerified:false});
   if(request.method==='POST'&&path==='/api/curve-two/authorize'){
     if(u.origin!=='https://testnet.anlgram.com'||request.headers.get('Origin')!==u.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Canonical administration origin required'},403);

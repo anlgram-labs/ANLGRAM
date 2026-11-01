@@ -1,3 +1,4 @@
+import execution from '../execution-version.json' with {type:'json'};
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../worker.mjs';
@@ -31,5 +32,5 @@ test('new finite authorization after quote expiry needs no redeploy and old prep
  // Rotation during upstream validation is also checked atomically at claim.
  h.values.set('runtimeAuthorization',{...next,authorizationId:'35'.repeat(32)});
  const a=h.values.get('prepared').approval;
- const r=await h.object.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify({action:'claim',transaction:fresh.transaction,fingerprint:fresh.fingerprint,requirePrepared:true,authorizationBinding:{id:a.authorizationId,notAfter:a.authorizationNotAfter,requireStored:true}})}));assert.equal(r.status,409);assert(!h.values.has('operation'));
+ const r=await h.object.fetch(new Request('https://internal/',{method:'POST',body:JSON.stringify({runtimeVersion:execution.sha256,action:'claim',transaction:fresh.transaction,fingerprint:fresh.fingerprint,requirePrepared:true,authorizationBinding:{id:a.authorizationId,notAfter:a.authorizationNotAfter,requireStored:true}})}));assert.equal(r.status,409);assert(!h.values.has('operation'));
 });
