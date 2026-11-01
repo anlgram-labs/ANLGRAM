@@ -88,9 +88,9 @@ test('challenge object creates bounded expiry and rejects forged proof without c
   assert.equal(result.status,401);assert.equal(values.get('challenge').used,false);
   await object.alarm();assert.equal(values.size,0);
 });
-test('published browser package contains no transaction/sign-data API or remote script',()=>{
+test('connection bootstrap cannot initiate financial requests; explicit transaction-one module is isolated and initially disabled',()=>{
   const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
   assert.doesNotMatch(app,/sendTransaction|sendBoc|signData|signMessage/);
   const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/TESTNET ONLY/);assert.doesNotMatch(html,/<script[^>]+src=["']https?:/);
+  assert.match(html,/TESTNET ONLY/);assert.match(html,/<script src="\/transaction-one\.js" defer/);assert.match(html,/<button id="request-one" disabled/);assert.doesNotMatch(html,/<script[^>]+src=["']https?:/);
 });

@@ -1,4 +1,5 @@
 import {accountRead} from './testnet-rpc.mjs';
+import {preparationEnabled,validProof} from './prepare-minter-one.mjs';
 import {intent,validateIntent,fingerprint} from './minter-policy.mjs';
 const json=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
 const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
@@ -6,11 +7,21 @@ export class FinancialOperation {
  constructor(state){this.state=state;}
  async fetch(request){
   const body=await request.json();
+  if(body.action==='prepare'){
+   validateIntent(body.transaction);const hash=await fingerprint(body.transaction);
+   if(hash!==body.approval?.fingerprint||body.approval.validUntil!==body.transaction.validUntil)return json({error:'Invalid prepared request'},400);
+   const accepted=await this.state.storage.transaction(async tx=>{if(await tx.get('operation'))return false;await tx.put('prepared',{transaction:body.transaction,approval:body.approval});return true;});
+   return accepted?json({prepared:true}):json({error:'Operation already attempted'},409);
+  }
+  if(body.action==='approval'){
+   if(await this.state.storage.get('operation'))return json({error:'Operation already attempted'},409);
+   const p=await this.state.storage.get('prepared');return p?.approval.fingerprint===body.fingerprint?json(p.approval):json({error:'No exact prepared approval'},403);
+  }
   if(body.action==='claim'){
    validateIntent(body.transaction);const hash=await fingerprint(body.transaction);
    if(hash!==body.fingerprint) return json({error:'Fingerprint mismatch'},409);
    const ticket=token(),record={fingerprint:hash,ticket,status:'LOCKED_PENDING_RECONCILIATION',claimedAt:Date.now(),validUntil:body.transaction.validUntil,approvalReference:body.approvalReference,events:[]};
-   const accepted=await this.state.storage.transaction(async tx=>{if(await tx.get('operation'))return false;await tx.put('operation',record);return true;});
+   const accepted=await this.state.storage.transaction(async tx=>{if(await tx.get('operation'))return false;if(body.requirePrepared){const p=await tx.get('prepared');if(p?.approval.fingerprint!==hash||Math.floor(Date.now()/1000)-p.approval.observedAt>60)return false;}await tx.put('operation',record);return true;});
    return accepted?json({claimed:true,fingerprint:hash,ticket}):json({error:'Lifetime operation already claimed; no automatic retry'},409);
   }
   let record=await this.state.storage.get('operation');
@@ -31,9 +42,15 @@ async function liveAccount(env,which){
 export async function operationRoute(path,input,env,proofState){
  const stub=env.OPERATIONS.get(env.OPERATIONS.idFromName(intent.operation+':'+intent.operator));
  if(path.endsWith('/claim')){
-  // No approval is configured/deployed by this task. Future authorization must
-  // name this exact fingerprint/deadline and a fresh reviewed fee/state snapshot.
+  // Manual exact approval or a server-generated, trace-verified exact snapshot
+  // under the owner's finite transaction-one-only preparation authorization.
   let approval;try{approval=JSON.parse(env.MINTER_TX1_APPROVAL||'null');}catch{return json({error:'Invalid authorization'},403);}
+  let requirePrepared=false;
+  if(!approval&&preparationEnabled(env)){
+   if(!validProof(proofState))return json({error:'Fresh operator proof required'},403);
+   validateIntent(input.transaction);const hash=await fingerprint(input.transaction);
+   const r=await stub.fetch(new Request('https://operation.internal/',{method:'POST',body:JSON.stringify({action:'approval',fingerprint:hash})}));if(!r.ok)return r;approval=await r.json();requirePrepared=true;
+  }
   if(!approval)return json({error:'Financial authorization absent; signing disabled'},403);
   const now=Math.floor(Date.now()/1000);validateIntent(input.transaction,now);const hash=await fingerprint(input.transaction);
   if(proofState?.verified!==true||proofState.network!==intent.network||proofState.address!==intent.operator||!Number.isSafeInteger(proofState.expiresAt)||proofState.expiresAt<=now)return json({error:'Fresh operator proof required'},403);
@@ -41,7 +58,8 @@ export async function operationRoute(path,input,env,proofState){
   const source=await liveAccount(env,'operator'),destination=await liveAccount(env,'minter');
   if(source.state!=='uninitialized'||source.code||source.balance!==approval.sourceBalanceNano||source.last_transaction_id?.hash!==approval.sourceLastTransactionHash||BigInt(source.balance)<BigInt(approval.modeledDebitNano)||destination.state!=='uninitialized'||destination.code||destination.balance!=='0')return json({error:'Chain state changed; new review required'},409);
   const approvalReference={candidateSha256:approval.candidateSha256,sourceBalanceNano:approval.sourceBalanceNano,sourceLastTransactionHash:approval.sourceLastTransactionHash,modeledDebitNano:approval.modeledDebitNano,observedAt:approval.observedAt,traceSha256:approval.traceSha256};
-  return stub.fetch(new Request('https://operation.internal/',{method:'POST',body:JSON.stringify({...input,action:'claim',approvalReference})}));
+  if(!validProof(proofState)||requirePrepared&&!preparationEnabled(env))return json({error:'Proof/authorization expired'},403);
+  return stub.fetch(new Request('https://operation.internal/',{method:'POST',body:JSON.stringify({...input,action:'claim',approvalReference,requirePrepared})}));
  }
  if(path.endsWith('/record'))return stub.fetch(new Request('https://operation.internal/',{method:'POST',body:JSON.stringify({...input,action:'record'})}));
  if(proofState?.verified!==true)return json({error:'Owner proof required'},403);

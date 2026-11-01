@@ -2104,3 +2104,7 @@ Live check limitation: TON Center returned HTTP429 to the deployed interface, wh
 ## TON Center Testnet RPC recovery
 
 Fixed missing server-side X-API-Key using owner's Pages-only encrypted TONCENTER_TESTNET_API_KEY. Added persistent shared read scheduling/deduplication, three-second display cache, fresh preflight bypass, bounded exponential read-only backoff and Retry-After. Exact pinned invalid-signature fee emulation only; signing transport unchanged.77 distinct local tests and28 public checks passed. Renewed V5 proof expires 2026-11-01T03:47:34.000Z; fresh complete model debit0.106876950 Testnet TON. Production proxy, proof/financial-lock namespaces and secret preservation confirmed. See [new evidence and approval sheet](toncenter-testnet-recovery.md). No financial authorization or broadcast.
+
+## Owner-authorized supervised transaction #1 preparation
+
+Implemented exact Testnet-only prepare/review/explicit-request panel, finite preparation scope, server-generated trace-verified fingerprint approvals and atomic prepared-approval claims in the existing namespace.83 distinct local tests and30 public checks passed. Contracts and production unchanged. Owner proof/financial confirmation pending at this checkpoint; no real transaction claimed successful. See [supervised minter report](supervised-minter-one.md). No automatic transaction#2 or Mainnet authorization.

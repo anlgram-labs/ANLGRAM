@@ -1,5 +1,5 @@
 {
-  "observedUtc": "2026-11-01T03:44:32.532Z",
+  "observedUtc": "2026-11-01T04:02:50.053Z",
   "origin": "https://testnet.anlgram.com",
   "dns": {
     "resolver": "1.1.1.1",
@@ -34,6 +34,14 @@
     },
     {
       "name": "exact deployed bytes app.js",
+      "passed": true
+    },
+    {
+      "name": "HTTPS asset transaction-one.js",
+      "passed": true
+    },
+    {
+      "name": "exact deployed bytes transaction-one.js",
       "passed": true
     },
     {
@@ -139,7 +147,7 @@
     "balanceNano": "1999999999",
     "state": "uninitialized",
     "source": "TON Center Testnet",
-    "observedUtc": "2026-11-01T03:44:38.550Z",
+    "observedUtc": "2026-11-01T04:02:56.539Z",
     "verification": "PROVIDER_OBSERVATION",
     "dataStatus": "FRESH_PROVIDER_OBSERVATION",
     "ageMs": 0,
