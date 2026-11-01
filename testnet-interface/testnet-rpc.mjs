@@ -1,3 +1,4 @@
+import candidate from '../docs/launchpad/testnet-v5-candidate.json' with {type:'json'};
 import {curveEmulation} from './curve-emulation.mjs';
 import curveIntent from './curve-two-intent.json' with {type:'json'};
 import {minterEmulation} from './minter-emulation.mjs';
@@ -15,7 +16,7 @@ export class TestnetReads {
  constructor(state,env){this.state=state;this.env=env;this.tail=Promise.resolve();this.inflight=new Map();}
  async fetch(request){
   let input;try{input=await request.json();}catch{return json({error:'Invalid read'},400);}
-  if(!input||typeof input!=='object'||Array.isArray(input)||input.network!=='-3'||!['operator','minter','fees','curve','jettonData','curveFees'].includes(input.account)||typeof input.fresh!=='boolean'||Object.keys(input).some(k=>!['network','account','fresh'].includes(k)))return json({error:'Read not permitted'},400);
+  if(!input||typeof input!=='object'||Array.isArray(input)||input.network!=='-3'||!['operator','minter','fees','curve','jettonData','curveFees','curveWallet','buyerWallet'].includes(input.account)||typeof input.fresh!=='boolean'||Object.keys(input).some(k=>!['network','account','fresh'].includes(k)))return json({error:'Read not permitted'},400);
   // Same-account readers share only an unfinished provider observation, never
   // a previously completed cached read when fresh=true.
   const key=request.headers.get('X-Internal-Testnet-Key')?.trim()||this.env.TONCENTER_TESTNET_API_KEY?.trim();
@@ -31,7 +32,7 @@ export class TestnetReads {
   const headers={'Content-Type':'application/json',...(key?{'X-API-Key':key}:{})};
   const emulation=input.account==='fees'?await minterEmulation():input.account==='curveFees'?await curveEmulation():null;
   const getter=input.account==='jettonData';
-  const rpc={jsonrpc:'2.0',id:1,method:getter?'runGetMethod':'getAddressInformation',params:getter?{address:MINTER,method:'get_jetton_data',stack:[]}:{address:input.account==='operator'?OPERATOR:input.account==='curve'?curveIntent.message.address:MINTER}};
+  const rpc={jsonrpc:'2.0',id:1,method:getter?'runGetMethod':'getAddressInformation',params:getter?{address:MINTER,method:'get_jetton_data',stack:[]}:{address:input.account==='operator'?OPERATOR:input.account==='curve'?curveIntent.message.address:input.account==='curveWallet'?candidate.curveJettonWallet:input.account==='buyerWallet'?candidate.buyerJettonWallet:MINTER}};
   let gate=await this.state.storage.get('gate')||{nextAt:0,failures:0};
   let reason='PROVIDER_TRANSPORT',status=503;
   for(let attempt=0;attempt<2;attempt++){
