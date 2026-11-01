@@ -1,5 +1,6 @@
 'use strict';
-// Exactly transaction #1: invalid-zero-signature EMULATION ONLY, never broadcast.
+// Transaction #1 CLI and reusable invalid-zero-signature V5 envelope builder.
+// EMULATION ONLY: no private key, signer or broadcast API.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict');
 const core=require('../minter-contract/node_modules/@ton/core');
 const {wallets}=require('./prepare-testnet-v5'),{verifyArtifacts}=require('../lib/verified-contract-artifacts');
@@ -10,7 +11,7 @@ const sleep=()=>new Promise(r=>setTimeout(r,1200));
 const json=require('../lib/toncenter-preflight-client').createClient();
 async function account(base,address){await sleep();const r=await json(base+'/api/v2/getAddressInformation?address='+encodeURIComponent(address));assert.equal(r.status,200);assert.equal(r.value.ok,true);return r.value.result;}
 async function external(wallet,m,seqno,expiry,source=wallet.address,init=wallet.init){
- const to=core.Address.parseFriendly(m.address),state=core.loadStateInit(core.Cell.fromBase64(m.stateInit).beginParse());
+ const to=core.Address.parseFriendly(m.address),state=m.stateInit?core.loadStateInit(core.Cell.fromBase64(m.stateInit).beginParse()):null;
  const body=await wallet.createTransfer({seqno,timeout:expiry,authType:'external',sendMode:3,
   messages:[core.internal({to:to.address,value:BigInt(m.amount),bounce:to.isBounceable,init:state,body:core.Cell.fromBase64(m.payload)})],signer:async()=>Buffer.alloc(64)});
  const s=body.beginParse();assert.equal(s.loadUint(32),0x7369676e);assert.equal(s.loadInt(32),2147483645);assert.equal(s.loadUint(32),expiry);assert.equal(s.loadUint(32),seqno);
