@@ -1,3 +1,5 @@
+> Current RPC recovery: **pre-signing technical PASS at 2026-11-01T03:44:01.634Z**. Authenticated fresh Testnet reads and emulation passed; modeled sender debit **0.106876950 Testnet TON**. Exact-domain V5 ton_proof renewed until 2026-11-01T03:47:34.000Z. [Current PASS/FAIL approval sheet](toncenter-testnet-recovery.md). Earlier429/expired-proof values below are historical. Financial authorization remains absent; fresh state/fee/fingerprint review and separate owner approval are required.0.12TON is policy only, not an enforced maximum.
+
 > Current update: the single-attempt transport blocker is resolved by the pinned build-time SDK patch and persistent SQLite lock; see [implementation and measured tests](tonconnect-single-attempt-implementation.md). Financial signing remains disabled. The earlier SDK blocker statements below are historical. Fresh owner proof, current fees/state, exact short-lived request and separate approval are still required. No hard total-debit cap exists.
 
 # V5 transaction #1 — signer compatibility and bounded approval procedure

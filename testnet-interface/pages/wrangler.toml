@@ -14,3 +14,8 @@ script_name = "anlgram-testnet-preparation"
 name = "OPERATIONS"
 class_name = "FinancialOperation"
 script_name = "anlgram-testnet-preparation"
+
+[[durable_objects.bindings]]
+name = "TESTNET_READS"
+class_name = "TestnetReads"
+script_name = "anlgram-testnet-preparation"

@@ -95,3 +95,7 @@ owner proofs, cookies, API keys or session secrets should be committed or logged
 ## Auditable single-attempt preparation
 
 The bundled SDK now uses a pinned build-time patch and persistent SQLite FinancialOperation lock. MINTER_TX1_APPROVAL remains absent and all financial controls remain disabled. See ../docs/launchpad/tonconnect-single-attempt-implementation.md for exact tests, fresh authorization prerequisites and recovery restrictions. Never reset the operation namespace after an uncertain outcome. A wallet response is not blockchain confirmation.
+
+## Protected Testnet reads
+
+The TONCENTER_TESTNET_API_KEY secret belongs to the Cloudflare Pages production environment, not the private same-named Worker. Pages passes it only through its internal TESTNET_READS binding. The persistent coordinator performs fixed account reads and zero-signature minter emulation; no generic RPC/broadcast exists. Display cache lasts three seconds and is labeled. Financial preflight bypasses cache. See ../docs/launchpad/toncenter-testnet-recovery.md. Never paste API keys into source, browser code, public URLs or logs.

@@ -16,3 +16,11 @@ new_sqlite_classes = ["ProofAttempt"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["FinancialOperation"]
+
+[[durable_objects.bindings]]
+name = "TESTNET_READS"
+class_name = "TestnetReads"
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["TestnetReads"]

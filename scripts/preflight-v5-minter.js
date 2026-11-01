@@ -7,10 +7,7 @@ const root=path.resolve(__dirname,'..'),sha=x=>crypto.createHash('sha256').updat
 const raw=x=>core.Address.parse(x).toRawString(),hex=x=>Buffer.from(x,'base64').toString('hex');
 const TESTNET='https://testnet.toncenter.com',MAINNET='https://toncenter.com';
 const sleep=()=>new Promise(r=>setTimeout(r,1200));
-async function json(url,body){
- const r=await fetch(url,{method:body?'POST':'GET',...(body?{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{}),redirect:'error',signal:AbortSignal.timeout(20000)});
- const value=await r.json();return{status:r.status,value};
-}
+const json=require('../lib/toncenter-preflight-client').createClient();
 async function account(base,address){await sleep();const r=await json(base+'/api/v2/getAddressInformation?address='+encodeURIComponent(address));assert.equal(r.status,200);assert.equal(r.value.ok,true);return r.value.result;}
 async function external(wallet,m,seqno,expiry,source=wallet.address,init=wallet.init){
  const to=core.Address.parseFriendly(m.address),state=core.loadStateInit(core.Cell.fromBase64(m.stateInit).beginParse());
@@ -66,13 +63,21 @@ async function run({hashOnly=false}={}){
  const metadata=data.loadRef().beginParse();assert.equal(metadata.loadUint(8),0);const dict=metadata.loadDict(core.Dictionary.Keys.BigUint(256),core.Dictionary.Values.Cell());assert.equal(dict.size,3);
  for(const[k,v]of Object.entries({name:'ANLGRAM Testnet Settlement',symbol:'ANLTEST',decimals:'9'})){const c=dict.get(BigInt('0x'+crypto.createHash('sha256').update(k).digest('hex'))).beginParse();assert.equal(c.loadUint(8),0);assert.equal(c.loadStringTail(),v);}
  assert.equal(data.loadRef().hash().toString('hex'),source.contracts['anlgram-settlement-wallet'].codeHash);
- const operator=await account(TESTNET,p.wallet.raw),destination=await account(TESTNET,p.dependentAccounts.minter.raw);
+ let operator,destination;
+ if(process.argv.includes('--protected-reads')){
+  const r=await fetch('https://testnet.anlgram.com/api/preflight/accounts',{method:'POST',headers:{Origin:'https://testnet.anlgram.com','Content-Type':'application/json'},body:'{}',redirect:'error',signal:AbortSignal.timeout(30000)});assert.equal(r.status,200,'Protected fresh Testnet reads unavailable');const j=await r.json();assert.equal(j.network,'-3');
+  for(const name of ['operator','minter']){assert.equal(j.observations[name].dataStatus,'FRESH_PROVIDER_OBSERVATION');assert(Math.abs(Date.now()-j.observations[name].observedAt)<10000);}
+  operator=j.observations.operator.account;destination=j.observations.minter.account;
+ }else{operator=await account(TESTNET,p.wallet.raw);destination=await account(TESTNET,p.dependentAccounts.minter.raw);}
  assert.equal(operator.state,'uninitialized');assert.equal(destination.state,'uninitialized');assert(!operator.code&&!destination.code);assert.equal(destination.balance,'0');
  const main=await account(MAINNET,w.mainnet.address.toRawString()),clone=await account(MAINNET,p.wallet.raw);
  assert.equal(core.Cell.fromBase64(main.code).hash().toString('hex'),p.wallet.codeHash);const mainData=core.Cell.fromBase64(main.data).beginParse();assert(mainData.loadBit());const mainSeqno=mainData.loadUint(32);assert.equal(mainData.loadInt(32),2147483409);assert.equal(mainData.loadBuffer(32).toString('hex'),p.wallet.publicKey);
  assert.equal(clone.state,'uninitialized');assert.equal(clone.balance,'0');
- const expiry=Math.floor(Date.now()/1000)+120,request=await external(w.testnet,m,0,expiry);
- await sleep();const response=await json(TESTNET+'/api/emulate/v1/emulateTrace',{boc:request.boc,ignore_chksig:true,include_code_data:true,with_actions:false});assert.equal(response.status,200);
+ let expiry=Math.floor(Date.now()/1000)+120,request,response;
+ if(process.argv.includes('--protected-reads')){
+  const r=await fetch('https://testnet.anlgram.com/api/preflight/fees',{method:'POST',headers:{Origin:'https://testnet.anlgram.com','Content-Type':'application/json'},body:'{}',redirect:'error',signal:AbortSignal.timeout(30000)});assert.equal(r.status,200,'Protected Testnet emulation unavailable');const j=await r.json();assert.equal(j.network,'-3');assert.equal(j.dataStatus,'FRESH_PROVIDER_OBSERVATION');assert(Math.abs(Date.now()-j.observedAt)<10000);assert(j.validUntil>Math.floor(Date.now()/1000)&&j.validUntil<=Math.floor(Date.now()/1000)+120);expiry=j.validUntil;request=await external(w.testnet,m,0,expiry);assert.equal(request.body.hash().toString('hex'),j.bodyHash,'Server emulated another request');response={status:200,value:j.trace};
+ }else{request=await external(w.testnet,m,0,expiry);await sleep();response=await json(TESTNET+'/api/emulate/v1/emulateTrace',{boc:request.boc,ignore_chksig:true,include_code_data:true,with_actions:false});}
+ assert.equal(response.status,200);
  const simulation=analyze(response.value,p,request.body.hash().toString('hex'));assert.equal(simulation.operatorBalanceBeforeNano,operator.balance);
  // Equal nonce isolates the wallet-ID check, rather than relying on nonce drift.
  const negative=await external(w.testnet,m,mainSeqno,expiry,w.mainnet.address,null);
@@ -87,7 +92,7 @@ async function run({hashOnly=false}={}){
   replay:{canonicalMainnetSeqno:mainSeqno,canonicalMainnetWalletId:2147483409,sameNonceWrongWalletIdEmulationRejected:mainnetWrongIdRejected,rejectionStatus:rejected.status,rejection:rejected.value.error||null,testnetCloneOnMainnetUninitializedAndUnfunded:true,
    limitation:'V5 wallet_id separates canonical configurations, not an intrinsic global-ID VM check. A deliberately funded identical-StateInit clone remains replay-capable; no absolute cross-network non-replay guarantee is claimed.'},
   ownership:{freshAtObservation:proofFresh,domain:owner.origin,expiresAt:owner.verificationDisplayedExpiresAt,actualTransactionSigningTested:false},sourceCheckMode:hashOnly?'SOURCE_AND_ARTIFACT_HASHES_AGAINST_PREVIOUSLY_COMPILED_CANDIDATE':'FRESH_COMPILATION',
-  readyForBroadcast:false,signed:false,broadcast:false,spentNano:'0',financialControlsEnabled:false,
+  providerAuthentication:{testnetAccountReads:process.argv.includes('--protected-reads')?'PROTECTED_SERVER_READS':process.env.TONCENTER_TESTNET_API_KEY?'LOCAL_TESTNET_KEY':'ANONYMOUS',testnetEmulation:process.argv.includes('--protected-reads')?'PROTECTED_SERVER_EMULATION':process.env.TONCENTER_TESTNET_API_KEY?'LOCAL_TESTNET_KEY':'ANONYMOUS'},readyForBroadcast:false,signed:false,broadcast:false,spentNano:'0',financialControlsEnabled:false,
   limitations:['Provider emulation skips signature verification; genuine owner ton_proof is separate evidence, not an executed transaction.','Actual wallet transaction signing is deliberately untested; do not claim it was verified by ton_proof.','0.12 TON is a proposed policy ceiling, not a cap enforced by V5/TON Connect. Revalidate state, fees and proof before any future signing.','The first external request also activates the currently uninitialized operator wallet. Only one internal deployment message targets the minter.','No absolute Mainnet replay guarantee against a funded identical-StateInit clone.']};
 }
 if(require.main===module){if(!process.argv.includes('--read-only'))throw Error('Explicit --read-only required');run({hashOnly:process.argv.includes('--hash-only')}).then(r=>{if(process.argv.includes('--write'))fs.writeFileSync(path.join(root,'docs/launchpad/v5-minter-final-preflight.json'),JSON.stringify(r,null,2)+'\n');console.log(JSON.stringify({...r,sourceVerification:{contracts:Object.keys(r.sourceVerification.contracts).length}},null,2));}).catch(e=>{console.error(e.message);process.exitCode=1;});}

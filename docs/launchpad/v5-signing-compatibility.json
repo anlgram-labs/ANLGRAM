@@ -1,5 +1,5 @@
 {
-  "observedUtc": "2026-11-01T02:23:16.495Z",
+  "observedUtc": "2026-11-01T03:44:01.634Z",
   "checkpointPushed": "a4aa50c4aa234faa2aea517cb27e3de643e32743",
   "origin": "https://testnet.anlgram.com",
   "walletDeclared": {
@@ -8,7 +8,7 @@
     "sendTransactionSupported": true,
     "maxMessagesObserved": null
   },
-  "proofExpiresAt": "2026-11-01T02:23:03.000Z",
+  "proofExpiresAt": "2026-11-01T03:47:34.000Z",
   "operator": {
     "address": "0QCBGet2_2SvVUrX_MZL0w0OuPqlbJtlHT3nbpWaEH2QYbBR",
     "raw": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
@@ -42,10 +42,11 @@
     "maxValiditySeconds": 120,
     "ownerAuthorizationGranted": false
   },
-  "remainingBlocker": "Public read-only provider currently rate-limited (429/503); expired owner proof; fresh exact authorization/state/fee snapshot required. Native financial signing untested; no hard fee cap.",
+  "remainingBlocker": "Separate transaction-specific owner approval, fresh exact fingerprint/fee/state snapshot at invocation and unexpired proof. Native wallet financial signing deliberately untested; no guaranteed network-enforced total-debit cap.",
   "transportVerifiedUtc": "2026-11-01T03:15:51.088Z",
   "singleAttemptTransportVerified": true,
-  "readyForSeparateOwnerApproval": false,
-  "proofCurrentlyFresh": false,
-  "transportReadyForReview": true
+  "readyForSeparateOwnerApproval": true,
+  "proofCurrentlyFresh": true,
+  "transportReadyForReview": true,
+  "providerRateLimitResolved": true
 }

@@ -1,5 +1,5 @@
 {
-  "recordedUtc": "2026-11-01T02:19:37.241Z",
+  "recordedUtc": "2026-11-01T03:43:52.857Z",
   "origin": "https://testnet.anlgram.com",
   "network": "-3",
   "operator": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
@@ -7,8 +7,8 @@
   "walletId": 2147483645,
   "ownerConfirmedConnection": true,
   "cryptographicTonProofVerified": true,
-  "verificationDisplayedExpiresAt": "2026-11-01T02:23:03.000Z",
-  "source": "Actual custom-domain UI displayed fresh server-verified proof and connection-declared Tonkeeper 26.10.4 / SendTransaction true",
+  "verificationDisplayedExpiresAt": "2026-11-01T03:47:34.000Z",
+  "source": "Actual testnet.anlgram.com browser UI displayed renewed server-verified proof after rejecting wrong Mainnet account; owner confirmed approved V5 Testnet connection. Tonkeeper26.10.4 declared SendTransaction; no financial request.",
   "authenticatedDisconnectUiCleared": false,
   "financialSigningEnabled": false,
   "financialSignaturesRequested": 0,
@@ -22,5 +22,6 @@
     "sendTransactionSupported": true,
     "maxMessagesObserved": null,
     "metadataOnlyNotTransactionSignatureEvidence": true
-  }
+  },
+  "previousObservedExpiry": "2026-11-01T02:23:03.000Z"
 }

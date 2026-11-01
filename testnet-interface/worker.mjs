@@ -1,5 +1,7 @@
 import { approvedOrigin, CHAIN, MINTER, OPERATOR, TESTNET_RPC, TTL } from './config.mjs';
 import { verifyProof } from './proof.mjs';
+import {accountRead} from './testnet-rpc.mjs';
+export {TestnetReads} from './testnet-rpc.mjs';
 import {operationRoute} from './operation-lock.mjs';
 export {FinancialOperation} from './operation-lock.mjs';
 
@@ -84,16 +86,23 @@ async function route(request,env) {
   }
   // One fixed read-only provider call. Never forward caller URLs, RPC methods or BOCs.
   if (request.method==='GET' && path==='/api/operator') {
-    let reason='PROVIDER_TRANSPORT';
-    try {
-      // Workers does not support redirect:'error': it throws before any I/O.
-      // Manual mode plus non-2xx rejection preserves the no-redirect policy.
-      const response=await fetch(TESTNET_RPC+'/jsonRPC',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getAddressInformation',params:{address:OPERATOR}}),redirect:'manual',signal:AbortSignal.timeout(8000)});
-      if (!response.ok) { reason='PROVIDER_HTTP_'+response.status; throw Error(); }
-      const data=await response.json(), account=data.result;
-      if (data.ok!==true || !/^\d+$/.test(String(account?.balance))) { reason='PROVIDER_RESPONSE_REJECTED'; throw Error(); }
-      return json({network:CHAIN,address:OPERATOR,balanceNano:String(account.balance),state:account.state,source:'TON Center Testnet',observedUtc:new Date().toISOString(),verification:'PROVIDER_OBSERVATION'});
-    } catch { return json({error:'Testnet provider unavailable; balance unknown',reason},503); }
+    const r=await accountRead(env,'operator',false),data=await r.json();
+    if(!r.ok)return json(data,r.status,{'Retry-After':r.headers.get('Retry-After')||'1'});
+    return json({network:CHAIN,address:OPERATOR,balanceNano:String(data.account.balance),state:data.account.state,source:'TON Center Testnet',observedUtc:data.observedUtc,verification:'PROVIDER_OBSERVATION',dataStatus:data.dataStatus,ageMs:data.ageMs,authentication:data.authentication});
+  }
+  if(request.method==='POST' && path==='/api/preflight/fees'){
+    if(request.headers.get('Origin')!==origin.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Origin/content type rejected'},403);
+    let input;try{input=JSON.parse(await boundedBody(request));}catch{return json({error:'Invalid read'},400);}
+    if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length)return json({error:'Parameters forbidden'},400);
+    return accountRead(env,'fees',true);
+  }
+  if(request.method==='POST' && path==='/api/preflight/accounts'){
+    if(request.headers.get('Origin')!==origin.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Origin/content type rejected'},403);
+    let input;try{input=JSON.parse(await boundedBody(request));}catch{return json({error:'Invalid read'},400);}
+    if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length)return json({error:'Parameters forbidden'},400);
+    const observations={};
+    for(const name of ['operator','minter']){const r=await accountRead(env,name,true);const data=await r.json();if(!r.ok)return json(data,r.status,{'Retry-After':r.headers.get('Retry-After')||'1'});observations[name]=data;}
+    return json({network:CHAIN,observations,financialSigningEnabled:false});
   }
   if (request.method==='GET' && ['/', '/app.js', '/style.css', '/tonconnect-ui.min.js', '/icon.png'].includes(path)) return env.ASSETS.fetch(request);
   return json({error:'Unavailable; financial actions are disabled'},404);

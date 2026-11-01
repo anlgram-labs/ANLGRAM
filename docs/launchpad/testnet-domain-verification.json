@@ -1,5 +1,5 @@
 {
-  "observedUtc": "2026-11-01T03:16:14.419Z",
+  "observedUtc": "2026-11-01T03:44:32.532Z",
   "origin": "https://testnet.anlgram.com",
   "dns": {
     "resolver": "1.1.1.1",
@@ -7,8 +7,8 @@
       "anlgram-testnet-preparation.pages.dev"
     ],
     "ipv4": [
-      "172.66.47.32",
-      "172.66.44.224"
+      "172.66.44.224",
+      "172.66.47.32"
     ]
   },
   "checks": [
@@ -119,6 +119,10 @@
     {
       "name": "financial operation authorization absent",
       "passed": true
+    },
+    {
+      "name": "live operator balance",
+      "passed": true
     }
   ],
   "financialSigningEnabled": false,
@@ -129,11 +133,19 @@
     "expires": "Jan 30 01:47:07 2027 GMT"
   },
   "balance": {
-    "http": 503,
-    "error": "Testnet provider unavailable; balance unknown",
-    "reason": "PROVIDER_HTTP_429"
+    "http": 200,
+    "network": "-3",
+    "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "balanceNano": "1999999999",
+    "state": "uninitialized",
+    "source": "TON Center Testnet",
+    "observedUtc": "2026-11-01T03:44:38.550Z",
+    "verification": "PROVIDER_OBSERVATION",
+    "dataStatus": "FRESH_PROVIDER_OBSERVATION",
+    "ageMs": 0,
+    "authentication": "TESTNET_KEY_ACCEPTED"
   },
   "ownershipEvidence": "testnet-domain-owner-proof.json",
-  "liveBalancePassed": false,
-  "remainingFailure": "Read-only provider unavailable; no financial authorization allowed"
+  "liveBalancePassed": true,
+  "remainingFailure": null
 }

@@ -49,8 +49,9 @@
       const el=document.getElementById('balance');el.textContent='Consultando Testnet…';
       try{
         const r=await fetch('/api/operator',{cache:'no-store'}),data=await r.json();
-        if(!r.ok||data.network!=='-3'||data.address!==config.operator||!/^\d+$/.test(data.balanceNano))throw Error();
-        const nano=BigInt(data.balanceNano);el.textContent=`${nano/1000000000n}.${(nano%1000000000n).toString().padStart(9,'0')} Testnet TON · ${data.state} · ${data.observedUtc}`;
+        if(!r.ok){el.textContent=data.reason==='PROVIDER_RATE_LIMITED'?'Saldo desconocido: límite de TON Center (429). Espera '+data.retryAfterSeconds+' s.':data.reason==='TESTNET_KEY_INVALID'||data.reason==='TESTNET_KEY_NETWORK_FORBIDDEN'?'Saldo desconocido: clave Testnet rechazada.':'Saldo desconocido: proveedor no disponible ('+r.status+').';return;}
+        if(data.network!=='-3'||data.address!==config.operator||!/^\d+$/.test(data.balanceNano))throw Error();
+        const nano=BigInt(data.balanceNano);el.textContent=`${nano/1000000000n}.${(nano%1000000000n).toString().padStart(9,'0')} Testnet TON · ${data.state} · ${data.observedUtc} · ${data.dataStatus==='SHORT_LIVED_CACHE'?'caché breve; no es preflight':'lectura del proveedor'}`;
       }catch{el.textContent='Saldo desconocido: API no disponible.';}
     };
   }catch{text('Entorno bloqueado: configuración o SDK no disponible.');start.disabled=true;}
