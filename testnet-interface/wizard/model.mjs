@@ -11,7 +11,7 @@ export function units(value,decimals){
  const n=BigInt(a)*10n**BigInt(decimals)+BigInt(b.padEnd(decimals,'0')||'0');if(n>max)throw Error('Amount exceeds supported token units.');return n;
 }
 export const format=(n,dec=9)=>{if(!Number.isInteger(dec)||dec<0||dec>18)return 'unavailable (invalid precision)';n=BigInt(n);const p=10n**BigInt(dec),f=(n%p).toString().padStart(dec,'0').replace(/0+$/,'');return(n/p).toString()+(f?'.'+f:'');};
-export function address(s){if(typeof s!=='string'||s.length>80||!s.trim())throw Error('Enter a valid TON wallet address.');return Address.parse(s.trim()).toRawString();}
+export function address(s){if(typeof s!=='string'||s.length>80||!s.trim())throw Error('Enter a valid TON wallet address.');const a=Address.parse(s.trim());if(a.workChain!==0)throw Error('Use a basechain (workchain 0) wallet; the existing Jetton wallets reject other workchains.');return a.toRawString();}
 export function safeLogo(s){
  if(!s)return '';
  if(typeof s!=='string'||s.length>360000)throw Error('Logo is too large.');

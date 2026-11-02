@@ -2,6 +2,9 @@ import {test} from 'node:test';import assert from 'node:assert/strict';
 import {createDraft,effective,units,format,validate,recipients,safeLogo,saveDraft,deleteDraft,parseRecipientsDetailed,loadStore,normalizeDraft,KEY,previewBuy,CURVE} from '../wizard/model.mjs';
 const owner='0QCBGet2_2SvVUrX_MZL0w0OuPqlbJtlHT3nbpWaEH2QYbBR';
 const other='0:1111111111111111111111111111111111111111111111111111111111111111';
+test('masterchain creator, recipient and vesting beneficiary cannot become unsupported Jetton transfer templates',()=>{
+ const masterchain='-1:'+'22'.repeat(32),d=valid();d.metadata.creator=masterchain;assert.equal(validate(d).valid,false);d.metadata.creator=owner;d.allocations.community='1';d.distribution.mode='custom';d.distribution.text=masterchain+',1';assert.throws(()=>recipients(d),/workchain 0/);d.distribution.skip=true;d.allocations.team='1';Object.assign(d.vesting,{enabled:true,beneficiary:masterchain,amount:'1',startDate:'2027-01-01'});assert.equal(validate(d).valid,false);
+});
 function valid(){const d=createDraft();Object.assign(d.metadata,{name:'Real draft',symbol:'RDT',creator:owner});return d;}
 function memory(){const m=new Map();return{getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v),m};}
 test('both modes preserve configuration; launchpad effective economics are immutable and default LP lock is100% permanent',()=>{
@@ -53,14 +56,18 @@ test('deleteDraft removes target draft and updates selection revision; throws on
  assert.equal(updated.selectedId,d2.id);
  assert.throws(()=>deleteDraft(s,d2.id,2),/another tab/);
 });
-test('parseRecipientsDetailed yields structured entry status without throwing uncaught exceptions',()=>{
- const d=valid();d.distribution.mode='custom';d.distribution.text=`address,amount\n${owner},100\ninvalid_address,50\n${owner},20`;
+test('parseRecipientsDetailed yields structured entry status and enforces basechain workchain 0',()=>{
+ const masterchain='-1:'+'22'.repeat(32);
+ const d=valid();d.distribution.mode='custom';d.distribution.text=`address,amount\n${owner},100\n${other},50\n${masterchain},25\ninvalid_address,50\n${owner},20`;
  const entries=parseRecipientsDetailed(d);
- assert.equal(entries.length,3);
+ assert.equal(entries.length,5);
  assert.equal(entries[0].valid,true);
  assert.equal(entries[0].formattedAddress.includes('...'),true);
- assert.equal(entries[1].valid,false);
- assert.match(entries[1].error,/address/i);
+ assert.equal(entries[1].valid,true);
  assert.equal(entries[2].valid,false);
- assert.match(entries[2].error,/Duplicate/);
+ assert.match(entries[2].error,/workchain 0/);
+ assert.equal(entries[3].valid,false);
+ assert.match(entries[3].error,/address/i);
+ assert.equal(entries[4].valid,false);
+ assert.match(entries[4].error,/Duplicate/);
 });

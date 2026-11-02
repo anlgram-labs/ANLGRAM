@@ -1,117 +1,114 @@
 # MemeLabs Frontend–Backend Integration Handoff
 
-## 1. Existing Integration Points (Read-Only & Offline Preparation)
+## 1. Authoritative Protocol Tokenomics & Shared Model Contract
 
-The MemeLabs 6-step frontend wizard (`/memelabs`) integrates strictly with the following existing endpoints without invoking any financial signing or on-chain broadcasts:
+All frontend displays, explainers, and simulations in `testnet-interface/wizard/` are strictly bound to the authoritative contract configuration (`minter-contract/scripts/bonding-curve-math.js` and `assets/js/donation-config.js`):
 
-| Endpoint | Method | Purpose | Frontend Guardrails |
+| Parameter | Authoritative Value | Source |
+| :--- | :--- | :--- |
+| **Launchpad Total Supply** | `1,000,000,000` tokens (`10^18` base units) | `DEFAULT_CONFIG.totalSupply` |
+| **Decimals** | `9` | `DEFAULT_CONFIG.decimals` |
+| **Bonding Curve Allocation** | `80%` (`800,000,000` tokens) | `DEFAULT_CONFIG.curveTokens` |
+| **DEX Liquidity Allocation** | `20%` (`200,000,000` tokens) | `DEFAULT_CONFIG.gradTokens` |
+| **Initial Free Allocations** | `0` creator / `0` team / `0` community (Fair Launch) | `DEFAULT_CONFIG.creatorTokens` / `treasuryTokens` |
+| **Graduation Threshold** | **`500 TON`** (`500_000_000_000` nanoTON) | `DEFAULT_CONFIG.graduationThresholdTon` |
+| **Protocol Trading Fee** | `1%` (`100 bps`) | `DEFAULT_CONFIG.protocolFeeBps` |
+| **Creation Base Charge** | `0.20 TON` (`200000000` nanoTON) | `charges.BASE_EXECUTION_NANO` |
+| **Mandatory Creation Donation** | `0.02 TON` (`20000000` nanoTON) | `charges.DONATION_AMOUNT_NANO` |
+
+### Shared `wizard/model.mjs` & `wizard/preparation-model.mjs` Invariants
+- **Storage Key**: `KEY = 'anlgram:testnet:memelabs-drafts:v1'` (schema `1`, network `'-3'`).
+- **Basechain (Workchain 0) Address Validation**: `address(s)` enforces `a.workChain === 0` across creator wallet, CSV/manual airdrop recipients (`recipients(d)` and `parseRecipientsDetailed(d)`), vesting beneficiary, LP lock beneficiary, and unlocked LP controller, matching existing Jetton wallet workchain restrictions (error `333`).
+- **Configuration Fingerprint**: `configurationFingerprint(d)` hashes the normalized financial configuration (`mode`, `metadata`, `allocations`, `distribution`, `vesting`, `lp`) while ignoring UI navigation (`stage`), `savedAt`, and local `trade` preview inputs.
+
+---
+
+## 2. Existing Read-Only & Offline Preparation Integration Points
+
+The MemeLabs 6-step wizard (`/memelabs`) integrates strictly with the following existing endpoints without invoking any financial signing or on-chain broadcasts:
+
+| Endpoint | Method | Scope & Purpose | Frontend Guardrails |
 | :--- | :--- | :--- | :--- |
 | `/api/config` | `GET` | Retrieve TON Connect manifest URL, network (`-3`), `financialSigningEnabled` flag, and `curveExecutionVersion`. | Rejects connection if `network !== '-3'`, `financialSigningEnabled !== false`, or `curveExecutionVersion` mismatches the compiled bundle. |
-| `/api/mvp/status` | `GET` | Read live Testnet ANLTEST protocol checkpoint status (Minter `#1`, Curve `#2` state, and operation lock state). | Requires `scope === 'ACCOUNT_AND_GETTER_OBSERVATIONS_NOT_TRANSACTION_RECEIPTS'`, `network === '-3'`, and `financialSigningEnabled === false`. Displayed strictly under the `NOT your draft token` section. |
-| `/api/projects/prepare` | `POST` | Compute deterministic offline project addresses (`minter`, `curve`, `locker`, etc.), distribution batches, vesting schedule timestamps, and proposed operation templates for a draft configuration. | Requires `scope === 'OFFLINE_PROJECT_PREPARATION_NOT_AUTHORIZATION'`, `financialSigningEnabled === false`, `broadcastEnabled === false`, and exact `configurationFingerprint` match against the current draft state. |
+| `/api/mvp/status` | `GET` | Read live Testnet `ANLTEST` protocol checkpoint observations (Minter `#1`, Curve `#2` state, and operation lock state). | Requires `scope === 'ACCOUNT_AND_GETTER_OBSERVATIONS_NOT_TRANSACTION_RECEIPTS'`, `network === '-3'`, and `financialSigningEnabled !== true`. Displayed strictly under `Existing protocol checkpoint — NOT your draft token`. |
+| `/api/projects/prepare` | `POST` | Compute deterministic offline project candidates (`minter`, `curve`, `guard`, `migration`, `vesting`), distribution batches (`batchSize` `1..4`), and proposed operation templates. | Requires `scope === 'OFFLINE_PROJECT_PREPARATION_NOT_AUTHORIZATION'`, `financialSigningEnabled === false`, `broadcastEnabled === false`, and exact `configurationFingerprint` match. |
 
 ---
 
-## 2. Missing API Fields for Project-Specific Lifecycle Tracking
+## 3. Alignment with Codex PR #18 (`projects/deployment-receipt.mjs`)
 
-While `/api/projects/prepare` provides deterministic offline preparation and `/api/mvp/status` reports on the global `ANLTEST` checkpoint, the My Projects dashboard (`Step 6`) requires a read-only project status endpoint (e.g., `GET /api/projects/:draftId/status` or `POST /api/projects/status`) once creator-specific deployments are enabled in a future phase:
+Codex PR #18 introduces `testnet-interface/projects/deployment-receipt.mjs` (`deploymentReceiptPolicy` and `verifyProjectDeploymentFields`) as an internal/offline adapter binding per-project deployment operations (`stateInit` present) to `lib/v5-deployment-receipt.js` for active supported Testnet V5R1 subwallet `0` signers (`seqno` `1..4294967294`, `walletId` `2147483645`).
 
-### Missing Fields Needed from Backend
-1. **`projectDeploymentStatus`**:
-   - Current state of the specific creator's Minter, Curve, Vesting, and LP Locker contracts (`NOT_DEPLOYED` | `MINTER_DEPLOYED` | `CURVE_INITIALIZED` | `MINT_RENOUNCED_ACTIVE` | `GRADUATED_MIGRATING` | `LP_LOCKED`).
-2. **`verifiedReceipts`**:
-   - Array of finalized, corroborated on-chain transaction receipts (`lt`, `hash`, `utime`, `providerSources`, `operationName`) proving each lifecycle step.
-3. **`custodyVerification`**:
-   - `curveJettonBalanceUnits`: Verified base units held by the project's Bonding Curve Jetton wallet.
-   - `mintAuthorityRenounced`: Boolean confirmed via on-chain `get_jetton_data` (`admin_address === addr_none`).
-   - `lpLockerCustodyUnits`: Verified LP token balance held by the project's LP Locker V2 contract post-graduation.
-   - `unlockTimestamp`: Confirmed on-chain unlock UNIX timestamp from LP Locker V2 getter (`null` for permanent locks).
-4. **`liveCurveQuote` (Read-Only Reserve Observation)**:
-   - `realTonReserveNano`: Verified real TON reserve in the active Bonding Curve contract.
-   - `virtualTonReserveNano` / `virtualTokenReserveUnits`: Current curve parameters.
-   - `graduationProgressBps`: Integer basis points (`0..10000`) toward the `1,000 TON` graduation threshold.
+### Frontend Handling of Deployment & Post-Deployment Receipt States
+1. **`NO_AUTHENTIC_TRANSACTION` (Default Prepared State)**:
+   - Displayed as `NOT VERIFIED (NO_AUTHENTIC_TRANSACTION)`. Derived account addresses link to `https://testnet.tonviewer.com/<address>` labeled `derived address only · deployment NOT VERIFIED`.
+2. **`MATCHED_FIELDS_REQUIRES_AUTHENTIC_PROVENANCE` (PR #18 Verifier Output)**:
+   - Indicates that a trace matched the expected V5R1 deployment fields (`source`, `destination`, `seqno`, `stateInit`, `targetCodeHash`, `targetDataHash`), but `independentFinalityVerified: false`, `operationCompleted: false`, `custodyVerified: false`, and `financialSigningEnabled: false`.
+   - The frontend never marks an operation completed, never claims custody, and never enables follow-up operations from field-matching alone.
+3. **Post-Deployment Operations (Mint, Distribution Transfers, Vesting Escrow, LP Locking)**:
+   - Require dedicated descendant receipt verifiers and authenticated provider provenance beyond the V5 deployment-receipt adapter.
 
 ---
 
-## 3. Expected Response Format (`GET /api/projects/:draftId/status`)
+## 4. `UNKNOWN` Is Not Zero — Required Data Contract for Future Status Reads
+
+When a future read-only project observation endpoint is exposed, any value that is unobserved, pending, rate-limited, or unverified **must be `null` in JSON and rendered as `UNKNOWN`, `UNAVAILABLE`, or `NOT VERIFIED` in the UI** — never `"0"` or `0`. Zero is permitted only when authentic, corroborated on-chain evidence proves an actual zero balance.
 
 ```json
 {
-  "scope": "PROJECT_OBSERVATION_AND_FINALIZED_RECEIPTS",
+  "scope": "PROJECT_ACCOUNT_AND_RECEIPT_OBSERVATION_NOT_AUTHORIZATION",
   "network": "-3",
   "draftId": "uuid-v4",
   "configurationFingerprint": "64-hex-sha256",
   "financialSigningEnabled": false,
-  "observedUtc": "2026-11-02T15:00:00.000Z",
-  "projectDeploymentStatus": "NOT_DEPLOYED",
-  "accounts": {
-    "minter": { "address": "0:...", "accountState": "uninit", "codeHashVerified": false },
-    "curve": { "address": "0:...", "accountState": "uninit", "codeHashVerified": false },
-    "lpLocker": { "address": "0:...", "accountState": "uninit", "codeHashVerified": false }
+  "broadcastEnabled": false,
+  "projectDeploymentStatus": "NOT_VERIFIED",
+  "actualSupplyUnits": null,
+  "tokenBalanceUnits": null,
+  "holderCount": null,
+  "curveReserves": {
+    "status": "UNAVAILABLE",
+    "realTonReserveNano": null,
+    "graduationTargetTon": "500",
+    "graduationProgressBps": null
   },
   "custodyVerification": {
     "status": "NOT_VERIFIED",
-    "mintAuthorityRenounced": false,
-    "curveJettonBalanceUnits": "0",
-    "lpLockerCustodyUnits": "0",
+    "mintAuthorityRenounced": null,
+    "curveJettonBalanceUnits": null,
+    "lpLockerCustodyUnits": null,
     "unlockTimestamp": null
   },
   "distributionStatus": {
-    "completedBatches": 0,
-    "totalBatches": 0,
-    "verifiedDeliveredUnits": "0"
+    "status": "NOT_VERIFIED",
+    "availableBalanceUnits": null,
+    "verifiedDeliveredUnits": null
   },
   "vestingStatus": {
-    "contractDeployed": false,
-    "escrowedUnits": "0",
-    "claimedUnits": "0"
+    "status": "NOT_VERIFIED",
+    "escrowedUnits": null,
+    "claimedUnits": null
   },
-  "verifiedReceipts": []
+  "operations": [
+    {
+      "id": "fingerprint:0",
+      "name": "deploy-minter",
+      "status": "NOT_SUBMITTED",
+      "receipt": {
+        "status": "NO_AUTHENTIC_TRANSACTION",
+        "transactionHash": null,
+        "independentFinalityVerified": false,
+        "custodyVerified": false
+      }
+    }
+  ]
 }
 ```
 
 ---
 
-## 4. Required Statuses & Error Codes
+## 5. Safety & Lock Invariants Preserved
 
-To ensure deterministic UI states and prevent silent fallbacks or stale data display, backend responses must use these canonical statuses:
-
-- **HTTP `200 OK`**: Freshly observed state with `dataStatus: "FRESH_DUAL_PROVIDER"` or `"FRESH_PRIMARY_PROVIDER"`.
-- **HTTP `429 Too Many Requests`**:
-  ```json
-  {
-    "error": "Upstream provider rate limited",
-    "reason": "PROVIDER_RATE_LIMITED",
-    "provider": "tonapi | toncenter",
-    "retryAfterSeconds": 2
-  }
-  ```
-- **HTTP `503 Service Unavailable`**:
-  ```json
-  {
-    "error": "Fresh blockchain observation unavailable",
-    "reason": "PROVIDER_UNAVAILABLE",
-    "staleDataSubstituted": false
-  }
-  ```
-- **Operation Lock Statuses**:
-  - `LOCKED_PENDING_RECONCILIATION` (must block any duplicate claim or signing attempt).
-  - `RECONCILED_FINALIZED` (backed by dual-provider receipt verification).
-  - `EXPIRED_NO_BROADCAST` (proven after chain-time `valid_until` expiry and seqno check).
-
----
-
-## 5. Frontend Compatibility Requirements
-
-1. **Draft Storage Schema Compatibility (`schema: 1`)**:
-   - The frontend persists drafts in `localStorage` under `anlgram.memelabs.testnet.wizard.v1`.
-   - `draft.distribution.batchSize` defaults to `'4'` (`1..4` recipients per proposed batch) and is preserved across `normalizeDraft` and `saveDraft`.
-2. **Configuration Fingerprinting**:
-   - Any changes to `preparation-model.mjs` (`configurationFingerprint`) must remain deterministic across browser WebCrypto (`crypto.subtle.digest('SHA-256', ...)`) and Node.js backend verification so prepared plans invalidate immediately when the user edits any form field.
-3. **Strict Separation of Simulation vs. Live Quotes**:
-   - Frontend bonding curve calculations (`previewBuy`) are strictly labeled as `INITIAL configuration preview only`.
-   - When Codex enables live Curve reserve reads, the response must include `quoteType: "OBSERVED_RESERVE_ESTIMATE_NOT_SIGNING_QUOTE"` until full signing authorization is separately unlocked.
-4. **Build & Asset Integrity**:
-   - `public-pages/wizard-design.css` and `public-pages/wizard-labs.css` must remain byte-identical to `assets/css/design-system.css` and `assets/css/anl-labs.css`.
-   - All custom responsive, mobile, and accessibility rules reside exclusively in `testnet-interface/wizard/wizard-accessibility.css`.
-   - No inline event handlers (`on[a-z]+=`) or financial transaction triggers (`.sendTransaction(`, `/api/operation/claim`, `/api/curve-two/claim`) are permitted in the wizard bundle.
+- **Original Curve #2 Lock**: Remains permanently `LOCKED_PENDING_RECONCILIATION`. Chain `valid_until` expiry and an unchanged `seqno` alone cannot prove a request was never signed/broadcast or release an existing lock without full recovery reconciliation.
+- **Provider Provenance vs. Finality**: Two HTTP provider responses alone do not constitute independent validator finality.
+- **Build & CSS Integrity**: `public-pages/wizard-design.css` and `public-pages/wizard-labs.css` remain byte-identical to `assets/css/design-system.css` and `assets/css/anl-labs.css`; all responsive and accessibility rules live in `testnet-interface/wizard/wizard-accessibility.css`.
