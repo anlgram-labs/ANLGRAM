@@ -1,3 +1,4 @@
+import {RecoveryRuntime} from './recovery/runtime.mjs';
 import execution from './execution-version.json' with {type:'json'};
 import * as core from '@ton/core';
 import * as policy from './curve-policy.mjs';
@@ -14,9 +15,15 @@ const {intent,validateIntent,fingerprint}=policy;
 const json=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
 const hash=s=>core.Cell.fromBase64(s).hash().toString('hex');
 export class CurveFinancialOperation extends FinancialOperation {
- constructor(state){super(state);this.policy=policy;}
+ constructor(state,env){super(state);this.policy=policy;this.env=env;}
  async fetch(request){
   const b=await request.clone().json();
+  if(b.action?.startsWith('recovery:')){
+   if(b.runtimeVersion!==execution.sha256)return json({error:'Incompatible recovery runtime'},409);
+   const original=async()=>{const r=await super.fetch(new Request('https://legacy.internal/',{method:'POST',body:'{"action":"status"}'}));const j=await r.json();return{operation:intent.operation,state:j.status,fingerprint:j.fingerprint,claimedAt:j.claimedAt,validUntil:j.validUntil};};
+   const env={...this.env,...(request.headers.get('X-Internal-Testnet-Key')?{TONCENTER_TESTNET_API_KEY:request.headers.get('X-Internal-Testnet-Key')}:{})};
+   try{return await new RecoveryRuntime(this.state.storage,env,original).fetch({action:b.action.slice(9)});}catch(e){const limited=e.status===429;return Response.json({error:limited?'Testnet provider rate limited; no stale quote served':'Recovery preparation unavailable: fresh corroborated source, immutable legacy lock and exact fee simulation required',reason:limited?'PROVIDER_RATE_LIMITED':'RECOVERY_CHECK_UNAVAILABLE',...(limited?{retryAfterSeconds:e.retryAfterSeconds}:{}),financialSigningEnabled:false},{status:limited?429:503,headers:{'Cache-Control':'no-store',...(limited?{'Retry-After':String(e.retryAfterSeconds)}:{})}});}
+  }
   if(b.action==='runtime')return json({runtimeVersion:execution.sha256});
   if(['authorize','reserveQuote','prepare','claim'].includes(b.action)&&b.runtimeVersion!==execution.sha256)return json({error:'Incompatible private Curve runtime'},409);
   if(b.action==='authorize'){
