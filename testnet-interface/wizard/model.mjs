@@ -69,6 +69,35 @@ export function saveDraft(storage,input,expectedRevision){
  const index=store.projects.findIndex(p=>p.id===d.id);d.savedAt=new Date().toISOString();if(index<0){if(store.projects.length>=20)throw Error('Maximum 20 drafts on this device.');store.projects.push(d);}else store.projects[index]=d;
  store.selectedId=d.id;store.revision++;storage.setItem(KEY,JSON.stringify(store));return store;
 }
+export function deleteDraft(storage,id,expectedRevision){
+ const store=loadStore(storage);if(store.revision!==expectedRevision)throw Error('Drafts changed in another tab. Reload before deleting; no changes were overwritten.');
+ store.projects=store.projects.filter(p=>p.id!==id);
+ if(store.selectedId===id)store.selectedId=store.projects[0]?.id||null;
+ store.revision++;storage.setItem(KEY,JSON.stringify(store));return store;
+}
+export function parseRecipientsDetailed(d){
+ const dec=effective(d).decimals,out=[],seen=new Set(),lines=d.distribution.text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(s=>s.trim());
+ for(let i=0;i<lines.length;i++){
+  const parts=lines[i].split(',').map(s=>s.trim());if(i===0&&/^address$/i.test(parts[0])&&parts.length<=2)continue;
+  const entry={line:i+1,rawAddress:parts[0]||'',amountStr:d.distribution.mode==='equal'?d.distribution.amount:(parts[1]||'0'),valid:false,error:null,formattedAddress:''};
+  if(parts.length>2){entry.error='Use address,amount without quotes.';}
+  else{
+   try{
+    const raw=address(parts[0]);
+    if(seen.has(raw)){entry.error='Duplicate wallet address.';}
+    else{
+     seen.add(raw);
+     entry.formattedAddress=raw.slice(0,6)+'...'+raw.slice(-6);
+     const n=units(entry.amountStr,dec);
+     if(n<=0n){entry.error='Amount must be greater than zero.';}
+     else{entry.valid=true;entry.amountUnits=n.toString();}
+    }
+   }catch(e){entry.error=e.message;}
+  }
+  out.push(entry);
+ }
+ return out;
+}
 export function previewBuy(attachment){
  const n=units(attachment,9),overhead=40000000n;if(n<=overhead)throw Error('The existing buy flow needs more than 0.04 TON settlement funding.');
  const q=new BondingCurveEngine().quoteBuy(n-overhead,50n);if(!q.success)throw Error(q.message||q.error);
