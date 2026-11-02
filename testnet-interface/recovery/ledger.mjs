@@ -1,5 +1,6 @@
 import {FinancialOperation} from '../operation-lock.mjs';
 import {pinned,RECOVERY,SUCCESSOR,operationPolicy,validateSnapshot,digest,freeze,requireExecutionActivation} from './policy.mjs';
+import {buildAndVerifyReceipt} from './receipts.mjs';
 export {RECOVERY,SUCCESSOR,requireExecutionActivation};
 const json=b=>new Request('https://offline-preparation.internal/',{method:'POST',body:JSON.stringify(b)});
 const scopes=(tx,prefix)=>({get:key=>tx.get(prefix+key),put:(key,value)=>tx.put(prefix+key,value),transaction:fn=>fn(scopes(tx,prefix))});
@@ -66,6 +67,29 @@ export class RecoveryPreparationLedger {
   return freeze({scope:'VERSIONED_SUCCESSOR_OFFLINE_CANDIDATE',operation:SUCCESSOR,expectedSeqno:identity.seqno,message:structuredClone(policy.intent.message),originalFingerprint:this.context.oldFingerprint,recoveryReceiptHash:verified.sourceTransactionHash,financialSigningEnabled:false,eligibleForAuthorization:false,blockedBy:['INDEPENDENT_PROVIDER_ACQUISITION','INDEPENDENT_LEDGER_REVIEW','SEPARATE_OWNER_AUTHORIZATION'],requiresFreshRuntimeQuote:true});
  }
  async prepareSuccessorRuntimeQuote(){throw Error('SUCCESSOR_DISABLED: finalized independent acquisition and review required; original reservation remains locked');}
+ async reconcileAcquired(checkpoint,journal){
+  if(checkpoint.evidence?.proofInclusionVerified!==true||checkpoint.evidence.accountProof?.accountHash!==checkpoint.evidence.accountHash)throw Error('Server-acquired proven account checkpoint required');
+  const prepared=await this.storage.get(RECOVERY+':prepared'),reservation=await this.storage.get('destinationReservation'),attempt=await this.storage.get(RECOVERY+':operation');
+  let status={scope:'SERVER_RECEIPT_RECONCILIATION_REVIEW_PENDING',state:'NO_RESERVED_RECOVERY_OPERATION',accountHash:checkpoint.evidence.accountHash,sourceSeqno:checkpoint.evidence.seqno,originalFingerprint:this.context.oldFingerprint,proofInclusionVerified:true,providerReceiptVerified:false,independentFinalityVerified:false,validatorFinalityVerified:false,operationCompleted:false,financialSigningEnabled:false};
+  if(prepared&&reservation&&attempt){
+   if(checkpoint.evidence.seqno===this.context.oldSeqno)status.state='RECOVERY_NOT_OBSERVED';
+   else{
+    const root=checkpoint.rows[1],before=root?await journal.findAccount(root.tx.stateUpdate.oldHash.toString('hex')):null;
+    if(!before)status.state='MISSING_BEFORE_ACCOUNT_EVIDENCE';
+    else{
+     let result;try{result=await buildAndVerifyReceipt(checkpoint,before,prepared,reservation,attempt,this.context);}catch{status.state='RECEIPT_MISMATCH_EXTERNAL_REVIEW_REQUIRED';}
+     if(result){
+      await this.verifyOfflineReceipt(result.bundle);
+      await this.storage.transaction(async tx=>{const prior=await tx.get('serverReceiptAcquisition');if(prior&&await digest(prior.bundle)!==await digest(result.bundle))throw Error('Different acquired receipt; preserve existing evidence');if(!prior)await tx.put('serverReceiptAcquisition',structuredClone(result));});
+      status={...status,...result.summary,state:'PROVIDER_RECEIPT_VERIFIED_EXTERNAL_REVIEW_PENDING',providerReceiptVerified:true};
+     }
+    }
+   }
+  }
+  const id=await digest({protocol:'RECOVERY_RECEIPT_CHECK_V1',account:status.accountHash,block:checkpoint.evidence.referenceBlock,state:status.state});
+  await this.storage.transaction(async tx=>{if(!await tx.get('receiptCheck:'+id))await tx.put('receiptCheck:'+id,{...status,observedAt:this.clock()});await tx.put('lastReceiptCheck',id);});
+  return status;
+ }
  async executionRequest(){return requireExecutionActivation();}
- async status(){const d=await this.storage.get('destinationReservation');return{scope:'OFFLINE_PREPARATION_ONLY',destinationReservation:d??null,receiptFieldsVerified:!!await this.storage.get('receiptSummary'),independentFinalityVerified:false,financialSigningEnabled:false,retryPermitted:false};}
+ async status(){const d=await this.storage.get('destinationReservation'),check=await this.storage.get('lastReceiptCheck');return{scope:'OFFLINE_PREPARATION_ONLY',destinationReservation:d??null,receiptFieldsVerified:!!await this.storage.get('receiptSummary'),lastReceiptCheck:check?await this.storage.get('receiptCheck:'+check):null,independentFinalityVerified:false,financialSigningEnabled:false,retryPermitted:false};}
 }

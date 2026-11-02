@@ -50,9 +50,10 @@ export class RecoveryEvidenceJournal {
  constructor(storage){this.storage=storage;}
  async append(evidence){
   evidence=structuredClone(evidence);
-  requireThat(evidence.originalFingerprint===pinned.oldFingerprint&&evidence.network==='-3'&&evidence.operator===pinned.operator&&evidence.scope==='CORROBORATED_RAW_ACCOUNT_NOT_FINALIZED_RECEIPT'&&evidence.proofInclusionVerified===false&&evidence.validatorFinalityVerified===false&&evidence.operationCompleted===false&&evidence.financialSigningEnabled===false,'Raw capture cannot grant reconciliation authority');
+  requireThat(evidence.originalFingerprint===pinned.oldFingerprint&&evidence.network==='-3'&&evidence.operator===pinned.operator&&evidence.scope==='CORROBORATED_RAW_ACCOUNT_NOT_FINALIZED_RECEIPT'&&typeof evidence.proofInclusionVerified==='boolean'&&evidence.validatorFinalityVerified===false&&evidence.operationCompleted===false&&evidence.financialSigningEnabled===false,'Raw capture cannot grant reconciliation authority');
+  if(evidence.proofInclusionVerified)requireThat(evidence.accountProof?.proofInclusionVerified===true&&evidence.accountProof?.accountHash===evidence.accountHash&&evidence.accountProof?.lastTransactionHash===evidence.lastTransactionHash,'Verified inclusion binding required');
   // Identity excludes capture time; identical provider evidence is idempotent.
-  const id=await digest({protocol:'RECOVERY_RAW_ACCOUNT_V1',ancestor:pinned.oldFingerprint,accountHash:evidence.accountHash,block:evidence.referenceBlock});
+  const id=await digest({protocol:'RECOVERY_RAW_ACCOUNT_V1',ancestor:pinned.oldFingerprint,accountHash:evidence.accountHash,block:evidence.referenceBlock,...(evidence.proofInclusionVerified?{accountInclusion:true}:{})});
   return this.storage.transaction(async tx=>{
    const index=await tx.get('evidence:index')||[],prior=await tx.get('evidence:'+id);
    if(prior)return this.summary(prior,id,index.length);
@@ -62,6 +63,7 @@ export class RecoveryEvidenceJournal {
    await tx.put('evidence:last',id);return this.summary(saved,id,index.length+1);
   });
  }
- summary(e,id,count){return{id,count,observedAt:e.observedAt,accountHash:e.accountHash,seqno:e.seqno,balanceNano:e.balanceNano,lastTransactionHash:e.lastTransactionHash,referenceBlock:e.referenceBlock,scope:e.scope,state:e.seqno===pinned.oldSeqno?'NO_EXECUTION_OBSERVED_RECEIPT_ABSENT':'SOURCE_CHANGED_RECEIPT_REQUIRED',proofInclusionVerified:false,validatorFinalityVerified:false,operationCompleted:false,financialSigningEnabled:false};}
+ summary(e,id,count){return{id,count,observedAt:e.observedAt,accountHash:e.accountHash,seqno:e.seqno,balanceNano:e.balanceNano,lastTransactionHash:e.lastTransactionHash,referenceBlock:e.referenceBlock,scope:e.scope,state:e.seqno===pinned.oldSeqno?'NO_EXECUTION_OBSERVED_RECEIPT_ABSENT':'SOURCE_CHANGED_RECEIPT_REQUIRED',proofInclusionVerified:e.proofInclusionVerified,validatorFinalityVerified:false,operationCompleted:false,financialSigningEnabled:false};}
+ async findAccount(accountHash){for(const id of await this.storage.get('evidence:index')||[]){const e=await this.storage.get('evidence:'+id);if(e?.accountHash===accountHash)return e;}return null;}
  async status(){const id=await this.storage.get('evidence:last');if(!id)return null;return this.summary(await this.storage.get('evidence:'+id),id,(await this.storage.get('evidence:index')).length);}
 }

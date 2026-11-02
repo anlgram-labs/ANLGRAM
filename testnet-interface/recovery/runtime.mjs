@@ -4,6 +4,7 @@ import {pinned,RECOVERY,SUCCESSOR,hash,operationPolicy,validateSnapshot} from '.
 import {buildRecoveryEmulation} from './emulation.mjs';
 import {accountRead} from '../testnet-rpc.mjs';
 import {acquireRawAccounts,RecoveryEvidenceJournal} from './evidence.mjs';
+import {acquireReceiptCheckpoint} from './receipts.mjs';
 
 const fail=(ok,message)=>{if(!ok){const e=Error(message);e.publicReason=message;throw e;}};
 const raw=a=>Address.parse(a).toRawString();
@@ -71,6 +72,15 @@ export class RecoveryRuntime {
  async fetch(input){
   // No claim, reserve, record, evidence-upload, reconciliation or activation
   // endpoint. Neither a client flag nor a server environment toggle opens this.
+  if(input.action==='receipts'){
+   const snapshot=await observeRecovery(this.env,await this.legacy()),checkpoint=await acquireReceiptCheckpoint(this.env,snapshot);
+   // Provider-backed account inclusion remains historical evidence. Never turn
+   // a changed tip or a native callback into a fresh dispatch authorization.
+   const current=await observeRecovery(this.env,await this.legacy());validateSnapshot(pinned,current,checkpoint.evidence.seqno);
+   fail(current.source.lastTransactionHash===checkpoint.evidence.lastTransactionHash&&hash(current.source.data)===checkpoint.evidence.dataHash&&current.source.balanceNano===checkpoint.evidence.balanceNano,'Account changed during receipt acquisition');
+   const evidence=await this.evidence.append(checkpoint.evidence),receipt=await this.ledger.reconcileAcquired(checkpoint,this.evidence);
+   return json({scope:'SERVER_RECOVERY_PREPARATION_NOT_EXECUTION',evidence,receipt,originalLock:await this.legacy(),executionEnabled:false,financialSigningEnabled:false});
+  }
   if(input.action==='capture'){
    const snapshot=await observeRecovery(this.env,await this.legacy());
    const evidence=await acquireRawAccounts(this.env,snapshot);
