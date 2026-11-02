@@ -1,10 +1,10 @@
 import {Cell,Address} from '@ton/core';
 import {RecoveryPreparationLedger} from './ledger.mjs';
-import {pinned,RECOVERY,SUCCESSOR,hash,operationPolicy,validateSnapshot} from './policy.mjs';
+import {pinned,RECOVERY,SUCCESSOR,hash,operationPolicy,validateSnapshot,validateChainExpiry} from './policy.mjs';
 import {buildRecoveryEmulation} from './emulation.mjs';
 import {accountRead} from '../testnet-rpc.mjs';
 import {acquireRawAccounts,RecoveryEvidenceJournal} from './evidence.mjs';
-import {acquireReceiptCheckpoint} from './receipts.mjs';
+import {acquireReceiptCheckpoint,acquireProvenAccount} from './receipts.mjs';
 
 const fail=(ok,message)=>{if(!ok){const e=Error(message);e.publicReason=message;throw e;}};
 const raw=a=>Address.parse(a).toRawString();
@@ -21,17 +21,20 @@ function upstream(response,body){
 // Server-only fixed provider acquisition. An account snapshot corroborates
 // identity/current state, NEVER finalized execution or an old request's fate.
 export async function observeRecovery(env,originalLock){
- const observations={};
- for(const name of ['minter','curve','operator']){
+ const names=['minter','curve','operator','operatorSecondary'];
+ const reads=await Promise.allSettled(names.map(async name=>{
   const startedAt=Date.now(),r=await accountRead(env,name,true),o=await r.json();upstream(r,o);
-  fail(r.ok&&o.network==='-3'&&o.authentication==='TESTNET_KEY_ACCEPTED'&&o.dataStatus==='FRESH_PROVIDER_OBSERVATION'&&Number.isSafeInteger(o.observedAt)&&Math.abs(Date.now()-o.observedAt)<15000&&Date.now()-startedAt<15000,'Fresh protected Testnet reads unavailable');
+  fail(r.ok&&o.network==='-3'&&(name==='operatorSecondary'||o.authentication==='TESTNET_KEY_ACCEPTED')&&o.dataStatus==='FRESH_PROVIDER_OBSERVATION'&&Number.isSafeInteger(o.observedAt)&&Math.abs(Date.now()-o.observedAt)<15000&&Date.now()-startedAt<15000,'Fresh protected Testnet reads unavailable');
   // Different Cloudflare machines can disagree by milliseconds. Anchor age to
   // the LOCAL acquisition start (conservative), never to a future remote clock.
-  observations[name]={...o,providerObservedAt:o.observedAt,observedAt:startedAt};
- }
+  return{...o,providerObservedAt:o.observedAt,observedAt:startedAt};
+ }));
+ for(const result of reads)if(result.status==='rejected')throw result.reason;
+ const observations=Object.fromEntries(names.map((n,i)=>[n,reads[i].value]));
+ fail(Date.now()-Math.min(...Object.values(observations).map(o=>o.observedAt))<15000,'Recovery observation phase expired');
  const source=observations.operator.account,last=hex(source.last_transaction_id?.hash||'');
  fail(/^[a-f0-9]{64}$/.test(last),'Source transaction hash unavailable');
- const secondary=await accountRead(env,'operatorSecondary',true),secondaryBody=await secondary.json();upstream(secondary,secondaryBody);
+ const secondaryBody=observations.operatorSecondary;
  fail(secondaryBody.network==='-3'&&secondaryBody.dataStatus==='FRESH_PROVIDER_OBSERVATION'&&Number.isSafeInteger(secondaryBody.observedAt)&&Math.abs(Date.now()-secondaryBody.observedAt)<15000,'Fresh independent Testnet read unavailable');const other=secondaryBody.independentAccount;
  fail(other.address===pinned.operator&&other.status===source.state&&String(other.balance)===String(source.balance)&&other.last_transaction_hash===last&&Cell.fromHex(other.code).hash().toString('hex')===hash(source.code)&&Cell.fromHex(other.data).hash().toString('hex')===hash(source.data),'Independent source observations disagree; reconcile before any preparation');
  return{network:'-3',observedAt:Math.min(...Object.values(observations).map(o=>o.observedAt)),source:{state:source.state,code:source.code,data:source.data,balanceNano:String(source.balance),lastTransactionHash:last},minter:observations.minter.account,curve:{state:observations.curve.account.state,code:observations.curve.account.code,balanceNano:String(observations.curve.account.balance)},originalLock,corroboration:{providers:['TON Center Testnet','TonAPI Testnet'],scope:'CURRENT_ACCOUNT_MATCH_NOT_FINALIZED_TRANSACTION_RECEIPT',finalityVerified:false}};
@@ -61,7 +64,10 @@ export class RecoveryRuntime {
  constructor(storage,env,legacy){
   this.storage=storage;this.env=env;this.legacy=legacy;this.latest=null;
   this.evidence=new RecoveryEvidenceJournal(scoped(storage,'recovery-runtime:v1:'));
-  this.ledger=new RecoveryPreparationLedger({storage:scoped(storage,'recovery-runtime:v1:'),observe:async()=>{this.latest=await observeRecovery(env,await legacy());return this.latest;},estimate:async({transaction,fingerprint})=>{
+  this.ledger=new RecoveryPreparationLedger({storage:scoped(storage,'recovery-runtime:v1:'),observe:async()=>{
+   this.latest=await observeRecovery(env,await legacy());
+   const account=await acquireProvenAccount(env,this.latest);this.latest.chainEvidence=account.accountProof;validateChainExpiry(pinned,this.latest);return this.latest;
+  },estimate:async({transaction,fingerprint})=>{
    const request=await buildRecoveryEmulation(RECOVERY,pinned.oldSeqno,transaction.validUntil);
    const startedAt=Date.now(),r=await accountRead(env,'recoveryFees',true,transaction.validUntil),o=await r.json();upstream(r,o);
    fail(Number.isSafeInteger(o.observedAt)&&Math.abs(Date.now()-o.observedAt)<15000&&Date.now()-startedAt<15000,'Fresh fee acquisition interval required');
@@ -91,7 +97,15 @@ export class RecoveryRuntime {
   if(input.action==='observe'){const snapshot=await observeRecovery(this.env,await this.legacy());const identity=validateSnapshot(pinned,snapshot,pinned.oldSeqno);const status=await(await this.fetch({action:'status'})).json();return json({...status,currentChain:{observedAt:snapshot.observedAt,seqno:identity.seqno,balanceNano:identity.balanceNano,lastTransactionHash:identity.lastTransactionHash,curveState:snapshot.curve.state,minterState:snapshot.minter.state,corroboration:snapshot.corroboration,scope:'CURRENT_ACCOUNTS_NOT_FINALIZED_OPERATION'}});}
   if(input.action==='status')return json({...await this.ledger.status(),capturedAccountEvidence:await this.evidence.status(),operation:RECOVERY,successorOperation:SUCCESSOR,originalLock:await this.legacy(),scope:'SERVER_RECOVERY_PREPARATION_NOT_EXECUTION',successor:{message:pinned.curveMessage,expectedSeqno:null,eligibleForAuthorization:false},blockedBy:['QUALIFIED_INDEPENDENT_REVIEW','SERVER_FINALIZED_RECEIPT_ACQUISITION','EXACT_NEW_OWNER_AUTHORIZATION','MANUAL_WALLET_CONFIRMATION'],executionEnabled:false});
   if(input.action==='prepare'){
-   const draft=await this.ledger.prepare(RECOVERY);
+   await this.storage.transaction(async tx=>{
+    const key='recovery-runtime:v1:prepareAdmission',now=Date.now(),last=await tx.get(key);
+    if(last!==undefined&&now-last<3000){const e=Error('Recovery preparation throttled; existing quote preserved');e.status=429;e.reason='RECOVERY_PREPARATION_RATE_LIMITED';e.retryAfterSeconds=Math.max(1,Math.ceil((last+3000-now)/1000));throw e;}
+    await tx.put(key,now);
+   });
+   let draft;try{draft=await this.ledger.prepare(RECOVERY);}catch(e){
+    if(e.status===429&&e.reason==='QUOTE_DEADLINES_EXHAUSTED'){const last=await this.storage.get('recovery-runtime:v1:prepareAdmission');e.retryAfterSeconds=Math.max(e.retryAfterSeconds,Math.ceil(((last??0)+3000-Date.now())/1000),1);}
+    throw e;
+   }
    return json({...draft,scope:'SERVER_RECOVERY_PREPARATION_NOT_EXECUTION',requestAllowed:false,policyThresholdIsNotGuaranteedMaximum:true,corroboration:this.latest.corroboration});
   }
   return json({error:'Recovery and successor execution disabled; original lock preserved',financialSigningEnabled:false},403);

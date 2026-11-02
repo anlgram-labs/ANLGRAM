@@ -17,14 +17,23 @@ export class RecoveryPreparationLedger {
   const {snapshot,identity}=await this.snapshot(expected),policy=operationPolicy(this.context,kind,identity.seqno),now=Math.floor(this.clock()/1000);
   if(proof&&(identity.dataHash!==proof.finalDataHash||identity.balanceNano!==proof.finalBalanceNano||identity.lastTransactionHash!==proof.finalLastTransactionHash))throw Error('Source changed after finalized receipt; reconcile again');
   const binding=await digest({network:'-3',operator:this.context.operator,curve:this.context.curve,candidate:this.context.candidateSha256,oldFingerprint:this.context.oldFingerprint});
-  const reservation=await this.storage.transaction(async tx=>{const bound=await tx.get('recoveryBindingV1');if(bound&&bound!==binding)throw Error('Ledger wallet/destination binding changed');if(!bound)await tx.put('recoveryBindingV1',binding);if(await tx.get('destinationReservation'))throw Error('Wallet/destination already reserved; no rearm');const revision=(await tx.get('quoteRevision')??0)+1;const used=(await tx.get('quoteDeadlines')??[]).filter(t=>t>now);let validUntil=now+90;while(used.includes(validUntil))validUntil--;if(validUntil<=now)throw Error('No fresh deadline');await tx.put('quoteRevision',revision);await tx.put('quoteDeadlines',[...used,validUntil]);await tx.put('draft',null);return{revision,validUntil};});
+  const reservation=await this.storage.transaction(async tx=>{
+   const bound=await tx.get('recoveryBindingV1');if(bound&&bound!==binding)throw Error('Ledger wallet/destination binding changed');if(!bound)await tx.put('recoveryBindingV1',binding);
+   if(await tx.get('destinationReservation'))throw Error('Wallet/destination already reserved; no rearm');
+   const prior=await tx.get('quote'),legacyRevision=await tx.get('quoteRevision')??0;
+   if(prior&&prior.revision!==legacyRevision)throw Error('Quote revision storage disagreement');
+   const revision=(prior?.revision??legacyRevision)+1,used=(await tx.get('quoteDeadlines')??[]).filter(t=>t>now);let validUntil=now+90;while(used.includes(validUntil))validUntil--;
+   if(validUntil<=now){const e=Error('No fresh deadline');e.status=429;e.reason='QUOTE_DEADLINES_EXHAUSTED';e.retryAfterSeconds=Math.max(1,Math.min(...used)-now);throw e;}
+   const quote={revision,validUntil,scopeKey:kind+':'+binding};
+   await tx.put('quote',quote);await tx.put('quoteRevision',revision);await tx.put('quoteDeadlines',[...used,validUntil]);await tx.put('draft',null);return quote;
+  });
   const transaction={network:'-3',from:policy.intent.operator,validUntil:reservation.validUntil,messages:[structuredClone(policy.intent.message)]};policy.validateIntent(transaction,now);
   const fingerprint=await policy.fingerprint(transaction),model=structuredClone(await this.estimate({operation:kind,transaction:structuredClone(transaction),expectedSeqno:identity.seqno,fingerprint}));
   if(model?.network!=='-3'||model.fingerprint!==fingerprint||model.complete!==true||!Number.isSafeInteger(model.observedAt)||model.observedAt>this.clock()||this.clock()-model.observedAt>15000||!/^[0-9]+$/.test(model.senderFeesNano||'')||!/^[0-9]+$/.test(model.totalNetworkFeesNano||''))throw Error('Fresh exact complete fee emulation required');
   const policyLimit=kind===RECOVERY?20000000n:120000000n,gross=BigInt(policy.intent.message.amount)+BigInt(model.totalNetworkFeesNano);if(gross>policyLimit||BigInt(identity.balanceNano)<gross||BigInt(model.senderFeesNano)<=0n||BigInt(model.totalNetworkFeesNano)<BigInt(model.senderFeesNano))throw Error('Model exceeds fixed proposal policy');
-  const quoteExpiresAt=Math.min(Math.floor(this.clock()/1000)+60,transaction.validUntil),approval={fingerprint,validUntil:transaction.validUntil,observedAt:Math.floor(this.clock()/1000),quoteExpiresAt,expectedSeqno:identity.seqno,walletId:this.context.walletId,sourceIdentity:identity,modeledGrossDebitNano:gross.toString(),kind,revision:reservation.revision};
-  const draft={transaction,approval,model,originalFingerprint:this.context.oldFingerprint,scope:'OFFLINE_PREPARATION_ONLY',financialSigningEnabled:false,independentReviewComplete:false,independentAcquisitionVerified:false};
-  await this.storage.transaction(async tx=>{if(await tx.get('destinationReservation')||(await tx.get('quoteRevision'))!==reservation.revision)throw Error('Concurrent quote superseded');if(Math.floor(this.clock()/1000)>=quoteExpiresAt)throw Error('Quote expired during preparation');await tx.put('draft',draft);});
+  const quoteExpiresAt=Math.min(Math.floor(this.clock()/1000)+60,transaction.validUntil),approval={fingerprint,validUntil:transaction.validUntil,observedAt:Math.floor(this.clock()/1000),quoteExpiresAt,expectedSeqno:identity.seqno,walletId:this.context.walletId,sourceIdentity:identity,modeledGrossDebitNano:gross.toString(),kind,revision:reservation.revision,quoteRevision:reservation.revision,quoteScopeKey:reservation.scopeKey};
+  const draft={transaction,approval,model,...(snapshot.chainEvidence?{chainExpiryEvidence:structuredClone(snapshot.chainEvidence)}:{}),originalFingerprint:this.context.oldFingerprint,scope:'OFFLINE_PREPARATION_ONLY',financialSigningEnabled:false,independentReviewComplete:false,independentAcquisitionVerified:false};
+  await this.storage.transaction(async tx=>{if(await tx.get('destinationReservation')||(await tx.get('quoteRevision'))!==reservation.revision||(await tx.get('quote'))?.revision!==reservation.revision)throw Error('Concurrent quote superseded');if(Math.floor(this.clock()/1000)>=quoteExpiresAt)throw Error('Quote expired during preparation');await tx.put('draft',draft);});
   return freeze(structuredClone(draft));
  }
  async reserveOfflineAttempt(kind,fingerprint){
@@ -33,9 +42,10 @@ export class RecoveryPreparationLedger {
   if(kind===SUCCESSOR){const proof=await this.receipt();if(proof.seqnoAfter!==identity.seqno)throw Error('Receipt/source nonce mismatch');}
   const policy=operationPolicy(this.context,kind,identity.seqno);
   return this.storage.transaction(async tx=>{
-   const d=await tx.get('draft');if(await tx.get('destinationReservation')||d?.approval.fingerprint!==fingerprint||(await tx.get('quoteRevision'))!==d.approval.revision)throw Error('Duplicate or superseded destination reservation');
+   const d=await tx.get('draft'),q=await tx.get('quote');if(await tx.get('destinationReservation')||d?.approval.fingerprint!==fingerprint||d.approval.quoteRevision===undefined||(await tx.get('quoteRevision'))!==d.approval.quoteRevision||q?.revision!==d.approval.quoteRevision||q?.validUntil!==d.transaction.validUntil||q?.scopeKey!==d.approval.quoteScopeKey)throw Error('Duplicate or superseded destination reservation');
    if(Math.floor(this.clock()/1000)>=d.approval.quoteExpiresAt)throw Error('Expired quote');
    const operation=new FinancialOperation({storage:scopes(tx,kind+':')});operation.policy=policy;
+   await tx.put(kind+':quote',structuredClone(q));
    let response=await operation.fetch(json({action:'prepare',transaction:d.transaction,approval:d.approval}));if(!response.ok)throw Error('Preparation already reserved');
    response=await operation.fetch(json({action:'claim',transaction:d.transaction,fingerprint,requirePrepared:true,approvalReference:{scope:'OFFLINE_ONLY',originalFingerprint:this.context.oldFingerprint}}));if(!response.ok)throw Error('Existing permanent reservation');
    const result=await response.json();await tx.put('destinationReservation',{operation:kind,fingerprint,originalFingerprint:this.context.oldFingerprint,status:'RESERVED_PENDING_RECONCILIATION'});
@@ -86,7 +96,7 @@ export class RecoveryPreparationLedger {
     }
    }
   }
-  const id=await digest({protocol:'RECOVERY_RECEIPT_CHECK_V1',account:status.accountHash,block:checkpoint.evidence.referenceBlock,state:status.state});
+  const id=await digest({protocol:'RECOVERY_RECEIPT_CHECK_V2',ancestor:this.context.oldFingerprint,account:status.accountHash,state:status.state,receipt:status.sourceTransactionHash??null});
   await this.storage.transaction(async tx=>{if(!await tx.get('receiptCheck:'+id))await tx.put('receiptCheck:'+id,{...status,observedAt:this.clock()});await tx.put('lastReceiptCheck',id);});
   return status;
  }

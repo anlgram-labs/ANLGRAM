@@ -165,7 +165,12 @@ test('changed messages, StateInit, amount, expiry or network produce ZERO bridge
 test('independent UNPATCHED SDK control really repeats HTTP delivery with the SAME RPC ID',async t=>{
  const result=await esbuild({stdin:{contents:"export {TonConnect} from '@tonconnect/sdk';",resolveDir:new URL('../',import.meta.url).pathname.replace(/^\/([A-Za-z]:)/,'$1')},bundle:true,platform:'browser',format:'iife',globalName:'TON_CONNECT_UI',write:false,minify:true});
  const h=await harness({mode:'failed',control:true,bundleOverride:result.outputFiles[0].text}),controller=new AbortController();
- try{const pending=h.sdk.sendTransaction(h.transaction(),{signal:controller.signal});setTimeout(()=>controller.abort(),100);await assert.rejects(pending);assert(h.posts.length>1,'Unpatched negative control must expose multiple actual POSTs');assert.equal(new Set(h.decoded.map(r=>r.id)).size,1);t.diagnostic('Unpatched received POSTs='+h.posts.length+'; repeated transport RPC ID, NOT measured on-chain executions.');}finally{await h.close();}
+ try{const pending=h.sdk.sendTransaction(h.transaction(),{signal:controller.signal});pending.catch(()=>{});
+  // Observe the required second received POST within the existing bounded test
+  // wait. A CPU-sensitive 100ms abort could stop the control before its retry.
+  // No application quote/message deadline or SDK retry behavior is changed.
+  try{await until(()=>h.posts.length>1);}finally{controller.abort();await assert.rejects(pending);}
+  assert(h.posts.length>1,'Unpatched negative control must expose multiple actual POSTs');assert.equal(new Set(h.decoded.map(r=>r.id)).size,1);t.diagnostic('Unpatched received POSTs='+h.posts.length+'; repeated transport RPC ID, NOT measured on-chain executions.');}finally{await h.close();}
 });
 
 for(const mode of ['success','failed','lost','timeout','duplicate'])test('Curve #2 actual bundle '+mode+': one encrypted POST, permanent independent lock',async()=>{

@@ -31,9 +31,16 @@ export function parseWallet(context,source){
  const s=Cell.fromBase64(source.data).beginParse(),enabled=s.loadBit(),seqno=s.loadUint(32),walletId=s.loadUint(32),key=s.loadBuffer(32).toString('hex'),extensions=s.loadBit();s.endParse();
  if(!enabled||walletId!==context.walletId||key!==context.publicKey||extensions)throw Error('Unapproved V5 source identity/extensions');return seqno;
 }
+export function validateChainExpiry(context,s){
+ const proof=s.chainEvidence;
+ if(proof?.proofInclusionVerified!==true||!Number.isSafeInteger(proof.chainTime)||proof.chainTime<=context.oldValidUntil||proof.lastTransactionHash!==s.source.lastTransactionHash)throw Error('Corroborated masterchain time has not passed the approved ancestor deadline');
+ // This says nothing about the unknown bytes Tonkeeper may have signed.
+ // It never invalidates the old nonce, releases a lock, or authorizes dispatch.
+}
 export function validateSnapshot(context,s,expectedSeqno,now=Date.now()){
  if(s?.network!=='-3'||!Number.isSafeInteger(s.observedAt)||s.observedAt>now||now-s.observedAt>15000)throw Error('Fresh Testnet observation required');
  if(now<=context.oldValidUntil*1000)throw Error('Original request is still inside its approved expiry');
+ if(s.chainEvidence!==undefined)validateChainExpiry(context,s);
  const l=s.originalLock;
  if(l?.operation!==context.oldOperation||l.state!=='LOCKED_PENDING_RECONCILIATION'||l.fingerprint!==context.oldFingerprint||l.validUntil!==context.oldValidUntil||l.claimedAt!==context.oldClaimedAt)throw Error('Original uncertain lock lineage changed');
  const seqno=parseWallet(context,s.source);if(expectedSeqno!==undefined&&seqno!==expectedSeqno)throw Error('Stale source seqno');

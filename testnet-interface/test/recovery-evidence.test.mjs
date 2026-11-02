@@ -67,7 +67,7 @@ test('raw account scheduler uses exact read-only Testnet RPC and separates provi
 test('capture cannot overwrite an ancestor, claim finality or silently prune a full journal',async()=>{
  const h=fixture(),s=memory(),journal=new RecoveryEvidenceJournal(s),e=matchRawAccounts(h.primary,h.secondary,h.snapshot);
  for(const mutate of [x=>x.originalFingerprint='bad',x=>x.operationCompleted=true,x=>x.validatorFinalityVerified=true,x=>x.financialSigningEnabled=true]){const bad=structuredClone(e);mutate(bad);await assert.rejects(()=>journal.append(bad));}
- await s.put('evidence:index',Array.from({length:256},(_,i)=>String(i)));await assert.rejects(()=>journal.append(e),/capacity/);assert.equal((await s.get('evidence:index')).length,256);assert.equal(await s.get('evidence:last'),undefined);
+ await s.put('evidence:statesV2',Array.from({length:256},(_,i)=>String(i)));await assert.rejects(()=>journal.append(e),/capacity/);assert.equal((await s.get('evidence:statesV2')).length,256);assert.equal(await s.get('evidence:last'),undefined);
 });
 test('oversized raw provider response is rejected, never cached or interpreted as valid account evidence',async()=>{
  const save=globalThis.fetch,s=memory();let calls=0;

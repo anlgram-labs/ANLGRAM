@@ -29,13 +29,17 @@ async function read(env,name,referenceSeqno){
  need(j.network==='-3'&&j.dataStatus==='FRESH_PROVIDER_OBSERVATION'&&Number.isSafeInteger(j.observedAt)&&Math.abs(Date.now()-j.observedAt)<15000&&Date.now()-started<15000,'Fresh receipt acquisition required');
  need(name.endsWith('Secondary')?j.provider==='TONAPI_TESTNET':j.provider==='TONCENTER_TESTNET'&&j.authentication==='TESTNET_KEY_ACCEPTED','Fixed protected receipt provider required');return j;
 }
-export async function acquireReceiptCheckpoint(env,snapshot){
+export async function acquireProvenAccount(env,snapshot){
  const evidence=await acquireRawAccounts(env,snapshot),reference=await read(env,'recoveryMasterBlock',evidence.referenceBlock.seqno);
  const inclusion=verifyAccountInclusion(evidence.providerEvidence,reference.referenceBlock,pinned.operator);
  need(inclusion.accountHash===evidence.accountHash&&inclusion.lastTransactionHash===evidence.lastTransactionHash&&inclusion.lastTransactionLt===evidence.lastTransactionLt,'Proof differs from corroborated Account');
+ return{...evidence,accountProof:inclusion,independentReference:reference.referenceBlock,proofInclusionVerified:true};
+}
+export async function acquireReceiptCheckpoint(env,snapshot){
+ const evidence=await acquireProvenAccount(env,snapshot);
  const primary=await read(env,'operatorHistory'),secondary=await read(env,'operatorHistorySecondary'),rows=matchHistory(primary.history,secondary.history,evidence);
  // Pure account/history evidence remains useful without any authorized recovery.
- return{evidence:{...evidence,accountProof:inclusion,independentReference:reference.referenceBlock,proofInclusionVerified:true},rows};
+ return{evidence,rows};
 }
 function rowForVerifier(row,beforeBalance,afterBalance,dataBefore,dataAfter){
  const t=row.tx,d=t.description,m=t.inMessage;

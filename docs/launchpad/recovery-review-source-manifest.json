@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "EXTERNAL_REVIEW_CANDIDATE_NOT_AN_AUDIT_OR_FINANCIAL_AUTHORIZATION",
-  "recordedAt": "2026-11-02T15:41:53.811Z",
-  "ancestorCommit": "383785353de47a66b092f80ed979a3009c98c6a2",
+  "recordedAt": "2026-11-02T16:15:23.964Z",
+  "ancestorCommit": "36f2cb7d7d0e21fb651a644c3487a342dbdf8102",
   "branch": "codex/testnet-mvp-offline-sprint",
   "pullRequest": "https://github.com/anlgram-labs/ANLGRAM/pull/12",
   "network": "-3",
@@ -16,7 +16,7 @@
     "platform": "win32",
     "lineEndings": "Hashes are over exact checkout bytes; preserve line endings for reproduction"
   },
-  "executionVersion": "ad9a5c62ac03f6a1bfb36236fc3ff7bed53fb1333b829033e2493b0f1a2fadbf",
+  "executionVersion": "4f96ff8ae6e6437f0f939d24e0a89d1be2fa78978af5d063f269962cb3446069",
   "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
   "sourceSha256": {
     "build.mjs": "45625205a3d6379f3c178ca7deb3be83f06b1d35346c6af659fbbcab2ad2ade5",
@@ -25,7 +25,7 @@
     "single-attempt.mjs": "8f2c0c4bfcb59f8013b6d72ae8efdf322c3e48421831c70593c360d51dbbc88f",
     "sdk-patch.mjs": "31485e363b8dc5e6cc4c7c86db9262922c0823f53262ab0d58b11314a4e92161",
     "transaction-two.js": "cab919700aa4e76bc52fc1841b28a3faa7b4ee81f058686f5bd64caa8d085386",
-    "curve-operation.mjs": "5b28edd7d47226d880dc0f6f6703fc50cdcb5fb529797efca87c3e102b7ddac1",
+    "curve-operation.mjs": "09eb4e3537a7a6eddeac0d0dfb6ff82cdfc0f4a3556169ae115dd8be9c6bd273",
     "curve-authorization.mjs": "30ea523575ac9fb10ba678c0f97238352f713c09f4e4b2aadd69d652a1c579bf",
     "curve-policy.mjs": "541f81be3f130c4151f5dc14985b46862b65c577a051c3ad1214b0f5853fa944",
     "transaction-policy.mjs": "0dfb1d526590d7c90f5971d58c19cec03d79a86fc9d5d391492bdeaa1602dd0a",
@@ -33,29 +33,31 @@
     "operation-lock.mjs": "8b14bf6390cb80b13d2240fb5262a5776a6d24a87d72187242f3c8f8a20e281e",
     "proof.mjs": "c4347b97d86e855488fd1d02947ba334ef96129201f8ee53955581f2a9b82348",
     "prepare-minter-one.mjs": "bf87dbd1ce4d86a81af24b1911f5e13657bef020689124c0477c9631502a1743",
-    "testnet-rpc.mjs": "0dee898e5d2f1fb5b4efd2bdc36ed742aaf35c6d2c19127c7168d8ba783cdc24",
+    "testnet-rpc.mjs": "98bdc54d21fd9b288721174dcbf90d9bb7efc1a485d7d88ab658b63ca7fea189",
     "curve-emulation.mjs": "23168fd662ba5f4ea84c0c43100adf2f3aef00c16de709b2001d435a7c10eaca",
     "worker.mjs": "2e113dcb6c2d9eb5027ceec289126b37877fb267ecde4da1dfc516e027623d28",
     "config.mjs": "fc3dd5a9ee733d81678f124a39e6584ff4941cdd82ed4d6130169541ac3901cd",
     "package-lock.json": "d62b91018c9d98e77bdb37f24d2b6811425d596e603f730b93ae7c1064d3dd84",
-    "recovery/runtime.mjs": "467b679dd7a70ee1687126ef6f287db9d0f0f0c0493d442d2f1fed085194396b",
-    "recovery/ledger.mjs": "97af3bad3682529bd1c3d6772b50c9de12e068c4438788ed22e1fc1330fac73d",
-    "recovery/policy.mjs": "bdc4877cf34264ff3ce3f86b8ee138a814c8d46573d69063167b8c4cd9fc085e",
+    "recovery/runtime.mjs": "8358974932b6d5c1f4c76f6c4ee3dffb7963b0dfeaf2728d8bee5095a5a1a146",
+    "recovery/ledger.mjs": "3a8a895d0b08f8827059f1eab7f72022a5917be9c6d43a19142e3a8909cc92d1",
+    "recovery/policy.mjs": "7efd6dbc114f5ccac36ce173fa6bbad7f0e8e8fc400bdca708c1b9786faa6a5a",
     "recovery/emulation.mjs": "d7b9221cc28beddf292b253e079fe183d337445e7c4857b76bccad27d3d8971c",
-    "recovery/evidence.mjs": "e457c2ea187e7110341a3057a2ce548709374e65af835aa874a60524f93d2149",
+    "recovery/evidence.mjs": "fcea3830ce1bf9649aa2d72c8d1008d5c12a4a7f767a57504e8a508d7c21d4ba",
     "recovery/account-proof.mjs": "0b1a47e7da4705de6e65354de852bb1fd1304f3f27590e31fbaf8e766f81ba53",
-    "recovery/receipts.mjs": "53fba185771ea55917dbc253f808d25518f65f8e09ac22f921552fce4971b81f",
+    "recovery/receipts.mjs": "ecd0e4893d0d9bec5f429910af53b76b16f119f5da1132ee099df9c0ddeee7e1",
     "recovery-status.js": "701318d0c02bce378680ba53c8ed19048bca3d67bdea25f1eadea9a1ff9739b6",
     "../lib/v5-self-transfer-receipt.js": "378cc13a16b5c6da2ad8aa03bcdb0a172b77a47295188df0780758346df15dfa",
     "../lib/v5-deployment-receipt.js": "1c67795885f16e14e7cb441bf211da91ac2616a498ba10359b48f11cd72f1976"
   },
-  "compiledClientSha256": "6b1b330652084b73c85648d66c3bd44b913e888b06481710b4b2809c35545f61",
+  "compiledClientSha256": "184c3b45701bb2d679119300321c7870206145e3dcd4185777d06d745dcdd294",
   "tests": {
-    "sourceAndModel": 80,
-    "workerdSqlite": 4,
+    "sourceAndModel": 69,
+    "workerdSqlite": 5,
     "compiledSdkLocalBridges": 42,
-    "passed": 126,
-    "failed": 0
+    "passed": 116,
+    "failed": 0,
+    "scope": "Focused current-finding regressions; not unrelated wizard or full financial suites",
+    "initialFailure": "CPU-sensitive 100ms SDK negative control; test wait corrected without changing SDK or application expiry"
   },
   "knownLimits": [
     "Two-provider masterchain reference, not validator-set/quorum verification",
@@ -63,5 +65,6 @@
     "No real nonce-invalidation receipt exists yet",
     "Active recovery signing and successor remain disabled",
     "Owner has not assigned an external reviewer"
-  ]
+  ],
+  "antigravityAuditedCommit": "383785353de47a66b092f80ed979a3009c98c6a2"
 }

@@ -21,7 +21,7 @@ export function retryAfter(value,now=Date.now()){
 // The named object serializes all Pages instances. Only two fixed account reads
 // and the pinned invalid-signature minter emulation are supported, never sends.
 export class TestnetReads {
- constructor(state,env){this.state=state;this.env=env;this.tail=Promise.resolve();this.inflight=new Map();}
+ constructor(state,env){this.state=state;this.env=env;this.tails={primary:Promise.resolve(),secondary:Promise.resolve()};this.inflight=new Map();}
  async fetch(request){
   let input;try{input=await request.json();}catch{return json({error:'Invalid read'},400);}
   if(!input||typeof input!=='object'||Array.isArray(input)||input.network!=='-3'||!['operator','minter','fees','curve','jettonData','curveFees','curveWallet','buyerWallet','recoveryFees','operatorSecondary','operatorRaw','operatorRawSecondary','operatorHistory','operatorHistorySecondary','recoveryMasterBlock'].includes(input.account)||typeof input.fresh!=='boolean'||Object.keys(input).some(k=>!['network','account','fresh','validUntil','referenceSeqno'].includes(k)))return json({error:'Read not permitted'},400);
@@ -33,11 +33,11 @@ export class TestnetReads {
   const secondary=['operatorSecondary','operatorRawSecondary','operatorHistorySecondary'].includes(input.account);
   const key=secondary?(request.headers.get('X-Internal-Tonapi-Testnet-Key')?.trim()||this.env.TONAPI_TESTNET_API_KEY?.trim()):(request.headers.get('X-Internal-Testnet-Key')?.trim()||this.env.TONCENTER_TESTNET_API_KEY?.trim());
   const inflightKey=input.account+':'+input.fresh+':'+(input.validUntil??input.referenceSeqno??'default')+':'+(key||'anonymous');let pending=this.inflight.get(inflightKey);
-  if(!pending){pending=this.tail.then(()=>this.read(input,key));this.tail=pending.catch(()=>{});this.inflight.set(inflightKey,pending);pending.finally(()=>{if(this.inflight.get(inflightKey)===pending)this.inflight.delete(inflightKey);}).catch(()=>{});}
+  if(!pending){const lane=secondary?'secondary':'primary';pending=this.tails[lane].then(()=>this.read(input,key));this.tails[lane]=pending.catch(()=>{});this.inflight.set(inflightKey,pending);pending.finally(()=>{if(this.inflight.get(inflightKey)===pending)this.inflight.delete(inflightKey);}).catch(()=>{});}
   const result=await pending;return json(result.body,result.status,result.headers);
  }
  async read(input,key){
-  const secondary=['operatorSecondary','operatorRawSecondary','operatorHistorySecondary'].includes(input.account),rawState=['operatorRaw','operatorRawSecondary'].includes(input.account),history=['operatorHistory','operatorHistorySecondary'].includes(input.account),reference=input.account==='recoveryMasterBlock',gateKey=secondary?'gate:tonapi':'gate',spacing=secondary?2000:SPACING;
+  const secondary=['operatorSecondary','operatorRawSecondary','operatorHistorySecondary'].includes(input.account),rawState=['operatorRaw','operatorRawSecondary'].includes(input.account),history=['operatorHistory','operatorHistorySecondary'].includes(input.account),reference=input.account==='recoveryMasterBlock',gateKey=secondary?'gate:tonapi':'gate',spacing=secondary?(key?2000:4200):SPACING,maxWait=secondary&&!key?4500:2000;
   const now=()=>Date.now(),wait=ms=>new Promise(r=>setTimeout(r,ms));
   const cached=await this.state.storage.get('account:'+input.account);
   if(!input.fresh&&cached&&now()-cached.observedAt<TTL)return {status:200,body:{...cached,network:'-3',dataStatus:'SHORT_LIVED_CACHE',ageMs:now()-cached.observedAt}};
@@ -55,7 +55,7 @@ export class TestnetReads {
   let reason='PROVIDER_TRANSPORT',status=503;
   for(let attempt=0;attempt<2;attempt++){
    const delay=Math.max(0,gate.nextAt-now());
-   if(delay>2000)return this.unavailable(gate,status===429?429:gate.status||503,gate.reason||reason,cached);
+   if(delay>maxWait)return this.unavailable(gate,status===429?429:gate.status||503,gate.reason||reason,cached);
    if(delay)await wait(delay);
    await this.state.storage.put(gateKey,{...gate,nextAt:now()+spacing});
    try{

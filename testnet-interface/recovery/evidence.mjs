@@ -52,13 +52,21 @@ export class RecoveryEvidenceJournal {
   evidence=structuredClone(evidence);
   requireThat(evidence.originalFingerprint===pinned.oldFingerprint&&evidence.network==='-3'&&evidence.operator===pinned.operator&&evidence.scope==='CORROBORATED_RAW_ACCOUNT_NOT_FINALIZED_RECEIPT'&&typeof evidence.proofInclusionVerified==='boolean'&&evidence.validatorFinalityVerified===false&&evidence.operationCompleted===false&&evidence.financialSigningEnabled===false,'Raw capture cannot grant reconciliation authority');
   if(evidence.proofInclusionVerified)requireThat(evidence.accountProof?.proofInclusionVerified===true&&evidence.accountProof?.accountHash===evidence.accountHash&&evidence.accountProof?.lastTransactionHash===evidence.lastTransactionHash,'Verified inclusion binding required');
-  // Identity excludes capture time; identical provider evidence is idempotent.
-  const id=await digest({protocol:'RECOVERY_RAW_ACCOUNT_V1',ancestor:pinned.oldFingerprint,accountHash:evidence.accountHash,block:evidence.referenceBlock,...(evidence.proofInclusionVerified?{accountInclusion:true}:{})});
+  // A new masterchain block is not a new wallet state. Keep the first complete
+  // proof for each state/strength; historical timestamps are never refreshed.
+  const id=await digest({protocol:'RECOVERY_ACCOUNT_STATE_V2',ancestor:pinned.oldFingerprint,accountHash:evidence.accountHash,lastTransactionHash:evidence.lastTransactionHash,accountInclusion:evidence.proofInclusionVerified});
   return this.storage.transaction(async tx=>{
    const index=await tx.get('evidence:index')||[],prior=await tx.get('evidence:'+id);
    if(prior)return this.summary(prior,id,index.length);
-   requireThat(index.length<256,'Evidence journal capacity reached; preserve existing records');
+   // Lazily adopt old block-keyed records, including a saturated V1 journal.
+   // Never delete, overwrite, or evict the incident/before-state evidence.
+   const adopted=await tx.get('evidence:state:'+id);
+   if(adopted)return this.summary(await tx.get('evidence:'+adopted),adopted,index.length);
+   for(const oldId of index){const old=await tx.get('evidence:'+oldId);if(old?.accountHash===evidence.accountHash&&old.lastTransactionHash===evidence.lastTransactionHash&&old.proofInclusionVerified===evidence.proofInclusionVerified){await tx.put('evidence:state:'+id,oldId);return this.summary(old,oldId,index.length);}}
+   const states=await tx.get('evidence:statesV2')||[];
+   requireThat(states.length<256,'Distinct evidence state capacity reached; preserve existing records');
    const saved=structuredClone(evidence);await tx.put('evidence:'+id,saved);await tx.put('evidence:index',[...index,id]);
+   await tx.put('evidence:statesV2',[...states,id]);
    // Arrival order is not finality order; latest means last captured, not highest block.
    await tx.put('evidence:last',id);return this.summary(saved,id,index.length+1);
   });

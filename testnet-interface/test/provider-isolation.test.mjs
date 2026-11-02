@@ -3,6 +3,13 @@ import {TestnetReads,accountRead} from '../testnet-rpc.mjs';import {OPERATOR} fr
 const account={address:OPERATOR,status:'active',balance:'1000000000',code:'controlled-code',data:'controlled-data',last_transaction_hash:'11'.repeat(32)};
 function fixture(){const m=new Map(),state={storage:{get:async k=>structuredClone(m.get(k)),put:async(k,v)=>m.set(k,structuredClone(v))}},object=new TestnetReads(state,{});return{state,object,call:(name,fresh=true,headers={})=>object.fetch(new Request('https://internal/',{method:'POST',headers,body:JSON.stringify({network:'-3',account:name,fresh})}))};}
 async function controlled(fn){const saved={fetch,now:Date.now,timer:setTimeout};let t=Date.now();Date.now=()=>t;globalThis.setTimeout=(f,ms)=>{t+=ms;queueMicrotask(f);return 0;};try{await fn(ms=>{t+=ms;});}finally{globalThis.fetch=saved.fetch;Date.now=saved.now;globalThis.setTimeout=saved.timer;}}
+
+test('anonymous TonAPI spacing respects documented four-second quota without removing persistent gates or fresh-read checks',()=>controlled(async()=>{
+ const h=fixture(),times=[];globalThis.fetch=async()=>{times.push(Date.now());return Response.json(account);};
+ assert.equal((await h.call('operatorSecondary')).status,200);assert.equal((await h.call('operatorSecondary')).status,200);assert(times[1]-times[0]>=4200);
+ const keyed=fixture(),authorized=[];globalThis.fetch=async(_url,o)=>{assert.equal(o.headers.Authorization,'Bearer TESTNET_ONLY');authorized.push(Date.now());return Response.json(account);};
+ const headers={'X-Internal-Tonapi-Testnet-Key':'TESTNET_ONLY'};assert.equal((await keyed.call('operatorSecondary',true,headers)).status,200);assert.equal((await keyed.call('operatorSecondary',true,headers)).status,200);assert(authorized[1]-authorized[0]>=2000);
+}));
 test('independent provider cooldown persists but cannot poison authenticated TON Center reads; no stale secondary fallback',()=>controlled(async advance=>{
  const h=fixture();let secondary=0,primary=0,limited=false;globalThis.fetch=async(url,o)=>{if(url.startsWith('https://testnet.tonapi.io/')){secondary++;assert.equal(o.method,'GET');assert.equal(o.redirect,'manual');if(limited)return new Response(null,{status:429,headers:{'Retry-After':'30'}});return Response.json(account);}primary++;assert.equal(o.headers['X-API-Key'],'LOCAL_CENTER_KEY');return Response.json({ok:true,result:{state:'uninitialized',balance:'0'}});};
  assert.equal((await h.call('operatorSecondary')).status,200);advance(4000);limited=true;const r=await h.call('operatorSecondary');assert.equal(r.status,429);const j=await r.json();assert.equal(j.provider,'TONAPI_TESTNET');assert.equal(j.dataStatus,'STALE_NOT_SERVED');assert.equal(j.independentAccount,undefined);assert.equal(secondary,2);
