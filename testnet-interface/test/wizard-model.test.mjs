@@ -1,5 +1,5 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {createDraft,effective,units,format,validate,recipients,safeLogo,saveDraft,loadStore,normalizeDraft,KEY,previewBuy,CURVE} from '../wizard/model.mjs';
+import {createDraft,effective,units,format,validate,recipients,safeLogo,saveDraft,deleteDraft,parseRecipientsDetailed,loadStore,normalizeDraft,KEY,previewBuy,CURVE} from '../wizard/model.mjs';
 const owner='0QCBGet2_2SvVUrX_MZL0w0OuPqlbJtlHT3nbpWaEH2QYbBR';
 const other='0:1111111111111111111111111111111111111111111111111111111111111111';
 test('masterchain creator, recipient and vesting beneficiary cannot become unsupported Jetton transfer templates',()=>{
@@ -45,4 +45,25 @@ test('storage corruption, competing tabs and quota errors never overwrite saved 
 });
 test('preview reuses the existing integer Curve engine and settlement funding, never produces a live signing quote',()=>{
  const p=previewBuy('1');assert.equal(p.scope,'CONFIGURATION_PREVIEW_NOT_LIVE_QUOTE');assert.equal(p.financialSigningEnabled,false);assert.equal(p.settlementFundingNano,'40000000');assert(BigInt(p.attachmentNano)>40000000n);assert.throws(()=>previewBuy('0.04'));assert.throws(()=>previewBuy('1e2'));
+});
+test('deleteDraft removes target draft and updates selection revision; throws on mismatch',()=>{
+ const s=memory(),d1=valid(),d2=valid();d2.metadata.name='Second';
+ saveDraft(s,d1,0);saveDraft(s,d2,1);
+ assert.equal(loadStore(s).projects.length,2);
+ const updated=deleteDraft(s,d1.id,2);
+ assert.equal(updated.projects.length,1);
+ assert.equal(updated.projects[0].id,d2.id);
+ assert.equal(updated.selectedId,d2.id);
+ assert.throws(()=>deleteDraft(s,d2.id,2),/another tab/);
+});
+test('parseRecipientsDetailed yields structured entry status without throwing uncaught exceptions',()=>{
+ const d=valid();d.distribution.mode='custom';d.distribution.text=`address,amount\n${owner},100\ninvalid_address,50\n${owner},20`;
+ const entries=parseRecipientsDetailed(d);
+ assert.equal(entries.length,3);
+ assert.equal(entries[0].valid,true);
+ assert.equal(entries[0].formattedAddress.includes('...'),true);
+ assert.equal(entries[1].valid,false);
+ assert.match(entries[1].error,/address/i);
+ assert.equal(entries[2].valid,false);
+ assert.match(entries[2].error,/Duplicate/);
 });
