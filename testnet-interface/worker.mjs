@@ -1,4 +1,5 @@
 import execution from './execution-version.json' with {type:'json'};
+import {prepareProject} from './projects/prepare.mjs';
 import {verifyRuntimeAuthorization} from './curve-authorization.mjs';
 import {readMvpStatus,readCurveDispatch} from './mvp-status.mjs';
 import {curveOperationRoute,currentCurveAuthorization,storeCurveAuthorization} from './curve-operation.mjs';
@@ -26,12 +27,12 @@ export async function consumeChallenge(storage, challenge, now) {
     return true;
   });
 }
-async function boundedBody(request) {
+async function boundedBody(request,limit=24000) {
   if (!request.body) return '';
   const reader=request.body.getReader(), decoder=new TextDecoder();
   let size=0, raw='';
   try {
-    while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>24000)throw Error('Body too large');raw+=decoder.decode(value,{stream:true});}
+    while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>limit)throw Error('Body too large');raw+=decoder.decode(value,{stream:true});}
     return raw+decoder.decode();
   } finally { await reader.cancel(); }
 }
@@ -66,6 +67,11 @@ async function route(request,env) {
   let origin; try { origin=approvedOrigin(u.origin); } catch { return json({error:'Wrong Testnet origin'},403); }
   if (u.search) return json({error:'Query overrides are forbidden'},400);
   const path=u.pathname;
+  if(request.method==='POST'&&path==='/api/projects/prepare'){
+    if(request.headers.get('Origin')!==u.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Origin/content type rejected'},403);
+    let input;try{input=JSON.parse(await boundedBody(request,128000));}catch{return json({error:'Invalid or oversized project configuration'},400);}
+    try{return json(await prepareProject(input));}catch(e){return json({error:String(e.message).slice(0,2000),financialSigningEnabled:false},400);}
+  }
   if (request.method==='GET' && path==='/tonconnect-manifest.json') return json({url:origin.origin+'/',name:'ANLGRAM TESTNET ONLY — ownership proof',iconUrl:origin.origin+'/icon.png'},200,{'Access-Control-Allow-Origin':'*'});
   if (request.method==='GET' && path==='/api/config') {const dispatch=await readCurveDispatch(env),retired=dispatch.state!=='NOT_CLAIMED';return json({curveExecutionVersion:execution.sha256,network:CHAIN,operator:OPERATOR,minter:MINTER,
     manifestUrl:origin.origin+'/tonconnect-manifest.json',financialSigningEnabled:false,minterTransactionOnePreparationEnabled:preparationEnabled(env,u.origin),curveTransactionTwoRetired:retired,curveTransactionTwoPreparationEnabled:!retired&&u.origin==='https://testnet.anlgram.com',curveTransactionTwoSigningEnabled:!retired&&!!await currentCurveAuthorization(env),curveTransactionTwoRuntimeAuthorizationAvailable:/^[a-f0-9]{64}$/.test(env.CURVE_TX2_RUNTIME_AUTH_KEY||''),replayIsolationVerified:false});}

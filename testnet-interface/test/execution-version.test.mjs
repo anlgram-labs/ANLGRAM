@@ -4,12 +4,13 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import vm from 'node:vm';
 import version from '../execution-version.json' with {type:'json'};
+import {sourceSha256} from '../build-source-integrity.mjs';
 import {curveOperationRoute} from '../curve-operation.mjs';
 import {setup,authorize,proof,route} from './curve-fixture.mjs';
 test('execution ID independently reproduces from exact reviewed security sources and candidate',()=>{
  const {sha256,...payload}=version;const hash=b=>createHash('sha256').update(b).digest('hex');
  assert.equal(hash(JSON.stringify(payload)),sha256);
- for(const [file,h] of Object.entries(version.sources))assert.equal(hash(readFileSync(new URL('../'+file,import.meta.url))),h,file);
+ for(const [file,h] of Object.entries(version.sources))assert.equal(sourceSha256(readFileSync(new URL('../'+file,import.meta.url))),h,file);
  const audit=JSON.parse(readFileSync(new URL('../client-build.json',import.meta.url)));assert.equal(audit.executionVersion,sha256);
 });
 test('missing or incompatible client versions fail before provider reads, approvals or persistent claims',async()=>{

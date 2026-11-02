@@ -2,6 +2,9 @@ import {test} from 'node:test';import assert from 'node:assert/strict';
 import {createDraft,effective,units,format,validate,recipients,safeLogo,saveDraft,loadStore,normalizeDraft,KEY,previewBuy,CURVE} from '../wizard/model.mjs';
 const owner='0QCBGet2_2SvVUrX_MZL0w0OuPqlbJtlHT3nbpWaEH2QYbBR';
 const other='0:1111111111111111111111111111111111111111111111111111111111111111';
+test('masterchain creator, recipient and vesting beneficiary cannot become unsupported Jetton transfer templates',()=>{
+ const masterchain='-1:'+'22'.repeat(32),d=valid();d.metadata.creator=masterchain;assert.equal(validate(d).valid,false);d.metadata.creator=owner;d.allocations.community='1';d.distribution.mode='custom';d.distribution.text=masterchain+',1';assert.throws(()=>recipients(d),/workchain 0/);d.distribution.skip=true;d.allocations.team='1';Object.assign(d.vesting,{enabled:true,beneficiary:masterchain,amount:'1',startDate:'2027-01-01'});assert.equal(validate(d).valid,false);
+});
 function valid(){const d=createDraft();Object.assign(d.metadata,{name:'Real draft',symbol:'RDT',creator:owner});return d;}
 function memory(){const m=new Map();return{getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v),m};}
 test('both modes preserve configuration; launchpad effective economics are immutable and default LP lock is100% permanent',()=>{

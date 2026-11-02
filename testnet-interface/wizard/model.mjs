@@ -11,7 +11,7 @@ export function units(value,decimals){
  const n=BigInt(a)*10n**BigInt(decimals)+BigInt(b.padEnd(decimals,'0')||'0');if(n>max)throw Error('Amount exceeds supported token units.');return n;
 }
 export const format=(n,dec=9)=>{if(!Number.isInteger(dec)||dec<0||dec>18)return 'unavailable (invalid precision)';n=BigInt(n);const p=10n**BigInt(dec),f=(n%p).toString().padStart(dec,'0').replace(/0+$/,'');return(n/p).toString()+(f?'.'+f:'');};
-export function address(s){if(typeof s!=='string'||s.length>80||!s.trim())throw Error('Enter a valid TON wallet address.');return Address.parse(s.trim()).toRawString();}
+export function address(s){if(typeof s!=='string'||s.length>80||!s.trim())throw Error('Enter a valid TON wallet address.');const a=Address.parse(s.trim());if(a.workChain!==0)throw Error('Use a basechain (workchain 0) wallet; the existing Jetton wallets reject other workchains.');return a.toRawString();}
 export function safeLogo(s){
  if(!s)return '';
  if(typeof s!=='string'||s.length>360000)throw Error('Logo is too large.');
@@ -19,7 +19,7 @@ export function safeLogo(s){
  const u=new URL(s);if(u.protocol!=='https:'||u.username||u.password||u.port||/\.svg(?:$|[?#])/i.test(u.pathname))throw Error('Use an HTTPS raster image URL, or upload PNG/JPEG/WebP.');return u.href;
 }
 export function createDraft(id=crypto.randomUUID()){
- return{schema:1,network:'-3',id,stage:1,mode:'standard',metadata:{name:'',symbol:'',supply:'1000000000',decimals:'9',description:'',logo:'',creator:''},allocations:{creator:'0',community:'0',team:'0'},distribution:{skip:false,mode:'equal',amount:'0',text:''},vesting:{enabled:false,beneficiary:'',amount:'0',cliffMonths:'3',durationMonths:'12',startDate:''},lp:{percent:'100',duration:'permanent',beneficiary:'',controller:''},trade:{buyAttachment:'1',sellTokens:'0'},savedAt:null};
+ return{schema:1,network:'-3',id,stage:1,mode:'standard',metadata:{name:'',symbol:'',supply:'1000000000',decimals:'9',description:'',logo:'',creator:''},allocations:{creator:'0',community:'0',team:'0'},distribution:{skip:false,mode:'equal',amount:'0',text:'',batchSize:'4'},vesting:{enabled:false,beneficiary:'',amount:'0',cliffMonths:'3',durationMonths:'12',startDate:''},lp:{percent:'100',duration:'permanent',beneficiary:'',controller:''},trade:{buyAttachment:'1',sellTokens:'0'},savedAt:null};
 }
 export function normalizeDraft(input){
  if(input?.schema!==1||input.network!=='-3'||!/^[-a-f0-9]{36}$/.test(input.id||''))throw Error('Unsupported draft; existing data was preserved.');
@@ -51,7 +51,7 @@ export function validate(d){
  const allocated=Object.values(allocations).filter(n=>n!==null).reduce((a,b)=>a+b,0n);
  if(supply!==null&&allocated>supply)errors.push('Allocations exceed total supply.');
  if(d.mode==='launchpad'&&allocated>0n)errors.push('Launchpad is a fair launch: 80% Curve / 20% DEX, no free creator/team/community allocation. Optional future distributions require separately acquired, verified balances.');
- let list=[];if(!d.distribution.skip){list=check(()=>recipients(d),'Recipients')||[];const total=list.reduce((a,r)=>a+BigInt(r.amountUnits),0n);if(allocations.community!==null&&total>allocations.community)errors.push('Airdrop total exceeds the community allocation.');}
+ let list=[];if(!d.distribution.skip){if(!/^[1-4]$/.test(d.distribution.batchSize??'4'))errors.push('Choose 1–4 recipients per review batch. Actual wallet capability must be checked before signing.');list=check(()=>recipients(d),'Recipients')||[];const total=list.reduce((a,r)=>a+BigInt(r.amountUnits),0n);if(allocations.community!==null&&total>allocations.community)errors.push('Airdrop total exceeds the community allocation.');}
  if(d.vesting.enabled){check(()=>address(d.vesting.beneficiary),'Vesting beneficiary');const n=check(()=>units(d.vesting.amount,e.decimals),'Vesting amount');if(n===0n)errors.push('Vesting amount must be greater than zero.');if(n!==null&&allocations.team!==null&&n>allocations.team)errors.push('Vesting exceeds the team allocation.');if(!['1','3','6'].includes(d.vesting.cliffMonths)||!['6','12','24'].includes(d.vesting.durationMonths)||Number(d.vesting.cliffMonths)>Number(d.vesting.durationMonths))errors.push('Choose a supported cliff and duration.');if(!/^\d{4}-\d{2}-\d{2}$/.test(d.vesting.startDate)||!Number.isFinite(Date.parse(d.vesting.startDate+'T00:00:00Z'))||new Date(d.vesting.startDate+'T00:00:00Z').toISOString().slice(0,10)!==d.vesting.startDate)errors.push('Choose a valid vesting start date.');}
  if(d.mode==='launchpad'){
   const percent=check(()=>units(d.lp.percent,0),'LP percentage');if(percent!==null&&(percent<50n||percent>100n))errors.push('LP locking must be between 50% and 100%.');
