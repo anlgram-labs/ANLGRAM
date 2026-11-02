@@ -29,7 +29,7 @@ export async function observeRecovery(env,originalLock){
  }
  const source=observations.operator.account,last=hex(source.last_transaction_id?.hash||'');
  fail(/^[a-f0-9]{64}$/.test(last),'Source transaction hash unavailable');
- const secondary=await fetch('https://testnet.tonapi.io/v2/blockchain/accounts/'+pinned.operator,{redirect:'error',signal:AbortSignal.timeout(8000)});
+ const secondary=await fetch('https://testnet.tonapi.io/v2/blockchain/accounts/'+pinned.operator,{redirect:'manual',signal:AbortSignal.timeout(8000)});
  upstream(secondary);const other=await secondary.json();
  fail(other.address===pinned.operator&&other.status===source.state&&String(other.balance)===String(source.balance)&&other.last_transaction_hash===last&&Cell.fromHex(other.code).hash().toString('hex')===hash(source.code)&&Cell.fromHex(other.data).hash().toString('hex')===hash(source.data),'Independent source observations disagree; reconcile before any preparation');
  return{network:'-3',observedAt:Math.min(...Object.values(observations).map(o=>o.observedAt)),source:{state:source.state,code:source.code,data:source.data,balanceNano:String(source.balance),lastTransactionHash:last},minter:observations.minter.account,curve:{state:observations.curve.account.state,code:observations.curve.account.code,balanceNano:String(observations.curve.account.balance)},originalLock,corroboration:{providers:['TON Center Testnet','TonAPI Testnet'],scope:'CURRENT_ACCOUNT_MATCH_NOT_FINALIZED_TRANSACTION_RECEIPT',finalityVerified:false}};
