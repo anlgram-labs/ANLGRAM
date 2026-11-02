@@ -114,3 +114,24 @@ When a future read-only project observation endpoint is exposed, any value that 
 - **Build & CSS Integrity**: `public-pages/wizard-design.css` and `public-pages/wizard-labs.css` remain byte-identical to `assets/css/design-system.css` and `assets/css/anl-labs.css`; all responsive and accessibility rules live in `testnet-interface/wizard/wizard-accessibility.css`.
 
 Integration clarification: the project observation endpoint in section4 remains a future proposal, not a live route. Current offline preparation cannot prove any actual balance, reserve or deployment state; those values remain null/UNKNOWN. The frontend project-status projection rejects foreign scopes, and the separate ANLTEST panel remains account/getter observations only. LP percentage presets change percentage only; lock duration is independently selected and must not be inferred from a preset label.
+
+---
+
+## 6. Missing Read-Only Backend Fields for Curve V2, STON.fi v2.2 & LP Locker V2
+
+The frontend now renders full Curve V2 graduation tracking (`#curve-graduation-tracker`), STON.fi v2.2 migration and LP Locker V2 status (`#stonfi-migration-panel` and `#dashboard-migration-lp-card`), the 10-stage creator token lifecycle tracker (`#wizard-lifecycle-tracker`), and the 11-state financial/error diagnostics panel (`#wizard-financial-diagnostics`) via `testnet-interface/wizard/project-status.mjs`.
+
+Because `/api/projects/prepare` is an offline preparation route (`scope: 'OFFLINE_PROJECT_PREPARATION_NOT_AUTHORIZATION'`) and `/api/mvp/status` queries only the fixed historical `ANLTEST` accounts, the following read-only backend fields are currently **missing** for per-creator live observation and are therefore displayed as `UNKNOWN`, `UNAVAILABLE`, `PENDING`, or `NOT VERIFIED`:
+
+| Missing Read-Only Field | Expected Type / Values | Frontend Consumer in `wizard/project-status.mjs` | Current Fallback |
+| :--- | :--- | :--- | :--- |
+| `observation.scope` | `'AUTHENTICATED_PROJECT_OBSERVATION'` | `deriveLifecycleStage`, `migrationSummary` | `'CONFIGURATION_ONLY_NO_PROJECT_OBSERVATION'` |
+| `observation.lifecycleStage` | One of: `'DRAFT'`, `'DEPLOYMENT_PENDING'`, `'MINTER_DEPLOYED'`, `'CURVE_INITIALIZATION_PENDING'`, `'TRADING_ACTIVE'`, `'GRADUATION_REACHED'`, `'MIGRATION_PENDING'`, `'LP_CUSTODY_PENDING'`, `'LP_LOCKED'`, `'MIGRATION_FAILED_OR_PARTIAL'` | `deriveLifecycleStage(draft, prepared, observation)` | `'DRAFT'` (`confirmedOnChain: false`) |
+| `observation.realTonReserveNano` | Exact integer string (`"0"`..`"500000000000"`) or `null` | `migrationSummary` (`#curve-grad-ton`, `#curve-grad-bar`) | `null` → `'UNAVAILABLE (deployment UNKNOWN)'` |
+| `observation.curveInventoryUnits` | Exact integer string (`"0"`..`"800000000000000000"`) or `null` | `migrationSummary` (`#curve-grad-inventory`) | `null` → `'UNAVAILABLE (configured 800,000,000; on-chain reserve UNKNOWN)'` |
+| `observation.migrationDepositStatus` | `'NOT_SUBMITTED'` \| `'DEPOSIT_PENDING'` \| `'PARTIAL_DEPOSIT_HOLD'` \| `'POOL_MINTED'` \| `'MIGRATION_FAILED'` | `migrationSummary` (`Liquidity Deposit Status`) | `'NOT_SUBMITTED · BLOCKED'` |
+| `observation.migrationReceipts` | Array of `{ hop, transactionHash, finalized }` across Curve → Migration Binding V2 → STON.fi Router → Pool → LP Wallet → LP Locker V2 | `migrationSummary` & `#wizard-explorer-links` | `[]` → `'UNKNOWN · NO_AUTHENTIC_TRANSACTION'` |
+| `migration.custody.status` (live) | `'NOT_VERIFIED'` \| `'LP_CUSTODY_PENDING'` \| `'CONTRACT_RECORD_UNVERIFIED'` \| `'CUSTODY_VERIFIED'` | `lpLockerSummary` (`#lp-custody-badge`) | `'NOT_VERIFIED'` |
+| `migration.custody.received` / `locked` / `unlocked` | Exact integer strings of LP Jetton units or `null` | `lpLockerSummary` (`Locked & Unlocked LP Balances`) | `null` → `'UNKNOWN'` |
+| `migration.custody.unlockTimestamp` | Unix timestamp string (`uint64`) from confirmed on-chain lock start or `null` | `lpLockerSummary` (`Unlock Timestamp & Extension Policy`) | `null` → `'UNKNOWN until confirmed on-chain lock start'` |
+| `migration.withdrawalStatus` | `'NEVER_ELIGIBLE'` \| `'BLOCKED'` \| `'NO_PENDING_REQUEST'` \| `'PENDING_WALLET_OUTCOME'` | `lpLockerSummary` (`Withdrawal Eligibility & Restrictions`) | `'NEVER ELIGIBLE'` (permanent) or `'NOT ELIGIBLE · BLOCKED'` (timed) |
