@@ -1,3 +1,6 @@
+import {buildRecoveryEmulation} from './recovery/emulation.mjs';
+import {RECOVERY,pinned} from './recovery/policy.mjs';
+import candidate from '../docs/launchpad/testnet-v5-candidate.json' with {type:'json'};
 import {curveEmulation} from './curve-emulation.mjs';
 import curveIntent from './curve-two-intent.json' with {type:'json'};
 import {minterEmulation} from './minter-emulation.mjs';
@@ -15,11 +18,13 @@ export class TestnetReads {
  constructor(state,env){this.state=state;this.env=env;this.tail=Promise.resolve();this.inflight=new Map();}
  async fetch(request){
   let input;try{input=await request.json();}catch{return json({error:'Invalid read'},400);}
-  if(!input||typeof input!=='object'||Array.isArray(input)||input.network!=='-3'||!['operator','minter','fees','curve','jettonData','curveFees'].includes(input.account)||typeof input.fresh!=='boolean'||Object.keys(input).some(k=>!['network','account','fresh'].includes(k)))return json({error:'Read not permitted'},400);
+  if(!input||typeof input!=='object'||Array.isArray(input)||input.network!=='-3'||!['operator','minter','fees','curve','jettonData','curveFees','curveWallet','buyerWallet','recoveryFees'].includes(input.account)||typeof input.fresh!=='boolean'||Object.keys(input).some(k=>!['network','account','fresh','validUntil'].includes(k)))return json({error:'Read not permitted'},400);
+  if(input.validUntil!==undefined&&(!['curveFees','recoveryFees'].includes(input.account)||input.fresh!==true||!Number.isSafeInteger(input.validUntil)||input.validUntil<=Math.floor(Date.now()/1000)||input.validUntil>Math.floor(Date.now()/1000)+90))return json({error:'Invalid server quote deadline'},400);
+  if(input.account==='recoveryFees'&&(!input.fresh||input.validUntil===undefined))return json({error:'Exact recovery deadline required'},400);
   // Same-account readers share only an unfinished provider observation, never
   // a previously completed cached read when fresh=true.
   const key=request.headers.get('X-Internal-Testnet-Key')?.trim()||this.env.TONCENTER_TESTNET_API_KEY?.trim();
-  const inflightKey=input.account+':'+input.fresh+':'+(key||'anonymous');let pending=this.inflight.get(inflightKey);
+  const inflightKey=input.account+':'+input.fresh+':'+(input.validUntil??'default')+':'+(key||'anonymous');let pending=this.inflight.get(inflightKey);
   if(!pending){pending=this.tail.then(()=>this.read(input,key));this.tail=pending.catch(()=>{});this.inflight.set(inflightKey,pending);pending.finally(()=>{if(this.inflight.get(inflightKey)===pending)this.inflight.delete(inflightKey);}).catch(()=>{});}
   const result=await pending;return json(result.body,result.status,result.headers);
  }
@@ -29,9 +34,9 @@ export class TestnetReads {
   if(!input.fresh&&cached&&now()-cached.observedAt<TTL)return {status:200,body:{...cached,network:'-3',dataStatus:'SHORT_LIVED_CACHE',ageMs:now()-cached.observedAt}};
   // Explicitly no fallback to a Mainnet key, TONAPI_KEY, URL parameter or client key.
   const headers={'Content-Type':'application/json',...(key?{'X-API-Key':key}:{})};
-  const emulation=input.account==='fees'?await minterEmulation():input.account==='curveFees'?await curveEmulation():null;
+  const emulation=input.account==='fees'?await minterEmulation():input.account==='curveFees'?await curveEmulation(input.validUntil):input.account==='recoveryFees'?await buildRecoveryEmulation(RECOVERY,pinned.oldSeqno,input.validUntil):null;
   const getter=input.account==='jettonData';
-  const rpc={jsonrpc:'2.0',id:1,method:getter?'runGetMethod':'getAddressInformation',params:getter?{address:MINTER,method:'get_jetton_data',stack:[]}:{address:input.account==='operator'?OPERATOR:input.account==='curve'?curveIntent.message.address:MINTER}};
+  const rpc={jsonrpc:'2.0',id:1,method:getter?'runGetMethod':'getAddressInformation',params:getter?{address:MINTER,method:'get_jetton_data',stack:[]}:{address:input.account==='operator'?OPERATOR:input.account==='curve'?curveIntent.message.address:input.account==='curveWallet'?candidate.curveJettonWallet:input.account==='buyerWallet'?candidate.buyerJettonWallet:MINTER}};
   let gate=await this.state.storage.get('gate')||{nextAt:0,failures:0};
   let reason='PROVIDER_TRANSPORT',status=503;
   for(let attempt=0;attempt<2;attempt++){
@@ -40,11 +45,11 @@ export class TestnetReads {
    if(delay)await wait(delay);
    await this.state.storage.put('gate',{...gate,nextAt:now()+SPACING});
    try{
-    const response=await fetch(emulation?'https://testnet.toncenter.com/api/emulate/v1/emulateTrace':TESTNET_RPC+'/jsonRPC',{method:'POST',headers,body:JSON.stringify(emulation?emulation.request:rpc),redirect:'manual',signal:AbortSignal.timeout(8000)});
+    const response=await fetch(emulation?'https://testnet.toncenter.com/api/emulate/v1/emulateTrace':TESTNET_RPC+'/jsonRPC',{method:'POST',headers,body:JSON.stringify(emulation?(emulation.request||{boc:emulation.boc,ignore_chksig:true,include_code_data:true,with_actions:false}):rpc),redirect:'manual',signal:AbortSignal.timeout(8000)});
     let data;try{data=await response.json();}catch{data=null;}
     const code=response.ok&&data?.ok===false?Number(data.code):response.status;
     if(response.ok&&(emulation?data?.is_incomplete===false&&data.transactions&&typeof data.transactions==='object':data?.ok===true&&(getter?data.result?.exit_code===0&&Array.isArray(data.result?.stack)&&data.result.stack.length===5:/^\d+$/.test(String(data.result?.balance))&&['active','uninitialized','frozen'].includes(data.result?.state)))){
-     const value={...(emulation?{trace:data,bodyHash:emulation.bodyHash,validUntil:emulation.validUntil}:getter?{getterResult:data.result}:{account:data.result}),observedAt:now(),observedUtc:new Date().toISOString(),authentication:key?'TESTNET_KEY_ACCEPTED':'ANONYMOUS'};
+     const value={...(emulation?{trace:data,bodyHash:emulation.bodyHash,validUntil:emulation.validUntil??input.validUntil}:getter?{getterResult:data.result}:{account:data.result}),observedAt:now(),observedUtc:new Date().toISOString(),authentication:key?'TESTNET_KEY_ACCEPTED':'ANONYMOUS'};
      await this.state.storage.put('account:'+input.account,value);await this.state.storage.put('gate',{nextAt:now()+SPACING,failures:0});
      return {status:200,body:{...value,network:'-3',dataStatus:'FRESH_PROVIDER_OBSERVATION',ageMs:0}};
     }
@@ -61,7 +66,7 @@ export class TestnetReads {
  }
  unavailable(gate,status,reason,cached){const seconds=Math.max(1,Math.ceil((gate.nextAt-Date.now())/1000));return {status,headers:{'Retry-After':String(seconds)},body:{error:'Testnet provider unavailable; balance unknown',network:'-3',reason,retryAfterSeconds:seconds,dataStatus:cached?'STALE_NOT_SERVED':'UNAVAILABLE',lastObservationUtc:cached?.observedUtc}};}
 }
-export async function accountRead(env,account,fresh){
+export async function accountRead(env,account,fresh,validUntil){
  if(!env.TESTNET_READS)return json({error:'Testnet read scheduler not configured',reason:'READ_SERVICE_MISSING',network:'-3',dataStatus:'UNAVAILABLE'},503);
- return env.TESTNET_READS.get(env.TESTNET_READS.idFromName('toncenter-testnet-readonly-v1')).fetch(new Request('https://testnet-read.internal/',{method:'POST',headers:env.TONCENTER_TESTNET_API_KEY?.trim()?{'X-Internal-Testnet-Key':env.TONCENTER_TESTNET_API_KEY.trim()}:{},body:JSON.stringify({network:'-3',account,fresh})}));
+ return env.TESTNET_READS.get(env.TESTNET_READS.idFromName('toncenter-testnet-readonly-v1')).fetch(new Request('https://testnet-read.internal/',{method:'POST',headers:env.TONCENTER_TESTNET_API_KEY?.trim()?{'X-Internal-Testnet-Key':env.TONCENTER_TESTNET_API_KEY.trim()}:{},body:JSON.stringify({network:'-3',account,fresh,...(validUntil===undefined?{}:{validUntil})})}));
 }

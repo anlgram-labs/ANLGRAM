@@ -7,6 +7,7 @@
     const r=await fetch('/api/config',{cache:'no-store'}); if(!r.ok)throw Error('Configuración no disponible');
     const config=await r.json();
     if(config.network!=='-3'||config.financialSigningEnabled!==false||new URL(config.manifestUrl).origin!==location.origin)throw Error('Configuración insegura');
+    if(config.curveExecutionVersion!==TON_CONNECT_UI.curveExecutionVersion)throw Error('Version de ejecucion incompatible; recarga la pagina.');
     document.getElementById('operator').textContent=config.operator;
     document.getElementById('minter').textContent=config.minter;
     ui=new TON_CONNECT_UI.TonConnectUI({manifestUrl:config.manifestUrl,restoreConnection:false});

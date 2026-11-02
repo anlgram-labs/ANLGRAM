@@ -1,0 +1,67 @@
+{
+  "network": "-3",
+  "observedUtc": "2026-11-01T14:21:57.053Z",
+  "scope": "ACCOUNT_AND_GETTER_OBSERVATIONS_NOT_TRANSACTION_RECEIPTS",
+  "dataStatus": "FRESH_PROVIDER_OBSERVATIONS",
+  "observations": [
+    {
+      "name": "minter",
+      "observedAt": 1793542911378,
+      "dataStatus": "FRESH_PROVIDER_OBSERVATION"
+    },
+    {
+      "name": "jettonData",
+      "observedAt": 1793542912808,
+      "dataStatus": "FRESH_PROVIDER_OBSERVATION"
+    },
+    {
+      "name": "curve",
+      "observedAt": 1793542914133,
+      "dataStatus": "FRESH_PROVIDER_OBSERVATION"
+    },
+    {
+      "name": "curveWallet",
+      "observedAt": 1793542915682,
+      "dataStatus": "FRESH_PROVIDER_OBSERVATION"
+    },
+    {
+      "name": "buyerWallet",
+      "observedAt": 1793542917027,
+      "dataStatus": "FRESH_PROVIDER_OBSERVATION"
+    }
+  ],
+  "stage": "CURVE_NOT_DEPLOYED",
+  "minter": {
+    "address": "kQA5PEDpb0UPGsGUD0jByO9qNFd6PqyXPpMkTUyngd5-IYq8",
+    "supplyUnits": "0",
+    "decimals": 9,
+    "symbol": "ANLTEST",
+    "name": "ANLGRAM Testnet Settlement",
+    "admin": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "renouncedObserved": false
+  },
+  "curve": {
+    "address": "kQAfBL9a-9BPmFH6GVUYoUz0byuToTRHAwFAgqZXAyRo7kOW",
+    "accountState": "uninitialized",
+    "protocolState": null,
+    "reserves": null
+  },
+  "curveWallet": {
+    "state": "NOT_DEPLOYED",
+    "balanceUnits": null,
+    "owner": "0:1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee",
+    "master": "0:393c40e96f450f1ac1940f48c1c8ef6a34577a3eac973e93244d4ca781de7e21",
+    "custodyVerified": false
+  },
+  "buyerWallet": {
+    "state": "NOT_DEPLOYED",
+    "balanceUnits": null,
+    "owner": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "master": "0:393c40e96f450f1ac1940f48c1c8ef6a34577a3eac973e93244d4ca781de7e21",
+    "custodyVerified": false
+  },
+  "financialSigningEnabled": false,
+  "migrationEnabled": false,
+  "lpWithdrawalsEnabled": false,
+  "transactionOutcome": "NOT_VERIFIED_BY_ACCOUNT_SNAPSHOT"
+}

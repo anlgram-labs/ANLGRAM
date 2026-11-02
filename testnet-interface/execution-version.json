@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
+  "sources": {
+    "build.mjs": "152cd9d9caf2126291871b2c93fa82dc63c15ec856e1c40cb0ae492e95e814d7",
+    "app.js": "06a7b6dfc799cbbde02074a59e1d4c66fef71e68ef00a68b5ccabde5428f3d30",
+    "client-entry.mjs": "c04b1b3f9b8b61371b0da999450e8c4115b9bd097c6716eb5b5a354edcfeabd8",
+    "single-attempt.mjs": "8f2c0c4bfcb59f8013b6d72ae8efdf322c3e48421831c70593c360d51dbbc88f",
+    "sdk-patch.mjs": "31485e363b8dc5e6cc4c7c86db9262922c0823f53262ab0d58b11314a4e92161",
+    "transaction-two.js": "cab919700aa4e76bc52fc1841b28a3faa7b4ee81f058686f5bd64caa8d085386",
+    "curve-operation.mjs": "680a3363f27721f9f08e2a9f43063a6990a2a4eed31b4d6cc1a16e9439f80c18",
+    "curve-authorization.mjs": "30ea523575ac9fb10ba678c0f97238352f713c09f4e4b2aadd69d652a1c579bf",
+    "curve-policy.mjs": "541f81be3f130c4151f5dc14985b46862b65c577a051c3ad1214b0f5853fa944",
+    "transaction-policy.mjs": "0dfb1d526590d7c90f5971d58c19cec03d79a86fc9d5d391492bdeaa1602dd0a",
+    "curve-two-intent.json": "69397276553cc185d7f342df67995dd58bcf54f8569e2d25d511bc1660eb40ec",
+    "operation-lock.mjs": "8b14bf6390cb80b13d2240fb5262a5776a6d24a87d72187242f3c8f8a20e281e",
+    "proof.mjs": "c4347b97d86e855488fd1d02947ba334ef96129201f8ee53955581f2a9b82348",
+    "prepare-minter-one.mjs": "bf87dbd1ce4d86a81af24b1911f5e13657bef020689124c0477c9631502a1743",
+    "testnet-rpc.mjs": "979bc7bba6358f33508c6b51ce96b023cbb86cb013668eeaab7a2c501d05fc9e",
+    "curve-emulation.mjs": "23168fd662ba5f4ea84c0c43100adf2f3aef00c16de709b2001d435a7c10eaca",
+    "worker.mjs": "361c17584993ebc43a93afa99a76c610397df63c629855ed7a5c9bc2dcf612e6",
+    "config.mjs": "fc3dd5a9ee733d81678f124a39e6584ff4941cdd82ed4d6130169541ac3901cd",
+    "package-lock.json": "34a3b1477d33de0226c8639463b6eca50033093a4f88cc0504fe675d4a9dc642",
+    "recovery/runtime.mjs": "d73fc6e4704c3aaea552f634436d8c14349d3cb9d3f42a641f04b24085db54cc",
+    "recovery/ledger.mjs": "f4d7f26b2cd72c5356971ce4c31713066ce81a1f96fff11eb9c84a77a7f1d6ce",
+    "recovery/policy.mjs": "bdc4877cf34264ff3ce3f86b8ee138a814c8d46573d69063167b8c4cd9fc085e",
+    "recovery/emulation.mjs": "d7b9221cc28beddf292b253e079fe183d337445e7c4857b76bccad27d3d8971c"
+  },
+  "sha256": "32adefa9935c2156de81ef7c377ebc2290b1c7f4d86097b25bf9dcd8e6d51ed6"
+}

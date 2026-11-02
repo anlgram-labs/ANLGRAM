@@ -27,12 +27,15 @@ function request(path,{method='GET',headers={},body,plain=false}={}){
 }
 check('expected DNS CNAME',cname.includes('anlgram-testnet-preparation.pages.dev'));
 const redirect=await request('/',{plain:true});check('HTTP redirects to HTTPS',[301,302,307,308].includes(redirect.status)&&redirect.headers.location===origin+'/');
-for(const file of ['index.html','app.js','transaction-one.js','transaction-two.js','style.css','tonconnect-ui.min.js','icon.png','curve-two-preflight.json']){
+for(const file of ['index.html','app.js','transaction-one.js','transaction-two.js','mvp-status.js','style.css','tonconnect-ui.min.js','icon.png','curve-two-preflight.json']){
  const r=await request(file==='index.html'?'/':'/'+file);check('HTTPS asset '+file,r.status===200);
  check('exact deployed bytes '+file,createHash('sha256').update(r.bytes).digest('hex')===createHash('sha256').update(readFileSync(new URL('public-pages/'+file,import.meta.url))).digest('hex'));
 }
 const m=JSON.parse((await request('/tonconnect-manifest.json')).text);check('exact domain-bound manifest',m.url===origin+'/'&&m.iconUrl===origin+'/icon.png');
 const c=JSON.parse((await request('/api/config')).text);check('approved V5 Testnet configuration',c.network==='-3'&&c.operator===OPERATOR&&c.minter===MINTER&&c.financialSigningEnabled===false);
+const execution=JSON.parse(readFileSync(new URL('execution-version.json',import.meta.url)));
+check('server and compiled client execution version agree',c.curveExecutionVersion===execution.sha256);
+check('runtime administrative binding configured without financial authorization',c.curveTransactionTwoRuntimeAuthorizationAvailable===true&&c.curveTransactionTwoSigningEnabled===false);
 const headers={Origin:origin,'Content-Type':'application/json'};
 const challenge=await request('/api/proof/challenge',{method:'POST',headers,body:'{}'}),payload=JSON.parse(challenge.text),cookie=challenge.headers['set-cookie']?.[0];
 check('persistent domain challenge',challenge.status===200&&/^[a-f0-9]{64}$/.test(payload.payload));

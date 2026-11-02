@@ -2,11 +2,12 @@
 // Offline immutable configuration and disclosures. No signer/provider/UI activation.
 const fs=require('node:fs'),path=require('node:path');
 const ston=require('./stonfi-v22-addresses');
+const {unsigned}=require('../../lib/exact-integer');
 const DURATIONS=Object.freeze({permanent:0,days180:180*86400,days365:365*86400});
 function build(core,o){
  const percent=o.percent??100,duration=DURATIONS[o.duration??'permanent'];
  if(!Number.isInteger(percent)||percent<50||percent>100||duration===undefined)throw Error('Invalid LP lock terms');
- const q=BigInt(o.operationId);if(q<0n||q>0xffffffffffffffffn)throw Error('Invalid operation ID');
+ const q=unsigned(o.operationId,{max:0xffffffffffffffffn,error:'Invalid operation ID: exact uint64 required'});
  const a=x=>typeof x==='string'?core.Address.parse(x):x;
  const creator=a(o.creator),beneficiary=a(o.beneficiary??creator),controller=a(o.unlockedController??creator),contributor=a(o.contributor);
  const router=a(o.router),w0=a(o.pairWallet0),w1=a(o.pairWallet1);
@@ -24,11 +25,13 @@ function build(core,o){
 function disclosure(terms,observed){
  // A getter alone, or an expected address, cannot establish verifiable custody.
  // The existing v1 snapshot verifier does not support this new storage/interface.
- return{...terms,unlockTimestamp:observed?.unlockTimestamp??null,
-  recordedLocked:observed?.locked??'0',recordedUnlocked:observed?.unlocked??'0',pendingWithdrawal:observed?.pending??'0',
+ const amount=name=>observed?.[name]==null?null:unsigned(observed[name],{error:'Invalid exact LP observation'}).toString();
+ const pending=amount('pending');
+ return{...terms,unlockTimestamp:observed?.unlockTimestamp==null?null:unsigned(observed.unlockTimestamp,{max:0xffffffffffffffffn,error:'Invalid exact unlock timestamp'}).toString(),
+  recordedLocked:amount('locked'),recordedUnlocked:amount('unlocked'),pendingWithdrawal:pending,
   custodyStatus:observed?'CONTRACT_RECORD_UNVERIFIED':'PENDING_UNVERIFIED',
   label:observed?'LP contract record; custody verification pending':'LP custody pending',
-  withdrawalStatus:BigInt(observed?.pending??0)>0n?'PENDING_WALLET_OUTCOME':'NO_PENDING_REQUEST',
+  withdrawalStatus:pending===null?'UNVERIFIED':BigInt(pending)>0n?'PENDING_WALLET_OUTCOME':'NO_PENDING_REQUEST',
   externalCustodyVerifierSupported:false,migrationEnabled:false};
 }
 module.exports={build,disclosure,DURATIONS};
