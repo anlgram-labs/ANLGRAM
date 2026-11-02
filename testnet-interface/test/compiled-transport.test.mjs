@@ -215,3 +215,8 @@ test('review then exact runtime authorization retains browser fingerprint throug
   c.els['accept-two'].checked=true;c.els['accept-two'].onchange();await c.els['request-two'].onclick();assert.equal(h.posts.length,1);assert.equal(h.decoded.length,1);assert.equal(backend.values.get('operation').status,'LOCKED_PENDING_RECONCILIATION');
  }finally{await h.close();}
 });
+
+test('disabled recovery operation is rejected by the exact compiled application SDK with ZERO received financial POSTs',async()=>{
+ const {operationPolicy,pinned,RECOVERY}=await import('../recovery/policy.mjs');
+ const h=await harness();try{const p=operationPolicy(pinned,RECOVERY,1),tx={network:'-3',from:pinned.operator,validUntil:Math.floor(Date.now()/1000)+90,messages:[structuredClone(p.intent.message)]};await assert.rejects(h.sdk.sendTransaction(tx));assert.equal(h.posts.length,0);assert(!h.store.values.has('operation'));}finally{await h.close();}
+});
