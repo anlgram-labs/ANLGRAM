@@ -1,5 +1,5 @@
 {
-  "observedUtc": "2026-11-01T01:32:19.710Z",
+  "observedUtc": "2026-11-02T16:48:32.521Z",
   "origin": "https://anlgram-testnet-preparation.pages.dev",
   "checks": [
     {
@@ -112,8 +112,17 @@
   "signaturesRequested": 0,
   "broadcasts": 0,
   "balanceObservation": {
-    "http": 503,
-    "error": "Testnet provider unavailable; balance unknown"
+    "http": 200,
+    "network": "-3",
+    "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "balanceNano": "5893016464",
+    "state": "active",
+    "source": "TON Center Testnet",
+    "observedUtc": "2026-11-02T16:48:35.625Z",
+    "verification": "PROVIDER_OBSERVATION",
+    "dataStatus": "FRESH_PROVIDER_OBSERVATION",
+    "ageMs": 0,
+    "authentication": "TESTNET_KEY_ACCEPTED"
   },
   "limits": [
     "Real V5 owner ton_proof pending; rejection tests are not ownership proof.",
