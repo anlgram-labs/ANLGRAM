@@ -84,7 +84,7 @@ async function route(request,env) {
     }
     if(!env.CURVE_OPERATIONS)return json({error:'Persistent operation service unavailable'},503);
     const stub=env.CURVE_OPERATIONS.get(env.CURVE_OPERATIONS.idFromName('ANLTEST_CURVE_TX2:'+OPERATOR));
-    return stub.fetch(new Request('https://curve-operation.internal/',{method:'POST',headers:env.TONCENTER_TESTNET_API_KEY?{'X-Internal-Testnet-Key':env.TONCENTER_TESTNET_API_KEY}:{},body:JSON.stringify({action:'recovery:'+action,runtimeVersion:execution.sha256})}));
+    return stub.fetch(new Request('https://curve-operation.internal/',{method:'POST',headers:{...(env.TONCENTER_TESTNET_API_KEY?{'X-Internal-Testnet-Key':env.TONCENTER_TESTNET_API_KEY}:{}),...(env.TONAPI_TESTNET_API_KEY?{'X-Internal-Tonapi-Testnet-Key':env.TONAPI_TESTNET_API_KEY}:{})},body:JSON.stringify({action:'recovery:'+action,runtimeVersion:execution.sha256})}));
   }
   if(request.method==='POST'&&path==='/api/curve-two/authorize'){
     if(u.origin!=='https://testnet.anlgram.com'||request.headers.get('Origin')!==u.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Canonical administration origin required'},403);
@@ -154,7 +154,7 @@ async function route(request,env) {
     for(const name of ['operator','minter']){const r=await accountRead(env,name,true);const data=await r.json();if(!r.ok)return json(data,r.status,{'Retry-After':r.headers.get('Retry-After')||'1'});observations[name]=data;}
     return json({network:CHAIN,observations,financialSigningEnabled:false});
   }
-  if (request.method==='GET' && ['/', '/app.js', '/transaction-one.js', '/transaction-two.js', '/mvp-status.js', '/recovery-status.js', '/style.css', '/tonconnect-ui.min.js', '/icon.png', '/curve-two-preflight.json'].includes(path)) return env.ASSETS.fetch(request);
+  if (request.method==='GET' && ['/', '/memelabs.html', '/memelabs.js', '/wizard-design.css', '/wizard-labs.css', '/wizard-accessibility.css', '/app.js', '/transaction-one.js', '/transaction-two.js', '/mvp-status.js', '/recovery-status.js', '/style.css', '/tonconnect-ui.min.js', '/icon.png', '/curve-two-preflight.json'].includes(path)) return env.ASSETS.fetch(request);
   return json({error:'Unavailable; financial actions are disabled'},404);
 }
 export default {

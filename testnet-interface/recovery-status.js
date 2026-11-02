@@ -8,7 +8,7 @@
   if(busy)return;busy=true;refresh.disabled=prepare.disabled=true;out.textContent='Consultando Testnet; no se solicita ninguna firma.';
   try{
    const r=await fetch('/api/recovery/'+action,{...(action==='prepare'?{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}:{}),cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(45000)}),j=await r.json();
-   if(!r.ok)throw Error(j.error||'Datos no disponibles; no reintentar una operación financiera.');
+   if(!r.ok)throw Error((j.reason==='PROVIDER_RATE_LIMITED'?`${j.provider||'Testnet provider'}: HTTP 429. Wait ${j.retryAfterSeconds||1}s; no stale quote is used.`:j.error)||'Datos no disponibles; no reintentar una operación financiera.');
    if(j.scope!=='SERVER_RECOVERY_PREPARATION_NOT_EXECUTION'||j.financialSigningEnabled!==false)throw Error('Respuesta incompatible; firma cerrada.');
    if(action==='status'||action==='observe'){
     if(j.executionEnabled!==false||j.successor?.eligibleForAuthorization!==false)throw Error('Configuración rechazada.');

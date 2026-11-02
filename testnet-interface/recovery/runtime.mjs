@@ -12,8 +12,8 @@ const json=(b,status=200)=>Response.json(b,{status,headers:{'Cache-Control':'no-
 function upstream(response,body){
  if(response.ok)return;
  const e=Error('Fresh recovery provider unavailable');e.status=response.status===429?429:503;
- e.reason=e.status===429?'PROVIDER_RATE_LIMITED':'PROVIDER_UNAVAILABLE';
- e.retryAfterSeconds=Math.min(300,Math.max(1,Number(body?.retryAfterSeconds)||Number(response.headers.get('Retry-After'))||1));throw e;
+ e.provider=body?.provider==='TONAPI_TESTNET'?'TONAPI_TESTNET':'TONCENTER_TESTNET';e.reason=e.status===429?'PROVIDER_RATE_LIMITED':'PROVIDER_UNAVAILABLE';
+ e.retryAfterSeconds=Math.max(1,Number(body?.retryAfterSeconds)||Number(response.headers.get('Retry-After'))||1);throw e;
 }
 
 // Server-only fixed provider acquisition. An account snapshot corroborates
@@ -29,8 +29,8 @@ export async function observeRecovery(env,originalLock){
  }
  const source=observations.operator.account,last=hex(source.last_transaction_id?.hash||'');
  fail(/^[a-f0-9]{64}$/.test(last),'Source transaction hash unavailable');
- const secondary=await fetch('https://testnet.tonapi.io/v2/blockchain/accounts/'+pinned.operator,{redirect:'manual',signal:AbortSignal.timeout(8000)});
- upstream(secondary);const other=await secondary.json();
+ const secondary=await accountRead(env,'operatorSecondary',true),secondaryBody=await secondary.json();upstream(secondary,secondaryBody);
+ fail(secondaryBody.network==='-3'&&secondaryBody.dataStatus==='FRESH_PROVIDER_OBSERVATION'&&Number.isSafeInteger(secondaryBody.observedAt)&&Math.abs(Date.now()-secondaryBody.observedAt)<15000,'Fresh independent Testnet read unavailable');const other=secondaryBody.independentAccount;
  fail(other.address===pinned.operator&&other.status===source.state&&String(other.balance)===String(source.balance)&&other.last_transaction_hash===last&&Cell.fromHex(other.code).hash().toString('hex')===hash(source.code)&&Cell.fromHex(other.data).hash().toString('hex')===hash(source.data),'Independent source observations disagree; reconcile before any preparation');
  return{network:'-3',observedAt:Math.min(...Object.values(observations).map(o=>o.observedAt)),source:{state:source.state,code:source.code,data:source.data,balanceNano:String(source.balance),lastTransactionHash:last},minter:observations.minter.account,curve:{state:observations.curve.account.state,code:observations.curve.account.code,balanceNano:String(observations.curve.account.balance)},originalLock,corroboration:{providers:['TON Center Testnet','TonAPI Testnet'],scope:'CURRENT_ACCOUNT_MATCH_NOT_FINALIZED_TRANSACTION_RECEIPT',finalityVerified:false}};
 }

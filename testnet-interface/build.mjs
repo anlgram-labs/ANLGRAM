@@ -26,3 +26,5 @@ writeFileSync(new URL('client-build.json',import.meta.url),JSON.stringify({execu
 cpSync(new URL('../assets/images/icon-512.png',import.meta.url),new URL('public/icon.png',import.meta.url));
 
 const curveReport=JSON.parse(readFileSync(new URL('../docs/launchpad/testnet-curve-two-preflight.json',import.meta.url))),sandboxReport=JSON.parse(readFileSync(new URL('../docs/launchpad/testnet-curve-two-sandbox.json',import.meta.url)));assert.equal(curveReport.destination,curveIntent.message.address);assert.equal(curveReport.network,'-3');assert.equal(curveReport.readyForSigning,false);assert.equal(curveReport.broadcast,false);assert.equal(sandboxReport.evidence,'LOCAL_SOURCE_COMPILED_SANDBOX_ONLY');assert.equal(sandboxReport.curveDataHash,curveReport.dataHash);const publishedReport={...curveReport,initialCurve:{...curveReport.initialCurve,treasury:undefined},sandbox:sandboxReport};writeFileSync(new URL('public/curve-two-preflight.json',import.meta.url),JSON.stringify(publishedReport,null,2)+'\n');
+
+await import('./wizard/build.mjs');
