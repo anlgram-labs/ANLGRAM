@@ -1,0 +1,118 @@
+{
+  "observedAt": "2026-11-02T15:12:24.367Z",
+  "commit": "60f844f",
+  "deployment": "https://93fd56ff.anlgram-testnet-preparation.pages.dev",
+  "storageWorkerVersion": "7b97dc85-2ef3-4a21-8b5c-d818f17013ee",
+  "scope": "PUBLIC_HTTPS_API_AND_EXACT_ASSET_CHECK_NOT_BROWSER_OR_FINALIZED_RECEIPT",
+  "financialRequests": 0,
+  "checks": [
+    {
+      "name": "Testnet root HTTPS",
+      "passed": true
+    },
+    {
+      "name": "Published wizard preserved",
+      "passed": true
+    },
+    {
+      "name": "Exact reviewed execution version",
+      "passed": true
+    },
+    {
+      "name": "Mainnet signing disabled",
+      "passed": true
+    },
+    {
+      "name": "Original Curve retired",
+      "passed": true
+    },
+    {
+      "name": "Original lock permanently preserved",
+      "passed": true
+    },
+    {
+      "name": "New journal deployed; no invented capture",
+      "passed": true
+    },
+    {
+      "name": "Recovery and successor disabled",
+      "passed": true
+    },
+    {
+      "name": "Capture requires owner domain proof",
+      "passed": true
+    },
+    {
+      "name": "Client evidence injection rejected",
+      "passed": true
+    },
+    {
+      "name": "Closed recovery route execute",
+      "passed": true
+    },
+    {
+      "name": "Closed recovery route reset",
+      "passed": true
+    },
+    {
+      "name": "Closed recovery route reconcile",
+      "passed": true
+    },
+    {
+      "name": "Closed recovery route receipt",
+      "passed": true
+    },
+    {
+      "name": "Closed recovery route successor",
+      "passed": true
+    },
+    {
+      "name": "Canonical ownership-proof domain",
+      "passed": true
+    },
+    {
+      "name": "Exact tested single-attempt client bundle",
+      "passed": true
+    },
+    {
+      "name": "Protected Testnet balance available",
+      "passed": true,
+      "detail": {
+        "status": 200,
+        "balanceNano": "5893016464",
+        "dataStatus": "FRESH_PROVIDER_OBSERVATION"
+      }
+    },
+    {
+      "name": "Minter checkpoint endpoint available",
+      "passed": true,
+      "detail": {
+        "status": 200
+      }
+    }
+  ],
+  "passed": 19,
+  "failed": 0,
+  "providerObservation": {
+    "status": 200,
+    "currentChain": {
+      "observedAt": 1793632340345,
+      "seqno": 1,
+      "balanceNano": "5893016464",
+      "lastTransactionHash": "d2e8fd5233eb8bf05a428605ea3735d67a1b50741826bb6996156ec49020dc21",
+      "curveState": "uninitialized",
+      "minterState": "active",
+      "corroboration": {
+        "providers": [
+          "TON Center Testnet",
+          "TonAPI Testnet"
+        ],
+        "scope": "CURRENT_ACCOUNT_MATCH_NOT_FINALIZED_TRANSACTION_RECEIPT",
+        "finalityVerified": false
+      },
+      "scope": "CURRENT_ACCOUNTS_NOT_FINALIZED_OPERATION"
+    }
+  },
+  "positiveLiveCaptureVerified": false,
+  "proofRenewalRequested": false
+}
