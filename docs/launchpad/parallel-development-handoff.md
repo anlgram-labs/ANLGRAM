@@ -1,6 +1,6 @@
 # Codex / Antigravity coordination and backend data contract
 
-Checkpoint: PR #16 head6d7aa24. Backend continuation branch: codex/project-receipt-backend. No frontend files are changed by this continuation. Antigravity's branch has not been merged, overwritten or checked out; fetch did not identify a newly named UX branch, so its exact ref is not assumed.
+Checkpoint: PR #16 head6d7aa24. Backend continuation branch: codex/project-receipt-backend. No frontend files are changed by this continuation. Antigravity's branch has not been merged, overwritten or checked out. Subsequently identified and fetched PR #17 feature/memelabs-ux-finalization at a4533ff8c1cec7f576215b14187baa7b27234074; targeted shared-model/API handoff review is recorded below.
 
 ## Ownership and shared boundary
 
@@ -39,3 +39,15 @@ Tests: nine focused project/adapter cases passed, including a synthetic locally 
 ## Financial gates preserved
 
 Original Curve #2 LOCKED_PENDING_RECONCILIATION and history are unchanged. No recovery/unlock/rearm, minter deployment, minting, trading, migration, withdrawal or TON spending. No tokenomics/donation/artifact changes. Authentic provenance/finality, independent review, per-creator ownership/fresh fees and compatible V2 Curve-to-migrator handoff remain prerequisites. LP deterministic addresses and custody floors must not be presented as exact migration-attributable final custody.
+
+## Targeted compatibility review of Antigravity PR #17
+
+Reviewed a4533ff8c1cec7f576215b14187baa7b27234074 by git show/diff only. Its new UX helpers and presentation are preserved; no automatic integration or conflict resolution occurred. This is a shared-contract comparison, not a full frontend audit.
+
+- Shared `wizard/model.mjs` address helper differs from our6d7aa24 baseline: PR #17 still accepts masterchain addresses, lacking3191ff6's workchain0 rejection required by existing Jetton wallet error333. Carry forward the reviewed basechain restriction during integration; do not remove it while retaining the new UI parsing/deletion helpers. The backend receipt change does not edit that file.
+- `docs/memelabs/frontend-backend-handoff.md` section2 describes a1000TON graduation target. Actual preserved DEFAULT_CONFIG is500TON; no economic change is authorized. Any future progress display must read the actual contract/configuration rather than adopting the proposed figure.
+- Its section5 storage-key description differs from actual shared KEY `anlgram:testnet:memelabs-drafts:v1`. Preserve existing drafts or provide a separately reviewed non-destructive migration; do not silently adopt the illustrative alternate name.
+- Proposed `/api/projects/:draftId/status`, `PROJECT_OBSERVATION_AND_FINALIZED_RECEIPTS`, `EXPIRED_NO_BROADCAST` and new freshness labels are NOT implemented contracts today. They are requests, not supported backend behavior. Chain expiry and unchanged seqno alone cannot assert that an old request was never signed/broadcast, release the original lock or manufacture finalized completion.
+- Proposed status examples use zero balances under NOT_VERIFIED. Unknown custody must remain null/unavailable; zero is permissible only with authentic observed evidence. Two provider responses alone must not be labeled independent validator finality. Preserve the existing distinction between account/getter observations, matched receipt fields and authenticated finalized evidence.
+
+No review observation authorizes changes to Antigravity's branch, production or any financial gate. PR #18 isolates the new backend receipt adapter. These shared-schema differences must be reviewed before combining PR #17 with the latest Codex baseline.
