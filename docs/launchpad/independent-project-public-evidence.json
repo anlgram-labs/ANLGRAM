@@ -1,0 +1,17 @@
+{
+  "observedUtc": "2026-11-02T20:27:49.509Z",
+  "sourceCommit": "3191ff6",
+  "pagesDeployment": "33d48538",
+  "workerVersion": "5742c0cf-d9f2-4b42-9e65-1bc19b3eac7c",
+  "url": "https://testnet.anlgram.com/memelabs",
+  "executionMatches": true,
+  "sdkHashMatches": true,
+  "wizardHashMatches": true,
+  "network": "-3",
+  "financialSigningEnabled": false,
+  "originalCurveRetired": true,
+  "originalCurveSigning": false,
+  "masterchainRejected": true,
+  "signaturesRequested": 0,
+  "transactionsBroadcast": 0
+}
