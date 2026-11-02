@@ -56,14 +56,18 @@ test('deleteDraft removes target draft and updates selection revision; throws on
  assert.equal(updated.selectedId,d2.id);
  assert.throws(()=>deleteDraft(s,d2.id,2),/another tab/);
 });
-test('parseRecipientsDetailed yields structured entry status without throwing uncaught exceptions',()=>{
- const d=valid();d.distribution.mode='custom';d.distribution.text=`address,amount\n${owner},100\ninvalid_address,50\n${owner},20`;
+test('parseRecipientsDetailed yields structured entry status and enforces basechain workchain 0',()=>{
+ const masterchain='-1:'+'22'.repeat(32);
+ const d=valid();d.distribution.mode='custom';d.distribution.text=`address,amount\n${owner},100\n${other},50\n${masterchain},25\ninvalid_address,50\n${owner},20`;
  const entries=parseRecipientsDetailed(d);
- assert.equal(entries.length,3);
+ assert.equal(entries.length,5);
  assert.equal(entries[0].valid,true);
  assert.equal(entries[0].formattedAddress.includes('...'),true);
- assert.equal(entries[1].valid,false);
- assert.match(entries[1].error,/address/i);
+ assert.equal(entries[1].valid,true);
  assert.equal(entries[2].valid,false);
- assert.match(entries[2].error,/Duplicate/);
+ assert.match(entries[2].error,/workchain 0/);
+ assert.equal(entries[3].valid,false);
+ assert.match(entries[3].error,/address/i);
+ assert.equal(entries[4].valid,false);
+ assert.match(entries[4].error,/Duplicate/);
 });

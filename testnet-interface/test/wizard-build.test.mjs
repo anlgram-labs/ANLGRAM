@@ -9,6 +9,7 @@ test('published wizard reuses original styles and six forms, with no legacy inli
  const html=readFileSync(new URL('../public-pages/memelabs.html',import.meta.url),'utf8'),controller=readFileSync(new URL('../wizard/controller.mjs',import.meta.url),'utf8');
  for(let n=1;n<=6;n++)assert(html.includes(`id="wizard-panel-${n}"`));assert(!/\son[a-z]+\s*=/.test(html));assert(!html.includes('anl-labs.js'));assert(!html.includes('launchpad.js'));assert(!controller.includes('.sendTransaction('));assert(!controller.includes('/api/operation/claim'));assert(!controller.includes('/api/curve-two/claim'));
  assert.match(html,/<button[^>]*disabled>Create on-chain/);assert.match(html,/<button[^>]*disabled>Buy/);assert.match(html,/<button[^>]*disabled>Sell/);assert(html.includes('0.02 TON'));assert(html.includes('NOT your draft token'));assert(!controller.includes('testnet-mvp-offline-plan.json'),'new user guidance must not use ANLTEST operations');
+ assert(html.includes('500 Real TON Target'));assert(!html.includes('1,000 Real TON Target'));assert(!html.includes('1,000 TON'));
  for(const id of ['wizard-mode-cards','wizard-step1-feedback','labs-allocation-summary','labs-csv-example-btn','labs-recipients-table-wrap','curve-sim-card','lp-custody-badge'])assert(html.includes(`id="${id}"`),`missing UX element ${id}`);
  assert.deepEqual(readFileSync(new URL('../public-pages/wizard-accessibility.css',import.meta.url)),readFileSync(new URL('../wizard/wizard-accessibility.css',import.meta.url)));
  assert.deepEqual(readFileSync(new URL('../public-pages/wizard-labs.css',import.meta.url)),readFileSync(new URL('../../assets/css/anl-labs.css',import.meta.url)));assert.deepEqual(readFileSync(new URL('../public-pages/wizard-design.css',import.meta.url)),readFileSync(new URL('../../assets/css/design-system.css',import.meta.url)));
@@ -39,6 +40,20 @@ test('compiled memelabs bundle executes full six-step user journey, presets, CSV
  assert.equal(els['labs-recipients-tbody'].children.length,3);
  // Switch to Launchpad via mode card and test Step 3 & Step 4 presets
  modeLaunchpad.onclick();assert.equal(els['wizard-mode'].value,'launchpad');
+ assert.match(els['chip-unallocated'].textContent,/UNAVAILABLE/);
+ assert.match(els['wizard-project-status'].textContent,/actual on-chain supply: UNKNOWN/);
+ assert.match(els['wizard-project-status'].textContent,/Token balance: UNKNOWN/);
+ assert.match(els['wizard-project-status'].textContent,/Bonding Curve reserves: UNAVAILABLE/);
+ assert.match(els['wizard-project-status'].textContent,/Holder counts: UNKNOWN/);
+ assert.match(els['wizard-project-status'].textContent,/LP custody: NOT VERIFIED/);
+ assert.match(els['wizard-project-status'].textContent,/Migration progress: UNAVAILABLE/);
+ assert.match(els['wizard-project-status'].textContent,/Transaction receipts: UNKNOWN/);
+ const summary=JSON.parse(els['wizard-summary'].textContent);
+ assert.equal(summary.onChainState.jettonSupply,'UNKNOWN');
+ assert.equal(summary.onChainState.tokenBalance,'UNKNOWN');
+ assert.equal(summary.onChainState.curveReserves,'UNAVAILABLE');
+ assert.equal(summary.onChainState.lpCustody,'NOT_VERIFIED');
+ assert.equal(summary.onChainState.transactionReceipts,'UNKNOWN');
  tonPreset.onclick();
  assert.equal(els['preview-buy'].value,'5');
  assert.equal(els['curve-sim-card'].hidden,false);
