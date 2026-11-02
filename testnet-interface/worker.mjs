@@ -154,7 +154,7 @@ async function route(request,env) {
     for(const name of ['operator','minter']){const r=await accountRead(env,name,true);const data=await r.json();if(!r.ok)return json(data,r.status,{'Retry-After':r.headers.get('Retry-After')||'1'});observations[name]=data;}
     return json({network:CHAIN,observations,financialSigningEnabled:false});
   }
-  if (request.method==='GET' && ['/', '/memelabs.html', '/memelabs.js', '/wizard-design.css', '/wizard-labs.css', '/wizard-accessibility.css', '/app.js', '/transaction-one.js', '/transaction-two.js', '/mvp-status.js', '/recovery-status.js', '/style.css', '/tonconnect-ui.min.js', '/icon.png', '/curve-two-preflight.json'].includes(path)) return env.ASSETS.fetch(request);
+  if (request.method==='GET' && ['/', '/memelabs', '/memelabs.html', '/memelabs.js', '/wizard-design.css', '/wizard-labs.css', '/wizard-accessibility.css', '/app.js', '/transaction-one.js', '/transaction-two.js', '/mvp-status.js', '/recovery-status.js', '/style.css', '/tonconnect-ui.min.js', '/icon.png', '/curve-two-preflight.json'].includes(path)) return env.ASSETS.fetch(request);
   return json({error:'Unavailable; financial actions are disabled'},404);
 }
 export default {

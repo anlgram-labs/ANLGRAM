@@ -18,7 +18,7 @@
     "prepare-minter-one.mjs": "bf87dbd1ce4d86a81af24b1911f5e13657bef020689124c0477c9631502a1743",
     "testnet-rpc.mjs": "4e4efdb311609e3d4b3cbb8600a690f1034405e7029d35a4918588171d662bd1",
     "curve-emulation.mjs": "23168fd662ba5f4ea84c0c43100adf2f3aef00c16de709b2001d435a7c10eaca",
-    "worker.mjs": "8b4dcccf1fa7f75ad2214f5ceab3253fe1185ed63e886583d4f64f226137719d",
+    "worker.mjs": "9fe3c8270f5617364be2c860fc61f86f28d1a2c22207ef1fcb399b75d589c7c7",
     "config.mjs": "fc3dd5a9ee733d81678f124a39e6584ff4941cdd82ed4d6130169541ac3901cd",
     "package-lock.json": "d62b91018c9d98e77bdb37f24d2b6811425d596e603f730b93ae7c1064d3dd84",
     "recovery/runtime.mjs": "dcb45910334f895d50248b593fd51c085bf09de1e88d7a8091d410bea9a28338",
@@ -26,5 +26,5 @@
     "recovery/policy.mjs": "bdc4877cf34264ff3ce3f86b8ee138a814c8d46573d69063167b8c4cd9fc085e",
     "recovery/emulation.mjs": "d7b9221cc28beddf292b253e079fe183d337445e7c4857b76bccad27d3d8971c"
   },
-  "sha256": "d54f8873eb567369be966b84cad9698ef859723f7cad1777b7bf5c1c54de1b2d"
+  "sha256": "deb4b5d0862c8b7549c0cd1b8d8c12c350e3f3e35626dd2bfd8cd8142035cd24"
 }
