@@ -432,7 +432,8 @@
 
     // 1. Code Check (Veto)
     let rowCode = { name: 'Code', value: 'Unverified', status: 'unverified', weight: 0, points: 0, link: getTonviewerLink(cleanAddr) };
-    if (interfaces.includes('jetton_master')) {
+    const isStandardJetton = interfaces.includes('jetton_master');
+    if (isStandardJetton) {
       rowCode.value = 'Jetton interface';
       rowCode.status = 'neutral';
     } else if (accountData && accountData.status) {
@@ -446,24 +447,59 @@
     }
 
     // 2. Admin Check (Weight: 20)
-    const isAdminRenounced = !adminAddr || adminAddr === '0:0000000000000000000000000000000000000000000000000000000000000000' || adminAddr === 'addr_none';
+    // Strictly differentiate explicit null formats from missing, incomplete, or malformed provider data
+    const isVerifiedWhitelist = (jettonData && (jettonData.verification === 'whitelist' || jettonData.trust === 'whitelist'));
+
+    let adminAnalysis = { status: 'unverified', isRenounced: false, isLive: false, address: '' };
+    if (jettonData && jettonData.admin !== undefined) {
+      if (jettonData.admin === null || jettonData.admin === false) {
+        adminAnalysis = { status: 'renounced', isRenounced: true, isLive: false, address: '' };
+      } else if (typeof jettonData.admin === 'object') {
+        const rawAddr = String((jettonData.admin && jettonData.admin.address != null) ? jettonData.admin.address : (adminAddr || '')).trim();
+        const isExplicitZero =
+          rawAddr === '0:0000000000000000000000000000000000000000000000000000000000000000' ||
+          rawAddr === 'UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ' ||
+          rawAddr === 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c' ||
+          rawAddr.toLowerCase() === 'addr_none' ||
+          jettonData.admin.name === 'Zero Address';
+
+        if (isExplicitZero || (rawAddr === '' && 'address' in jettonData.admin)) {
+          adminAnalysis = { status: 'renounced', isRenounced: true, isLive: false, address: rawAddr };
+        } else if (isValidAddress(rawAddr)) {
+          const isWallet = jettonData.admin.is_wallet === true;
+          const isContract = jettonData.admin.is_wallet === false;
+          adminAnalysis = {
+            status: isWallet ? 'live_wallet' : (isContract ? 'contract' : 'live_other'),
+            isRenounced: false,
+            isLive: true,
+            address: rawAddr,
+            isWallet,
+            isContract
+          };
+        } else {
+          // Malformed address string
+          adminAnalysis = { status: 'unverified', isRenounced: false, isLive: false, address: rawAddr };
+        }
+      }
+    }
+
     let rowAdmin = { name: 'Admin', value: 'Unverified', status: 'unverified', weight: 20, points: 0, link: '' };
-    if (isAdminRenounced) {
+    if (adminAnalysis.isRenounced) {
       rowAdmin.value = 'Renounced';
       rowAdmin.status = 'green';
       rowAdmin.points = 20;
-    } else if (jettonData && jettonData.admin) {
-      rowAdmin.link = getTonviewerLink(adminAddr);
-      if (jettonData.admin.is_wallet === true) {
-        rowAdmin.value = `Admin live (${shortenAddress(adminAddr)})`;
+    } else if (adminAnalysis.isLive) {
+      rowAdmin.link = getTonviewerLink(adminAnalysis.address);
+      if (adminAnalysis.isWallet) {
+        rowAdmin.value = `Admin live (${shortenAddress(adminAnalysis.address)})`;
         rowAdmin.status = 'red';
         rowAdmin.points = 0;
-      } else if (jettonData.admin.is_wallet === false) {
+      } else if (adminAnalysis.isContract) {
         rowAdmin.value = 'Contract admin';
         rowAdmin.status = 'amber';
         rowAdmin.points = 10;
       } else {
-        rowAdmin.value = `Admin (${shortenAddress(adminAddr)})`;
+        rowAdmin.value = `Admin (${shortenAddress(adminAnalysis.address)})`;
         rowAdmin.status = 'red';
         rowAdmin.points = 0;
       }
@@ -474,13 +510,32 @@
 
     // 3. Mint Check (Weight: 15)
     let rowMint = { name: 'Mint', value: 'Unverified', status: 'unverified', weight: 15, points: 0, link: getTonviewerLink(cleanAddr) };
-    if (isAdminRenounced) {
-      rowMint.value = 'Mint unreachable (admin is none)';
-      rowMint.status = 'green';
-      rowMint.points = 15;
-      isMintOpen = false;
-      isMintUnverified = false;
-    } else if (jettonData && jettonData.mintable !== undefined) {
+    if (adminAnalysis.isRenounced) {
+      if (!isStandardJetton) {
+        // Non-standard contract: admin = none does not guarantee no alternative mint path exists
+        rowMint.value = 'Unverified (non-standard contract)';
+        rowMint.status = 'unverified';
+        rowMint.points = 0;
+        isMintUnverified = true;
+      } else if (jettonData && jettonData.mintable === false) {
+        rowMint.value = 'Mint closed';
+        rowMint.status = 'green';
+        rowMint.points = 15;
+      } else if (isVerifiedWhitelist || KNOWN_STONFI_POOLS[cleanAddr]) {
+        // Verified canonical TEP-74 master with no alternative minting paths
+        rowMint.value = 'Mint unreachable (admin is none)';
+        rowMint.status = 'green';
+        rowMint.points = 15;
+        isMintOpen = false;
+        isMintUnverified = false;
+      } else {
+        // Unverified community jetton where code is not independently verified
+        rowMint.value = 'Unverified (secondary mint path unverified)';
+        rowMint.status = 'unverified';
+        rowMint.points = 0;
+        isMintUnverified = true;
+      }
+    } else if (adminAnalysis.isLive && jettonData && jettonData.mintable !== undefined) {
       if (jettonData.mintable === false) {
         rowMint.value = 'Mint closed';
         rowMint.status = 'green';
@@ -543,7 +598,7 @@
 
     // 5. Distribution Check (Weight: 20)
     let rowDistribution = { name: 'Distribution', value: 'Unverified', status: 'unverified', weight: 20, points: 0, link: getTonviewerLink(cleanAddr) };
-    const totalHoldersCount = (jettonData && jettonData.holders_count != null) ? Number(jettonData.holders_count) : (holdersData.total || 0);
+    const totalHoldersCount = (jettonData && jettonData.holders_count != null) ? Number(jettonData.holders_count) : ((holdersData && holdersData.total) ? holdersData.total : 0);
     const sampleList = (holdersData && Array.isArray(holdersData.addresses)) ? holdersData.addresses : [];
 
     if (totalHoldersCount > 0 && sampleList.length > 0) {
