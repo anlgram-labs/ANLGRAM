@@ -446,8 +446,9 @@
     }
 
     // 2. Admin Check (Weight: 20)
+    const isAdminRenounced = !adminAddr || adminAddr === '0:0000000000000000000000000000000000000000000000000000000000000000' || adminAddr === 'addr_none';
     let rowAdmin = { name: 'Admin', value: 'Unverified', status: 'unverified', weight: 20, points: 0, link: '' };
-    if (!adminAddr || adminAddr === '0:0000000000000000000000000000000000000000000000000000000000000000' || adminAddr === 'addr_none') {
+    if (isAdminRenounced) {
       rowAdmin.value = 'Renounced';
       rowAdmin.status = 'green';
       rowAdmin.points = 20;
@@ -473,7 +474,13 @@
 
     // 3. Mint Check (Weight: 15)
     let rowMint = { name: 'Mint', value: 'Unverified', status: 'unverified', weight: 15, points: 0, link: getTonviewerLink(cleanAddr) };
-    if (jettonData && jettonData.mintable !== undefined) {
+    if (isAdminRenounced) {
+      rowMint.value = 'Mint unreachable (admin is none)';
+      rowMint.status = 'green';
+      rowMint.points = 15;
+      isMintOpen = false;
+      isMintUnverified = false;
+    } else if (jettonData && jettonData.mintable !== undefined) {
       if (jettonData.mintable === false) {
         rowMint.value = 'Mint closed';
         rowMint.status = 'green';
@@ -684,6 +691,10 @@
     if (!radarResult) return;
 
     const { ticker, address, score, band, depthUsd, depthTon, rows } = result;
+    if (radarInput && address) {
+      radarInput.value = address;
+      radarInput.setAttribute('title', address);
+    }
     const tonviewerUrl = getTonviewerLink(address);
 
     // Score ring calculation (r = 21, circumference = 131.95)
