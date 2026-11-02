@@ -1,0 +1,16 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';import {mkdtempSync,writeFileSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {fileURLToPath} from 'node:url';
+import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
+import {pinned} from '../recovery/policy.mjs';
+
+test('compiled evidence journal uses real SQLite atomic writes, survives restart and cannot alter legacy operation',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'anlgram-raw-evidence-')),repo=fileURLToPath(new URL('../',import.meta.url)).replaceAll('\\','/'),entry=join(dir,'fixture.mjs');
+ writeFileSync(entry,`import {RecoveryEvidenceJournal} from '${repo}recovery/evidence.mjs';export class Fixture {constructor(state){this.state=state}async fetch(req){const b=await req.json();if(b.seed)await this.state.storage.put('operation',b.seed);const journal=new RecoveryEvidenceJournal(this.state.storage);if(b.evidence)return Response.json(await journal.append(b.evidence));return Response.json({status:await journal.status(),original:await this.state.storage.get('operation')});}}export default{fetch(){return new Response('No financial routes',{status:404})}};`);
+ writeFileSync(join(dir,'wrangler.json'),JSON.stringify({name:'local-raw-evidence-test',main:entry,compatibility_date:'2026-10-30',compatibility_flags:['nodejs_compat']}));
+ execFileSync(process.execPath,[join(repo,'node_modules/wrangler/bin/wrangler.js'),'deploy','--config',join(dir,'wrangler.json'),'--dry-run','--outdir',join(dir,'build')],{cwd:repo,stdio:'pipe'});
+ const make=()=>{const o=convertV4MiniflareOptions({rootPath:join(dir,'build'),scriptPath:join(dir,'build/fixture.js'),modules:true,compatibilityDate:'2026-10-30',compatibilityFlags:['nodejs_compat'],durableObjects:{JOURNAL:{className:'Fixture',useSQLite:true}}});o.resourcePersistencePath=join(dir,'persist');return new Miniflare(o);};
+ const evidence={network:'-3',operator:pinned.operator,originalFingerprint:pinned.oldFingerprint,accountHash:'11'.repeat(32),referenceBlock:{seqno:1},observedAt:Date.now(),seqno:1,balanceNano:'5893016464',lastTransactionHash:'22'.repeat(32),scope:'CORROBORATED_RAW_ACCOUNT_NOT_FINALIZED_RECEIPT',proofInclusionVerified:false,validatorFinalityVerified:false,operationCompleted:false,financialSigningEnabled:false};
+ const old={fingerprint:pinned.oldFingerprint,state:'LOCKED_PENDING_RECONCILIATION'},stub=async mf=>{const ns=await mf.getDurableObjectNamespace('JOURNAL');return ns.get(ns.idFromName('original-wallet'));},call=(s,b)=>s.fetch(new Request('https://local/',{method:'POST',body:JSON.stringify(b)}));let mf=make(),id;
+ try{const s=await stub(mf);await call(s,{seed:old});const results=await Promise.all(Array.from({length:8},()=>call(s,{evidence}).then(r=>r.json())));assert(results.every(x=>x.count===1&&x.id===results[0].id));id=results[0].id;}finally{await mf.dispose();}
+ mf=make();try{const s=await stub(mf),status=await(await call(s,{})).json();assert.equal(status.status.id,id);assert.equal(status.status.count,1);assert.equal(status.status.state,'NO_EXECUTION_OBSERVED_RECEIPT_ABSENT');assert.equal(status.status.operationCompleted,false);assert.deepEqual(status.original,old);assert.equal((await(await call(s,{evidence})).json()).count,1);}finally{await mf.dispose();}
+});

@@ -3,6 +3,7 @@ import {RecoveryPreparationLedger} from './ledger.mjs';
 import {pinned,RECOVERY,SUCCESSOR,hash,operationPolicy,validateSnapshot} from './policy.mjs';
 import {buildRecoveryEmulation} from './emulation.mjs';
 import {accountRead} from '../testnet-rpc.mjs';
+import {acquireRawAccounts,RecoveryEvidenceJournal} from './evidence.mjs';
 
 const fail=(ok,message)=>{if(!ok){const e=Error(message);e.publicReason=message;throw e;}};
 const raw=a=>Address.parse(a).toRawString();
@@ -58,6 +59,7 @@ export function analyzeRecoveryFees(observation,snapshot,request,fingerprint,now
 export class RecoveryRuntime {
  constructor(storage,env,legacy){
   this.storage=storage;this.env=env;this.legacy=legacy;this.latest=null;
+  this.evidence=new RecoveryEvidenceJournal(scoped(storage,'recovery-runtime:v1:'));
   this.ledger=new RecoveryPreparationLedger({storage:scoped(storage,'recovery-runtime:v1:'),observe:async()=>{this.latest=await observeRecovery(env,await legacy());return this.latest;},estimate:async({transaction,fingerprint})=>{
    const request=await buildRecoveryEmulation(RECOVERY,pinned.oldSeqno,transaction.validUntil);
    const startedAt=Date.now(),r=await accountRead(env,'recoveryFees',true,transaction.validUntil),o=await r.json();upstream(r,o);
@@ -69,8 +71,15 @@ export class RecoveryRuntime {
  async fetch(input){
   // No claim, reserve, record, evidence-upload, reconciliation or activation
   // endpoint. Neither a client flag nor a server environment toggle opens this.
+  if(input.action==='capture'){
+   const snapshot=await observeRecovery(this.env,await this.legacy());
+   const evidence=await acquireRawAccounts(this.env,snapshot);
+   // Re-read the immutable ancestor after asynchronous provider acquisition.
+   validateSnapshot(pinned,{...snapshot,originalLock:await this.legacy()},undefined);
+   return json({evidence:await this.evidence.append(evidence),originalLock:await this.legacy(),executionEnabled:false,financialSigningEnabled:false});
+  }
   if(input.action==='observe'){const snapshot=await observeRecovery(this.env,await this.legacy());const identity=validateSnapshot(pinned,snapshot,pinned.oldSeqno);const status=await(await this.fetch({action:'status'})).json();return json({...status,currentChain:{observedAt:snapshot.observedAt,seqno:identity.seqno,balanceNano:identity.balanceNano,lastTransactionHash:identity.lastTransactionHash,curveState:snapshot.curve.state,minterState:snapshot.minter.state,corroboration:snapshot.corroboration,scope:'CURRENT_ACCOUNTS_NOT_FINALIZED_OPERATION'}});}
-  if(input.action==='status')return json({...await this.ledger.status(),operation:RECOVERY,successorOperation:SUCCESSOR,originalLock:await this.legacy(),scope:'SERVER_RECOVERY_PREPARATION_NOT_EXECUTION',successor:{message:pinned.curveMessage,expectedSeqno:null,eligibleForAuthorization:false},blockedBy:['QUALIFIED_INDEPENDENT_REVIEW','SERVER_FINALIZED_RECEIPT_ACQUISITION','EXACT_NEW_OWNER_AUTHORIZATION','MANUAL_WALLET_CONFIRMATION'],executionEnabled:false});
+  if(input.action==='status')return json({...await this.ledger.status(),capturedAccountEvidence:await this.evidence.status(),operation:RECOVERY,successorOperation:SUCCESSOR,originalLock:await this.legacy(),scope:'SERVER_RECOVERY_PREPARATION_NOT_EXECUTION',successor:{message:pinned.curveMessage,expectedSeqno:null,eligibleForAuthorization:false},blockedBy:['QUALIFIED_INDEPENDENT_REVIEW','SERVER_FINALIZED_RECEIPT_ACQUISITION','EXACT_NEW_OWNER_AUTHORIZATION','MANUAL_WALLET_CONFIRMATION'],executionEnabled:false});
   if(input.action==='prepare'){
    const draft=await this.ledger.prepare(RECOVERY);
    return json({...draft,scope:'SERVER_RECOVERY_PREPARATION_NOT_EXECUTION',requestAllowed:false,policyThresholdIsNotGuaranteedMaximum:true,corroboration:this.latest.corroboration});

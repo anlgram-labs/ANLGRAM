@@ -72,9 +72,9 @@ async function route(request,env) {
   if(path.startsWith('/api/recovery/')){
     if(u.origin!=='https://testnet.anlgram.com')return json({error:'Canonical Testnet origin required'},403);
     const action=path.slice('/api/recovery/'.length);
-    if(!['status','observe','prepare'].includes(action))return json({error:'Recovery and successor signing disabled',financialSigningEnabled:false},403);
-    if((['status','observe'].includes(action)&&request.method!=='GET')||(action==='prepare'&&request.method!=='POST'))return json({error:'Method rejected'},405);
-    if(action==='prepare'){
+    if(!['status','observe','prepare','capture'].includes(action))return json({error:'Recovery and successor signing disabled',financialSigningEnabled:false},403);
+    if((['status','observe'].includes(action)&&request.method!=='GET')||(['prepare','capture'].includes(action)&&request.method!=='POST'))return json({error:'Method rejected'},405);
+    if(['prepare','capture'].includes(action)){
       if(request.headers.get('Origin')!==u.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Origin/content type rejected'},403);
       let body;try{body=JSON.parse(await boundedBody(request));}catch{return json({error:'Invalid preparation'},400);}
       if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length)return json({error:'Caller transaction/authorization parameters forbidden'},400);

@@ -7,6 +7,12 @@ import {minterEmulation} from './minter-emulation.mjs';
 import {OPERATOR,MINTER,TESTNET_RPC} from './config.mjs';
 const TTL=3000,SPACING=1200;
 const json=(body,status=200,extra={})=>Response.json(body,{status,headers:{'Cache-Control':'no-store',...extra}});
+async function rawAccountJson(response){
+ const reader=response.body?.getReader();if(!reader)throw Error('Missing raw account response');
+ const chunks=[];let size=0;
+ try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>524288)throw Error('Raw account response too large');chunks.push(value);}}catch(e){await reader.cancel().catch(()=>{});throw e;}
+ const bytes=new Uint8Array(size);let offset=0;for(const value of chunks){bytes.set(value,offset);offset+=value.byteLength;}return JSON.parse(new TextDecoder().decode(bytes));
+}
 export function retryAfter(value,now=Date.now()){
  if(!value)return 0;
  if(/^\d+(?:\.\d+)?$/.test(value))return Math.ceil(Number(value)*1000);
@@ -18,19 +24,19 @@ export class TestnetReads {
  constructor(state,env){this.state=state;this.env=env;this.tail=Promise.resolve();this.inflight=new Map();}
  async fetch(request){
   let input;try{input=await request.json();}catch{return json({error:'Invalid read'},400);}
-  if(!input||typeof input!=='object'||Array.isArray(input)||input.network!=='-3'||!['operator','minter','fees','curve','jettonData','curveFees','curveWallet','buyerWallet','recoveryFees','operatorSecondary'].includes(input.account)||typeof input.fresh!=='boolean'||Object.keys(input).some(k=>!['network','account','fresh','validUntil'].includes(k)))return json({error:'Read not permitted'},400);
+  if(!input||typeof input!=='object'||Array.isArray(input)||input.network!=='-3'||!['operator','minter','fees','curve','jettonData','curveFees','curveWallet','buyerWallet','recoveryFees','operatorSecondary','operatorRaw','operatorRawSecondary'].includes(input.account)||typeof input.fresh!=='boolean'||Object.keys(input).some(k=>!['network','account','fresh','validUntil'].includes(k)))return json({error:'Read not permitted'},400);
   if(input.validUntil!==undefined&&(!['curveFees','recoveryFees'].includes(input.account)||input.fresh!==true||!Number.isSafeInteger(input.validUntil)||input.validUntil<=Math.floor(Date.now()/1000)||input.validUntil>Math.floor(Date.now()/1000)+90))return json({error:'Invalid server quote deadline'},400);
   if(input.account==='recoveryFees'&&(!input.fresh||input.validUntil===undefined))return json({error:'Exact recovery deadline required'},400);
   // Same-account readers share only an unfinished provider observation, never
   // a previously completed cached read when fresh=true.
-  const secondary=input.account==='operatorSecondary';
+  const secondary=['operatorSecondary','operatorRawSecondary'].includes(input.account);
   const key=secondary?(request.headers.get('X-Internal-Tonapi-Testnet-Key')?.trim()||this.env.TONAPI_TESTNET_API_KEY?.trim()):(request.headers.get('X-Internal-Testnet-Key')?.trim()||this.env.TONCENTER_TESTNET_API_KEY?.trim());
   const inflightKey=input.account+':'+input.fresh+':'+(input.validUntil??'default')+':'+(key||'anonymous');let pending=this.inflight.get(inflightKey);
   if(!pending){pending=this.tail.then(()=>this.read(input,key));this.tail=pending.catch(()=>{});this.inflight.set(inflightKey,pending);pending.finally(()=>{if(this.inflight.get(inflightKey)===pending)this.inflight.delete(inflightKey);}).catch(()=>{});}
   const result=await pending;return json(result.body,result.status,result.headers);
  }
  async read(input,key){
-  const secondary=input.account==='operatorSecondary',gateKey=secondary?'gate:tonapi':'gate',spacing=secondary?2000:SPACING;
+  const secondary=['operatorSecondary','operatorRawSecondary'].includes(input.account),rawState=['operatorRaw','operatorRawSecondary'].includes(input.account),gateKey=secondary?'gate:tonapi':'gate',spacing=secondary?2000:SPACING;
   const now=()=>Date.now(),wait=ms=>new Promise(r=>setTimeout(r,ms));
   const cached=await this.state.storage.get('account:'+input.account);
   if(!input.fresh&&cached&&now()-cached.observedAt<TTL)return {status:200,body:{...cached,network:'-3',dataStatus:'SHORT_LIVED_CACHE',ageMs:now()-cached.observedAt}};
@@ -39,6 +45,7 @@ export class TestnetReads {
   const emulation=input.account==='fees'?await minterEmulation():input.account==='curveFees'?await curveEmulation(input.validUntil):input.account==='recoveryFees'?await buildRecoveryEmulation(RECOVERY,pinned.oldSeqno,input.validUntil):null;
   const getter=input.account==='jettonData';
   const rpc={jsonrpc:'2.0',id:1,method:getter?'runGetMethod':'getAddressInformation',params:getter?{address:MINTER,method:'get_jetton_data',stack:[]}:{address:input.account==='operator'?OPERATOR:input.account==='curve'?curveIntent.message.address:input.account==='curveWallet'?candidate.curveJettonWallet:input.account==='buyerWallet'?candidate.buyerJettonWallet:MINTER}};
+  if(input.account==='operatorRaw'){rpc.method='getShardAccountCell';rpc.params={address:OPERATOR};}
   let gate=await this.state.storage.get(gateKey)||{nextAt:0,failures:0};
   let reason='PROVIDER_TRANSPORT',status=503;
   for(let attempt=0;attempt<2;attempt++){
@@ -47,11 +54,11 @@ export class TestnetReads {
    if(delay)await wait(delay);
    await this.state.storage.put(gateKey,{...gate,nextAt:now()+spacing});
    try{
-    const response=await fetch(secondary?'https://testnet.tonapi.io/v2/blockchain/accounts/'+OPERATOR:emulation?'https://testnet.toncenter.com/api/emulate/v1/emulateTrace':TESTNET_RPC+'/jsonRPC',{method:secondary?'GET':'POST',headers,...(secondary?{}:{body:JSON.stringify(emulation?(emulation.request||{boc:emulation.boc,ignore_chksig:true,include_code_data:true,with_actions:false}):rpc)}),redirect:'manual',signal:AbortSignal.timeout(8000)});
-    let data;try{data=await response.json();}catch{data=null;}
+    const response=await fetch(secondary?'https://testnet.tonapi.io/v2/'+(rawState?'liteserver/get_account_state/':'blockchain/accounts/')+OPERATOR:emulation?'https://testnet.toncenter.com/api/emulate/v1/emulateTrace':TESTNET_RPC+'/jsonRPC',{method:secondary?'GET':'POST',headers,...(secondary?{}:{body:JSON.stringify(emulation?(emulation.request||{boc:emulation.boc,ignore_chksig:true,include_code_data:true,with_actions:false}):rpc)}),redirect:'manual',signal:AbortSignal.timeout(8000)});
+    let data;try{data=rawState?await rawAccountJson(response):await response.json();}catch{data=null;}
     const code=response.ok&&data?.ok===false?Number(data.code):response.status;
-    if(response.ok&&(secondary?data?.address===OPERATOR&&data.status==='active'&&/^\d+$/.test(String(data.balance))&&typeof data.code==='string'&&typeof data.data==='string'&&/^[a-f0-9]{64}$/.test(data.last_transaction_hash||''):emulation?data?.is_incomplete===false&&data.transactions&&typeof data.transactions==='object':data?.ok===true&&(getter?data.result?.exit_code===0&&Array.isArray(data.result?.stack)&&data.result.stack.length===5:/^\d+$/.test(String(data.result?.balance))&&['active','uninitialized','frozen'].includes(data.result?.state)))){
-     const value={...(secondary?{independentAccount:data}:emulation?{trace:data,bodyHash:emulation.bodyHash,validUntil:emulation.validUntil??input.validUntil}:getter?{getterResult:data.result}:{account:data.result}),observedAt:now(),observedUtc:new Date().toISOString(),provider:secondary?'TONAPI_TESTNET':'TONCENTER_TESTNET',authentication:secondary?(key?'TESTNET_TONAPI_KEY_ACCEPTED':'ANONYMOUS_TESTNET_TONAPI'):key?'TESTNET_KEY_ACCEPTED':'ANONYMOUS'};
+    if(response.ok&&(rawState?secondary?typeof data?.state==='string'&&/^[a-f0-9]+$/i.test(data.state)&&data.state.length<131072&&data.id?.workchain===-1&&Number.isSafeInteger(data.id?.seqno):data?.ok===true&&typeof data.result?.bytes==='string'&&data.result.bytes.length<131072:secondary?data?.address===OPERATOR&&data.status==='active'&&/^\d+$/.test(String(data.balance))&&typeof data.code==='string'&&typeof data.data==='string'&&/^[a-f0-9]{64}$/.test(data.last_transaction_hash||''):emulation?data?.is_incomplete===false&&data.transactions&&typeof data.transactions==='object':data?.ok===true&&(getter?data.result?.exit_code===0&&Array.isArray(data.result?.stack)&&data.result.stack.length===5:/^\d+$/.test(String(data.result?.balance))&&['active','uninitialized','frozen'].includes(data.result?.state)))){
+     const value={...(rawState?{rawAccount:secondary?data:data.result}:secondary?{independentAccount:data}:emulation?{trace:data,bodyHash:emulation.bodyHash,validUntil:emulation.validUntil??input.validUntil}:getter?{getterResult:data.result}:{account:data.result}),observedAt:now(),observedUtc:new Date().toISOString(),provider:secondary?'TONAPI_TESTNET':'TONCENTER_TESTNET',authentication:secondary?(key?'TESTNET_TONAPI_KEY_ACCEPTED':'ANONYMOUS_TESTNET_TONAPI'):key?'TESTNET_KEY_ACCEPTED':'ANONYMOUS'};
      await this.state.storage.put('account:'+input.account,value);await this.state.storage.put(gateKey,{nextAt:now()+spacing,failures:0});
      return {status:200,body:{...value,network:'-3',dataStatus:'FRESH_PROVIDER_OBSERVATION',ageMs:0}};
     }
