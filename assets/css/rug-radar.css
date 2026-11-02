@@ -131,12 +131,16 @@
 /* Input Form */
 .rug-radar-input-row {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
   margin-bottom: 6px;
 }
 
 .rug-radar-input {
-  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid var(--border-glass, rgba(0, 152, 234, 0.22));
   border-radius: 8px;
@@ -153,6 +157,7 @@
 }
 
 .rug-radar-scan-btn {
+  align-self: flex-end;
   background: var(--color-electric-blue, #0098EA);
   color: #fff;
   font-family: var(--font-ui, 'Inter', sans-serif);
@@ -461,4 +466,3 @@
   padding-top: 10px;
   margin-top: 10px;
 }
-
