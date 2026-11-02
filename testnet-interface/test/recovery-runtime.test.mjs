@@ -42,7 +42,11 @@ test('server runtime prepares exact fresh quote with two-provider source match, 
 });
 test('fixed-provider observer rejects disagreement, missing state and provider errors without fake fallback',async()=>{
  const h=fixture(),save=globalThis.fetch;
- try{for(const mutate of [x=>x.balance='0',x=>x.last_transaction_hash='00'.repeat(32),x=>x.data=h.data(2),x=>x.status='frozen',x=>x.address='-1:bad']){const other=structuredClone(h.other);mutate(other);globalThis.fetch=async()=>Response.json(other);await assert.rejects(()=>observeRecovery(h.env,h.lock));}globalThis.fetch=async()=>new Response('',{status:429});await assert.rejects(()=>observeRecovery(h.env,h.lock));}finally{globalThis.fetch=save;}
+ try{for(const mutate of [x=>x.balance='0',x=>x.last_transaction_hash='00'.repeat(32),x=>x.data=h.data(2),x=>x.status='frozen',x=>x.address='-1:bad']){const other=structuredClone(h.other);mutate(other);globalThis.fetch=async()=>Response.json(other);await assert.rejects(()=>observeRecovery(h.env,h.lock));}globalThis.fetch=async()=>new Response('',{status:429});await assert.rejects(()=>observeRecovery(h.env,h.lock));
+  globalThis.fetch=async()=>Response.json(h.other);const base=h.env.TESTNET_READS.get();
+  const skewEnv={TESTNET_READS:{idFromName:n=>n,get:()=>({fetch:async r=>{const j=await(await base.fetch(r)).json();return Response.json({...j,observedAt:Date.now()+500});}})}};
+  const started=Date.now(),observed=await observeRecovery(skewEnv,h.lock);assert(observed.observedAt>=started&&observed.observedAt<=Date.now());assert.equal(observed.source.lastTransactionHash,h.snapshot.source.lastTransactionHash);
+ }finally{globalThis.fetch=save;}
 });
 test('exact emulator rejects partial traces, foreign actions, changed code/nonce, fee imbalance and stale models',async()=>{
  const h=fixture(),until=Math.floor(Date.now()/1000)+90,q=await h.fees(until),request=await buildRecoveryEmulation(RECOVERY,1,until);
