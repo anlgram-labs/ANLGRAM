@@ -56,3 +56,12 @@ test('backend forbids writes, unknown queries, malformed identifiers and mainnet
   }
  }finally{await new Promise(resolve=>server.close(resolve));}
 });
+
+
+test('Testnet-specific protected binding wins over legacy key on both account and trace reads without leaking either',async()=>{
+ const env={TONCENTER_TESTNET_API_KEY:'LOCAL_TESTNET_BINDING_FIXTURE',TONCENTER_API_KEY:'LOCAL_LEGACY_BINDING_FIXTURE'};
+ for(const method of['account','trace']){
+  let calls=0;const fetchImpl=async(url,o)=>{calls++;assert.equal(new URL(url).hostname,'testnet.toncenter.com');assert.equal(o.headers['X-API-Key'],env.TONCENTER_TESTNET_API_KEY);assert(!url.includes(env.TONCENTER_TESTNET_API_KEY));return response(method==='account'?{ok:true,result:{state:'uninitialized',balance:'0'}}:{traces:[]});};
+  const r=method==='account'?await account(raw,{env,fetchImpl}):await traces(hash,{env,fetchImpl});assert.equal(calls,1);assert(!JSON.stringify(r).includes(env.TONCENTER_TESTNET_API_KEY));assert(!JSON.stringify(r).includes(env.TONCENTER_API_KEY));
+ }
+});

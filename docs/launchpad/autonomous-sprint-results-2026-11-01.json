@@ -1,0 +1,144 @@
+{
+  "date": "2026-11-01",
+  "scope": "AUTHORIZED_DEVELOPMENT_NO_FINANCIAL_EXECUTION",
+  "developmentBranch": "codex/testnet-mvp-offline-sprint",
+  "developmentCommits": [
+    "8ede0fc",
+    "e2b2dcc",
+    "5764460",
+    "2b71db5"
+  ],
+  "developmentPr": "https://github.com/anlgram-labs/ANLGRAM/pull/12",
+  "frontendReviewBranch": "codex/readonly-model-disclosure",
+  "frontendCommit": "a3065d0",
+  "frontendPr": "https://github.com/anlgram-labs/ANLGRAM/pull/11",
+  "productionMainUnchanged": "37ee53b483d69b0e301dc7ba8ba62696e2d37e17",
+  "tests": {
+    "rootRegressionSuites": {
+      "passed": 47,
+      "failed": 0
+    },
+    "sandboxCases": {
+      "passed": 163,
+      "failed": 0
+    },
+    "testnetInterfaceCases": {
+      "passed": 98,
+      "failed": 0
+    },
+    "actualWorkerdRuntimeCases": {
+      "passed": 4,
+      "failed": 0
+    },
+    "productionFrontendCases": {
+      "passed": 29,
+      "failed": 0
+    },
+    "publicHttpsAssetsApiGateChecks": {
+      "passed": 38,
+      "failed": 0
+    },
+    "sourceArtifactContracts": {
+      "matched": 7,
+      "mismatched": 0
+    },
+    "mathChecks": {
+      "passed": 46,
+      "failed": 0,
+      "seededTradeCycles": 12000
+    },
+    "countsMustNotBeSummed": "Root suites include some lower-level checks; categories are reported separately."
+  },
+  "contractSourceOrBytecodeChanged": false,
+  "codeHashes": {
+    "anlgram-settlement-wallet": "e21136c0ea3074a48addec49215af2d8d20125b4cc61a564a1a37d37667b58a2",
+    "anlgram-launchpad-jetton-minter": "90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec",
+    "anlgram-bonding-curve": "421b1028536b49f6d79eadf872076cc7e7c9afde2aeca0e2868b2706449c3627",
+    "anlgram-migration-router": "e9124986c48a9b070ed8e617447b7f4529c10e1f8d7698f0fbc6493dc090ec4a",
+    "anlgram-lp-auth-guard": "113108a0c8e7a48729e3da01dd2e2a4067955561ad8bfc19f1fba90db084a967",
+    "anlgram-lp-locker-v2": "22d689df2f32d5fd00c72b50f31ab77291117a7625ad1bb654a4b6dbc796e001",
+    "anlgram-migration-v2-plan": "4467bce59c4cb5c8359bbd94011bd2ebdb5e301a959ff0e0f2f6722fd8650043"
+  },
+  "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
+  "deployment": {
+    "testnetOnly": true,
+    "url": "https://testnet.anlgram.com/",
+    "pages": "https://8721e03b.anlgram-testnet-preparation.pages.dev/",
+    "privateWorkerVersion": "d12cce60-f96f-4299-a841-c5205b46bdb2",
+    "financialSigningEnabled": false,
+    "productionPublished": false
+  },
+  "liveEvidence": {
+    "source": "testnet-mvp-final-observation.json",
+    "operatorSeqno": 1,
+    "operatorBalanceNano": "3893069608",
+    "minterSupply": "0",
+    "curveState": "uninitialized",
+    "tonProofRequestedDuringSprint": false,
+    "walletFinancialRequests": 0,
+    "blockchainBroadcasts": 0,
+    "tonSpentBySprint": "0"
+  },
+  "localEvidence": {
+    "exactPinnedV5LifecyclePassed": true,
+    "startingSeqno": 1,
+    "finalSeqno": 13,
+    "fundedReceiptQueries": 2,
+    "jettonDeliveryUnits": "6048071477226374",
+    "sellPayoutNano": "940896000",
+    "isLiveExecution": false
+  },
+  "remainingBlockers": [
+    "Owner-bound fresh ton_proof and separately approved exact Curve #2 request/deadline/fingerprint; native nonce and fee-cap limitations remain.",
+    "Actual Curve deployment and subsequent one-at-a-time supervised mint/custody/renunciation/activation/buy/sell/refund verification.",
+    "General foreign LP exact first-notification recovery and migration-origin issuance proof.",
+    "Foreign LP final withdrawal delivery/failure receipts.",
+    "Independent current STON.fi code/library/upgrade-governance review.",
+    "Complete V2 liquidity executor and authenticated finalization/reconciliation; do not mix with V3 principal dispatch."
+  ],
+  "warnings": [
+    "Repeated Func compilation may emit Node MaxListenersExceededWarning; source/artifact checks passed.",
+    "Curve receipt verifier tests use synthetic local cryptographic fixtures; authentic positive pinned-Curve evidence does not exist yet."
+  ],
+  "mainnetReady": false,
+  "modifiedDevelopmentFiles": [
+    "docs/launchpad/autonomous-sprint-2026-11-01.md",
+    "docs/launchpad/autonomous-sprint-results-2026-11-01.json",
+    "docs/launchpad/codex-sprint-review.md",
+    "docs/launchpad/testnet-domain-verification.json",
+    "docs/launchpad/testnet-mvp-final-observation.json",
+    "docs/launchpad/testnet-mvp-live-observation.json",
+    "docs/launchpad/testnet-mvp-offline-plan.json",
+    "lib/curve-two-receipt.js",
+    "lib/exact-integer.js",
+    "lib/testnet-mvp-plan.js",
+    "lib/toncenter-evidence.js",
+    "lib/v5-deployment-receipt.js",
+    "minter-contract/scripts/lp-locker-v2.js",
+    "scripts/preflight-v5-minter.js",
+    "scripts/prepare-supervised-smoke.js",
+    "scripts/prepare-testnet-mvp.js",
+    "scripts/verify-curve-two-receipt.js",
+    "test-financial-integer-inputs.js",
+    "test-testnet-mvp-plan.js",
+    "test-toncenter-settlement-evidence.js",
+    "test-v5-deployment-receipt.js",
+    "test-v5-minter-preflight.js",
+    "testnet-interface/build-pages.mjs",
+    "testnet-interface/build.mjs",
+    "testnet-interface/index.html",
+    "testnet-interface/mvp-status.js",
+    "testnet-interface/mvp-status.mjs",
+    "testnet-interface/test/mvp-status.test.mjs",
+    "testnet-interface/testnet-rpc.mjs",
+    "testnet-interface/verify-domain.mjs",
+    "testnet-interface/worker.mjs",
+    "tests/settlement-runtime/mvp-v5-lifecycle.test.js",
+    "tests/settlement-runtime/package.json"
+  ],
+  "modifiedContractSourceFiles": [],
+  "modifiedFrontendReviewFiles": [
+    "memecoin-platform.html",
+    "test-readonly-model-disclosure.js"
+  ]
+}

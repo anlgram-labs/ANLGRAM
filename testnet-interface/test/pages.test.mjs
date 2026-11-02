@@ -1,6 +1,12 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../worker.mjs';
+
+test('Pages canonical extensionless wizard route is served after the legacy .html asset redirect',async()=>{
+ const origin='https://testnet.anlgram.com',html='<h1>TESTNET configuration only</h1>',env={APP_ORIGIN:origin,ASSETS:{fetch:async request=>new URL(request.url).pathname.endsWith('.html')?Response.redirect(origin+'/memelabs',308):new Response(html,{headers:{'Content-Type':'text/html'}})}};
+ const redirected=await worker.fetch(new Request(origin+'/memelabs.html'),env);assert.equal(redirected.status,308);assert.equal(redirected.headers.get('location'),origin+'/memelabs');
+ const r=await worker.fetch(new Request(origin+'/memelabs'),env);assert.equal(r.status,200);assert.equal(await r.text(),html);assert.equal((await worker.fetch(new Request('https://anlgram.com/memelabs'),env)).status,403);
+});
 import {PAGES_ORIGIN} from '../pages-origin.mjs';
 const env={APP_ORIGIN:PAGES_ORIGIN};
 test('Pages manifest binds exactly to each approved hostname, never arbitrary previews',async()=>{

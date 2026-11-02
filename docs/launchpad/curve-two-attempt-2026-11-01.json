@@ -1,0 +1,80 @@
+{
+  "observedUtc": "2026-11-01T23:01:00.856Z",
+  "network": "-3",
+  "operation": "ANLTEST_CURVE_TX2",
+  "sdkInvocations": 1,
+  "nativeFinancialPostCountDirectlyInstrumented": false,
+  "additionalRequestsMade": 0,
+  "reviewedFingerprint": "508c80f62122112cbda6af7a1fdad53a4a1bc86bad009bdd66f212988055bb28",
+  "attachmentNano": "100000000",
+  "modeledFeesNano": "17022255",
+  "modeledDebitNano": "117022255",
+  "quoteExpiresUtc": "2026-11-01T22:53:26Z",
+  "sdkExpiryUtc": "2026-11-01T22:53:36.170Z",
+  "sdkError": "Operation outcome unknown after abort/expiry",
+  "ownerReported": "Accepted in Tonkeeper, then: We could not emulate the transaction and do not know what will happen next. Error.",
+  "walletEmulatorRootCauseEstablished": false,
+  "source": {
+    "seqno": 1,
+    "balanceNano": "5893016464",
+    "lastTransaction": {
+      "@type": "internal.transactionId",
+      "lt": "106958981000003",
+      "hash": "0uj9UjPri/BaQoYF6jc11nobUHQYJrtplhVuxJAg3CE="
+    },
+    "codeHash": "20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f",
+    "dataHash": "8e81171a05b561cc3b7be81be60ffda079495902da8021381d0b8963f4a6fc08",
+    "providerAuthentication": "TESTNET_KEY_ACCEPTED",
+    "observationStatus": "FRESH_PROVIDER_OBSERVATION"
+  },
+  "minter": {
+    "address": "kQA5PEDpb0UPGsGUD0jByO9qNFd6PqyXPpMkTUyngd5-IYq8",
+    "supplyUnits": "0",
+    "decimals": 9,
+    "symbol": "ANLTEST",
+    "name": "ANLGRAM Testnet Settlement",
+    "admin": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "renouncedObserved": false
+  },
+  "curve": {
+    "address": "kQAfBL9a-9BPmFH6GVUYoUz0byuToTRHAwFAgqZXAyRo7kOW",
+    "accountState": "uninitialized",
+    "protocolState": null,
+    "reserves": null
+  },
+  "curveDeploymentOperation": {
+    "operation": "ANLTEST_CURVE_TX2",
+    "state": "LOCKED_PENDING_RECONCILIATION",
+    "fingerprint": "508c80f62122112cbda6af7a1fdad53a4a1bc86bad009bdd66f212988055bb28",
+    "claimedAt": 1793573585344,
+    "validUntil": 1793573616,
+    "events": [],
+    "chainOutcomeVerified": false,
+    "retryPermitted": false,
+    "scope": "PERSISTENT_DISPATCH_RECORD_NOT_TRANSACTION_RECEIPT"
+  },
+  "financialSigningEnabled": false,
+  "mainnetEnabled": false,
+  "newAttemptAuthorized": false,
+  "finality": "NO_DEPLOYMENT_OBSERVED_OUTCOME_REQUIRES_RECONCILIATION",
+  "automaticRetryPermitted": false,
+  "ownerAuthorizationScope": "Owner reply autorizo todo lo que necesites was scoped to one refreshed Testnet Curve #2 only, with unchanged destination/StateInit/attachment and fresh model below 0.12 TON; new details were displayed before one manual Tonkeeper handoff.",
+  "finalTestnetDeployment": "https://a1eb8ca6.anlgram-testnet-preparation.pages.dev",
+  "privateWorkerVersion": "65d4ce24-0927-4408-b59d-de248debaad0",
+  "financialExecutionVersion": "04e363e6ec0ed1477080b4fc4fdb752e816736aec1e8964205c10726f3771534",
+  "browserFollowup": {
+    "observedUtc": "2026-11-01T23:34:05.047Z",
+    "curveStage": "CURVE_NOT_DEPLOYED",
+    "operationState": "LOCKED_PENDING_RECONCILIATION",
+    "mobileNoHorizontalOverflow": true,
+    "mobileDocumentWidth": 375,
+    "mobileScrollWidth": 375,
+    "oldSdkExpiryErrorRetainedInConsole": true
+  },
+  "publicVerification": {
+    "passed": 40,
+    "failed": 0,
+    "balanceObservedUtc": "2026-11-01T23:35:01.261Z",
+    "balanceNano": "5893016464"
+  }
+}

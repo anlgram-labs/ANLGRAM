@@ -30,3 +30,10 @@ test('negative Mainnet wallet-ID probe has no mismatched StateInit or real signa
  const s=message.body.beginParse();assert.equal(s.loadUint(32),0x7369676e);assert.equal(s.loadInt(32),2147483645);
  assert(message.body.bits.substring(message.body.bits.length-512,512).toString().match(/^0+$/));
 });
+
+
+test('V5 emulation envelopes for existing-contract calls omit both StateInit fields and preserve exact nonce/message',async()=>{
+ const core=require('./minter-contract/node_modules/@ton/core'),{loadOutListExtendedV5R1}=require('./minter-contract/node_modules/@ton/ton/dist/wallets/v5r1/WalletV5R1Actions');
+ const w=wallets().testnet,message={address:p.dependentAccounts.curve.testnet,amount:'20000000',payload:core.beginCell().storeUint(0x414e5305,32).storeUint(123,64).endCell().toBoc().toString('base64')};
+ const e=await external(w,message,9,1900000000,w.address,null),outer=core.loadMessage(core.Cell.fromBase64(e.boc).beginParse());assert.equal(outer.init,null);const s=outer.body.beginParse();assert.equal(s.loadUint(32),0x7369676e);assert.equal(s.loadInt(32),2147483645);assert.equal(s.loadUint(32),1900000000);assert.equal(s.loadUint(32),9);const a=loadOutListExtendedV5R1(s);assert.equal(a.length,1);assert.equal(a[0].outMsg.init,null);assert.equal(a[0].outMsg.info.value.coins,20000000n);assert.equal(a[0].outMsg.body.hash().toString('hex'),core.Cell.fromBase64(message.payload).hash().toString('hex'));
+});

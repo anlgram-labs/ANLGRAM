@@ -1,5 +1,5 @@
 {
-  "observedUtc": "2026-11-01T13:53:03.785Z",
+  "observedUtc": "2026-11-01T23:34:55.761Z",
   "origin": "https://testnet.anlgram.com",
   "dns": {
     "resolver": "1.1.1.1",
@@ -53,6 +53,14 @@
       "passed": true
     },
     {
+      "name": "HTTPS asset mvp-status.js",
+      "passed": true
+    },
+    {
+      "name": "exact deployed bytes mvp-status.js",
+      "passed": true
+    },
+    {
       "name": "HTTPS asset style.css",
       "passed": true
     },
@@ -90,6 +98,14 @@
     },
     {
       "name": "approved V5 Testnet configuration",
+      "passed": true
+    },
+    {
+      "name": "server and compiled client execution version agree",
+      "passed": true
+    },
+    {
+      "name": "runtime administrative binding configured without financial authorization",
       "passed": true
     },
     {
@@ -168,10 +184,10 @@
     "http": 200,
     "network": "-3",
     "address": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
-    "balanceNano": "1893123044",
+    "balanceNano": "5893016464",
     "state": "active",
     "source": "TON Center Testnet",
-    "observedUtc": "2026-11-01T13:53:11.600Z",
+    "observedUtc": "2026-11-01T23:35:01.261Z",
     "verification": "PROVIDER_OBSERVATION",
     "dataStatus": "FRESH_PROVIDER_OBSERVATION",
     "ageMs": 0,

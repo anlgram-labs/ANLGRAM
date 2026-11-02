@@ -5,6 +5,7 @@ const core=require('../tests/settlement-runtime/node_modules/@ton/core');
 const {candidate}=require('./prepare-migration-v2-plan'),{buildPlan}=require('./prepare-financial-testnet-plan');
 const {buildCandidate}=require('../minter-contract/prepare-settlement-testnet');
 const donation=require('../assets/js/donation-config');
+const {unsigned}=require('../lib/exact-integer');
 const boc=c=>c.toBoc().toString('base64');
 // Owner-approved destination for Testnet preparation only. Payment still needs
 // the separately approved transaction plan. Production configuration is untouched.
@@ -17,7 +18,7 @@ function testnetDonation(chain='-3'){
    payload:boc(core.beginCell().storeUint(0,32).storeStringTail(donation.PAYLOAD_COMMENT).endCell())}};
 }
 function sellTemplate({wallet,curve,owner,amount,minimumTon,queryId=11n}){
- amount=BigInt(amount);minimumTon=BigInt(minimumTon);queryId=BigInt(queryId);
+ amount=unsigned(amount,{min:1n,error:'Invalid fresh sell terms'});minimumTon=unsigned(minimumTon,{min:1n,error:'Invalid fresh sell terms'});queryId=unsigned(queryId,{max:0xffffffffffffffffn,error:'Invalid fresh sell terms'});
  if(amount<=0n||amount>=2n**120n||minimumTon<=0n||minimumTon>=2n**120n||queryId<0n||queryId>0xffffffffffffffffn)throw Error('Invalid fresh sell terms');
  const a=x=>typeof x==='string'?core.Address.parse(x):x;
  const w=a(wallet),c=a(curve),o=a(owner);if([w,c,o].some(x=>x.workChain!==0))throw Error('Unsupported workchain');

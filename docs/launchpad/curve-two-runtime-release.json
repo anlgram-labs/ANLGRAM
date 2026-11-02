@@ -1,0 +1,85 @@
+{
+  "observedUtc": "2026-11-01T22:30:25.725358+00:00",
+  "codeCommit": "f503e78",
+  "environment": "TESTNET_ONLY",
+  "url": "https://testnet.anlgram.com/",
+  "pagesDeployment": "https://2dc072a3.anlgram-testnet-preparation.pages.dev",
+  "privateWorkerVersion": "550bdc63-3edc-44d9-956b-f5da669bce96",
+  "checks": {
+    "interfaceSdkServer": {
+      "passed": 119,
+      "failed": 0
+    },
+    "sqliteOperationRuntime": {
+      "passed": 3,
+      "failed": 0
+    },
+    "pagesExternalDoRuntime": {
+      "passed": 2,
+      "failed": 0
+    },
+    "authenticatedRpcRuntime": {
+      "passed": 1,
+      "failed": 0
+    },
+    "publicHttpsAssetsRoutes": {
+      "passed": 38,
+      "failed": 0
+    }
+  },
+  "browser": {
+    "engine": "Chrome",
+    "localFixtureCases": [
+      "two quote expiries",
+      "fresh finite runtime grant without reload/deploy",
+      "simulated rejection",
+      "simulated lost response",
+      "two tabs",
+      "reload persistence"
+    ],
+    "walletResponses": "SYNTHETIC_ONLY",
+    "livePage": "HTTPS rendering, actual operator balance, disabled signing buttons, no console errors",
+    "realWalletRequestMade": false
+  },
+  "sdkTransport": {
+    "testedApplicationBundleSha256": "e2ab5aaaa448b964721ed326b7f25bdfc9ca651ef22c4d076192b6c5bda7d247",
+    "controllerSha256": "2914a4c180ec5b37469ba5c45dc4801441c48e4a280cb3d36458f2b182a6059d",
+    "allowedAttemptReceivedPosts": 1,
+    "deniedOrLostClaimReceivedPosts": 0,
+    "automaticFinancialResends": 0,
+    "unpatchedNegativeControlReproducesRepeatedDelivery": true
+  },
+  "authorization": {
+    "adminBindingConfigured": true,
+    "credentialStorage": "Windows CurrentUser DPAPI outside repository",
+    "runtimeGrantInstalled": false,
+    "legacyCurveGrantConfigured": false,
+    "quoteMaximumSeconds": 60,
+    "runtimeGrantMaximumSeconds": 90,
+    "messageMaximumSeconds": 90,
+    "requiresFreshOwnerProof": true,
+    "requiresSeparateOwnerAuthorization": true,
+    "signingEnabled": false
+  },
+  "live": {
+    "operatorSeqno": 1,
+    "operatorBalanceNano": "5893016464",
+    "minterState": "active",
+    "minterSupplyUnits": "0",
+    "curveState": "uninitialized",
+    "curveBalanceNano": "0",
+    "modeledSenderFeesNano": "17022192",
+    "modeledDebitNano": "117022192",
+    "feeObservationUtc": "2026-11-01T22:29:02.165Z",
+    "quoteIsNotAuthorization": true,
+    "policyCeilingNano": "120000000",
+    "guaranteedMaximumDebit": false,
+    "nativeSeqnoAtomicallyEnforced": false
+  },
+  "readiness": "RUNTIME_INFRASTRUCTURE_PASS_SIGNING_BLOCKED_UNTIL_FRESH_PROOF_STATE_QUOTE_AND_SEPARATE_OWNER_APPROVAL",
+  "transactionsSigned": 0,
+  "transactionsBroadcast": 0,
+  "spentNano": "0",
+  "contractsChanged": false,
+  "productionModified": false
+}
