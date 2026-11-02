@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {build} from 'esbuild';
 import {patchSdk,PIN} from './sdk-patch.mjs';
 import assert from 'node:assert/strict';
+import {sourceSha256} from './build-source-integrity.mjs';
 import intent from './minter-intent.json' with {type:'json'};
 const candidate=JSON.parse(readFileSync(new URL('../docs/launchpad/testnet-v5-candidate.json',import.meta.url)));
 const active=JSON.parse(readFileSync(new URL('../docs/launchpad/active-testnet-candidate.json',import.meta.url)));
@@ -15,8 +16,8 @@ for(const file of ['index.html','app.js','transaction-one.js','transaction-two.j
 // Bind both compiled SDK guard and server to the exact financial execution
 // implementation. No timestamps: identical reviewed sources reproduce the ID.
 const versionSources=['build.mjs','app.js','client-entry.mjs','single-attempt.mjs','sdk-patch.mjs','transaction-two.js','curve-operation.mjs','curve-authorization.mjs','curve-policy.mjs','transaction-policy.mjs','curve-two-intent.json','operation-lock.mjs','proof.mjs','prepare-minter-one.mjs','testnet-rpc.mjs','curve-emulation.mjs','worker.mjs','config.mjs','package-lock.json','recovery/runtime.mjs','recovery/ledger.mjs','recovery/policy.mjs','recovery/emulation.mjs'];
-versionSources.push('recovery/evidence.mjs','recovery/account-proof.mjs','recovery/receipts.mjs','recovery-status.js','../lib/v5-self-transfer-receipt.js','../lib/v5-deployment-receipt.js');
-const execution={schema:1,candidateSha256:active.candidateSha256,sources:Object.fromEntries(versionSources.map(file=>[file,createHash('sha256').update(readFileSync(new URL(file,import.meta.url))).digest('hex')]))};
+versionSources.push('build-source-integrity.mjs','recovery/evidence.mjs','recovery/account-proof.mjs','recovery/receipts.mjs','recovery-status.js','../lib/v5-self-transfer-receipt.js','../lib/v5-deployment-receipt.js');
+const execution={schema:1,candidateSha256:active.candidateSha256,sources:Object.fromEntries(versionSources.map(file=>[file,sourceSha256(readFileSync(new URL(file,import.meta.url)))]))};
 execution.sha256=createHash('sha256').update(JSON.stringify(execution)).digest('hex');
 writeFileSync(new URL('execution-version.json',import.meta.url),JSON.stringify(execution,null,2)+'\n');
 let patched=0;

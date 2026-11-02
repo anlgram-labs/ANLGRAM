@@ -35,7 +35,15 @@ Una publicación posterior de Pages aplica el nuevo binding. No se ha emitido ni
 - 5 casos reales workerd/SQLite, incluidos persistencia del ledger/journal y cooldowns tras reinicio:5 pass,0 fail.
 - 42 casos sobre el bundle compilado y puentes HTTP locales controlados:42 pass,0 fail en la ejecución final. En la primera ejecución hubo41 pass/1 fail: el control negativo del SDK sin parche abortaba a100ms bajo carga de compilación y no siempre llegaba al segundo POST. Se corrigió el harness para esperar el segundo POST recibido dentro de su espera acotada existente antes de abortar; no se redujo la aserción ni se cambió el SDK o las expiraciones de la aplicación. El control volvió a medir2 POSTs con el mismo RPC ID; recuperación deshabilitada midió0 POSTs.
 
-Total final seleccionado: **116 pass,0 fail**; diez casos nuevos (nueve de hallazgos y uno de cuota anónima). Build de Pages y dry-run del Worker pasaron. No se repitieron el wizard, el minter ni la suite completa de contratos. No son pruebas de nueva ejecución on-chain.
+Total final seleccionado: **118 pass,0 fail**; doce casos nuevos (nueve de hallazgos, uno de cuota anónima y dos de integridad de build). Build de Pages y dry-run del Worker pasaron. No se repitieron el wizard, el minter ni la suite completa de contratos. No son pruebas de nueva ejecución on-chain.
+
+### Desajuste adicional confirmado al verificar la publicación
+
+Se confirmó `1e7f4fe` en el API público, pero el SDK servido no coincidía con el hash del bundle local probado. La primera diferencia estaba en el hash de `sdk-patch.mjs`: `31485e…` es el digest LF del blob Git; `76ae83…` es el de exactamente el mismo texto en CRLF, y aparecía en el bundle servido. Por tanto, un build desde otro checkout podía generar una identidad distinta y publicar un cliente incompatible con el identificador del servidor, sin cambiar la lógica del SDK.
+
+Corrección mínima en `build-source-integrity.mjs:5` y `build.mjs`: normalizar solo CRLF→LF al construir el índice de hashes de fuente. Se mantienen byte-exactos el pin del SDK original, las verificaciones de BOC y el hash del bundle compilado. Dos regresiones comprueban el índice completo con ambas representaciones y que un cambio real de código siga cambiando la identidad, además del binding del bundle y pin originales. El transporte y el verificador de recibos no se reimplementaron.
+
+La comprobación pública fallida se conserva en `antigravity-fixes-public-check-2026-11-02.json` (bundle distinto y429 del proveedor); no se presenta como éxito. La verificación final de la publicación se registra por separado. No se fuerza la activación financiera por un desajuste de versiones.
 
 ## Bloqueos que siguen requiriendo revisión externa
 

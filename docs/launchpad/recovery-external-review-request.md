@@ -36,7 +36,7 @@ node --test test/compiled-transport.test.mjs
 
 Las fixtures `v5-account-proof-live-2026-11-02.json` y `v5-source-history-live-2026-11-02.json` contienen lecturas públicas reales de Testnet, no una recuperación ejecutada. Las pruebas Sandbox usan claves locales deterministas únicamente de prueba. Los puentes de los tests del SDK son locales. Nada de ello acredita una transacción real nueva.
 
-El build existente calcula hashes sobre los bytes del checkout; conservar los finales de línea y versiones del entorno registrado al reproducir su identificador. Una diferencia de plataforma/finales de línea no debe aceptarse silenciosamente como el mismo artefacto. El bundle público debe coincidir exactamente con `client-build.json`.
+La identidad de fuente del build normaliza únicamente CRLF a LF para que el mismo commit tenga el mismo identificador entre checkouts. Los BOCs binarios, el pin del SDK original y el hash del bundle final siguen verificándose sobre bytes exactos. La prueba `test/build-source-integrity.test.mjs` cubre ambos formatos y el rechazo de cambios de código. El bundle público debe coincidir exactamente con `client-build.json`.
 
 ## Resultado exigido antes de activar un intento
 
