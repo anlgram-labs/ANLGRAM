@@ -1,0 +1,30 @@
+{
+  "observedAt": "2026-11-02T19:30:08.464Z",
+  "commit": "0b95c4b",
+  "pagesDeployment": "https://fcc83a66.anlgram-testnet-preparation.pages.dev",
+  "storageWorkerVersion": "39455424-f4b2-404d-b719-8e357e7b0b4c",
+  "scope": "PUBLIC_BYTE_EXACT_RELEASE_VERIFICATION_NOT_AUTHENTICATED_RECEIPT_SUCCESS",
+  "versionMatches": true,
+  "bundleMatches": true,
+  "network": "-3",
+  "financialSigningEnabled": false,
+  "executionEnabled": false,
+  "originalLock": {
+    "operation": "ANLTEST_CURVE_TX2",
+    "state": "LOCKED_PENDING_RECONCILIATION",
+    "fingerprint": "508c80f62122112cbda6af7a1fdad53a4a1bc86bad009bdd66f212988055bb28",
+    "claimedAt": 1793573585344,
+    "validUntil": 1793573616
+  },
+  "missingProofRejected": true,
+  "lastReceiptCheck": null,
+  "observation": {
+    "status": 429,
+    "provider": "TONAPI_TESTNET",
+    "reason": "PROVIDER_RATE_LIMITED"
+  },
+  "ownerAuthenticatedAttempt": "OWNER_REPORTED_TONAPI_429_NO_RECEIPT_COMPLETION",
+  "tonapiKeyConfigured": false,
+  "qualifiedHumanReview": false,
+  "financialRequests": 0
+}

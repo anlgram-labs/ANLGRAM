@@ -54,3 +54,13 @@ La comprobación pública fallida se conserva en `antigravity-fixes-public-check
 5. La retención conserva todos los registros V1 y hasta256 nuevos estados V2 distintos. No hay poda automática; el presupuesto de estados realmente distintos sigue siendo una defensa operativa explícita.
 
 `LOCKED_PENDING_RECONCILIATION`, su fingerprint, el bloqueo de recuperación/sucesor y Mainnet permanecen intactos. No se habilitó firma, no hubo transacciones, gasto TON, despliegue de contratos, merges o cambios de producción.
+
+## Verificación pública final
+
+Commits de código subidos a PR #12: `1e7f4fe` (hallazgos) y `0b95c4b459baad2db18d8b3afc9fb48318aed909` (identidad reproducible). Publicación final de Pages para aplicar el binding cifrado: https://445c5d3a.anlgram-testnet-preparation.pages.dev, canónica https://testnet.anlgram.com. Worker privado: `39455424-f4b2-404d-b719-8e357e7b0b4c`. El API y el bundle público coinciden con el build probado, sin activar firmas.
+
+El propietario entregó posteriormente una credencial de TonAPI aceptada con200, guardada mediante stdin de Wrangler como secreto cifrado `TONAPI_TESTNET_API_KEY` exclusivamente en el proyecto Pages Testnet. No se incluyó su valor en archivos, argumentos de proceso, bundles, respuestas o Git. La configuración anterior de TON Center permanece intacta. Tras publicar ese binding, la observación independiente de cuentas devolvió200.
+
+La renovación manual de ton_proof en el dominio canónico se completó con Tonkeeper26.10.4. El propietario activó el botón de lectura; una consulta pública independiente al ledger confirmó la nueva captura persistente con inclusión verificada, cuenta/última transacción auténticas y estado `NO_RESERVED_RECOVERY_OPERATION`, seqno1. Esto acredita el flujo autenticado de adquisición de cuenta e historial; **no** es un recibo de invalidación de nonce, finalidad de validadores ni una recuperación completada. `providerReceiptVerified`, `independentFinalityVerified`, `validatorFinalityVerified`, `operationCompleted` y las firmas siguen falsos. El lock original y su fingerprint se comprobaron intactos.
+
+Evidencia positiva final: `antigravity-fixes-authenticated-check-2026-11-02.json`. Las comprobaciones intermedias fallidas (429 y desajuste del bundle) se conservan por separado. No se inició ninguna solicitud financiera.

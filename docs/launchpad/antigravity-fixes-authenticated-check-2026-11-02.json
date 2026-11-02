@@ -1,0 +1,63 @@
+{
+  "observedAt": "2026-11-02T19:39:37.384Z",
+  "codeCommit": "0b95c4b459baad2db18d8b3afc9fb48318aed909",
+  "findingsCommit": "1e7f4fe",
+  "pagesDeployment": "https://445c5d3a.anlgram-testnet-preparation.pages.dev",
+  "storageWorkerVersion": "39455424-f4b2-404d-b719-8e357e7b0b4c",
+  "scope": "LIVE_AUTHENTICATED_READ_ONLY_ACCOUNT_INCLUSION_AND_HISTORY_NOT_A_RECOVERY_EXECUTION",
+  "versionMatches": true,
+  "bundleMatches": true,
+  "ownerManualTonProofReported": true,
+  "domain": "testnet.anlgram.com",
+  "walletApplication": "Tonkeeper 26.10.4",
+  "tonapiCredentialAccepted": true,
+  "tonapiSecretConfiguredInPages": true,
+  "credentialValuesRecorded": false,
+  "receiptCheck": {
+    "scope": "SERVER_RECEIPT_RECONCILIATION_REVIEW_PENDING",
+    "state": "NO_RESERVED_RECOVERY_OPERATION",
+    "accountHash": "2c9a3c46e7d68b6dcfa350699e82306aca04a009a957e53ff71725c082593058",
+    "sourceSeqno": 1,
+    "originalFingerprint": "508c80f62122112cbda6af7a1fdad53a4a1bc86bad009bdd66f212988055bb28",
+    "proofInclusionVerified": true,
+    "providerReceiptVerified": false,
+    "independentFinalityVerified": false,
+    "validatorFinalityVerified": false,
+    "operationCompleted": false,
+    "financialSigningEnabled": false,
+    "observedAt": 1793648305614
+  },
+  "accountEvidence": {
+    "id": "9550cdae38410a6511211251020b55a557b41bda5fed85884af9c0e2e4d1dc8f",
+    "count": 1,
+    "observedAt": 1793648293820,
+    "accountHash": "2c9a3c46e7d68b6dcfa350699e82306aca04a009a957e53ff71725c082593058",
+    "seqno": 1,
+    "balanceNano": "5893016464",
+    "lastTransactionHash": "d2e8fd5233eb8bf05a428605ea3735d67a1b50741826bb6996156ec49020dc21",
+    "referenceBlock": {
+      "workchain": -1,
+      "shard": "8000000000000000",
+      "seqno": 95368222,
+      "root_hash": "134a75fa5d7fb5c84fd201640de7f0a538ab854b500ad3e05cd4c0af1b1efbb0",
+      "file_hash": "09a90b8b442a3a89bbf43aba2fbb39b27a46cb46ac7374e73ad7d48c3772a6b9"
+    },
+    "scope": "CORROBORATED_RAW_ACCOUNT_NOT_FINALIZED_RECEIPT",
+    "state": "NO_EXECUTION_OBSERVED_RECEIPT_ABSENT",
+    "proofInclusionVerified": true,
+    "validatorFinalityVerified": false,
+    "operationCompleted": false,
+    "financialSigningEnabled": false
+  },
+  "originalLock": {
+    "operation": "ANLTEST_CURVE_TX2",
+    "state": "LOCKED_PENDING_RECONCILIATION",
+    "fingerprint": "508c80f62122112cbda6af7a1fdad53a4a1bc86bad009bdd66f212988055bb28",
+    "claimedAt": 1793573585344,
+    "validUntil": 1793573616
+  },
+  "financialSigningEnabled": false,
+  "executionEnabled": false,
+  "qualifiedHumanReview": false,
+  "financialRequests": 0
+}
