@@ -1,28 +1,42 @@
 import {configurationFingerprint} from './preparation-model.mjs';
 import {format} from './model.mjs';
-import {projectStatusText,LIFECYCLE_STAGES,deriveLifecycleStage,migrationSummary,lpLockerSummary,isAuthenticTxHash,tonviewerTxUrl,tonviewerAccountUrl} from './project-status.mjs';
+import {projectStatusText,LIFECYCLE_STAGES,deriveLifecycleStage,deriveMigrationLifecycle,migrationSummary,lpLockerSummary,isAuthenticTxHash,tonviewerTxUrl,tonviewerAccountUrl} from './project-status.mjs';
 // Cached configuration only: never a quote, authority, operation ledger or receipt.
 export function renderMigrationAndLpGrids(d,p=null){
- const $=id=>document.getElementById(id),mig=migrationSummary(d,p),lp=lpLockerSummary(d,p);
+ const $=id=>document.getElementById(id),mig=migrationSummary(d,p),lp=lpLockerSummary(d,p),migLife=deriveMigrationLifecycle(d,p);
  const rows=[
   ['Bonding Curve Trading Progress',mig.applicable?`Accumulated TON: ${mig.observedRealTonReserveDisplay} · Curve inventory: ${mig.observedCurveInventoryDisplay}`:'Not applicable (Standard Jetton mode)'],
   ['Graduation Progress (500 TON Target)',mig.applicable?mig.graduationProgressDisplay:'Not applicable (no Bonding Curve)'],
   ['Migration Eligibility',mig.migrationEligibility],
-  ['STON.fi v2.2 Pool Details',mig.applicable?`Expected Pool: ${mig.stonfiPoolAddress} · Router Ref: ${mig.routerCodeReferenceHash.slice(0,16)}…`:'Not applicable'],
-  ['Migration Binding & LP Locker V2',mig.applicable?`Binding V2: ${mig.migrationBindingAddress} · Vault V2: ${mig.lpLockerAddress} · Locker LP Wallet: ${mig.expectedLpWalletAddress}`:'Not applicable'],
+  ['STON.fi v2.2 Pool & Router Verification',mig.applicable?`Expected Pool: ${mig.stonfiPoolAddress} (Pool: ${mig.poolVerification} · Router: ${mig.routerVerification}) · Router Ref: ${mig.routerCodeReferenceHash.slice(0,16)}…`:'Not applicable'],
+  ['Migration Binding & LP Locker V2',mig.applicable?`Binding V2: ${mig.migrationBindingAddress} · Vault V2: ${mig.lpLockerAddress} · Locker LP Wallet: ${mig.expectedLpWalletAddress} · ${mig.versionedPackageStatus}`:'Not applicable'],
   ['Liquidity Deposit Status',mig.liquidityDepositStatus],
   ['Migration Transaction Receipts',mig.migrationReceiptStatus],
   ['Missing / Delayed LP Receipt State',mig.missingOrDelayedLpReceiptState],
-  ['LP Custody Verification',lp.applicable?`${lp.custodyStatus} (On-chain LP balance: UNKNOWN)`:'Not applicable'],
-  ['Locked & Unlocked LP Balances',lp.applicable?`Locked: ${lp.lockedLpDisplay} · Unlocked: ${lp.unlockedLpDisplay}`:'Not applicable'],
-  ['Lock Share & Duration',lp.applicable?`${lp.percentDisplay} · ${lp.durationLabel}`:'Not applicable'],
+  ['LP Custody & Actual Verified LP Received',lp.applicable?`Custody: ${lp.custodyStatus} · Actual Verified LP Received: ${lp.actualVerifiedLpReceivedDisplay}`:'Not applicable'],
+  ['Locked & Unlocked LP Balances (Configured vs. On-Chain)',lp.applicable?`Locked: ${lp.lockedLpDisplay} · Unlocked: ${lp.unlockedLpDisplay}`:'Not applicable'],
+  ['Configured Lock Share & Duration',lp.applicable?`${lp.percentDisplay} · ${lp.durationLabel}`:'Not applicable'],
   ['Beneficiary & Unlocked Controller',lp.applicable?`Beneficiary: ${lp.beneficiary} · Unlocked Controller: ${lp.unlockedController}`:'Not applicable'],
   ['Unlock Timestamp & Extension Policy',lp.applicable?`${lp.unlockDateDisplay} (${lp.extensionPolicy})`:'Not applicable'],
-  ['Withdrawal Eligibility & Restrictions',lp.applicable?lp.withdrawalEligibility:'Not applicable']
+  ['Withdrawal Eligibility & Withdrawal Receipts',lp.applicable?`${lp.withdrawalEligibility} · Withdrawal Receipts: ${lp.authenticatedWithdrawalReceipts}`:'Not applicable']
  ];
  for(const gridId of ['stonfi-migration-grid','dashboard-lp-migration-grid']){
   const el=$(gridId);if(!el)continue;
   el.replaceChildren(...rows.map(([label,value])=>{const box=document.createElement('div');box.className='wizard-review-box';const dt=document.createElement('dt');dt.className='wizard-review-label';dt.textContent=label;const dd=document.createElement('dd');dd.className='wizard-review-val';dd.textContent=value;box.append(dt,dd);return box;}));
+ }
+ const migBadge=$('migration-lifecycle-badge'),migBanner=$('migration-anomaly-banner'),migList=$('migration-lifecycle-list');
+ if(migBadge)migBadge.textContent=migLife.summaryBadge;
+ if(migBanner)migBanner.textContent=migLife.anomaly?`${migLife.anomaly.label} [${migLife.anomaly.badge}]: ${migLife.anomaly.detail}`:'Migration status: NOT STARTED · No stage is marked completed without authenticated finalized receipts. Partial, failed, expired or uncertain operations never permit retry.';
+ if(migList){
+  migList.replaceChildren(...migLife.steps.map(step=>{
+   const li=document.createElement('li');li.className='labs-lifecycle-item'+(step.status==='VERIFIED_ON_CHAIN'?' active':'');
+   const head=document.createElement('div');head.className='labs-lifecycle-head';
+   const title=document.createElement('strong');title.textContent=`${step.step}. ${step.label}`;
+   const st=document.createElement('span');st.className=step.status==='VERIFIED_ON_CHAIN'?'badge-valid':'labs-project-tag';st.textContent=step.badgeText;
+   head.append(title,st);
+   const desc=document.createElement('p');desc.className='labs-mode-desc';desc.textContent=step.description;
+   li.append(head,desc);return li;
+  }));
  }
  const life=deriveLifecycleStage(d,p),badge=$('wizard-lifecycle-current-badge'),list=$('wizard-lifecycle-list');
  if(badge)badge.textContent=life.displayBadge||life.label;
