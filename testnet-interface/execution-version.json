@@ -18,7 +18,7 @@
     "prepare-minter-one.mjs": "bf87dbd1ce4d86a81af24b1911f5e13657bef020689124c0477c9631502a1743",
     "testnet-rpc.mjs": "5ed562fe507759f5a9f3b4859c8e3cf647ad3abb560f794536889efc91e5fe74",
     "curve-emulation.mjs": "23168fd662ba5f4ea84c0c43100adf2f3aef00c16de709b2001d435a7c10eaca",
-    "worker.mjs": "5604b0d779b3db9d813dc58b719d05f68b38944291c689facc2c1e16fe29304a",
+    "worker.mjs": "3108d5a69fd1180a45622dcc261855b6d5f750f8a2aabbb7d1868a09f091af8e",
     "config.mjs": "fc3dd5a9ee733d81678f124a39e6584ff4941cdd82ed4d6130169541ac3901cd",
     "package-lock.json": "d62b91018c9d98e77bdb37f24d2b6811425d596e603f730b93ae7c1064d3dd84",
     "recovery/runtime.mjs": "85fa9d7a7fb2134eebb29ece901f3faba7f16211dd71933a42a4b6e36969d518",
@@ -33,5 +33,5 @@
     "../lib/v5-self-transfer-receipt.js": "d3347f12f5552c2cd8c86491143a71f7142890ee40bae8cb76c548e038d16d2a",
     "../lib/v5-deployment-receipt.js": "900d30bc7856c5b3373dea3acc9da6a46b541d4576699beb85ae13285d5587c7"
   },
-  "sha256": "03299c7cd5f67e427aeda64401da181270592e98713f288e4974d061f7501ec1"
+  "sha256": "0905916f2098101d4fb769ad41774150152ab4059a7c8f495fb1fe5a549232e8"
 }

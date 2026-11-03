@@ -1,5 +1,6 @@
 import execution from './execution-version.json' with {type:'json'};
 import {prepareProject} from './projects/prepare.mjs';
+import {getRegisteredProject,projectRegisteredStatus} from './projects/project-registry.mjs';
 import {verifyRuntimeAuthorization} from './curve-authorization.mjs';
 import {readMvpStatus,readCurveDispatch} from './mvp-status.mjs';
 import {curveOperationRoute,currentCurveAuthorization,storeCurveAuthorization} from './curve-operation.mjs';
@@ -70,7 +71,16 @@ async function route(request,env) {
   if(request.method==='POST'&&['/api/projects/prepare','/api/projects/status'].includes(path)){
     if(request.headers.get('Origin')!==u.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Origin/content type rejected'},403);
     let input;try{input=JSON.parse(await boundedBody(request,128000));}catch{return json({error:'Invalid or oversized project configuration'},400);}
-    try{const project=await prepareProject(input);return json(path==='/api/projects/prepare'?project:{schema:2,network:'-3',configurationFingerprint:project.configurationFingerprint,scope:'PROJECT_CONFIGURATION_NO_REGISTERED_CHAIN_EVIDENCE',status:project.migration?.statusView??null,unavailableReason:project.migration?'NO_REGISTERED_VERSIONED_DEPLOYMENT_AND_FINALIZED_RECEIPTS':'STANDARD_JETTON_HAS_NO_LAUNCHPAD_MIGRATION',financialSigningEnabled:false,migrationAuthorized:false,withdrawalsEnabled:false});}catch(e){return json({error:String(e.message).slice(0,2000),financialSigningEnabled:false},400);}
+    try{
+      const project=await prepareProject(input);
+      if(path==='/api/projects/prepare')return json(project);
+      const registered=await getRegisteredProject(project.configurationFingerprint,env);
+      if(registered){
+        const gen2Res=await projectRegisteredStatus(registered,env);
+        return json(gen2Res);
+      }
+      return json({schema:2,network:'-3',configurationFingerprint:project.configurationFingerprint,scope:'PROJECT_CONFIGURATION_NO_REGISTERED_CHAIN_EVIDENCE',status:project.migration?.statusView??null,unavailableReason:project.migration?'NO_REGISTERED_VERSIONED_DEPLOYMENT_AND_FINALIZED_RECEIPTS':'STANDARD_JETTON_HAS_NO_LAUNCHPAD_MIGRATION',financialSigningEnabled:false,migrationAuthorized:false,withdrawalsEnabled:false});
+    }catch(e){return json({error:String(e.message).slice(0,2000),financialSigningEnabled:false},400);}
   }
   if (request.method==='GET' && path==='/tonconnect-manifest.json') return json({url:origin.origin+'/',name:'ANLGRAM TESTNET ONLY — ownership proof',iconUrl:origin.origin+'/icon.png'},200,{'Access-Control-Allow-Origin':'*'});
   if (request.method==='GET' && path==='/api/config') {const dispatch=await readCurveDispatch(env),retired=dispatch.state!=='NOT_CLAIMED';return json({curveExecutionVersion:execution.sha256,network:CHAIN,operator:OPERATOR,minter:MINTER,

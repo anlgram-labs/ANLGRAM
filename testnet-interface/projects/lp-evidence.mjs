@@ -12,6 +12,7 @@ const hash=c=>c.hash().toString('hex');
 const equal=(a,b)=>a?.equals(b)===true;
 const included=new WeakSet();
 export const isIncludedLpEvidence=value=>!!value&&included.has(value);
+export const rememberLpEvidence=value=>{included.add(value);return value;};
 function cell(boc){need(typeof boc==='string'&&boc.length>0&&boc.length<524288,'Bounded raw BOC required');const roots=core.Cell.fromBoc(Buffer.from(boc,'base64'));need(roots.length===1&&!roots[0].isExotic,'One ordinary root required');return roots[0];}
 function transaction(boc,address){const c=cell(boc),s=c.beginParse(),t=core.loadTransaction(s);s.endParse();need(address.workChain===0&&t.address===BigInt('0x'+address.hash.toString('hex')),'Wrong transaction account');return{cell:c,tx:t};}
 function success(t){const d=t.description;need(d.type==='generic'&&!d.aborted&&d.computePhase.type==='vm'&&d.computePhase.success&&d.computePhase.exitCode===0&&(!d.actionPhase||(d.actionPhase.success&&d.actionPhase.resultCode===0&&d.actionPhase.skippedActions===0)),'Successful execution required');}
