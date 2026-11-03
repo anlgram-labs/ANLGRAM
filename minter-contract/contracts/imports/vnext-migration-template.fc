@@ -1,0 +1,9 @@
+;; Break Guard<->Migrator address recursion without accepting arbitrary callers.
+;; Only the guard address is normalized; every other genesis bit/ref stays bound.
+cell vn_migration_template(cell init,slice expected_curve,slice expected_guard) impure inline {
+    slice s = init.begin_parse();throw_unless(408,s~load_uint(2) == 0);cell code = s~load_dict();cell data = s~load_dict();throw_unless(408,s~load_uint(1) == 0);s.end_parse();
+    slice d = data.begin_parse();int state = d~load_uint(1);slice curve = d~load_msg_addr();slice guard = d~load_msg_addr();slice dex = d~load_msg_addr();
+    throw_unless(408,equal_slices(curve,expected_curve) & equal_slices(guard,expected_guard));
+    builder b = begin_cell().store_uint(state,1).store_slice(curve).store_uint(0,2).store_slice(dex);while(d.slice_refs()) { b = b.store_ref(d~load_ref()); } d.end_parse();
+    return begin_cell().store_uint(0,2).store_dict(code).store_dict(b.end_cell()).store_uint(0,1).end_cell();
+}
