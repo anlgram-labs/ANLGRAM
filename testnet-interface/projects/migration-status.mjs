@@ -42,3 +42,73 @@ export function migrationEvidenceStatus(terms,evidence=[],checkpoints=[]){
  // credit. Keep these null until a reviewed finality/attribution path exists.
  return s;
 }
+
+// Internal status projection. Identity and the previous checkpoint come from
+// the server's project context. Clients cannot submit evidence to this path.
+export function generation2Status(identity, {checkpoint, previous, evidence = []} = {}) {
+ const matches = cp => isMigrationCheckpoint(cp) && cp.generation === 2 && cp.role === 'migration'
+  && cp.project === identity.project && cp.address === identity.migrator
+  && cp.operationId === String(identity.operationId);
+ const result = {
+  schema: 2, generation: 2, project: identity.project, migrator: identity.migrator,
+  operationId: String(identity.operationId), scope: 'REFERENCE_RELATIVE_READ_ONLY',
+  dispatch: 'UNKNOWN', mint: 'NOT_VERIFIED', custody: 'UNKNOWN', lock: 'UNKNOWN',
+  settlement: 'UNKNOWN', historicalLp: null, currentWalletUnits: null,
+  unresolvedReturns: 'UNKNOWN', evidence: [], checkpoint: null,
+  financialSigningEnabled: false, broadcastingEnabled: false, tradingEnabled: false,
+  migrationAuthorized: false, withdrawalsEnabled: false, recoveryEnabled: false,
+ };
+ if (!checkpoint) return result;
+ if (!matches(checkpoint)) throw Error('Wrong generation 2 project checkpoint');
+ const proof = checkpoint.proof;
+ const lt = BigInt(proof.lastTransactionLt);
+ const observation = checkpoint.lpObservation;
+ if (observation && BigInt(observation.lt) > lt) throw Error('Observation newer than account transaction');
+ if (previous) {
+  if (!matches(previous)) throw Error('Wrong previous project checkpoint');
+  const old = previous.proof;
+  if (proof.masterchainSeqno < old.masterchainSeqno || lt < BigInt(old.lastTransactionLt)
+   || (proof.masterchainSeqno === old.masterchainSeqno &&
+    (proof.masterchainRootHash !== old.masterchainRootHash || proof.masterchainFileHash !== old.masterchainFileHash || proof.accountHash !== old.accountHash))
+   || (lt === BigInt(old.lastTransactionLt) &&
+    (proof.lastTransactionHash !== old.lastTransactionHash || proof.accountHash !== old.accountHash))
+   || (previous.lifecycle?.dexDispatched === '1' && checkpoint.lifecycle?.dexDispatched !== '1')
+   || (previous.settlementPending && !checkpoint.settlementPending)
+   || (previous.lpObservation && (!observation ||
+    BigInt(observation.lt) < BigInt(previous.lpObservation.lt) ||
+    (observation.lt === previous.lpObservation.lt && JSON.stringify(observation) !== JSON.stringify(previous.lpObservation))))) {
+   throw Error('Stale or conflicting project checkpoint');
+  }
+ }
+ result.checkpoint = proof;
+ const dispatched = checkpoint.activeOperationId === result.operationId && checkpoint.lifecycle?.dexDispatched === '1';
+ if (dispatched) {
+  result.dispatch = 'DEX_DISPATCHED';
+  result.settlement = 'SETTLEMENT_PENDING';
+  if (observation) {
+   result.historicalLp = observation;
+   result.custody = 'LP_CUSTODY_VERIFIED';
+   result.lock = 'LP_LOCKED_VERIFIED';
+  }
+ }
+ if (!Array.isArray(evidence) || evidence.length > 64) throw Error('Bounded evidence required');
+ const reference = JSON.stringify([proof.masterchainSeqno, proof.masterchainRootHash, proof.masterchainFileHash]);
+ const seen = new Set();
+ for (const receipt of evidence) {
+  if (!isIncludedLpEvidence(receipt) || receipt.kind !== 'LP_ISSUANCE' ||
+   receipt.operationId !== result.operationId || receipt.reference !== reference ||
+   receipt.locker !== checkpoint.locker || receipt.pool !== checkpoint.pool || receipt.lpWallet !== checkpoint.lpWallet) {
+   throw Error('Wrong project mint evidence');
+  }
+  if (!dispatched) throw Error('Mint evidence without dispatch');
+  if (seen.has(receipt.walletTransactionHash)) continue;
+  seen.add(receipt.walletTransactionHash);
+  result.evidence.push(receipt);
+ }
+ result.evidence.sort((a,b) => {
+  const delta = BigInt(a.walletTransactionLt) - BigInt(b.walletTransactionLt);
+  return delta < 0n ? -1 : delta > 0n ? 1 : a.walletTransactionHash.localeCompare(b.walletTransactionHash);
+ });
+ if (result.evidence.length) result.mint = 'LP_MINTED_OBSERVED';
+ return result;
+}
