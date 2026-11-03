@@ -47,12 +47,13 @@ export function verifyLpIssuanceFields(policy,raw){
  return result({kind:'LP_ISSUANCE',operationId:policy.q.toString(),pool:policy.pool.toRawString(),locker:policy.locker.toRawString(),lpWallet:policy.lpWallet.toRawString(),amountUnits:amount.toString(),balanceBeforeUnits:before.toString(),balanceAfterUnits:after.toString(),poolTransactionHash:hash(pool.cell),walletTransactionHash:hash(delivery.cell),firstNotificationRecovery:'EXACT_DELIVERY_FIELDS_ONLY_NO_CONTRACT_CREDIT',lockedAllocationUnits:null});
 }
 
-function vaultAccount(a,policy){const d=active(a,code('anlgram-lp-locker-v2')).beginParse();need(d.loadUint(8)===2&&d.loadRef().equals(policy.config),'Locker immutable configuration changed');const s=d.loadRef().beginParse();return{received:s.loadCoins(),locked:s.loadCoins(),free:s.loadCoins(),pending:s.loadCoins(),kind:s.loadBit(),pq:s.loadUintBig(64),next:s.loadUintBig(64),unlock:s.loadUintBig(64)};}
+function vaultAccount(a,policy){const d=active(a,code('anlgram-lp-locker-v2')).beginParse();need(d.loadUint(8)===2&&d.loadRef().equals(policy.config),'Locker immutable configuration changed');const s=d.loadRef().beginParse(),fields={received:s.loadCoins(),locked:s.loadCoins(),free:s.loadCoins(),pending:s.loadCoins(),kind:s.loadBit(),pq:s.loadUintBig(64),next:s.loadUintBig(64),unlock:s.loadUintBig(64)};s.endParse();d.loadMaybeRef();fields.requests=d.loadDict(core.Dictionary.Keys.BigUint(64),{parse:s=>s.asCell(),serialize(){throw Error('Read only');}});d.endParse();return fields;}
 export function verifyLpWithdrawalFields(policy,raw){
  const claim=transaction(raw.lockerTransaction,policy.locker),sender=transaction(raw.walletTransaction,policy.lpWallet);success(claim.tx);success(sender.tx);edge(claim.tx,sender.tx);
  const v=states(raw.locker,policy.locker,claim.tx,code('anlgram-lp-locker-v2')),before=vaultAccount(v.before,policy),after=vaultAccount(v.after,policy);
  const msg=claim.tx.inMessage;need(msg?.info.type==='internal'&&!msg.info.bounced&&equal(msg.info.dest,policy.locker),'Authenticated claim required');const s=msg.body.beginParse();need(s.loadUint(32)===0x414c5633,'Not an LP claim');const q=s.loadUintBig(64),locked=s.loadBit(),amount=s.loadCoins();s.endParse();
  const recipient=locked?policy.beneficiary:policy.controller;need(equal(msg.info.src,recipient)&&q===before.next&&amount>0n,'Wrong claimant, query or amount');
+ need(!before.requests.has(q),'Withdrawal query already requested');const request=after.requests.get(q)?.beginParse();need(request&&request.loadCoins()===amount&&request.loadBit()===locked,'Exact persistent withdrawal request required');request.endParse();
  need(!locked||(policy.duration!==0&&before.unlock>0n&&BigInt(claim.tx.now)>=before.unlock),'Permanent/premature withdrawal');
  need(before.received===after.received&&after.locked===before.locked-(locked?amount:0n)&&after.free===before.free-(locked?0n:amount)&&after.pending===before.pending+amount&&after.next===q+1n&&after.pq===q&&after.kind===locked&&after.unlock===before.unlock,'Locker withdrawal accounting mismatch');
  const ws=internal(sender.tx.inMessage,policy.locker,policy.lpWallet);need(transfer(ws,0x0f8a7ea5,q)===amount&&equal(ws.loadAddress(),recipient),'Wrong wallet transfer');
@@ -61,16 +62,30 @@ export function verifyLpWithdrawalFields(policy,raw){
  const own=states(raw.wallet,policy.lpWallet,sender.tx,policy.lpInit.code),dest=states(raw.recipient,destination,received.tx,policy.lpInit.code);
  need(wallet(own.before,policy.locker,policy.pool,policy.lpInit.code)-wallet(own.after,policy.locker,policy.pool,policy.lpInit.code)===amount,'Sender LP debit mismatch');
  need(wallet(dest.after,recipient,policy.pool,policy.lpInit.code)-wallet(dest.before,recipient,policy.pool,policy.lpInit.code)===amount,'Recipient LP credit mismatch');
- return result({kind:'LP_WITHDRAWAL_DELIVERY',operationId:policy.q.toString(),withdrawalQueryId:q.toString(),amountUnits:amount.toString(),recipient:recipient.toRawString(),recipientWallet:destination.toRawString(),lockedPrincipal:locked,lockerTransactionHash:hash(claim.cell),walletTransactionHash:hash(sender.cell),recipientTransactionHash:hash(received.cell),contractPendingMustRemain:true});
+ return result({kind:'LP_WITHDRAWAL_DELIVERY',operationId:policy.q.toString(),withdrawalQueryId:q.toString(),amountUnits:amount.toString(),recipient:recipient.toRawString(),recipientWallet:destination.toRawString(),lockedPrincipal:locked,lockerTransactionHash:hash(claim.cell),walletTransactionHash:hash(sender.cell),recipientTransactionHash:hash(received.cell),persistentRequestMatched:true,contractPendingMustRemain:true});
+}
+
+// Only an immediate authenticated bounce of the original LP-wallet request can
+// restore the contract's available principal. A downstream recipient bounce or
+// absent notification is NOT this evidence and never permits a refund/retry.
+export function verifyLpWithdrawalBounceFields(policy,raw){
+ const failed=transaction(raw.walletTransaction,policy.lpWallet),recovery=transaction(raw.lockerTransaction,policy.locker);success(recovery.tx);edge(failed.tx,recovery.tx);
+ need(failed.tx.description.type==='generic'&&failed.tx.description.aborted&&failed.tx.description.bouncePhase?.type==='ok','Immediate wallet failure/bounce required');
+ const m=recovery.tx.inMessage;need(m?.info.type==='internal'&&m.info.bounced&&equal(m.info.src,policy.lpWallet)&&equal(m.info.dest,policy.locker),'Wrong recovery bounce sender');
+ const s=m.body.beginParse();need(s.loadUint(32)===0xffffffff&&s.loadUint(32)===0x0f8a7ea5,'Not an original withdrawal bounce');const q=s.loadUintBig(64),amount=s.loadCoins();need(amount>0n,'Positive bounced amount required');
+ const v=states(raw.locker,policy.locker,recovery.tx,code('anlgram-lp-locker-v2')),before=vaultAccount(v.before,policy),after=vaultAccount(v.after,policy),request=before.requests.get(q)?.beginParse();need(request&&request.loadCoins()===amount,'Missing exact pending request');const locked=request.loadBit();request.endParse();need(!after.requests.has(q),'Request not removed after recovery');
+ const original=internal(failed.tx.inMessage,policy.locker,policy.lpWallet);need(transfer(original,0x0f8a7ea5,q)===amount&&equal(original.loadAddress(),locked?policy.beneficiary:policy.controller),'Unrelated original wallet request');
+ need(after.received===before.received&&after.next===before.next&&after.pending===before.pending-amount&&after.locked===before.locked+(locked?amount:0n)&&after.free===before.free+(locked?0n:amount)&&after.unlock===before.unlock,'Bounce restoration accounting mismatch');
+ return result({kind:'LP_WITHDRAWAL_IMMEDIATE_BOUNCE',operationId:policy.q.toString(),withdrawalQueryId:q.toString(),amountUnits:amount.toString(),lockedPrincipal:locked,lockerTransactionHash:hash(recovery.cell),walletTransactionHash:hash(failed.cell),persistentRequestMatched:true,contractPrincipalRestoredFields:true,contractPendingMustRemain:after.pending>0n,deliveryVerified:false,newAttemptAuthorized:false});
 }
 
 // Internal server-acquired bundles only. Reuses inclusion + independent raw
 // history matching; no flags supplied by an indexer are accepted as proof.
 // Even this proof is relative to provider reference hashes, NOT validator quorum.
 export function verifyProvenLpEvidence(policy,kind,raw,checkpoints){
- need(['issuance','withdrawal'].includes(kind),'Unsupported evidence kind');
- const roles=kind==='issuance'?['pool','wallet']:['locker','wallet','recipient'];
- const fields=kind==='issuance'?verifyLpIssuanceFields(policy,raw):verifyLpWithdrawalFields(policy,raw);
+ need(['issuance','withdrawal','withdrawalBounce'].includes(kind),'Unsupported evidence kind');
+ const roles=kind==='issuance'?['pool','wallet']:kind==='withdrawal'?['locker','wallet','recipient']:['locker','wallet'];
+ const fields=kind==='issuance'?verifyLpIssuanceFields(policy,raw):kind==='withdrawal'?verifyLpWithdrawalFields(policy,raw):verifyLpWithdrawalBounceFields(policy,raw);
  const addresses={pool:policy.pool,locker:policy.locker,wallet:policy.lpWallet,recipient:fields.recipientWallet?core.Address.parse(fields.recipientWallet):null};let reference;
  for(const role of roles){const cp=checkpoints?.[role];need(cp,'Missing authenticated checkpoint');const proof=verifyAccountInclusion(cp.raw,cp.reference,addresses[role].toRawString());
   const ref=JSON.stringify([proof.masterchainSeqno,proof.masterchainRootHash,proof.masterchainFileHash]);need(!reference||reference===ref,'Mixed masterchain references');reference=ref;

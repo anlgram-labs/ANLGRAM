@@ -28,4 +28,20 @@ function prepareExecution(core,c,minimumLpUnits){
  if(typeof minimumLpUnits!=='bigint'&&!(typeof minimumLpUnits==='string'&&/^\d+$/.test(minimumLpUnits)))throw Error('Explicit exact LP minimum required');const min=BigInt(minimumLpUnits);if(min<=0n||min>=(1n<<120n))throw Error('LP minimum out of range');
  return{to:c.addresses.migration,value:400000000n,body:core.beginCell().storeUint(0x414e4c37,32).storeUint(c.operationId,64).storeAddress(c.routerTokenWallet).storeAddress(c.vault.lpWallet).storeAddress(c.ptonWallet).storeCoins(min).endCell(),financialSigningEnabled:false,migrationAuthorized:false,requiresFreshQuoteAndOwnerApproval:true};
 }
-module.exports={build,prepareExecution};
+function prepareRegistration(core,c,{starts,deadline,minimumLpUnits,curveEpoch,fundingEpoch,dexEpoch,tonNano,jettonUnits}){
+ if(!Number.isInteger(starts)||!Number.isInteger(deadline)||starts<1||deadline<=starts||deadline>0xffffffff||deadline-starts>60)throw Error('Explicit at-most60s registration window required');
+ const exact=x=>{if(typeof x!=='bigint'&&!(typeof x==='string'&&/^\d+$/.test(x)))throw Error('Exact registration integers required');const n=BigInt(x);if(n<=0n)throw Error('Positive registration values required');return n;};
+ const min=exact(minimumLpUnits),ce=exact(curveEpoch),fe=exact(fundingEpoch),de=exact(dexEpoch),ton=exact(tonNano),tokens=exact(jettonUnits);
+ if(min>=(1n<<120n)||ton>=(1n<<120n)||tokens!==200000000000000000n||ton<500000000000n||[ce,fe,de].some(x=>x>0xffffffffffffffffn))throw Error('Registration reserve/epoch bounds');
+ const epochs=core.beginCell().storeUint(ce,64).storeUint(fe,64).storeUint(de,64).storeCoins(ton).storeCoins(tokens).endCell();
+ const context=core.beginCell().storeAddress(c.addresses.curve).storeAddress(c.addresses.migration).storeRef(core.beginCell().storeAddress(c.vault.address).storeBuffer(c.intent.hash()).endCell()).endCell();
+ return{to:c.addresses.migration,authenticatedSource:c.addresses.guard,value:40000000n,body:core.beginCell().storeUint(0x414e5a03,32).storeUint(c.operationId,64).storeUint(starts,32).storeUint(deadline,32).storeCoins(min).storeRef(epochs).storeRef(context).endCell(),financialSigningEnabled:false,migrationAuthorized:false,guardCurrentlySupportsPositiveRegistration:false,requiresQualifiedIndependentReview:true};
+}
+function prepareCustodyRecovery(core,c,{retry=false,candidateUnits}={}){
+ if(typeof retry!=='boolean'||c.terms.percent!==100||c.terms.duration!==0)throw Error('Only initial permanent100% custody-floor recovery is supported');
+ const b=core.beginCell().storeUint(0x414e5a04,32).storeUint(c.operationId,64).storeBit(retry);
+ if(!retry){if(typeof candidateUnits!=='bigint'&&!(typeof candidateUnits==='string'&&/^\d+$/.test(candidateUnits)))throw Error('Exact custody candidate required');const n=BigInt(candidateUnits);if(n<=0n||n>=(1n<<120n))throw Error('Candidate out of range');b.storeCoins(n);}
+ else if(candidateUnits!==undefined)throw Error('A funded retry must preserve the existing candidate/nonce');
+ return{to:c.addresses.migration,value:150000000n,body:b.endCell(),proofScope:'CUSTODY_FLOOR_ONLY_NOT_EXACT_ISSUANCE',financialSigningEnabled:false,migrationAuthorized:false,requiresSeparateApproval:true};
+}
+module.exports={build,prepareExecution,prepareRegistration,prepareCustodyRecovery};

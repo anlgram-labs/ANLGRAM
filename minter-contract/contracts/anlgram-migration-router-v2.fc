@@ -631,7 +631,7 @@ int consume_native_receipt(cell full_message) impure inline {
     ;; ------------------------------------------------------------------------
     if (op == op::execute_dex_provision) {
         throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,curve_address) | equal_slices(sender_address,admin_address));
-        v2_require_execute(query_id);
+        v2_require_execute(query_id,in_msg_body);
         throw_unless(ERROR_UNAUTHORIZED_SENDER, equal_slices(sender_address, curve_address) | equal_slices(sender_address, admin_address));
         throw_if(ERROR_ALREADY_INITIALIZED, is_initialized == 1);
         throw_unless(ERROR_INVALID_STATE,(pending_ton == 0) & (pending_tokens == 0));

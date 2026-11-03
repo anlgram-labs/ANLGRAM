@@ -6,20 +6,37 @@ cell v2_record() inline {
     (_,_,_,_,_,cell ids) = load_flight();(slice s,int found) = ids.udict_get?(64,0);
     throw_unless(408,found);return s~load_ref();
 }
+cell v2_registration() inline {
+    slice s = v2_record().begin_parse();s~load_uint(32);s~load_ref();s~load_dict();s~load_dict();
+    cell permit = s.slice_bits() ? s~load_dict() : null();s.end_parse();return permit;
+}
 (cell,cell,cell) v2_parts() inline {
     slice s = v2_record().begin_parse();throw_unless(408,s~load_uint(32) == 0x4d563242);
-    cell intent = s~load_ref();cell binding = s~load_dict();cell observation = s~load_dict();s.end_parse();return(intent,binding,observation);
+    cell intent = s~load_ref();cell binding = s~load_dict();cell observation = s~load_dict();if(s.slice_bits()) { s~load_dict(); } s.end_parse();return(intent,binding,observation);
 }
 () v2_save(cell intent,cell binding,cell observation) impure inline {
     (int id,int nonce,int phase,slice pool,slice account,cell ids) = load_flight();
-    cell r = begin_cell().store_uint(0x4d563242,32).store_ref(intent).store_dict(binding).store_dict(observation).end_cell();
+    cell r = begin_cell().store_uint(0x4d563242,32).store_ref(intent).store_dict(binding).store_dict(observation).store_dict(v2_registration()).end_cell();
+    ids~udict_set_ref(64,0,r);save_flight(id,nonce,phase,pool,account,ids);
+}
+() v2_store_registration(cell permit) impure inline {
+    (cell intent,cell binding,cell observation) = v2_parts();
+    (int id,int nonce,int phase,slice pool,slice account,cell ids) = load_flight();
+    cell r = begin_cell().store_uint(0x4d563242,32).store_ref(intent).store_dict(binding).store_dict(observation).store_dict(permit).end_cell();
     ids~udict_set_ref(64,0,r);save_flight(id,nonce,phase,pool,account,ids);
 }
 int v2_root(cell intent) inline { slice s = intent.begin_parse();s~skip_bits(71);return s~load_uint(64); }
+cell v2_floor() inline {
+    (_,_,cell o) = v2_parts();if(cell_null?(o)) { return null(); }
+    slice s = o.begin_parse();s~load_uint(64);repeat(4) { s~load_coins(); } s~load_uint(64);
+    cell floor = s.slice_bits() ? s~load_dict() : null();s.end_parse();return floor;
+}
 slice v2_vault() inline { (_,cell b,_) = v2_parts();throw_if(409,cell_null?(b));slice s = b.begin_parse();return s~load_msg_addr(); }
 int v2_local_ready(int q,int balance) inline {
-    (cell intent,cell binding,_) = v2_parts();
+    (cell intent,cell binding,cell observed) = v2_parts();
     if((q != v2_root(intent)) | cell_null?(binding)) { return 0; }
+    ifnot(cell_null?(v2_floor())) { return 0; } ;; unassigned custody cannot authorize another deposit
+    ifnot(cell_null?(observed)) { slice s = observed.begin_parse();s~load_uint(64);if(s~load_coins() > 0) { return 0; } }
     (int active,_,_,_,_,_) = load_flight();
     (int found,cell f,_) = migration_life(q);
     ifnot(found & (active == q)) { return 0; }
@@ -33,9 +50,42 @@ int v2_local_ready(int q,int balance) inline {
       & (ton == life_get(f,0)) & (jettons == life_get(f,1))
       & (pending_ton == 0) & (pending_jettons == 0) & (balance >= ton);
 }
-() v2_require_execute(int q) impure inline {
+int v2_registration_active(int q) inline {
+    cell permit = v2_registration();if(cell_null?(permit)) { return 0; }
+    slice s = permit.begin_parse();int not_before = s~load_uint(32);int deadline = s~load_uint(32);s~load_coins();
+    slice epochs = s~load_ref().begin_parse();int ce = epochs~load_uint(64);int fe = epochs~load_uint(64);int de = epochs~load_uint(64);
+    (int found,cell f,_) = migration_life(q);
+    return found & v2_local_ready(q,get_balance().pair_first()) & (now() >= not_before) & (now() < deadline) & (ce == life_get(f,4)) & (fe == life_get(f,5)) & (de == life_get(f,6));
+}
+() v2_register(int balance,int value,slice sender,int q,slice body) impure inline {
+    (_,slice curve,slice guard,_,_,_,_,_,_,_,_,_,_,_) = load_data();
+    throw_unless(401,equal_slices(sender,guard));throw_unless(407,value >= 40000000);
+    (cell intent,cell binding,_) = v2_parts();throw_unless(409,(q == v2_root(intent)) & (~ cell_null?(binding)));
+    int starts = body~load_uint(32);int deadline = body~load_uint(32);int minimum = body~load_coins();
+    cell epochs = body~load_ref();cell context = body~load_ref();body.end_parse();
+    throw_unless(409,(starts <= now()) & (deadline > now()) & (deadline <= starts + 60) & (minimum > 0));
+    slice e = epochs.begin_parse();int ce = e~load_uint(64);int fe = e~load_uint(64);int de = e~load_uint(64);int ot = e~load_coins();int oj = e~load_coins();e.end_parse();
+    slice c = context.begin_parse();throw_unless(408,equal_slices(c~load_msg_addr(),curve) & equal_slices(c~load_msg_addr(),my_address()));
+    slice commitment = c~load_ref().begin_parse();c.end_parse();throw_unless(408,equal_slices(commitment~load_msg_addr(),v2_vault()) & (commitment~load_uint(256) == cell_hash(intent)));commitment.end_parse();
+    (int exists,cell f,_) = migration_life(q);throw_unless(409,exists);
+    throw_unless(409,(ce == life_get(f,4)) & (fe == life_get(f,5)) & (de == life_get(f,6)) & (ot == life_get(f,0)) & (oj == life_get(f,1)));
+    cell permit = begin_cell().store_uint(starts,32).store_uint(deadline,32).store_coins(minimum).store_ref(epochs).store_ref(context).end_cell();
+    cell prior = v2_registration();
+    ifnot(cell_null?(prior)) { throw_unless(409,cell_hash(prior) == cell_hash(permit));return_receipt_gas(sender,balance - value,q);return (); }
+    throw_unless(409,v2_local_ready(q,balance - value));
+    v2_store_registration(permit);return_receipt_gas(sender,balance - value,q);
+}
+() v2_require_execute(int q,slice body) impure inline {
     (cell intent,cell binding,_) = v2_parts();throw_unless(409,(q == v2_root(intent)) & (q > 0) & (q < (1 << 62)) & (~ cell_null?(binding)));
     throw_unless(414,v2_local_ready(q,get_balance().pair_first()));
+    throw_unless(414,v2_registration_active(q));
+    slice p = v2_registration().begin_parse();p~skip_bits(64);int minimum = p~load_coins();
+    (_,_,_,slice router,slice master,_,_,_,_,_,_,_,_,cell code) = load_data();
+    slice own = calculate_user_jetton_wallet_address(router,master,code);
+    slice e = intent.begin_parse();e~skip_bits(135);e = e~load_ref().begin_parse();e~load_msg_addr();slice w0 = e~load_msg_addr();slice w1 = e~load_msg_addr();
+    slice b = binding.begin_parse();b~load_msg_addr();b~load_msg_addr();slice lp = b~load_msg_addr();
+    throw_unless(408,equal_slices(body~load_msg_addr(),own) & equal_slices(body~load_msg_addr(),lp) & equal_slices(body~load_msg_addr(),equal_slices(w0,own) ? w1 : w0));
+    throw_unless(409,body~load_coins() == minimum);body.end_parse();
     ;; Router current-code proof, exact LP issuance and foreign final-delivery
     ;; capability remain external review prerequisites. No admin bypass exists.
     throw(414);
@@ -43,13 +93,14 @@ int v2_local_ready(int q,int balance) inline {
 int handle_migration_lp_v2(int balance,int value,cell full,slice body) impure {
     if(body.slice_bits() < 96) { return 0; } slice h = full.begin_parse();int flags = h~load_uint(4);if(flags & 1) { return 0; }
     int op = body~load_uint(32);int q = body~load_uint(64);
+    if(op == 0x414e5a03) { v2_register(balance,value,h~load_msg_addr(),q,body);return -1; }
     if(op == 0x414e5901) {
         (_,slice expected,_,_,_,_,_,_,_,_,_,_,_,_) = load_data();
         throw_unless(401,equal_slices(h~load_msg_addr(),expected));
         (cell i,_,_) = v2_parts();throw_unless(409,q == v2_root(i));
         return 0; ;; The existing V3 handler performs epoch/funding validation.
     }
-    ifnot((op == 0x414e5a01) | (op == 0x414e5a02) | (op == 0x414c5635)) { return 0; }
+    ifnot((op == 0x414e5a01) | (op == 0x414e5a02) | (op == 0x414e5a04) | (op == 0x414c5635) | (op == 0x414c5639)) { return 0; }
     slice sender = h~load_msg_addr();(cell intent,cell binding,cell observation) = v2_parts();throw_unless(409,q == v2_root(intent));
     (_,slice curve,_,slice router,slice master,_,_,_,slice admin,_,_,_,_,cell wallet_code) = load_data();
     if(op == 0x414e5a01) {
@@ -80,17 +131,47 @@ int handle_migration_lp_v2(int balance,int value,cell full,slice body) impure {
         throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,curve));body.end_parse();throw_unless(407,value >= 40000000);
         recovery_query(vault,begin_cell().store_uint(0x414c5634,32).store_uint(q,64).end_cell(),balance - value);return -1;
     }
+    if(op == 0x414e5a04) {
+        throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,curve));throw_unless(407,value >= 150000000);
+        slice i = intent.begin_parse();i~load_uint(32);throw_unless(409,(i~load_uint(7) == 100) & (i~load_uint(32) == 0));
+        int retry = body~load_uint(1);builder query = begin_cell().store_uint(retry ? 0x414c5638 : 0x414c5636,32).store_uint(q,64);
+        ifnot(retry) { int candidate = body~load_coins();throw_unless(409,candidate > 0);query = query.store_coins(candidate); }
+        body.end_parse();recovery_query(vault,query.end_cell(),balance - value);return -1;
+    }
+    if(op == 0x414c5639) {
+        throw_unless(401,equal_slices(sender,vault));
+        int lt = body~load_uint(64);int amount = body~load_coins();throw_unless(409,(lt > 0) & (amount > 0) & (body~load_uint(2) == 0));
+        slice endpoints = body~load_ref().begin_parse();body.end_parse();throw_unless(408,equal_slices(endpoints~load_msg_addr(),pool) & equal_slices(endpoints~load_msg_addr(),lp));endpoints.end_parse();
+        slice i = intent.begin_parse();i~load_uint(32);throw_unless(409,(i~load_uint(7) == 100) & (i~load_uint(32) == 0));
+        cell prior = v2_floor();
+        ifnot(cell_null?(prior)) { slice p = prior.begin_parse();int old_lt = p~load_uint(64);int old_amount = p~load_coins();
+            if(lt < old_lt) { return_receipt_gas(admin,balance - value,q);return -1; }
+            if(lt == old_lt) { throw_unless(409,amount == old_amount);return_receipt_gas(admin,balance - value,q);return -1; }
+            throw_unless(409,amount >= old_amount);
+        }
+        cell floor = begin_cell().store_uint(lt,64).store_coins(amount).end_cell();builder next = begin_cell().store_uint(0,64).store_coins(0).store_coins(0).store_coins(0).store_coins(0).store_uint(0,64);
+        ifnot(cell_null?(observation)) { slice o = observation.begin_parse();next = begin_cell().store_uint(o~load_uint(64),64);repeat(4) { next = next.store_coins(o~load_coins()); } next = next.store_uint(o~load_uint(64),64); }
+        v2_save(intent,binding,next.store_dict(floor).end_cell());return_receipt_gas(admin,balance - value,q);return -1;
+    }
     throw_unless(401,equal_slices(sender,vault));int lt = body~load_uint(64);int received = body~load_coins();int locked = body~load_coins();int free = body~load_coins();int pending = body~load_coins();int unlock = body~load_uint(64);
     slice endpoints = body~load_ref().begin_parse();body.end_parse();throw_unless(408,equal_slices(endpoints~load_msg_addr(),pool) & equal_slices(endpoints~load_msg_addr(),lp));endpoints.end_parse();
     slice i = intent.begin_parse();i~load_uint(32);int percent = i~load_uint(7);int duration = i~load_uint(32);int target = (received * percent + 99) / 100;
     throw_unless(409,(lt > 0) & (locked <= target) & (free <= received - target) & (locked + free + pending == received));
     throw_unless(409,(received == 0) | ((duration == 0) ? (unlock == 0xffffffffffffffff) : (unlock > 0)));
-    cell next = begin_cell().store_uint(lt,64).store_coins(received).store_coins(locked).store_coins(free).store_coins(pending).store_uint(unlock,64).end_cell();
+    cell next = begin_cell().store_uint(lt,64).store_coins(received).store_coins(locked).store_coins(free).store_coins(pending).store_uint(unlock,64).store_dict(v2_floor()).end_cell();
     ifnot(cell_null?(observation)) { slice old = observation.begin_parse();int prior = old~load_uint(64);if(lt < prior) { return_receipt_gas(admin,balance - value,q);return -1; } if(lt == prior) { throw_unless(409,cell_hash(next) == cell_hash(observation));return_receipt_gas(admin,balance - value,q);return -1; } throw_unless(409,received >= old~load_coins()); }
     v2_save(intent,binding,next);return_receipt_gas(admin,balance - value,q);return -1;
 }
 (int,int) get_local_authorization_v2(int q) method_id {
     return(v2_local_ready(q,get_balance().pair_first()),0); ;; local readiness, external authorization CLOSED
+}
+(int,int,int) get_registration_v2(int q) method_id {
+    (cell i,_,_) = v2_parts();throw_unless(409,q == v2_root(i));
+    return(~ cell_null?(v2_registration()),v2_registration_active(q),0);
+}
+(int,int,int,int) get_lp_floor_v2() method_id {
+    cell floor = v2_floor();if(cell_null?(floor)) { return(0,0,0,0); }
+    slice s = floor.begin_parse();return(s~load_uint(64),s~load_coins(),0,0); ;; no exact balance or migration attribution
 }
 (int,int,int,int,int,int,int,int,int,int,int,int,int,int,int) get_settlement_v2(int q) method_id {
     (cell intent,cell binding,cell observation) = v2_parts();throw_unless(409,q == v2_root(intent));
