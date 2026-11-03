@@ -2313,4 +2313,3 @@ Based on PR19 f872673. New versioned sources/artifacts add exact Migrator StateI
 # PR #21 follow-up — operation binding and proof-scoped LP receipts
 
 Code review target: `420a17c6c3dd64cc9b3b43e622e16d8837080c60`. Targeted financial regression:72/0; final modified component subset:13/0 (included); backend/receipt/status:18/0. Reproducible compilation and Pages Worker dry-run passed; no deployment. See `migration-v2-followup-review.md` for API schema, exact remaining implementation gaps and evidence limits. Canonical positive authorization/finalization and contract-consumable foreign recovery/withdrawal evidence remain unresolved; all financial gates and original Curve #2 lock remain closed.
-
