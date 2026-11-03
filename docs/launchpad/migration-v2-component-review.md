@@ -1,5 +1,7 @@
 # Curve/Migration V2 and actual STON.fi → Locker V2 component package
 
+Historical checkpoint:8f1f4b0. For the current code review target, new artifact hashes, API contract and additional evidence, see `migration-v2-followup-review.md` and the current `migration-v2-audit-package.json`.
+
 Base: PR #19, f8726732b892b4c25a279b646e0dd58092ec58d3. Isolated branch codex/curve-v2-migration-completion. This is an implementation checkpoint with genuine local external-bytecode tests, NOT completed or authorized financial migration.
 
 ## Compatibility findings and corrections
