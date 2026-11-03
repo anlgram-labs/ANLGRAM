@@ -1,0 +1,116 @@
+{
+  "baseCommit": "f8726732b892b4c25a279b646e0dd58092ec58d3",
+  "branch": "codex/curve-v2-migration-completion",
+  "completionStatus": "PARTIAL_COMPONENT_PACKAGE_FINANCIAL_AUTHORIZATION_CLOSED",
+  "financialExecutionAuthorized": false,
+  "mainnetReady": false,
+  "newOnchainTransactions": 0,
+  "newFinancialDeployments": 0,
+  "artifacts": {
+    "anlgram-bonding-curve-v2": {
+      "contract": "anlgram-bonding-curve-v2.fc",
+      "baseContract": "anlgram-bonding-curve.fc",
+      "baseSourceSha256": "bc2942ea836929fa1b73b2691bae31517964606416873099ae9fad440a95b6dc",
+      "compilerPackageVersion": "0.11.0",
+      "sourceFilesSha256": {
+        "anlgram-bonding-curve-v2.fc": "4a318b2500021c56bcd434f629eb0bfeba35dde5f345346069a4dd346b1e7791",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/curve-lifecycle-v3.fc": "50b8006b4168f4fef812175c284543683d739fb00c57d29d56902945121dd963",
+        "imports/curve-return-v2.fc": "3eedf570e5430198b47343222de8d879633eee82fd6223cf4272f0974be088c8",
+        "imports/curve-v2-router.fc": "85e7ded04faafdc48e1992d98f22455ed8f1c534208b0f209ad778c1ce5e0fd7",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/lp-auth-guard-code.fc": "5c17bff288052136c4176343f2685c918546d3fb3e4995e3dc7da547838657e2",
+        "imports/migration-router-v2-code.fc": "9306fa14cf8d1a5bff75d699f32dea106ddacdf0bedb6e4d3da5769f8a394bf0",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653",
+        "imports/settlement-wallet-code.fc": "b5f16e35d6fb285636b209167c87617006f59b3f6ec3501a38b2a7cde13d6b28",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+      },
+      "codeCellHash": "465b5aea4d2862dd1704b0a57b7ae63384a9292daf8934db1f42474b50fdede9",
+      "bocFileSha256": "907b3b8f40aa4010c9d4c6f63dcd7db6b59ec8f5d6a3bd52e3961ef5d031c068",
+      "financialExecutionAuthorized": false
+    },
+    "anlgram-migration-router-v2": {
+      "contract": "anlgram-migration-router-v2.fc",
+      "baseContract": "anlgram-migration-router.fc",
+      "baseSourceSha256": "b563472048047eef8a644e6aed772c2392cbf8bf0e4e9032f87421bae73b6f82",
+      "compilerPackageVersion": "0.11.0",
+      "sourceFilesSha256": {
+        "anlgram-migration-router-v2.fc": "152360807ed444c1760de37d67e7c9f0670efd7944188f257ab6fee5a27de62f",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/lp-locker-v2-code.fc": "d6ad285d03e77a4017fc378e1c8ac18fa50a1abf8a2ca9154e71128f7b8b40cb",
+        "imports/migration-lifecycle-v3.fc": "8d5df22f51069444c759f3b0adae86ea61d7e5f0810a6019c2e3a8d1a98b79f8",
+        "imports/migration-lp-v2.fc": "5e4d28a8c46e86e41fe3a592d6aed80e14f51e7b9a6efc3b448c0fa202436ff8",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653",
+        "imports/settlement-wallet-code.fc": "b5f16e35d6fb285636b209167c87617006f59b3f6ec3501a38b2a7cde13d6b28",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+      },
+      "codeCellHash": "368a1295f8aae0fe157866980fb11e54365e4bc415fda5ab57f13eaab44dab9a",
+      "bocFileSha256": "9b46fb49c6b1afa808e0964d463719b89444d2447db13131d2b27b41dff73bd3",
+      "financialExecutionAuthorized": false
+    }
+  },
+  "externalBytecodeEvidence": {
+    "network": "-3",
+    "snapshotObservedUtc": "2026-10-30T09:27:37.127Z",
+    "routerCodeCellHash": "a7e2f92c4bccbdbaaa0c083aa1da9762b52023134234adeb3b7bc8e72dbd1182",
+    "scope": "CAPTURED_BYTECODE_EXECUTED_LOCALLY_NOT_LIVE_FINALITY_OR_INDEPENDENT_SOURCE_AUDIT"
+  },
+  "blockers": [
+    "POSITIVE_EXTERNAL_AUTHORIZER_REGISTRATION_AND_REVIEW_NOT_IMPLEMENTED",
+    "CANONICAL_SUCCESSFUL_DEPOSIT_TO_FINAL_RESERVE_RECONCILIATION_NOT_IMPLEMENTED",
+    "CURRENT_FOREIGN_CODE_PROVIDER_PROVENANCE_AND_VALIDATOR_FINALITY",
+    "FULL_MIGRATOR_TO_POOL_ISSUANCE_ATTRIBUTION",
+    "CONTRACT_CONSUMABLE_FIRST_NOTIFICATION_RECOVERY_PROOF",
+    "FOREIGN_WALLET_FINAL_WITHDRAWAL_RECEIPT_CAPABILITY",
+    "APPROVED_PROJECT_REGISTRY_AND_LIVE_MULTI_ACCOUNT_ACQUISITION"
+  ],
+  "previousCheckpoint": "8f1f4b060226eb2c94c61a1e8ffb9f46603415ab",
+  "reviewRequiredCodeCommit": "420a17c6c3dd64cc9b3b43e622e16d8837080c60",
+  "reviewStatus": "NOT_REVIEWED_BY_QUALIFIED_INDEPENDENT_REVIEWER",
+  "historicalTestsAt8f1f4b0": {
+    "fullFinancialSandbox": {
+      "pass": 173,
+      "fail": 0
+    },
+    "finalVersionedComponentCases": {
+      "pass": 10,
+      "fail": 0,
+      "includedInFullSuite": true
+    },
+    "readonlyAndReceiptAdapters": {
+      "pass": 15,
+      "fail": 0
+    },
+    "rootRegressions": {
+      "pass": 13,
+      "fail": 0
+    }
+  },
+  "tests": {
+    "targetedFinancialSandbox": {
+      "pass": 72,
+      "fail": 0
+    },
+    "finalComponentSubset": {
+      "pass": 13,
+      "fail": 0,
+      "includedInTargetedSuite": true
+    },
+    "backendAndReceiptAdapters": {
+      "pass": 18,
+      "fail": 0
+    },
+    "reproducibleCompilation": "PASS",
+    "pagesBundleDryRun": "PASS_NO_DEPLOYMENT",
+    "fullSuiteRerunThisFollowup": false,
+    "newLiveOnchainVerification": false
+  }
+}

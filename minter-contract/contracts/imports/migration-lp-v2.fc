@@ -1,0 +1,115 @@
+;; V2 uses the EXISTING flight used_ids dictionary; key0 is reserved for the
+;; immutable LP intent/binding. It never grants DEX execution or finality.
+#include "stonfi-v22-auth.fc";
+#include "lp-locker-v2-code.fc";
+cell v2_record() inline {
+    (_,_,_,_,_,cell ids) = load_flight();(slice s,int found) = ids.udict_get?(64,0);
+    throw_unless(408,found);return s~load_ref();
+}
+(cell,cell,cell) v2_parts() inline {
+    slice s = v2_record().begin_parse();throw_unless(408,s~load_uint(32) == 0x4d563242);
+    cell intent = s~load_ref();cell binding = s~load_dict();cell observation = s~load_dict();s.end_parse();return(intent,binding,observation);
+}
+() v2_save(cell intent,cell binding,cell observation) impure inline {
+    (int id,int nonce,int phase,slice pool,slice account,cell ids) = load_flight();
+    cell r = begin_cell().store_uint(0x4d563242,32).store_ref(intent).store_dict(binding).store_dict(observation).end_cell();
+    ids~udict_set_ref(64,0,r);save_flight(id,nonce,phase,pool,account,ids);
+}
+int v2_root(cell intent) inline { slice s = intent.begin_parse();s~skip_bits(71);return s~load_uint(64); }
+slice v2_vault() inline { (_,cell b,_) = v2_parts();throw_if(409,cell_null?(b));slice s = b.begin_parse();return s~load_msg_addr(); }
+int v2_local_ready(int q,int balance) inline {
+    (cell intent,cell binding,_) = v2_parts();
+    if((q != v2_root(intent)) | cell_null?(binding)) { return 0; }
+    (int active,_,_,_,_,_) = load_flight();
+    (int found,cell f,_) = migration_life(q);
+    ifnot(found & (active == q)) { return 0; }
+    (_,_,_,_,_,_,int ton,int jettons,_,_,_,int pending_ton,int pending_jettons,_) = load_data();
+    ;; Exact original obligations, authenticated wallet epochs and no returns,
+    ;; outstanding DEX leg, previous dispatch or principal deficit.
+    return (life_get(f,0) >= 500000000000) & (life_get(f,1) == 200000000000000000)
+      & (life_get(f,2) == life_get(f,0)) & (life_get(f,3) == life_get(f,1))
+      & (life_get(f,4) > 0) & (life_get(f,5) > 0) & (life_get(f,6) > 0)
+      & (life_get(f,7) + life_get(f,8) + life_get(f,9) + life_get(f,10) + life_get(f,11) + life_get(f,12) + life_get(f,13) == 0)
+      & (ton == life_get(f,0)) & (jettons == life_get(f,1))
+      & (pending_ton == 0) & (pending_jettons == 0) & (balance >= ton);
+}
+() v2_require_execute(int q) impure inline {
+    (cell intent,cell binding,_) = v2_parts();throw_unless(409,(q == v2_root(intent)) & (q > 0) & (q < (1 << 62)) & (~ cell_null?(binding)));
+    throw_unless(414,v2_local_ready(q,get_balance().pair_first()));
+    ;; Router current-code proof, exact LP issuance and foreign final-delivery
+    ;; capability remain external review prerequisites. No admin bypass exists.
+    throw(414);
+}
+int handle_migration_lp_v2(int balance,int value,cell full,slice body) impure {
+    if(body.slice_bits() < 96) { return 0; } slice h = full.begin_parse();int flags = h~load_uint(4);if(flags & 1) { return 0; }
+    int op = body~load_uint(32);int q = body~load_uint(64);
+    if(op == 0x414e5901) {
+        (_,slice expected,_,_,_,_,_,_,_,_,_,_,_,_) = load_data();
+        throw_unless(401,equal_slices(h~load_msg_addr(),expected));
+        (cell i,_,_) = v2_parts();throw_unless(409,q == v2_root(i));
+        return 0; ;; The existing V3 handler performs epoch/funding validation.
+    }
+    ifnot((op == 0x414e5a01) | (op == 0x414e5a02) | (op == 0x414c5635)) { return 0; }
+    slice sender = h~load_msg_addr();(cell intent,cell binding,cell observation) = v2_parts();throw_unless(409,q == v2_root(intent));
+    (_,slice curve,_,slice router,slice master,_,_,_,slice admin,_,_,_,_,cell wallet_code) = load_data();
+    if(op == 0x414e5a01) {
+        throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,curve));throw_unless(407,value >= 40000000);
+        cell init = body~load_ref();body.end_parse();slice si = init.begin_parse();throw_unless(408,si~load_uint(2) == 0);
+        cell code = si~load_dict();cell data = si~load_dict();throw_unless(408,si~load_uint(1) == 0);si.end_parse();
+        throw_unless(408,cell_hash(code) == LP_LOCKER_V2_CODE_HASH);slice ds = data.begin_parse();throw_unless(408,ds~load_uint(8) == 2);
+        cell cfg = ds~load_ref();slice account = ds~load_ref().begin_parse();throw_if(408,~ cell_null?(ds~load_dict()) | ~ cell_null?(ds~load_dict()));ds.end_parse();
+        throw_unless(408,(account~load_coins() == 0) & (account~load_coins() == 0) & (account~load_coins() == 0) & (account~load_coins() == 0));
+        throw_unless(408,(account~load_uint(1) == 0) & (account~load_uint(64) == 0) & (account~load_uint(64) == 1) & (account~load_uint(64) == 0));account.end_parse();
+        slice c = cfg.begin_parse();int percent = c~load_uint(7);int duration = c~load_uint(32);int id = c~load_uint(64);
+        cell endpoints = c~load_ref();slice parties = c~load_ref().begin_parse();cell profile = c~load_ref();c.end_parse();
+        slice beneficiary = parties~load_msg_addr();slice controller = parties~load_msg_addr();slice contributor = parties~load_msg_addr();parties.end_parse();
+        throw_unless(408,equal_slices(contributor,my_address()));force_chain(beneficiary);force_chain(controller);
+        throw_unless(408,(percent >= 50) & (percent <= 100) & ((duration == 0) | (duration == 15552000) | (duration == 31536000)) & (id == q));
+        cell expected = begin_cell().store_uint(0x4c503249,32).store_uint(percent,7).store_uint(duration,32).store_uint(id,64).store_ref(endpoints)
+            .store_ref(begin_cell().store_slice(beneficiary).store_slice(controller).end_cell()).store_ref(profile).end_cell();
+        throw_unless(408,cell_hash(expected) == cell_hash(intent));slice e = endpoints.begin_parse();slice dex = e~load_msg_addr();slice w0 = e~load_msg_addr();slice w1 = e~load_msg_addr();e.end_parse();
+        slice own = calculate_user_jetton_wallet_address(router,master,wallet_code);throw_unless(408,equal_slices(dex,router) & (equal_slices(w0,own) | equal_slices(w1,own)));
+        (slice pool,_) = stonfi_expected_destinations(router,w0,w1,profile);(_,cell lp_code,_) = stonfi_profile_codes(profile);
+        slice vault = calculate_jetton_wallet_address(init);slice lp = calculate_user_jetton_wallet_address(vault,pool,lp_code);
+        cell next = begin_cell().store_slice(vault).store_slice(pool).store_slice(lp).store_ref(init).end_cell();
+        ifnot(cell_null?(binding)) { throw_unless(409,cell_hash(binding) == cell_hash(next)); } else { v2_save(intent,next,observation); }
+        return_receipt_gas(sender,balance - value,q);return -1;
+    }
+    throw_if(409,cell_null?(binding));slice b = binding.begin_parse();slice vault = b~load_msg_addr();slice pool = b~load_msg_addr();slice lp = b~load_msg_addr();
+    if(op == 0x414e5a02) {
+        throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,curve));body.end_parse();throw_unless(407,value >= 40000000);
+        recovery_query(vault,begin_cell().store_uint(0x414c5634,32).store_uint(q,64).end_cell(),balance - value);return -1;
+    }
+    throw_unless(401,equal_slices(sender,vault));int lt = body~load_uint(64);int received = body~load_coins();int locked = body~load_coins();int free = body~load_coins();int pending = body~load_coins();int unlock = body~load_uint(64);
+    slice endpoints = body~load_ref().begin_parse();body.end_parse();throw_unless(408,equal_slices(endpoints~load_msg_addr(),pool) & equal_slices(endpoints~load_msg_addr(),lp));endpoints.end_parse();
+    slice i = intent.begin_parse();i~load_uint(32);int percent = i~load_uint(7);int duration = i~load_uint(32);int target = (received * percent + 99) / 100;
+    throw_unless(409,(lt > 0) & (locked <= target) & (free <= received - target) & (locked + free + pending == received));
+    throw_unless(409,(received == 0) | ((duration == 0) ? (unlock == 0xffffffffffffffff) : (unlock > 0)));
+    cell next = begin_cell().store_uint(lt,64).store_coins(received).store_coins(locked).store_coins(free).store_coins(pending).store_uint(unlock,64).end_cell();
+    ifnot(cell_null?(observation)) { slice old = observation.begin_parse();int prior = old~load_uint(64);if(lt < prior) { return_receipt_gas(admin,balance - value,q);return -1; } if(lt == prior) { throw_unless(409,cell_hash(next) == cell_hash(observation));return_receipt_gas(admin,balance - value,q);return -1; } throw_unless(409,received >= old~load_coins()); }
+    v2_save(intent,binding,next);return_receipt_gas(admin,balance - value,q);return -1;
+}
+(int,int) get_local_authorization_v2(int q) method_id {
+    return(v2_local_ready(q,get_balance().pair_first()),0); ;; local readiness, external authorization CLOSED
+}
+(int,int,int,int,int,int,int,int,int,int,int,int,int,int,int) get_settlement_v2(int q) method_id {
+    (cell intent,cell binding,cell observation) = v2_parts();throw_unless(409,q == v2_root(intent));
+    (int exists,cell f,_) = migration_life(q);
+    int stage = exists ? 1 : 0;
+    if(exists) {
+        if((life_get(f,2) == life_get(f,0)) & (life_get(f,3) == life_get(f,1))) { stage = 2; }
+        if(life_get(f,11)) { stage = 3; }
+        if(life_get(f,7) + life_get(f,8) + life_get(f,9) + life_get(f,10)) { stage = 4; }
+        if((life_get(f,9) == life_get(f,0)) & (life_get(f,10) == life_get(f,1))) { stage = 5; }
+    }
+    int received = 0;int locked = 0;int free = 0;int pending = 0;int lt = 0;
+    ifnot(cell_null?(observation)) { slice s = observation.begin_parse();lt = s~load_uint(64);received = s~load_coins();locked = s~load_coins();free = s~load_coins();pending = s~load_coins(); }
+    ;; 0 configured,1 funding,2 funded,3 dispatched,4 returning,5 principal
+    ;; returned. NO value is migration COMPLETE. LP observations are cumulative
+    ;; locker records, not current wallet custody or exact issuance attribution.
+    return(stage,life_get(f,0),life_get(f,1),life_get(f,2),life_get(f,3),life_get(f,9),life_get(f,10),life_get(f,11),lt,received,locked,free,pending,~ cell_null?(binding),0);
+}
+(int,int,int,int,int,int,int,int,int) get_lp_v2_state() method_id {
+    (cell intent,cell binding,cell o) = v2_parts();int q = v2_root(intent);if(cell_null?(o)) { return(q,~ cell_null?(binding),0,0,0,0,0,0,0); }
+    slice s = o.begin_parse();return(q,~ cell_null?(binding),s~load_uint(64),s~load_coins(),s~load_coins(),s~load_coins(),s~load_coins(),s~load_uint(64),0);
+}

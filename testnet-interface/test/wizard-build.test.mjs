@@ -10,7 +10,8 @@ test('published wizard reuses original styles and six forms, with no legacy inli
  for(let n=1;n<=6;n++)assert(html.includes(`id="wizard-panel-${n}"`));assert(!/\son[a-z]+\s*=/.test(html));assert(!html.includes('anl-labs.js'));assert(!html.includes('launchpad.js'));assert(!controller.includes('.sendTransaction('));assert(!controller.includes('/api/operation/claim'));assert(!controller.includes('/api/curve-two/claim'));
  assert.match(html,/<button[^>]*disabled>Create on-chain/);assert.match(html,/<button[^>]*disabled>Buy/);assert.match(html,/<button[^>]*disabled>Sell/);assert(html.includes('0.02 TON'));assert(html.includes('NOT your draft token'));assert(!controller.includes('testnet-mvp-offline-plan.json'),'new user guidance must not use ANLTEST operations');
  assert(html.includes('500 Real TON Target'));assert(!html.includes('1,000 Real TON Target'));assert(!html.includes('1,000 TON'));
- for(const id of ['wizard-mode-cards','wizard-step1-feedback','labs-allocation-summary','labs-csv-example-btn','labs-recipients-table-wrap','curve-sim-card','lp-custody-badge'])assert(html.includes(`id="${id}"`),`missing UX element ${id}`);
+ for(const id of ['wizard-mode-cards','wizard-step1-feedback','labs-allocation-summary','labs-csv-example-btn','labs-recipients-table-wrap','curve-graduation-tracker','curve-sim-card','lp-permanent-warning','lp-custody-badge','stonfi-migration-panel','migration-lifecycle-tracker','wizard-lifecycle-tracker','dashboard-migration-lp-card','wizard-financial-diagnostics'])assert(html.includes(`id="${id}"`),`missing UX element ${id}`);
+ assert(!/<button[^>]*>[^<]*retry/i.test(html),'uncertain operations must never render a Retry button');
  assert.deepEqual(readFileSync(new URL('../public-pages/wizard-accessibility.css',import.meta.url)),readFileSync(new URL('../wizard/wizard-accessibility.css',import.meta.url)));
  assert.deepEqual(readFileSync(new URL('../public-pages/wizard-labs.css',import.meta.url)),readFileSync(new URL('../../assets/css/anl-labs.css',import.meta.url)));assert.deepEqual(readFileSync(new URL('../public-pages/wizard-design.css',import.meta.url)),readFileSync(new URL('../../assets/css/design-system.css',import.meta.url)));
 });
@@ -60,6 +61,13 @@ test('compiled memelabs bundle executes full six-step user journey, presets, CSV
  assert.match(els['sim-tokens-out'].textContent,/tokens/);
  lpPreset.onclick();
  assert.equal(els['lp-percent'].value,'80');
+ assert.equal(els['wizard-lifecycle-list'].children.length,10);
+ assert.equal(els['migration-lifecycle-list'].children.length,9);
+ assert.equal(els['wizard-diagnostics-grid'].children.length,11);
+ assert.equal(els['stonfi-migration-grid'].children.length,14);
+ assert.equal(els['dashboard-lp-migration-grid'].children.length,14);
+ assert.match(els['lp-permanent-warning'].textContent,/PERMANENT LOCK ACTIVE/);
+ assert.match(els['wizard-diagnostic-banner'].textContent,/Retry permitted: NO/);
  // Save draft, create second draft, then delete via My Projects card
  els['wizard-save'].onclick();
  assert.equal(els['wizard-projects'].children.length,1);

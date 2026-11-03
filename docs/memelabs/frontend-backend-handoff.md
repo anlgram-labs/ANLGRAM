@@ -32,6 +32,7 @@ The MemeLabs 6-step wizard (`/memelabs`) integrates strictly with the following 
 | `/api/config` | `GET` | Retrieve TON Connect manifest URL, network (`-3`), `financialSigningEnabled` flag, and `curveExecutionVersion`. | Rejects connection if `network !== '-3'`, `financialSigningEnabled !== false`, or `curveExecutionVersion` mismatches the compiled bundle. |
 | `/api/mvp/status` | `GET` | Read live Testnet `ANLTEST` protocol checkpoint observations (Minter `#1`, Curve `#2` state, and operation lock state). | Requires `scope === 'ACCOUNT_AND_GETTER_OBSERVATIONS_NOT_TRANSACTION_RECEIPTS'`, `network === '-3'`, and `financialSigningEnabled === false`. Displayed strictly under `Existing protocol checkpoint — NOT your draft token`. |
 | `/api/projects/prepare` | `POST` | Compute deterministic offline project candidates (`minter`, `curve`, `guard`, `migration`, `vesting`), distribution batches (`batchSize` `1..4`), and proposed operation templates. | Requires `scope === 'OFFLINE_PROJECT_PREPARATION_NOT_AUTHORIZATION'`, `financialSigningEnabled === false`, `broadcastEnabled === false`, and exact `configurationFingerprint` match. |
+| `/api/projects/status` | `POST` | Retrieve read-only schema 2 project migration & LP Locker V2 status (`scope: 'PROJECT_CONFIGURATION_NO_REGISTERED_CHAIN_EVIDENCE'`) bound to `configurationFingerprint`. | Validated by `validateProjectStatusResponse`: requires `schema === 2`, `network === '-3'`, exact `configurationFingerprint` match, and `financialSigningEnabled === false` / `migrationAuthorized === false` / `withdrawalsEnabled === false`. |
 
 ---
 
@@ -114,3 +115,17 @@ When a future read-only project observation endpoint is exposed, any value that 
 - **Build & CSS Integrity**: `public-pages/wizard-design.css` and `public-pages/wizard-labs.css` remain byte-identical to `assets/css/design-system.css` and `assets/css/anl-labs.css`; all responsive and accessibility rules live in `testnet-interface/wizard/wizard-accessibility.css`.
 
 Integration clarification: the project observation endpoint in section4 remains a future proposal, not a live route. Current offline preparation cannot prove any actual balance, reserve or deployment state; those values remain null/UNKNOWN. The frontend project-status projection rejects foreign scopes, and the separate ANLTEST panel remains account/getter observations only. LP percentage presets change percentage only; lock duration is independently selected and must not be inferred from a preset label.
+
+---
+
+## 6. Integrated `POST /api/projects/status` Schema 2 Adapter & Remaining Evidence Gaps
+
+The frontend renders full Curve V2 graduation tracking (`#curve-graduation-tracker`), STON.fi v2.2 migration and LP Locker V2 status (`#stonfi-migration-panel` and `#dashboard-migration-lp-card`), the 9-stage migration financial lifecycle tracker (`#migration-lifecycle-tracker`), the 10-stage creator token lifecycle tracker (`#wizard-lifecycle-tracker`), the 11-state financial/error diagnostics panel (`#wizard-financial-diagnostics`), and the live read-only `POST /api/projects/status` output panel (`#wizard-status-endpoint-output`) via `testnet-interface/wizard/project-status.mjs` and `testnet-interface/wizard/project-controller.mjs`.
+
+`validateProjectStatusResponse(resp, expectedFingerprint, expectedMode)` and `normalizeMigrationStatusView(input)` in `testnet-interface/wizard/project-status.mjs` validate and normalize PR #21's `POST /api/projects/status` (`schema: 2`, `scope: 'PROJECT_CONFIGURATION_NO_REGISTERED_CHAIN_EVIDENCE'`) and `migration.statusView` (`MIGRATION_CONFIGURATION_NOT_CHAIN_OBSERVATION`, `REFERENCE_ANCHORED_PARTIAL_EVIDENCE_NOT_VALIDATOR_FINALITY`, `REFERENCE_ANCHORED_ACCOUNT_RECORDS_NOT_VALIDATOR_FINALITY`), including `lifecycle`, `deposits.ton`, `deposits.jettons`, `graduation` (keeping `localReserveEligible` distinct from `eligible: null`), `transactionReceipts`, and `lp` (`receivedUnits`, `recordedLockedUnits`, `recordedUnlockedUnits`, `custodyStatus`, `withdrawalReceipts`).
+
+The following 4 financial evidence requirements remain unimplemented on-chain / awaiting external review, and all corresponding UI values therefore remain `UNKNOWN` / `NOT_VERIFIED` with all financial actions disabled:
+1. **Validator-signature / catchain block finality verification** (current adapters provide reference-anchored partial evidence/records, never validator finality).
+2. **DEX-complete migration attribution** across STON.fi v2.2 Router → Pool → Locker LP wallet minting before treating LP wallet transfers as current custody.
+3. **Foreign LP wallet withdrawal final-delivery receipt verification** (standard TEP-74 Jetton transfer gives no authenticated final-delivery callback to `lp-locker-v2`, leaving `withdrawalPending` fail-closed).
+4. **External security audit & production key ceremony**.
