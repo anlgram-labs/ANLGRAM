@@ -1,8 +1,9 @@
 {
   "private": true,
   "scripts": {
-    "test": "node --test settlement.test.js lp-custody.test.js migration-wire.test.js donation.test.js authenticated-settlement.test.js lp-auth-handshake.test.js stonfi-snapshot.test.js stonfi-deposit.test.js genesis.test.js migration-recovery.test.js lp-bootstrap.test.js lp-deterministic-auth.test.js refund-receipts.test.js lp-custody-receipts.test.js lp-locker-v2.test.js curve-return-v2.test.js migration-v2-plan.test.js lifecycle-v3.test.js lp-v4.test.js curve-two-dispatch.test.js mvp-v5-lifecycle.test.js migration-package-v2.test.js stonfi-locker-v2-real.test.js architecture-feasibility.test.js vnext-guard.test.js vnext-package.test.js vnext-recovery-model.test.js vnext-recovery-safety.test.js vnext-external-recovery.test.js vnext-happy-path-proof.test.js",
-    "test:vnext-happy-path": "node --test vnext-happy-path-proof.test.js"
+    "test": "node --test settlement.test.js lp-custody.test.js migration-wire.test.js donation.test.js authenticated-settlement.test.js lp-auth-handshake.test.js stonfi-snapshot.test.js stonfi-deposit.test.js genesis.test.js migration-recovery.test.js lp-bootstrap.test.js lp-deterministic-auth.test.js refund-receipts.test.js lp-custody-receipts.test.js lp-locker-v2.test.js curve-return-v2.test.js migration-v2-plan.test.js lifecycle-v3.test.js lp-v4.test.js curve-two-dispatch.test.js mvp-v5-lifecycle.test.js migration-package-v2.test.js stonfi-locker-v2-real.test.js architecture-feasibility.test.js vnext-guard.test.js vnext-package.test.js vnext-recovery-model.test.js vnext-recovery-safety.test.js vnext-external-recovery.test.js vnext-happy-path-proof.test.js one-shot-dispatch.test.js",
+    "test:vnext-happy-path": "node --test vnext-happy-path-proof.test.js",
+    "test:one-shot": "node --test one-shot-dispatch.test.js"
   },
   "dependencies": {
     "@ton-community/func-js": "0.11.0",
