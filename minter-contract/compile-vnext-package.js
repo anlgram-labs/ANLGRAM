@@ -1,0 +1,41 @@
+'use strict';
+// Separately named development artifacts. Never rebuild or overwrite V1/V2.
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const {compileFunc}=require('../tests/settlement-runtime/node_modules/@ton-community/func-js');
+const {Cell}=require('../tests/settlement-runtime/node_modules/@ton/core');
+const sha=s=>crypto.createHash('sha256').update(s).digest('hex');
+const dir=path.join(__dirname,'contracts'),check=process.argv.includes('--check');
+const read=f=>fs.readFileSync(path.join(dir,f),'utf8').replace(/\r\n/g,'\n');
+function save(file,text){if(check){if(fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n')!==text)throw Error('VNext reproducibility mismatch: '+file);}else fs.writeFileSync(file,text);}
+function once(s,a,b){if(s.split(a).length!==2)throw Error('Derivation anchor mismatch: '+a.slice(0,80));return s.replace(a,b);}
+async function main(){
+ const out=[];
+ let base=read('imports/migration-lp-v2.fc'),start=base.indexOf('int v2_registration_active('),end=base.indexOf('() v2_register(',start);if(start<0||end<0)throw Error('Registration derivation anchor');base=base.slice(0,start)+'int v2_registration_active(int q) inline { return 0; } ;; Legacy getter never grants VNext\n'+base.slice(end);save(path.join(dir,'imports/migration-lp-vnext-base.fc'),base);
+ let migration=read('anlgram-migration-router-v2.fc');migration=once(migration,'#include "imports/migration-lp-v2.fc";','#include "imports/migration-lp-vnext-base.fc";\n#include "imports/migration-vnext-auth.fc";');
+ migration=once(migration,'    if(handle_migration_lp_v2(my_balance,msg_value,in_msg_full,in_msg_body))','    if(handle_vnext_migration_auth(my_balance,msg_value,in_msg_full,in_msg_body)) { return (); }\n    if(handle_migration_lp_v2(my_balance,msg_value,in_msg_full,in_msg_body))');
+ migration=once(migration,'v2_require_execute(query_id,in_msg_body);','vn_require_execute(query_id,in_msg_body);');migration=once(migration,'int v2_minimum_lp = in_msg_body~load_coins();in_msg_body.end_parse();','int v2_minimum_lp = in_msg_body~load_coins();in_msg_body~load_ref();in_msg_body.end_parse();');save(path.join(dir,'anlgram-migration-router-vnext.fc'),';; GENERATED VNext: financial execution remains sealed.\n'+migration);
+ for(const name of ['anlgram-migration-router-vnext','anlgram-guard-vnext','anlgram-bonding-curve-vnext']){
+  if(name==='anlgram-bonding-curve-vnext'){
+   const hashes=Object.fromEntries(out.map(x=>[x.name,x.hash]));save(path.join(dir,'imports/guard-vnext-code.fc'),'const int LP_AUTH_GUARD_CODE_HASH = 0x'+hashes['anlgram-guard-vnext']+';\n');save(path.join(dir,'imports/migration-router-vnext-code.fc'),'const int MIGRATION_ROUTER_V2_CODE_HASH = 0x'+hashes['anlgram-migration-router-vnext']+';\n');
+   save(path.join(dir,'imports/curve-vnext-router.fc'),read('imports/curve-v2-router.fc').replace('#include "migration-router-v2-code.fc";','#include "migration-router-vnext-code.fc";\n#include "lp-locker-v2-code.fc";'));
+   let life=read('imports/curve-lifecycle-v3.fc');life=once(life,'int handle_curve_life(','#include "curve-vnext-auth.fc";\nint handle_curve_life(');
+   life=once(life,'    int flags = curve_life_flags(q);','    slice root_cfg = vn_curve_config().begin_parse();throw_unless(409,q == root_cfg~load_uint(64));\n    int flags = curve_life_flags(q);');
+   const a=life.indexOf('        slice gs = gd.begin_parse();'),b=life.indexOf('        (slice current,int active)',a);if(a<0||b<0)throw Error('Guard config lifecycle anchor');life=life.slice(0,a)+'        slice gs = gd.begin_parse();throw_unless(408,gs~load_uint(8) == 1);cell expected_cfg = gs~load_ref();throw_unless(408,cell_null?(gs~load_dict()));gs.end_parse();throw_unless(408,cell_hash(expected_cfg) == cell_hash(vn_curve_config()));\n'+life.slice(b);
+   life=once(life,'        send_raw_message(begin_cell().store_uint(0x18,6).store_slice(locker).store_coins(20000000).store_uint(0,107).store_uint(0x414e5701,32).store_uint(q,64).end_cell(),1);','        ;; Guard query is separate after the actual receiver epoch is known.');
+   life=once(life,'    if(op == 0x414e5702) {','    if(op == 0x414e5702) { throw(404);');life=once(life,'    throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,creator));body.end_parse();','    throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,creator));\n    if(op == 0x414e5803) { int nonce = body~load_uint(64);int digest = body~load_uint(256);body.end_parse();vn_require_curve_dispatch(q,nonce,digest); } else { body.end_parse(); }');save(path.join(dir,'imports/curve-lifecycle-vnext.fc'),life);
+   let curve=read('anlgram-bonding-curve-v2.fc');curve=once(curve,'#include "imports/lp-auth-guard-code.fc";','#include "imports/guard-vnext-code.fc";');curve=once(curve,'#include "imports/curve-lifecycle-v3.fc";\n#include "imports/curve-v2-router.fc";','#include "imports/curve-vnext-router.fc";\n#include "imports/curve-lifecycle-vnext.fc";');
+   curve=once(curve,'    int protocol_fee_bps = ds~load_uint(16);','    int protocol_fee_bps = ds~load_uint(16);throw_unless(408,protocol_fee_bps == 100);');
+   curve=once(curve,'    if(handle_curve_life(op,query_id,in_msg_body,sender_address,msg_value,my_balance))','    if(handle_curve_vnext_auth(op,query_id,in_msg_body,sender_address,msg_value,my_balance)) { return (); }\n    if(handle_curve_life(op,query_id,in_msg_body,sender_address,msg_value,my_balance))');
+   curve=once(curve,'cell migration_init = in_msg_body~load_ref();in_msg_body.end_parse();','cell migration_init = in_msg_body~load_ref();cell guard_init = in_msg_body~load_ref();in_msg_body.end_parse();');
+   const anchor='validate_v2_migrator(migration_init,new_migration_router,my_address(),new_locker,new_router,new_master,admin_address);';curve=once(curve,anchor,anchor+'\n        cell next_cfg = validate_guard_vnext(guard_init,migration_init,my_address(),new_migration_router,new_locker,new_master);pending_refunds_dict~udict_set_ref(256,vn_config_key(),next_cfg);');
+   curve=once(curve,'            pending_refunds_dict, new_wallet_code\n        );\n        return ();','            pending_refunds_dict, new_wallet_code\n        );\n        throw_unless(407,msg_value >= 80000000);raw_reserve(my_balance - msg_value,0);slice config_slice = next_cfg.begin_parse();cell bind_message = begin_cell().store_uint(0x414e5b20,32).store_uint(config_slice~load_uint(64),64).store_ref(migration_init).end_cell();\n        send_raw_message(begin_cell().store_uint(0x18,6).store_slice(new_locker).store_coins(50000000).store_uint(1,107).store_ref(bind_message).end_cell(),1);\n        return ();');
+   curve=once(curve,'get_protocol_v2() method_id { return(2,1,0); }','get_protocol_vnext() method_id { return(1,1,0); }');
+   save(path.join(dir,'anlgram-bonding-curve-vnext.fc'),';; GENERATED VNext: exact signed migration permits; all execution gates closed.\n'+curve);
+  }
+  const sources={};const r=await compileFunc({targets:[name+'.fc'],sources:f=>{const s=fs.readFileSync(path.join(dir,f),'utf8').replace(/\r\n/g,'\n');sources[f]=sha(s);return s;}});if(r.status!=='ok')throw Error(r.message);
+  const c=Cell.fromBase64(r.codeBoc),artifact={contract:name+'.fc',compilerPackageVersion:require('../tests/settlement-runtime/node_modules/@ton-community/func-js/package.json').version,generatorSha256Lf:sha(fs.readFileSync(__filename,'utf8').replace(/\r\n/g,'\n')),derivationBaseline:'e1dacb7dd82d628064950af43e1a20cc3ec2a48f',baseSourcesSha256:Object.fromEntries(['anlgram-bonding-curve-v2.fc','anlgram-migration-router-v2.fc','imports/migration-lp-v2.fc','imports/curve-lifecycle-v3.fc','imports/curve-v2-router.fc'].map(f=>[f,sha(read(f))])),sourceFilesSha256:sources,codeBocBase64:r.codeBoc,codeCellHash:c.hash().toString('hex'),bocFileSha256:sha(c.toBoc()),financialExecutionAuthorized:false,custodyAttestationsSupported:false,trustModel:'PERMISSIONED_MIGRATION_PREFLIGHT_ONLY_NOT_CHAIN_PROOF',independentReviewRequired:true};
+  const file=path.join(__dirname,'build',name+'.compiled.json'),text=JSON.stringify(artifact,null,2)+'\n';save(file,text);out.push({name,hash:artifact.codeCellHash});
+ }
+ console.log(JSON.stringify({check,artifacts:out,financialExecutionAuthorized:false}));
+}
+main().catch(e=>{console.error(e.message);process.exitCode=1;});
