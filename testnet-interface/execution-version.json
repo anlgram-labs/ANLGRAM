@@ -2,7 +2,7 @@
   "schema": 1,
   "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
   "sources": {
-    "build.mjs": "5a6b4de3a89f9c98a108dec3b5af3e8a8805db78d9e06a7d2ad8c439194c2a84",
+    "build.mjs": "ec023e7ce9f1e13f6d841968b977ad3d2c78812bface41788405d0379d29fb62",
     "app.js": "f2214539064b7532925298b9bebbb26a79c3e52813aff27b08a696a7857a598b",
     "client-entry.mjs": "26afc78634cc85868ba390377893e1bd319f9962b0c6599482416ff07d33e40d",
     "single-attempt.mjs": "2a3cd10735dda1324a0d044be259498e5b6bef17620c8593878d5f3b9500839d",
@@ -16,9 +16,9 @@
     "operation-lock.mjs": "3da5f2184666faa1c08258b2456f8e645f39e8f39dfd5515a034bc8ebecf8b9f",
     "proof.mjs": "c4347b97d86e855488fd1d02947ba334ef96129201f8ee53955581f2a9b82348",
     "prepare-minter-one.mjs": "bf87dbd1ce4d86a81af24b1911f5e13657bef020689124c0477c9631502a1743",
-    "testnet-rpc.mjs": "5ed562fe507759f5a9f3b4859c8e3cf647ad3abb560f794536889efc91e5fe74",
+    "testnet-rpc.mjs": "4db055f696fbea6d7637dcffce2b93292a48ca70ca315326900df5e7985594dc",
     "curve-emulation.mjs": "23168fd662ba5f4ea84c0c43100adf2f3aef00c16de709b2001d435a7c10eaca",
-    "worker.mjs": "3108d5a69fd1180a45622dcc261855b6d5f750f8a2aabbb7d1868a09f091af8e",
+    "worker.mjs": "4c07ca92464f544b2bc2fe2d1e801ca0b6084397b7aa62e2abba1fb414297951",
     "config.mjs": "fc3dd5a9ee733d81678f124a39e6584ff4941cdd82ed4d6130169541ac3901cd",
     "package-lock.json": "d62b91018c9d98e77bdb37f24d2b6811425d596e603f730b93ae7c1064d3dd84",
     "recovery/runtime.mjs": "85fa9d7a7fb2134eebb29ece901f3faba7f16211dd71933a42a4b6e36969d518",
@@ -31,7 +31,19 @@
     "recovery/receipts.mjs": "ecd0e4893d0d9bec5f429910af53b76b16f119f5da1132ee099df9c0ddeee7e1",
     "recovery-status.js": "e2b437965d1ff5fbe580eb5c2a0a24704aedbda6023b131ca3a20234e96cab92",
     "../lib/v5-self-transfer-receipt.js": "d3347f12f5552c2cd8c86491143a71f7142890ee40bae8cb76c548e038d16d2a",
-    "../lib/v5-deployment-receipt.js": "900d30bc7856c5b3373dea3acc9da6a46b541d4576699beb85ae13285d5587c7"
+    "../lib/v5-deployment-receipt.js": "900d30bc7856c5b3373dea3acc9da6a46b541d4576699beb85ae13285d5587c7",
+    "project-registry-worker.mjs": "35ab0ab6cfab2edfa533bc12b8d199304c4d123381e01b7096e80cbf0f2bf51e",
+    "projects/project-registry.mjs": "c31ec5b4cfa7c92d86879f691ec12d78cbedbb32399290eb5733df92b8618249",
+    "projects/project-registration.mjs": "6005de5ba898cdb95df20acc2d42922a36ced564b3c1dbab7212247f2b647711",
+    "projects/project-providers.mjs": "8f16aba19ba1b2063c6eb02082b2a6c626c93c6c6979bfd137e89006b76c5351",
+    "projects/project-lp-acquisition.mjs": "1040e81ad60ec25928d218a6bbc4b89ec261ed37fb42fa6270b91c0e6765c119",
+    "projects/lp-evidence.mjs": "e57c8f759605c220745f5424544e3ddd026bc79b31b3bd3339ad24b93db8393f",
+    "projects/migration-account.mjs": "15086d770bc3b17ffe572f7c091b544168c352b5b7f795837db086165c661345",
+    "projects/migration-status.mjs": "14885f3733c8289ef6a63550d34ca640690e59e86af5a2e547a3e3715cd509c7",
+    "projects/evidence-brand.mjs": "0384aa8632c250aecbfc085d150be71909e3e31f17df71c76dcfb188881b767d",
+    "wizard/preparation-model.mjs": "79f358875d8923ccf659c3cbd57986dc82545b382ddacb021dd356aba0166367",
+    "wizard/model.mjs": "725aab3765abc8b14a243e63711d83f834e5d473ab766f524da38c1967cf3113",
+    "../minter-contract/scripts/migration-package-dispatch-v2.js": "a1c92dda7c78e3a905f6ea73435b152eb66421d4cbc5030a4505ef3435d4a4e4"
   },
-  "sha256": "0905916f2098101d4fb769ad41774150152ab4059a7c8f495fb1fe5a549232e8"
+  "sha256": "09f2f2c959a27233c29b76cadc3dfe38ffc64d266b9c933a897902228c3f0ce4"
 }

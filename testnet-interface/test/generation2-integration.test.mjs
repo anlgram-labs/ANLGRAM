@@ -6,7 +6,7 @@ import {migrationAccountFields, verifyMigrationAccountCheckpoint} from '../proje
 import {generation2Status} from '../projects/migration-status.mjs';
 import {rememberMigrationCheckpoint} from '../projects/evidence-brand.mjs';
 import {verifyProvenLpEvidence, lpEvidencePolicy, rememberLpEvidence} from '../projects/lp-evidence.mjs';
-import {registerProjectInMemory, clearMemoryRegistry, getRegisteredProject, projectRegisteredStatus} from '../projects/project-registry.mjs';
+import {projectStatusResponse} from '../projects/project-registry.mjs';
 import {validateProjectStatusResponse, normalizeMigrationStatusView, deriveMigrationLifecycle, lpLockerSummary} from '../wizard/project-status.mjs';
 import {createDraft} from '../wizard/model.mjs';
 import {prepareProject} from '../projects/prepare.mjs';
@@ -56,26 +56,8 @@ test('TASK 7 — GENERATION 2 END-TO-END INTEGRATION TEST SUITE', async (t) => {
   const authenticCheckpoint = makeCheckpoint(postDispatchFields);
 
   await t.test('1. Registered project with authentic checkpoint', async () => {
-    clearMemoryRegistry();
     const fingerprint = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-    const record = {
-      network: '-3',
-      generation: 2,
-      executionVersion: (await import('../execution-version.json', {with: {type: 'json'}})).default.sha256,
-      configurationFingerprint: fingerprint,
-      project: identity.project,
-      migrator: identity.migrator,
-      operationId: identity.operationId,
-      configuration,
-      checkpoint: authenticCheckpoint
-    };
-    registerProjectInMemory(record);
-
-    const registered = await getRegisteredProject(fingerprint);
-    assert.ok(registered);
-    assert.equal(registered.project, identity.project);
-
-    const statusRes = await projectRegisteredStatus(registered, {}, {checkpoint: authenticCheckpoint});
+    const statusRes = projectStatusResponse({...identity, configurationFingerprint: fingerprint}, {checkpoint: authenticCheckpoint});
     assert.equal(statusRes.schema, 2);
     assert.equal(statusRes.generation, 2);
     assert.equal(statusRes.network, '-3');
@@ -110,7 +92,6 @@ test('TASK 7 — GENERATION 2 END-TO-END INTEGRATION TEST SUITE', async (t) => {
   });
 
   await t.test('2. Unregistered project configuration', async () => {
-    clearMemoryRegistry();
     const env = {APP_ORIGIN: 'https://testnet.anlgram.com'};
     const draft = createDraft();
     draft.mode = 'launchpad';
