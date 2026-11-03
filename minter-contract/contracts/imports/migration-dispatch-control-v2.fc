@@ -1,0 +1,36 @@
+;; Generation2 control: no financial return/recovery while dispatch is possible.
+;; State lives in the existing per-root lifecycle, never a parallel money ledger.
+int handle_dispatch_control(int balance,int value,cell full,slice body) impure {
+    if(body.slice_bits() < 96) { return 0; } slice h = full.begin_parse();int flags = h~load_uint(4);if(flags & 1) { return 0; } slice sender = h~load_msg_addr();
+    int op = body~load_uint(32);int q = body~load_uint(64);
+    if(op == 0x414e5904) { throw(414); } ;; returning available balance is NOT a cancellation barrier
+    ifnot((op == 0x414e5901) | (op == 0x414e5d20)) { return 0; }
+    (_,slice curve,_,_,_,_,_,_,slice admin,_,_,_,_,_) = load_data();
+    (cell intent,_,cell observation) = v2_parts();throw_unless(409,q == v2_root(intent));
+    (int exists,cell f,cell seen) = migration_life(q);
+    if(op == 0x414e5901) {
+        throw_unless(401,equal_slices(sender,curve));
+        if(exists) { throw_unless(409,life_get(f,2) + life_get(f,3) + life_get(f,11) + life_get(f,12) + life_get(f,13) == 0); }
+        return 0; ;; ordinary epoch initialization authenticates and preserves original opening
+    }
+    throw_unless(401,equal_slices(sender,curve) | equal_slices(sender,admin));body.end_parse();throw_unless(407,value >= 20000000);
+    throw_unless(409,exists & (life_get(f,11) == 1));(int nonce,_,_,int status) = vn_migration_registration();throw_unless(409,(nonce > 0) & (status == 1));
+    f = life_put(f,17,1);save_migration_life(q,f,seen);return_receipt_gas(admin,balance - value,q);return -1;
+}
+(int,int,int,int,int,int,int,int) get_dispatch_state() method_id {
+    (cell intent,_,cell observation) = v2_parts();int q = v2_root(intent);(int exists,cell f,_) = migration_life(q);
+    int stage = exists ? 2 : 0;int received = 0;int locked = 0;int free = 0;int pending = 0;
+    if(vn_migration_ready(q,get_balance().pair_first())) { stage = 3; }
+    if(life_get(f,11)) {
+        stage = 4;
+        ifnot(cell_null?(observation)) { slice o = observation.begin_parse();o~load_uint(64);received = o~load_coins();locked = o~load_coins();free = o~load_coins();pending = o~load_coins();if(received > 0) { stage = 5; } }
+        if(life_get(f,17)) { stage = 6; }
+    }
+    return(stage,received,locked,free,pending,received > 0,0,0); ;; neither asset finality nor COMPLETE is inferred
+}
+
+() vd_dispatch_excess(slice admin,int q) impure inline {
+    ;; The execution already reserved its prior protected balance. A second
+    ;; RAWRESERVE would reserve it again and can abort the critical action list.
+    send_raw_message(begin_cell().store_uint(0x10,6).store_slice(admin).store_coins(0).store_uint(0,107).store_uint(0xd53276db,32).store_uint(q,64).end_cell(),128 + 2);
+}
