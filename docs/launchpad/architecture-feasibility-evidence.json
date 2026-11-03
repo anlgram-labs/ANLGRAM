@@ -1,0 +1,176 @@
+{
+  "financialCodeReviewBaseline": "e1dacb7dd82d628064950af43e1a20cc3ec2a48f",
+  "financialPrHeadObserved": "0c3ab18bb9455fb4753021b6fa260b826ccc852e",
+  "integrationPrHeadObserved": "b644b71dddf89c39d1469eacc05f0657d74d10e0",
+  "compiler": "@ton-community/func-js@0.11.0",
+  "normalization": "UTF8_LF",
+  "verdict": "NO_GO_FINANCIAL_MIGRATION_TESTNET",
+  "contracts": [
+    {
+      "contract": "anlgram-launchpad-jetton-minter",
+      "sourceCompiledCodeHash": "90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec",
+      "artifactCodeHash": "90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec",
+      "match": true,
+      "sourceSha256Lf": {
+        "anlgram-launchpad-jetton-minter.fc": "47be0eb15f264f0c8933d9c2f4e9de2a317d3d5b0107c9802aa77e462c4195a1",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8",
+        "imports/discovery-params.fc": "215e8d75ed135cb2a3ac0b6c33c3d99d7bfb370d2834f3b09e5e4566a2fce31b"
+      },
+      "artifactFileSha256Lf": "361c690be08e5da75fb1800aef07a660c2c6c1077611bc2bc2e3338a5cdac27f"
+    },
+    {
+      "contract": "anlgram-settlement-wallet",
+      "sourceCompiledCodeHash": "e21136c0ea3074a48addec49215af2d8d20125b4cc61a564a1a37d37667b58a2",
+      "artifactCodeHash": "e21136c0ea3074a48addec49215af2d8d20125b4cc61a564a1a37d37667b58a2",
+      "match": true,
+      "sourceSha256Lf": {
+        "anlgram-settlement-wallet.fc": "d6460470a9558397d42a43d5f78ef7a1f5383955293677e8a3b4477bfbbd6075",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8",
+        "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653"
+      },
+      "artifactFileSha256Lf": "d870e5b7d5b6d77dcd337738339afa465b28b2d6661e2885b1d34474b75bdc41"
+    },
+    {
+      "contract": "anlgram-bonding-curve-v2",
+      "sourceCompiledCodeHash": "24cf7fcaf32e5021b4287bca78e1ac8886a6e2a1e46a3cc89b80a1dda7ea0965",
+      "artifactCodeHash": "24cf7fcaf32e5021b4287bca78e1ac8886a6e2a1e46a3cc89b80a1dda7ea0965",
+      "match": true,
+      "sourceSha256Lf": {
+        "anlgram-bonding-curve-v2.fc": "4a318b2500021c56bcd434f629eb0bfeba35dde5f345346069a4dd346b1e7791",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653",
+        "imports/settlement-wallet-code.fc": "b5f16e35d6fb285636b209167c87617006f59b3f6ec3501a38b2a7cde13d6b28",
+        "imports/lp-auth-guard-code.fc": "5c17bff288052136c4176343f2685c918546d3fb3e4995e3dc7da547838657e2",
+        "imports/curve-return-v2.fc": "3eedf570e5430198b47343222de8d879633eee82fd6223cf4272f0974be088c8",
+        "imports/curve-lifecycle-v3.fc": "50b8006b4168f4fef812175c284543683d739fb00c57d29d56902945121dd963",
+        "imports/curve-v2-router.fc": "85e7ded04faafdc48e1992d98f22455ed8f1c534208b0f209ad778c1ce5e0fd7",
+        "imports/migration-router-v2-code.fc": "d1b0b2baa15ed0ff6b66873a272e1abfad49bcd33eddc276886fde30ae4f2551"
+      },
+      "artifactFileSha256Lf": "927137fb6a63ae7addc0df4133c72588f6aab308b4ce6feaddc5da7ec4e290c2"
+    },
+    {
+      "contract": "anlgram-migration-router-v2",
+      "sourceCompiledCodeHash": "c629a2e360ac8fe335177bd7e8577a937946ba37361aa2204b9972471368947a",
+      "artifactCodeHash": "c629a2e360ac8fe335177bd7e8577a937946ba37361aa2204b9972471368947a",
+      "match": true,
+      "sourceSha256Lf": {
+        "anlgram-migration-router-v2.fc": "e406f208d96f8df1c1f55cb763c071fc3b602fea824b454e055697759f41472c",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653",
+        "imports/settlement-wallet-code.fc": "b5f16e35d6fb285636b209167c87617006f59b3f6ec3501a38b2a7cde13d6b28",
+        "imports/migration-lifecycle-v3.fc": "8d5df22f51069444c759f3b0adae86ea61d7e5f0810a6019c2e3a8d1a98b79f8",
+        "imports/migration-lp-v2.fc": "dd110576a4ce98d4068d416710f716325b89d0c5e18226983dce3b30988f780c",
+        "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728",
+        "imports/lp-locker-v2-code.fc": "d6ad285d03e77a4017fc378e1c8ac18fa50a1abf8a2ca9154e71128f7b8b40cb"
+      },
+      "artifactFileSha256Lf": "f312a243f189c301c2d9c17ae49b183ea4cce2d8040d02194cb27f592e3282a7"
+    },
+    {
+      "contract": "anlgram-lp-auth-guard",
+      "sourceCompiledCodeHash": "113108a0c8e7a48729e3da01dd2e2a4067955561ad8bfc19f1fba90db084a967",
+      "artifactCodeHash": "113108a0c8e7a48729e3da01dd2e2a4067955561ad8bfc19f1fba90db084a967",
+      "match": true,
+      "sourceSha256Lf": {
+        "anlgram-lp-auth-guard.fc": "d16d2f8b50a4f1dbcc9cd625a283a54d861793327ee1ed6855010627f66af1d9",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/discovery-params.fc": "215e8d75ed135cb2a3ac0b6c33c3d99d7bfb370d2834f3b09e5e4566a2fce31b",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728",
+        "imports/settlement-wallet-code.fc": "b5f16e35d6fb285636b209167c87617006f59b3f6ec3501a38b2a7cde13d6b28",
+        "imports/migration-router-code.fc": "539f787d221ea996dfb49c471a6188717720b91e7a69d4b2c98391798a110d29",
+        "imports/lp-custody-receipts.fc": "152c14f4c51b9c5f7fd211c81f8816b2f725e2d29e3b4725c54d2ea8d165850e"
+      },
+      "artifactFileSha256Lf": "36a928636eaa30210542dc480be21fcc6fe44bf5f0bbd82321186ab9d6fe2481"
+    },
+    {
+      "contract": "anlgram-lp-locker-v2",
+      "sourceCompiledCodeHash": "22d689df2f32d5fd00c72b50f31ab77291117a7625ad1bb654a4b6dbc796e001",
+      "artifactCodeHash": "22d689df2f32d5fd00c72b50f31ab77291117a7625ad1bb654a4b6dbc796e001",
+      "match": true,
+      "sourceSha256Lf": {
+        "anlgram-lp-locker-v2.fc": "da2e6b55d7536049c1254f5a751c9c4ab49a4bf54ef3559a496561c6f5ea7474",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728",
+        "imports/lp-v2-receipt.fc": "494cdcc77cbe5df715a15a5c818bb39783095c704625afeb7d5aea2e00b00813",
+        "imports/lp-custody-probe-v4.fc": "62bcf17fa4fcacc0955757ed0a03f5a7f008cd10bb10dba8099af062572bdf7f"
+      },
+      "artifactFileSha256Lf": "ae4985e3013905fda5a0385d0d332d69a6b70494c6922922aa622687d74beef3"
+    },
+    {
+      "contract": "anlgram-vesting-wallet",
+      "sourceCompiledCodeHash": "cae29d5a2ba4b5cfa926deb720cc0c5ef1ed0e7d8502aecd46bf3b0ed3321c5a",
+      "artifactCodeHash": "cae29d5a2ba4b5cfa926deb720cc0c5ef1ed0e7d8502aecd46bf3b0ed3321c5a",
+      "match": true,
+      "sourceSha256Lf": {
+        "anlgram-vesting-wallet.fc": "be719884ff6bef168c3a728164cc8f491f9a55181d0ad5bc5fec08cc389f246b",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+      },
+      "artifactFileSha256Lf": "6f7240000716b6de9a120d746105805da19379ca15fc4ab449acfc1077a0cf80"
+    }
+  ],
+  "foreignProfile": {
+    "snapshotUtc": "2026-10-30T09:27:37.127Z",
+    "routerCodeReferenceHash": "a7e2f92c4bccbdbaaa0c083aa1da9762b52023134234adeb3b7bc8e72dbd1182",
+    "codes": {
+      "pool": "ec614ea4aaea3f7768606f1c1632b3374d3de096a1e7c4ba43c8009c487fee9d",
+      "lpWallet": "bf13041750f2beeb688859c75689e2c18b9c90bd78e97b197aad7ad6bc520c84",
+      "lpAccount": "3f1bb3192caaaa1ab7ae7474de50e2e3625fe2757aed4be4f4e9c3fc85ac0b9a"
+    },
+    "sourceAuditVerified": false,
+    "currentDeploymentVerifiedThisTask": false
+  },
+  "tests": {
+    "focusedCompatibilityAndExternalComponents": {
+      "pass": 10,
+      "fail": 0
+    },
+    "sourceCompilationMatches": {
+      "pass": 7,
+      "fail": 0
+    },
+    "newDecisionCases": {
+      "pass": 3,
+      "fail": 0,
+      "includedInFocusedCount": true
+    }
+  },
+  "newFinancialSourceChanges": false,
+  "newOnchainTransactions": 0,
+  "newDeployments": 0,
+  "qualifiedIndependentReview": false,
+  "decisionTestSourcesSha256Lf": {
+    "tests/settlement-runtime/architecture-feasibility.test.js": "8cd5d50e132092d1e84e69218f53069b59633c5b7ee0fd2e74c8b1e2132178d7",
+    "tests/settlement-runtime/stonfi-locker-v2-real.test.js": "6f5de2cab9022175022887f6623daf6a0d626e646562ddf3354912ceb0f5384a"
+  }
+}
