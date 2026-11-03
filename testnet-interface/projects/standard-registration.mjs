@@ -30,7 +30,8 @@ export async function acquireStandardRegistration(intent, providers) {
   const {manifest, identity} = intent;
   const target = await providers.account(manifest.minter.raw);
   const source = await providers.account(manifest.operator.address, target.reference);
-  includedActiveState(target, manifest.minter.codeHash);
+  const minterState = includedActiveState(target, manifest.minter.codeHash);
+  if (minterState.state.data.hash().toString('hex') !== manifest.minter.dataHash) throw Error('Minter is not in exact initial state');
   const owner = includedActiveState(source, manifest.operator.codeHash);
   const [wallet, minter] = await Promise.all([
     providers.history(manifest.operator.address, source), providers.history(manifest.minter.raw, target)

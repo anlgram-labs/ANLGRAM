@@ -33,6 +33,9 @@ export class StandardDeploymentLock {
       state:'LOCKED_PENDING_RECONCILIATION', reservedAt:now};
     return this.storage.transaction(async txn => {
       if (await txn.get('standardDeployment')) throw Error('Standard deployment permanently reserved');
+      if (live.requirePrepared && (await txn.get('standardPrepared'))?.identity.fingerprint !== identity.fingerprint) {
+        throw Error('Prepared quote superseded');
+      }
       if (Math.floor(Date.now() / 1000) >= Math.min(identity.validUntil, live.proofExpiresAt, live.observedAt + 16)) {
         throw Error('Preflight expired before reservation');
       }

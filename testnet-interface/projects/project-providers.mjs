@@ -20,6 +20,7 @@ export function projectProviders(env, fetcher = fetch) {
     const response = await fetcher(url, {...options, redirect: 'error', signal: AbortSignal.timeout(8000)});
     if (!response.ok) {
       const error = Error('Testnet evidence provider unavailable');
+      error.status = response.status;
       error.retryMs = retryAfter(response.headers.get('Retry-After'));
       throw error;
     }
@@ -66,7 +67,17 @@ export function projectProviders(env, fetcher = fetch) {
       rows: matchHistory(primary, secondary.transactions, proof, address)};
   }
 
-  return {account, history, reference};
+  async function observeAddress(address) {
+    if (!/^0:[0-9a-f]{64}$/.test(address)) throw Error('Canonical basechain address required');
+    return center('getAddressInformation', {address});
+  }
+
+  async function emulateUnsigned(requestBody) {
+    return request('https://testnet.toncenter.com/api/emulate/v1/emulateTrace', {
+      method:'POST', headers:{'X-API-Key':centerKey,'Content-Type':'application/json'}, body:JSON.stringify(requestBody)
+    });
+  }
+  return {account, history, reference, observeAddress, emulateUnsigned};
 }
 
 export function includedAccountCell(bundle) {
