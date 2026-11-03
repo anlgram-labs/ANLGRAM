@@ -2,7 +2,7 @@
   "schema": 1,
   "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
   "sources": {
-    "build.mjs": "ec023e7ce9f1e13f6d841968b977ad3d2c78812bface41788405d0379d29fb62",
+    "build.mjs": "1184897697cecae1ed124c877ae13e843bdd33891827de4662720db09f551fac",
     "app.js": "f2214539064b7532925298b9bebbb26a79c3e52813aff27b08a696a7857a598b",
     "client-entry.mjs": "26afc78634cc85868ba390377893e1bd319f9962b0c6599482416ff07d33e40d",
     "single-attempt.mjs": "2a3cd10735dda1324a0d044be259498e5b6bef17620c8593878d5f3b9500839d",
@@ -32,9 +32,10 @@
     "recovery-status.js": "e2b437965d1ff5fbe580eb5c2a0a24704aedbda6023b131ca3a20234e96cab92",
     "../lib/v5-self-transfer-receipt.js": "d3347f12f5552c2cd8c86491143a71f7142890ee40bae8cb76c548e038d16d2a",
     "../lib/v5-deployment-receipt.js": "900d30bc7856c5b3373dea3acc9da6a46b541d4576699beb85ae13285d5587c7",
+    "projects/standard-testnet-release.mjs": "0f8453750d96813531908d7669972d76fb915d518988f74b1283a5aa719bce1d",
     "project-registry-worker.mjs": "35ab0ab6cfab2edfa533bc12b8d199304c4d123381e01b7096e80cbf0f2bf51e",
     "projects/project-registry.mjs": "c31ec5b4cfa7c92d86879f691ec12d78cbedbb32399290eb5733df92b8618249",
-    "projects/project-registration.mjs": "6005de5ba898cdb95df20acc2d42922a36ced564b3c1dbab7212247f2b647711",
+    "projects/project-registration.mjs": "33efe0d4269084fd4dc3295dc58c2f8f9f282ad8154d2ec5d0cdf8617d953b3d",
     "projects/project-providers.mjs": "8f16aba19ba1b2063c6eb02082b2a6c626c93c6c6979bfd137e89006b76c5351",
     "projects/project-lp-acquisition.mjs": "1040e81ad60ec25928d218a6bbc4b89ec261ed37fb42fa6270b91c0e6765c119",
     "projects/lp-evidence.mjs": "e57c8f759605c220745f5424544e3ddd026bc79b31b3bd3339ad24b93db8393f",
@@ -45,5 +46,5 @@
     "wizard/model.mjs": "725aab3765abc8b14a243e63711d83f834e5d473ab766f524da38c1967cf3113",
     "../minter-contract/scripts/migration-package-dispatch-v2.js": "a1c92dda7c78e3a905f6ea73435b152eb66421d4cbc5030a4505ef3435d4a4e4"
   },
-  "sha256": "09f2f2c959a27233c29b76cadc3dfe38ffc64d266b9c933a897902228c3f0ce4"
+  "sha256": "e201d50f067d166052469ec286fd666f13a965f1366edcf3faeebecd593711c9"
 }
