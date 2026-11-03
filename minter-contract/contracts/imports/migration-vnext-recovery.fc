@@ -1,0 +1,65 @@
+;; Read-only, operation-bound LPAccount observations. This is NOT cancellation,
+;; a refund authorization, proof of quiescence, exact attribution or settlement.
+;; Reuses flight correlation and lifecycle fields; never changes principal.
+(slice,slice,slice,int) vn_recovery_targets() inline {
+    (cell intent,cell bound,_) = v2_parts();throw_if(409,cell_null?(bound));
+    slice i = intent.begin_parse();i~skip_bits(135);slice e = i~load_ref().begin_parse();i~load_ref();cell profile = i~load_ref();i.end_parse();
+    slice router = e~load_msg_addr();slice w0 = e~load_msg_addr();slice w1 = e~load_msg_addr();e.end_parse();
+    (_,_,_,slice expected_router,slice master,_,_,_,_,slice lp,slice pw,_,_,cell wallet_code) = load_data();
+    throw_unless(408,equal_slices(router,expected_router));
+    slice token = calculate_user_jetton_wallet_address(router,master,wallet_code);
+    throw_unless(408,(equal_slices(w0,token) & equal_slices(w1,pw)) | (equal_slices(w1,token) & equal_slices(w0,pw)));
+    (slice pool,_) = stonfi_expected_destinations(router,w0,w1,profile);
+    slice b = bound.begin_parse();b~load_msg_addr();throw_unless(408,equal_slices(b~load_msg_addr(),pool) & equal_slices(b~load_msg_addr(),lp));
+    (_,_,cell code) = stonfi_profile_codes(profile);
+    cell data = begin_cell().store_slice(my_address()).store_slice(pool).store_coins(0).store_coins(0).end_cell();
+    slice account = calculate_jetton_wallet_address(begin_cell().store_uint(0,2).store_dict(code).store_dict(data).store_uint(0,1).end_cell());
+    return(router,pool,account,equal_slices(token,slice_hash(w0) > slice_hash(w1) ? w0 : w1));
+}
+int handle_vnext_recovery(int balance,int value,cell full,slice body) impure {
+    if(body.slice_bits() < 96) { return 0; } slice h = full.begin_parse();int flags = h~load_uint(4);if(flags & 1) { return 0; } slice sender = h~load_msg_addr();
+    int op = body~load_uint(32);int q = body~load_uint(64);
+    ifnot((op == op::recover_lp_account) | (op == 0x414e5c10) | (op == op::getter_pool_address) | (op == op::getter_lp_account) | (op == op::getter_lp_account_data)) { return 0; }
+    (_,slice curve,_,_,_,_,_,_,slice admin,_,_,_,_,_) = load_data();
+    (cell intent,_,_) = v2_parts();int root = v2_root(intent);
+    (int active,int nonce,int phase,slice current_pool,slice current_account,cell ids) = load_flight();
+    if((op == op::recover_lp_account) | (op == 0x414e5c10)) {
+        throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,curve));throw_unless(409,(q == root) & (active == root));body.end_parse();
+        if(op == op::recover_lp_account) { throw(414); } ;; No cancellation barrier in foreign ABI. Timeout is not evidence.
+        throw_unless(407,value >= 150000000);
+    } else { throw_unless(409,(active == root) & (q == nonce) & (phase >= 1) & (phase <= 3)); }
+    (int exists,cell f,cell seen) = migration_life(root);throw_unless(409,exists & (life_get(f,11) == 1));
+    (slice router,slice pool,slice account,int token_first) = vn_recovery_targets();
+    if(op == 0x414e5c10) {
+        throw_unless(409,(phase >= 0) & (phase <= 4));
+        if(phase == 4) { return_receipt_gas(sender,balance - value,root);return -1; } ;; immutable observation, not a fresh quote
+        if(phase == 0) { nonce = cur_lt();phase = 1;save_flight(root,nonce,phase,pool,account,ids); }
+        ;; Funded retries query the same outstanding stage, never send assets.
+        cell query = begin_cell().end_cell();
+        ;; Pair arguments are read from immutable intent, independent of sorted storage order.
+        if(phase == 1) { slice s = intent.begin_parse();s~skip_bits(135);s = s~load_ref().begin_parse();s~load_msg_addr();query = begin_cell().store_uint(op::getter_pool_address,32).store_uint(nonce,64).store_slice(s~load_msg_addr()).store_slice(s~load_msg_addr()).end_cell(); }
+        elseif(phase == 2) { query = begin_cell().store_uint(op::getter_lp_account,32).store_uint(nonce,64).store_slice(my_address()).end_cell(); }
+        else { query = begin_cell().store_uint(op::getter_lp_account_data,32).store_uint(nonce,64).end_cell(); }
+        recovery_query(phase == 1 ? router : (phase == 2 ? pool : account),query,balance - value);return -1;
+    }
+    if(op == op::getter_pool_address) {
+        throw_unless(401,equal_slices(sender,router));throw_unless(409,phase == 1);throw_unless(408,equal_slices(body~load_msg_addr(),pool));body.end_parse();
+        save_flight(root,nonce,2,pool,account,ids);
+        recovery_query(pool,begin_cell().store_uint(op::getter_lp_account,32).store_uint(nonce,64).store_slice(my_address()).end_cell(),balance - value);return -1;
+    }
+    if(op == op::getter_lp_account) {
+        throw_unless(401,equal_slices(sender,pool));throw_unless(409,phase == 2);throw_unless(408,equal_slices(body~load_msg_addr(),account));body.end_parse();
+        save_flight(root,nonce,3,pool,account,ids);
+        recovery_query(account,begin_cell().store_uint(op::getter_lp_account_data,32).store_uint(nonce,64).end_cell(),balance - value);return -1;
+    }
+    throw_unless(401,equal_slices(sender,account));throw_unless(409,phase == 3);
+    throw_unless(408,equal_slices(body~load_msg_addr(),my_address()) & equal_slices(body~load_msg_addr(),pool));
+    int a0 = body~load_coins();int a1 = body~load_coins();body.end_parse();
+    f = life_put(f,14,token_first ? a0 : a1);f = life_put(f,15,token_first ? a1 : a0);f = life_put(f,16,cur_lt());
+    save_migration_life(root,f,seen);(_,_,_,_,_,ids) = load_flight();save_flight(root,nonce,4,pool,account,ids);
+    return_receipt_gas(admin,balance - value,root);return -1;
+}
+(int,int,int,int,int,int,int,int) get_recovery_observation_vnext() method_id {
+    (int root,int nonce,int phase,_,_,_) = load_flight();(_,cell f,_) = migration_life(root);
+    return(root,nonce,phase,life_get(f,14),life_get(f,15),life_get(f,16),0,0); ;; attribution/refund authority remain false
+}
