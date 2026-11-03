@@ -2313,3 +2313,7 @@ Based on PR19 f872673. New versioned sources/artifacts add exact Migrator StateI
 # PR #21 follow-up — operation binding and proof-scoped LP receipts
 
 Code review target: `420a17c6c3dd64cc9b3b43e622e16d8837080c60`. Targeted financial regression:72/0; final modified component subset:13/0 (included); backend/receipt/status:18/0. Reproducible compilation and Pages Worker dry-run passed; no deployment. See `migration-v2-followup-review.md` for API schema, exact remaining implementation gaps and evidence limits. Canonical positive authorization/finalization and contract-consumable foreign recovery/withdrawal evidence remain unresolved; all financial gates and original Curve #2 lock remain closed.
+
+## PR #21 security-gap follow-up
+
+Exact independent code-review target: `e1dacb7dd82d628064950af43e1a20cc3ec2a48f`. Added sealed guard registration consumer, caller-funded permanent100% custody-floor queries/receipts and exact persistent withdrawal/bounce evidence checks. Targeted financial:75/0; modified component subset:16/0 (included); backend/receipt:18/0; reproducible compilation PASS. Positive guard producer, validator finality, canonical final DEX settlement, exact on-chain LP recovery credit and foreign final withdrawal acknowledgement remain blocked. See `migration-v2-security-gaps-review.md`; no financial transaction, deployment, lock reset or Cloudflare/frontend publication.

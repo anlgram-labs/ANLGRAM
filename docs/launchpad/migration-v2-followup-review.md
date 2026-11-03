@@ -1,5 +1,7 @@
 # PR #21 follow-up: operation binding and external LP evidence
 
+Historical checkpoint420a17c. The current review target, registration/floor/bounce changes, hashes and remaining blockers are in `migration-v2-security-gaps-review.md` and the current audit manifest.
+
 Required independent code review commit: **420a17c6c3dd64cc9b3b43e622e16d8837080c60**.
 Base: 8f1f4b060226eb2c94c61a1e8ffb9f46603415ab. This package is NOT a qualified independent review, financial release, completed migration protocol or deployment approval. Subsequent documentation-only commits do not change that code-review target.
 
