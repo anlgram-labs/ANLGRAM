@@ -45,8 +45,8 @@ function fill(){
  render();showStage(false);
 }
 function render(){
- const launch=draft.mode==='launchpad',e=effective(draft),result=validate(draft),prep=preparation.getPrepared(draft.id);
- const migInfo=migrationSummary(draft,prep),lpInfo=lpLockerSummary(draft,prep);
+ const launch=draft.mode==='launchpad',e=effective(draft),result=validate(draft),prep=preparation.getPrepared(draft.id),prepStatus=preparation.getStatus(draft.id);
+ const migInfo=migrationSummary(draft,prep,prepStatus),lpInfo=lpLockerSummary(draft,prep,prepStatus);
  $('labs-card1-supply').readOnly=launch;$('wizard-decimals').readOnly=launch;
  for(const card of document.querySelectorAll('#wizard-mode-cards [data-mode]'))card.classList.toggle('active',card.dataset.mode===draft.mode);
  text('mode-help',launch?'Launchpad: fixed 1B supply, 9 decimals, 80% Curve and 20% DEX. No initial creator allocation. Activation requires verified custody and administrator renouncement. Trading, migration and LP withdrawals remain blocked.':'Standard TEP-74: choose supply and decimals. A minter can retain mint authority until explicitly renounced. No bonding curve, graduation or LP locking is included. Saving a draft does not mint tokens or renounce ownership.');
@@ -90,7 +90,7 @@ function render(){
  text('wizard-summary',JSON.stringify({status:'CONFIGURATION_ONLY_DEPLOYMENT_UNKNOWN',network:'TON Testnet -3',mode:draft.mode,metadata:{...draft.metadata,supply:e.supply,decimals:e.decimals,logo:draft.metadata.logo?'Image configured (local/URL); not published':'none'},onChainState:{projectDeploymentStatus:'UNKNOWN',jettonSupply:'UNKNOWN',tokenBalance:'UNKNOWN',curveReserves:'UNAVAILABLE',holderCount:'UNKNOWN',lpCustody:'NOT_VERIFIED',migrationProgress:'UNAVAILABLE',transactionReceipts:'UNKNOWN'},distribution:{allocations:draft.allocations,skip:draft.distribution.skip,recipientCount:result.recipients.length,airdropTokens:format(result.airdropUnits,e.decimals),funded:false,availableBalanceUnits:null},vesting:draft.vesting.enabled?{...draft.vesting,escrowedBalanceUnits:null,custody:'NOT_VERIFIED'}:'skipped; values retained',curve:launch?CURVE:'not included',lp:launch?{...draft.lp,actualCustody:'NOT_VERIFIED',lpBalanceUnits:null,unlockTimestamp:null}:'not included',knownCreationBaseTon:'0.20',mandatoryDonationTon:'0.02',knownCreationTotalExcludingNetworkTon:'0.22',networkFees:'UNKNOWN — fresh estimate required',mintAuthority:launch?'renouncement required before activation':'retained until separately renounced',irreversibleActions:'Real deployments, minting, renouncement and transfers require separate verification and confirmations. No financial action is performed here.'},null,2));
  text('wizard-validation',result.valid?'Configuration fields are valid. This is not an execution approval. '+BLOCKER:'Incomplete configuration (you may still save and navigate):\n'+result.errors.join('\n'));
  text('wizard-project-status',`Selected draft: ${draft.metadata.name||'Untitled'}\nProject deployment status: DRAFT · deployment UNKNOWN\nJetton supply: configured ${e.supply} (${e.decimals} decimals); actual on-chain supply: UNKNOWN\nToken balance: UNKNOWN\nBonding Curve reserves: UNAVAILABLE\nHolder counts: UNKNOWN\nLP custody: NOT VERIFIED (LP balance: UNKNOWN; unlock timestamp: UNKNOWN)\nMigration progress: UNAVAILABLE (migration blocked)\nTransaction receipts: UNKNOWN (none authenticated here)\n${BLOCKER}`);
- renderMigrationAndLpGrids(draft,prep);
+ renderMigrationAndLpGrids(draft,prep,prepStatus);
  renderDiagnostics();
  renderProjects();void preparation.render();
 }
@@ -104,8 +104,8 @@ function renderProjects(){
   const info=document.createElement('div');info.className='labs-project-info';
   const title=document.createElement('div');title.className='labs-project-title';title.textContent=`${project.metadata.name||'Untitled draft'} (${project.metadata.symbol?'$'+project.metadata.symbol:'no symbol'})`;
   const meta=document.createElement('div');meta.className='labs-project-meta';
-  const pPrep=preparation.getPrepared(project.id);
-  const life=deriveLifecycleStage(project,pPrep);
+  const pPrep=preparation.getPrepared(project.id),pStat=preparation.getStatus(project.id);
+  const life=deriveLifecycleStage(project,pPrep,pStat);
   const lpTag=project.mode==='launchpad'?`LP ${project.lp.percent}% · ${project.lp.duration==='permanent'?'Perm':project.lp.duration+'d'}`:'No LP Lock';
   for(const tagText of [project.mode==='launchpad'?'Launchpad':'Standard',life.short,lpTag,project.savedAt?project.savedAt.slice(0,10):'unsaved']){const tag=document.createElement('span');tag.className='labs-project-tag';tag.textContent=tagText;meta.append(tag);}
   info.append(title,meta);head.append(avatar,info);

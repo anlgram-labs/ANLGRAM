@@ -1,9 +1,9 @@
 import {configurationFingerprint} from './preparation-model.mjs';
 import {format} from './model.mjs';
-import {projectStatusText,LIFECYCLE_STAGES,deriveLifecycleStage,deriveMigrationLifecycle,migrationSummary,lpLockerSummary,isAuthenticTxHash,tonviewerTxUrl,tonviewerAccountUrl} from './project-status.mjs';
+import {projectStatusText,LIFECYCLE_STAGES,deriveLifecycleStage,deriveMigrationLifecycle,migrationSummary,lpLockerSummary,validateProjectStatusResponse,isAuthenticTxHash,tonviewerTxUrl,tonviewerAccountUrl} from './project-status.mjs';
 // Cached configuration only: never a quote, authority, operation ledger or receipt.
-export function renderMigrationAndLpGrids(d,p=null){
- const $=id=>document.getElementById(id),mig=migrationSummary(d,p),lp=lpLockerSummary(d,p),migLife=deriveMigrationLifecycle(d,p);
+export function renderMigrationAndLpGrids(d,p=null,s=null){
+ const $=id=>document.getElementById(id),mig=migrationSummary(d,p,s),lp=lpLockerSummary(d,p,s),migLife=deriveMigrationLifecycle(d,p,s);
  const rows=[
   ['Bonding Curve Trading Progress',mig.applicable?`Accumulated TON: ${mig.observedRealTonReserveDisplay} · Curve inventory: ${mig.observedCurveInventoryDisplay}`:'Not applicable (Standard Jetton mode)'],
   ['Graduation Progress (500 TON Target)',mig.applicable?mig.graduationProgressDisplay:'Not applicable (no Bonding Curve)'],
@@ -38,7 +38,7 @@ export function renderMigrationAndLpGrids(d,p=null){
    li.append(head,desc);return li;
   }));
  }
- const life=deriveLifecycleStage(d,p),badge=$('wizard-lifecycle-current-badge'),list=$('wizard-lifecycle-list');
+ const life=deriveLifecycleStage(d,p,s),badge=$('wizard-lifecycle-current-badge'),list=$('wizard-lifecycle-list');
  if(badge)badge.textContent=life.displayBadge||life.label;
  if(list){
   list.replaceChildren(...LIFECYCLE_STAGES.map((stage,idx)=>{
@@ -57,11 +57,14 @@ export function renderMigrationAndLpGrids(d,p=null){
  const linksEl=$('wizard-explorer-links');
  if(linksEl){
   linksEl.replaceChildren();
-  const txOps=(p?.operations||[]).filter(o=>isAuthenticTxHash(o.receipt?.transactionHash));
+  const txItems=[];
+  for(const o of (p?.operations||[]))if(isAuthenticTxHash(o.receipt?.transactionHash))txItems.push({label:`${o.name} receipt`,hash:o.receipt.transactionHash});
+  for(const r of (mig.transactionReceipts||[])){const h=r.walletTransactionHash||r.transactionHash;if(isAuthenticTxHash(h))txItems.push({label:`${r.kind||'Migration'} receipt`,hash:h});}
+  for(const r of (lp.withdrawalReceipts||[])){const h=r.walletTransactionHash||r.transactionHash;if(isAuthenticTxHash(h))txItems.push({label:'LP withdrawal delivery receipt',hash:h});}
   const statusP=document.createElement('p');statusP.className='labs-helper-text';
-  if(txOps.length){
+  if(txItems.length){
    statusP.textContent='Verified on-chain transaction receipts:';linksEl.append(statusP);
-   for(const o of txOps){const a=document.createElement('a');a.href=tonviewerTxUrl(o.receipt.transactionHash);a.target='_blank';a.rel='noopener noreferrer';a.textContent=`${o.name} receipt (${o.receipt.transactionHash.slice(0,12)}…)`;linksEl.append(a);}
+   for(const item of txItems){const a=document.createElement('a');a.href=tonviewerTxUrl(item.hash);a.target='_blank';a.rel='noopener noreferrer';a.textContent=`${item.label} (${item.hash.slice(0,12)}…)`;linksEl.append(a);}
   }else{
    statusP.textContent='Transaction Explorer Links: No authentic transaction hash available for this project (all operations NOT_SUBMITTED · receipts UNKNOWN). Explorer transaction links appear only when authentic finalized transaction hashes are verified.';
    linksEl.append(statusP);
@@ -69,14 +72,22 @@ export function renderMigrationAndLpGrids(d,p=null){
  }
 }
 export function attachPreparation(current){
- const $=id=>document.getElementById(id),text=(id,s)=>$(id).textContent=s,prepared=new Map();let busy=false,revision=0;
+ const $=id=>document.getElementById(id),text=(id,s)=>$(id).textContent=s,prepared=new Map(),statuses=new Map();let busy=false,statusBusy=false,revision=0;
  async function render(){
-  const n=++revision,d=current(),p=prepared.get(d.id),hash=await configurationFingerprint(d);if(n!==revision)return;
-  const valid=p?.configurationFingerprint===hash;$('wizard-export').disabled=!valid;$('wizard-project-plan').replaceChildren();
-  renderMigrationAndLpGrids(d,valid?p:null);
+  const n=++revision,d=current(),p=prepared.get(d.id),s=statuses.get(d.id),hash=await configurationFingerprint(d);if(n!==revision)return;
+  const valid=p?.configurationFingerprint===hash,validStatus=s?.configurationFingerprint===hash;$('wizard-export').disabled=!valid;$('wizard-project-plan').replaceChildren();
+  renderMigrationAndLpGrids(d,valid?p:null,validStatus?s:null);
+  if($('wizard-status-endpoint-output')){
+   if(validStatus){
+    const st=s.status;
+    text('wizard-status-endpoint-output',`POST /api/projects/status (schema ${s.schema} · network ${s.network})\nScope: ${s.scope}\nReason: ${s.unavailableReason||'NONE'}\nLifecycle: ${st?`${st.lifecycle?.stage||'UNKNOWN'} (authenticated: ${st.lifecycle?.authenticated?'YES':'NO'})`:'N/A (Standard mode)'}\nGraduation reserve: ${st?.graduation?.realReserveNano??'UNKNOWN'} / ${st?.graduation?.targetNano||'500000000000'} nanoTON (eligible: ${st?.graduation?.eligible??'UNKNOWN'})\nDeposits: TON ${st?.deposits?.ton?.status||'UNAVAILABLE'} · Jettons ${st?.deposits?.jettons?.status||'UNAVAILABLE'}\nLP Custody: ${st?.lp?.custodyStatus||'UNKNOWN'} · Received: ${st?.lp?.receivedUnits??'UNKNOWN'} · Locked: ${st?.lp?.recordedLockedUnits??'UNKNOWN'} · Unlocked: ${st?.lp?.recordedUnlockedUnits??'UNKNOWN'}\nFinancial gates: signing=${s.financialSigningEnabled} · migration=${s.migrationAuthorized} · withdrawals=${s.withdrawalsEnabled}`);
+   }else{
+    text('wizard-status-endpoint-output',s?'Configuration changed; previous /api/projects/status response is stale. Query status again.':'Project status endpoint (/api/projects/status) not queried yet. Local drafts and derived addresses never imply deployment or custody.');
+   }
+  }
   if(!valid){text('wizard-preparation',p?'Configuration changed. Prepare a new plan; previous templates are stale.':'No project-specific plan prepared.');text('distribution-batches','Batch templates require a valid prepared project. No balances or fees assumed.');return;}
   $('wizard-sequence').replaceChildren(...p.operations.map(o=>{const li=document.createElement('li');li.textContent=o.name.replaceAll('-',' ')+' · NOT SUBMITTED / NOT AUTHORIZED';return li;}));
-  text('wizard-project-status',projectStatusText(p));
+  text('wizard-project-status',projectStatusText(p,validStatus?s:null));
   text('wizard-preparation',`OFFLINE PLAN · NOT AUTHORIZED · DEPLOYMENT UNKNOWN\nProject ${p.draftId} / ${p.metadata.symbol}\nMinter ${p.accounts.minter.address}\nConfiguration ${hash}\nConfigured supply: ${p.configuredSupplyUnits} base units; actual on-chain supply: UNKNOWN.\n${p.operations.length} proposed operations; every operation NOT_SUBMITTED. Network fees UNKNOWN.\nDistribution: ${p.distribution.batches.length} unfunded batches / ${p.distribution.totalUnits} base units (available balance: UNKNOWN).\nVesting: ${p.vesting.status}; configured ${p.vesting.amountUnits??'UNAVAILABLE'} base units; escrowed balance: UNKNOWN; custody NOT VERIFIED.\nLP ${p.migration?JSON.stringify(p.migration.terms):'not applicable'}; LP balance: UNKNOWN; custody NOT VERIFIED; migration BLOCKED.\nExport includes exact public StateInit and message templates, never an authorization or receipt.`);
   if(p.vesting.schedule)$('wizard-preparation').textContent+=`\nVesting beneficiary: ${p.vesting.beneficiary}; cliff ${new Date(p.vesting.schedule.cliffTimestamp*1000).toISOString()}; full vesting ${new Date(p.vesting.schedule.endTimestamp*1000).toISOString()}. Months are 30 days, matching the existing builder.`;
   $('wizard-preparation').textContent+=`\nProposed creation-operation attachments: ${format(p.creationCharge.proposedOperationAttachmentsNano)} Testnet TON; separate mandatory donation 0.02 TON; base-charge reconciliation and fresh fees required. This is not a quote or maximum debit.`;
@@ -90,7 +101,24 @@ export function attachPreparation(current){
   for(const o of p.operations){const line=document.createElement('p');line.textContent=`Operation ${o.name} (${o.id.slice(0,14)}…) · status: ${o.status} · receipt: ${o.receipt?.status||'NO_AUTHENTIC_TRANSACTION'} · ${o.receiptExpectation?.stateInitHash?'V5 deployment-receipt adapter target (requires authentic provider provenance & finality)':'descendant mint/transfer verifier required'}`;$('wizard-project-plan').append(line);}
   const note=document.createElement('p');note.textContent='Authenticated project receipt availability and balances remain UNKNOWN. Matched V5 deployment fields alone never prove finality or custody. ANLTEST observations are separate.';$('wizard-project-plan').append(note);
  }
- $('wizard-prepare').onclick=async()=>{if(busy)return;busy=true;$('wizard-prepare').disabled=true;try{const input=structuredClone(current()),hash=await configurationFingerprint(input);text('wizard-preparation','Preparing configuration only; no wallet request.');const response=await fetch('/api/projects/prepare',{method:'POST',headers:{Content:'application/json','Content-Type':'application/json'},body:JSON.stringify(input),signal:AbortSignal.timeout(30000)}),p=await response.json();if(!response.ok)throw Error(p.error||'Preparation unavailable');if(p.scope!=='OFFLINE_PROJECT_PREPARATION_NOT_AUTHORIZATION'||p.network!=='-3'||p.financialSigningEnabled!==false||p.broadcastEnabled!==false||p.configurationFingerprint!==hash||p.draftId!==input.id)throw Error('Incompatible preparation rejected');if(await configurationFingerprint(current())!==hash)throw Error('Configuration changed during preparation; result discarded');prepared.set(input.id,p);await render();}catch(e){text('wizard-preparation','Preparation unavailable. '+e.message);}finally{busy=false;$('wizard-prepare').disabled=false;}};
+ async function queryStatus(){
+  if(statusBusy)return;statusBusy=true;if($('wizard-status-refresh'))$('wizard-status-refresh').disabled=true;
+  try{
+   const input=structuredClone(current()),hash=await configurationFingerprint(input);
+   if($('wizard-status-endpoint-output'))text('wizard-status-endpoint-output','Querying /api/projects/status · read-only, no wallet request...');
+   const response=await fetch('/api/projects/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),signal:AbortSignal.timeout(30000)}),s=await response.json();
+   if(!response.ok)throw Error(s.error||'Project status unavailable');
+   validateProjectStatusResponse(s,hash,input.mode);
+   if(await configurationFingerprint(current())!==hash)throw Error('Configuration changed during status check; stale result discarded');
+   statuses.set(input.id,s);await render();
+  }catch(e){
+   if($('wizard-status-endpoint-output'))text('wizard-status-endpoint-output','Project status unavailable: '+e.message);
+  }finally{
+   statusBusy=false;if($('wizard-status-refresh'))$('wizard-status-refresh').disabled=false;
+  }
+ }
+ if($('wizard-status-refresh'))$('wizard-status-refresh').onclick=()=>void queryStatus();
+ $('wizard-prepare').onclick=async()=>{if(busy)return;busy=true;$('wizard-prepare').disabled=true;try{const input=structuredClone(current()),hash=await configurationFingerprint(input);text('wizard-preparation','Preparing configuration only; no wallet request.');const response=await fetch('/api/projects/prepare',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),signal:AbortSignal.timeout(30000)}),p=await response.json();if(!response.ok)throw Error(p.error||'Preparation unavailable');if(p.scope!=='OFFLINE_PROJECT_PREPARATION_NOT_AUTHORIZATION'||p.network!=='-3'||p.financialSigningEnabled!==false||p.broadcastEnabled!==false||p.configurationFingerprint!==hash||p.draftId!==input.id)throw Error('Incompatible preparation rejected');if(await configurationFingerprint(current())!==hash)throw Error('Configuration changed during preparation; result discarded');prepared.set(input.id,p);if(p.migration?.statusView)statuses.set(input.id,{schema:2,network:'-3',configurationFingerprint:hash,scope:'PROJECT_CONFIGURATION_NO_REGISTERED_CHAIN_EVIDENCE',status:p.migration.statusView,unavailableReason:'NO_REGISTERED_VERSIONED_DEPLOYMENT_AND_FINALIZED_RECEIPTS',financialSigningEnabled:false,migrationAuthorized:false,withdrawalsEnabled:false});await render();}catch(e){text('wizard-preparation','Preparation unavailable. '+e.message);}finally{busy=false;$('wizard-prepare').disabled=false;}};
  $('wizard-export').onclick=async()=>{const p=prepared.get(current().id);if(!p||p.configurationFingerprint!==await configurationFingerprint(current())){await render();return;}const url=URL.createObjectURL(new Blob([JSON.stringify(p,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='memelabs-'+p.draftId+'-UNAUTHORIZED.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
- return{render,getPrepared:id=>prepared.get(id)||null};
+ return{render,queryStatus,getPrepared:id=>prepared.get(id)||null,getStatus:id=>statuses.get(id)||null};
 }

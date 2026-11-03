@@ -1,5 +1,5 @@
-// Existing /api/projects/prepare has configuration, not live project evidence.
-// Never attach the unrelated ANLTEST checkpoint to a creator's project.
+// Existing /api/projects/prepare and /api/projects/status provide configuration
+// and reference-anchored records, never unverified finality or authorization.
 import {CURVE,units,format} from './model.mjs';
 
 export const LIFECYCLE_STAGES=Object.freeze([
@@ -48,6 +48,12 @@ export const FINANCIAL_STATE_CATALOG=Object.freeze({
  LP_CUSTODY_NOT_VERIFIED:{code:'LP_CUSTODY_NOT_VERIFIED',title:'LP custody not verified',severity:'info',retryAllowed:false,statusLabel:'NOT VERIFIED',detail:'LP Locker V2 deterministic address is derived, but no authenticated LP Jetton transfer receipt confirms on-chain LP token custody. Reported LP balance remains UNKNOWN.'}
 });
 
+const VALID_STATUS_SCOPES=new Set([
+ 'MIGRATION_CONFIGURATION_NOT_CHAIN_OBSERVATION',
+ 'REFERENCE_ANCHORED_PARTIAL_EVIDENCE_NOT_VALIDATOR_FINALITY',
+ 'REFERENCE_ANCHORED_ACCOUNT_RECORDS_NOT_VALIDATOR_FINALITY'
+]);
+
 export function isAuthenticTxHash(hash){
  return typeof hash==='string'&&/^[a-f0-9]{64}$/i.test(hash.trim());
 }
@@ -67,24 +73,67 @@ export function describeFinancialState(code,extra={}){
  return{...base,detail,retryAllowed:false};
 }
 
-// Adapter isolating PR #21 migration.statusView (when present) and defaulting missing/unverified fields to null/UNKNOWN.
-export function normalizeMigrationStatusView(migration){
- const sv=migration?.statusView;
- const validScope=sv&&sv.scope==='MIGRATION_CONFIGURATION_NOT_CHAIN_OBSERVATION'&&sv.financialSigningEnabled===false&&sv.migrationAuthorized===false&&sv.withdrawalsEnabled===false;
+// Validates the exact POST /api/projects/status response contract (schema 2).
+export function validateProjectStatusResponse(resp,expectedFingerprint,expectedMode='launchpad'){
+ if(!resp||typeof resp!=='object'||resp.schema!==2||resp.network!=='-3'||resp.scope!=='PROJECT_CONFIGURATION_NO_REGISTERED_CHAIN_EVIDENCE')throw Error('Incompatible or malformed /api/projects/status response');
+ if(resp.financialSigningEnabled!==false||resp.migrationAuthorized!==false||resp.withdrawalsEnabled!==false)throw Error('Unsafe financial flags in /api/projects/status response');
+ if(expectedFingerprint&&resp.configurationFingerprint!==expectedFingerprint)throw Error('Stale /api/projects/status response: configurationFingerprint mismatch');
+ if(expectedMode==='standard'){
+  if(resp.status!==null||resp.unavailableReason!=='STANDARD_JETTON_HAS_NO_LAUNCHPAD_MIGRATION')throw Error('Invalid Standard mode /api/projects/status payload');
+  return resp;
+ }
+ if(!resp.status||!VALID_STATUS_SCOPES.has(resp.status.scope)||resp.status.financialSigningEnabled!==false||resp.status.migrationAuthorized!==false||resp.status.withdrawalsEnabled!==false)throw Error('Invalid Launchpad statusView in /api/projects/status response');
+ return resp;
+}
+
+// Adapter isolating PR #21 migration.statusView and POST /api/projects/status responses.
+export function normalizeMigrationStatusView(input){
+ const sv=input?.statusView??(input?.schema===2&&input?.scope==='PROJECT_CONFIGURATION_NO_REGISTERED_CHAIN_EVIDENCE'?input.status:input);
+ const unavailableReason=input?.unavailableReason??null;
+ const validScope=Boolean(sv&&VALID_STATUS_SCOPES.has(sv.scope)&&sv.financialSigningEnabled===false&&sv.migrationAuthorized===false&&sv.withdrawalsEnabled===false);
+ const tonDep=validScope&&sv.deposits?.ton?sv.deposits.ton:null;
+ const jetDep=validScope&&sv.deposits?.jettons?sv.deposits.jettons:null;
  return{
   scope:validScope?sv.scope:'MIGRATION_CONFIGURATION_NOT_CHAIN_OBSERVATION',
   dataStatus:validScope&&typeof sv.dataStatus==='string'?sv.dataStatus:'UNKNOWN',
+  unavailableReason,
+  lifecycle:{
+   stage:validScope&&typeof sv.lifecycle?.stage==='string'?sv.lifecycle.stage:'UNKNOWN',
+   authenticated:Boolean(validScope&&sv.lifecycle?.authenticated===true),
+   operationId:validScope&&sv.lifecycle?.operationId?String(sv.lifecycle.operationId):null
+  },
+  deposits:{
+   ton:{
+    status:tonDep&&typeof tonDep.status==='string'?tonDep.status:'UNAVAILABLE',
+    principalNano:tonDep&&typeof tonDep.principalNano==='string'&&/^\d+$/.test(tonDep.principalNano)?tonDep.principalNano:null,
+    fundedNano:tonDep&&typeof tonDep.fundedNano==='string'&&/^\d+$/.test(tonDep.fundedNano)?tonDep.fundedNano:null,
+    returnedNano:tonDep&&typeof tonDep.returnedNano==='string'&&/^\d+$/.test(tonDep.returnedNano)?tonDep.returnedNano:null,
+    inTransitNano:tonDep&&typeof tonDep.inTransitNano==='string'&&/^\d+$/.test(tonDep.inTransitNano)?tonDep.inTransitNano:null
+   },
+   jettons:{
+    status:jetDep&&typeof jetDep.status==='string'?jetDep.status:'UNAVAILABLE',
+    principalUnits:jetDep&&typeof jetDep.principalUnits==='string'&&/^\d+$/.test(jetDep.principalUnits)?jetDep.principalUnits:null,
+    fundedUnits:jetDep&&typeof jetDep.fundedUnits==='string'&&/^\d+$/.test(jetDep.fundedUnits)?jetDep.fundedUnits:null,
+    returnedUnits:jetDep&&typeof jetDep.returnedUnits==='string'&&/^\d+$/.test(jetDep.returnedUnits)?jetDep.returnedUnits:null,
+    inTransitUnits:jetDep&&typeof jetDep.inTransitUnits==='string'&&/^\d+$/.test(jetDep.inTransitUnits)?jetDep.inTransitUnits:null
+   }
+  },
   targetNano:validScope&&sv.graduation?.targetNano?String(sv.graduation.targetNano):'500000000000',
   realReserveNano:validScope&&typeof sv.graduation?.realReserveNano==='string'&&/^\d+$/.test(sv.graduation.realReserveNano)?sv.graduation.realReserveNano:null,
   progressBps:validScope&&Number.isInteger(sv.graduation?.progressBps)?sv.graduation.progressBps:null,
   eligible:validScope&&typeof sv.graduation?.eligible==='boolean'?sv.graduation.eligible:null,
+  localReserveEligible:validScope&&typeof sv.graduation?.localReserveEligible==='boolean'?sv.graduation.localReserveEligible:null,
   routerVerification:validScope&&typeof sv.routerVerification==='string'?sv.routerVerification:'NOT_VERIFIED',
   poolVerification:validScope&&typeof sv.poolVerification==='string'?sv.poolVerification:'NOT_VERIFIED',
   transactionReceipts:validScope&&Array.isArray(sv.transactionReceipts)?sv.transactionReceipts:null,
+  lpCustodyStatus:validScope&&typeof sv.lp?.custodyStatus==='string'?sv.lp.custodyStatus:'UNKNOWN',
   lpCustodyUnits:validScope&&typeof sv.lp?.custodyUnits==='string'&&/^\d+$/.test(sv.lp.custodyUnits)?sv.lp.custodyUnits:null,
+  lpReceivedUnits:validScope&&typeof sv.lp?.receivedUnits==='string'&&/^\d+$/.test(sv.lp.receivedUnits)?sv.lp.receivedUnits:null,
   lpRecordedLockedUnits:validScope&&typeof sv.lp?.recordedLockedUnits==='string'&&/^\d+$/.test(sv.lp.recordedLockedUnits)?sv.lp.recordedLockedUnits:null,
+  lpRecordedUnlockedUnits:validScope&&typeof sv.lp?.recordedUnlockedUnits==='string'&&/^\d+$/.test(sv.lp.recordedUnlockedUnits)?sv.lp.recordedUnlockedUnits:null,
   lpUnlockTimestamp:validScope&&typeof sv.lp?.unlockTimestamp==='string'&&/^\d+$/.test(sv.lp.unlockTimestamp)?sv.lp.unlockTimestamp:null,
   lpWithdrawalEligible:validScope&&typeof sv.lp?.withdrawalEligible==='boolean'?sv.lp.withdrawalEligible:null,
+  lpWithdrawalReceipts:validScope&&Array.isArray(sv.lp?.withdrawalReceipts)?sv.lp.withdrawalReceipts:null,
   versionedPackage:validScope&&sv.versionedPackage?{
    availableForLocalReview:Boolean(sv.versionedPackage.availableForLocalReview),
    selectedForThisLegacyPlan:Boolean(sv.versionedPackage.selectedForThisLegacyPlan),
@@ -98,7 +147,8 @@ export function normalizeMigrationStatusView(migration){
 
 export function deriveMigrationLifecycle(draft,prepared=null,observation=null){
  const launch=draft?.mode==='launchpad';
- const anomalyCode=observation?.scope==='AUTHENTICATED_PROJECT_OBSERVATION'&&MIGRATION_ANOMALY_STATES[observation.migrationAnomaly]?observation.migrationAnomaly:null;
+ const sv=normalizeMigrationStatusView(observation??prepared?.migration);
+ const anomalyCode=observation?.scope==='AUTHENTICATED_PROJECT_OBSERVATION'&&MIGRATION_ANOMALY_STATES[observation.migrationAnomaly]?observation.migrationAnomaly:(sv.dataStatus==='PARTIAL'?'PARTIAL':null);
  const confirmedStep=observation?.scope==='AUTHENTICATED_PROJECT_OBSERVATION'&&Number.isInteger(observation.migrationStep)&&observation.migrationStep>=1&&observation.migrationStep<=9?observation.migrationStep:0;
  const steps=MIGRATION_LIFECYCLE_STEPS.map(s=>({
   ...s,
@@ -124,9 +174,11 @@ export function projectStatus(prepared){
   financialSigningEnabled:false};
 }
 
-export function projectStatusText(prepared){
+export function projectStatusText(prepared,statusResponse=null){
  const s=projectStatus(prepared);
- return`Project ${s.draftId}\nDeployment: UNKNOWN\nActual supply, wallet balance and Curve reserves: UNKNOWN\nDistribution delivered, vesting escrow/claims and LP custody: UNKNOWN\nFinalized project receipts and on-chain LP unlock time: UNKNOWN\nDerived addresses and configured amounts below are preparation only. ANLTEST observations are a separate historical checkpoint. Financial execution remains disabled.`;
+ const sv=statusResponse?normalizeMigrationStatusView(statusResponse):normalizeMigrationStatusView(prepared?.migration);
+ const reason=statusResponse?.unavailableReason||sv.unavailableReason||'NO_REGISTERED_VERSIONED_DEPLOYMENT_AND_FINALIZED_RECEIPTS';
+ return`Project ${s.draftId}\nDeployment: UNKNOWN (${reason})\nLifecycle stage: ${sv.lifecycle.stage} (authenticated: ${sv.lifecycle.authenticated?'YES':'NO'})\nActual supply, wallet balance and Curve reserves: ${sv.realReserveNano?format(sv.realReserveNano,9)+' TON (reference-anchored record, not validator finality)':'UNKNOWN'}\nDistribution delivered, vesting escrow/claims and LP custody: ${sv.lpCustodyStatus}\nFinalized project receipts and on-chain LP unlock time: UNKNOWN\nDerived addresses and configured amounts below are preparation only. ANLTEST observations are a separate historical checkpoint. Financial execution remains disabled.`;
 }
 
 export function deriveLifecycleStage(draft,prepared=null,observation=null){
@@ -148,25 +200,29 @@ export function deriveLifecycleStage(draft,prepared=null,observation=null){
   const entry=LIFECYCLE_STAGES.find(s=>s.id===stageId)||LIFECYCLE_STAGES[0];
   return{...entry,confirmedOnChain:stageId!=='DRAFT'&&stageId!=='DEPLOYMENT_PENDING',observationStatus:'VERIFIED_OBSERVATION',preparedOffline:Boolean(prepared)};
  }
+ const sv=normalizeMigrationStatusView(observation??prepared?.migration);
  const entry=LIFECYCLE_STAGES[0];
+ const hasRefRecord=sv.lifecycle.stage!=='UNKNOWN'&&!sv.lifecycle.authenticated;
  return{
   ...entry,
   confirmedOnChain:false,
-  observationStatus:prepared?'OFFLINE_PLAN_PREPARED_DEPLOYMENT_UNKNOWN':'LOCAL_DRAFT_ONLY',
+  observationStatus:hasRefRecord?'REFERENCE_ANCHORED_RECORD_NOT_FINALITY':prepared?'OFFLINE_PLAN_PREPARED_DEPLOYMENT_UNKNOWN':'LOCAL_DRAFT_ONLY',
   preparedOffline:Boolean(prepared),
-  displayBadge:prepared?'DRAFT · Plan Prepared (Deployment UNKNOWN)':'DRAFT · Local Only'
+  displayBadge:hasRefRecord?`RECORD: ${sv.lifecycle.stage} (Unauthenticated · Not Finality)`:prepared?'DRAFT · Plan Prepared (Deployment UNKNOWN)':'DRAFT · Local Only'
  };
 }
 
 export function migrationSummary(draft,prepared=null,observation=null){
  const launch=draft?.mode==='launchpad';
  const mig=launch&&prepared?.migration?prepared.migration:null;
- const sv=normalizeMigrationStatusView(mig);
+ const sv=normalizeMigrationStatusView(observation??mig);
  const thresholdNano=BigInt(sv.targetNano||'500000000000');
  const obsReserve=observation?.scope==='AUTHENTICATED_PROJECT_OBSERVATION'&&typeof observation.realTonReserveNano==='string'&&/^\d+$/.test(observation.realTonReserveNano)?observation.realTonReserveNano:sv.realReserveNano;
  const verifiedReserveNano=obsReserve!==null?BigInt(obsReserve):null;
  const progressPercent=verifiedReserveNano!==null?Number((verifiedReserveNano*10000n)/thresholdNano)/100:(sv.progressBps!==null?sv.progressBps/100:null);
  const graduated=verifiedReserveNano!==null&&verifiedReserveNano>=thresholdNano;
+ const tonDep=sv.deposits.ton,jetDep=sv.deposits.jettons;
+ const depositSummary=!launch?'NOT_APPLICABLE':tonDep.principalNano!==null||jetDep.principalUnits!==null?`TON (${tonDep.status}): principal ${tonDep.principalNano??'UNKNOWN'} / funded ${tonDep.fundedNano??'UNKNOWN'} / returned ${tonDep.returnedNano??'UNKNOWN'} / in-transit ${tonDep.inTransitNano??'UNKNOWN'} nanoTON · Jettons (${jetDep.status}): principal ${jetDep.principalUnits??'UNKNOWN'} / funded ${jetDep.fundedUnits??'UNKNOWN'} / returned ${jetDep.returnedUnits??'UNKNOWN'} / in-transit ${jetDep.inTransitUnits??'UNKNOWN'} units`:`NOT_SUBMITTED · BLOCKED (TON deposit: ${tonDep.status} · Jetton deposit: ${jetDep.status}; 200,000,000 DEX tokens & graduated TON not deposited)`;
  return{
   applicable:launch,
   thresholdTon:CURVE.thresholdTon,
@@ -175,11 +231,11 @@ export function migrationSummary(draft,prepared=null,observation=null){
   dexReserveTokens:CURVE.dex,
   protocolFeeBps:CURVE.feeBps,
   observedRealTonReserveNano:verifiedReserveNano!==null?verifiedReserveNano.toString():null,
-  observedRealTonReserveDisplay:verifiedReserveNano!==null?`${format(verifiedReserveNano,9)} TON`:'UNAVAILABLE (deployment UNKNOWN)',
+  observedRealTonReserveDisplay:verifiedReserveNano!==null?`${format(verifiedReserveNano,9)} TON (${sv.scope==='MIGRATION_CONFIGURATION_NOT_CHAIN_OBSERVATION'?'verified':'reference-anchored record · not validator finality'})`:'UNAVAILABLE (deployment UNKNOWN)',
   observedCurveInventoryDisplay:observation?.scope==='AUTHENTICATED_PROJECT_OBSERVATION'&&observation.curveInventoryUnits?`${format(observation.curveInventoryUnits,9)} tokens`:'UNAVAILABLE (configured 800,000,000; on-chain reserve UNKNOWN)',
   graduationProgressPercent:progressPercent,
   graduationProgressDisplay:progressPercent!==null?`${Math.min(100,progressPercent).toFixed(2)}% (${format(verifiedReserveNano??0n,9)} / ${CURVE.thresholdTon} TON)`:`UNKNOWN (0% verified · target ${CURVE.thresholdTon} real TON)`,
-  migrationEligibility:!launch?'NOT_APPLICABLE (Standard Jetton mode)':graduated&&mig?.migrationAuthorized?'ELIGIBLE':`BLOCKED · NOT ELIGIBLE (eligibility: ${sv.eligible===null?'UNKNOWN':sv.eligible}; requires verified 500 TON graduation, V2 Curve/migrator handoff & external audit)`,
+  migrationEligibility:!launch?'NOT_APPLICABLE (Standard Jetton mode)':graduated&&mig?.migrationAuthorized?'ELIGIBLE':`BLOCKED · NOT ELIGIBLE (financial eligibility: ${sv.eligible===null?'UNKNOWN':sv.eligible}${sv.localReserveEligible!==null?` · local reserve check: ${sv.localReserveEligible} [not authorization]`:''}; requires verified 500 TON graduation, V2 Curve/migrator handoff & external audit)`,
   routerVerification:sv.routerVerification,
   poolVerification:sv.poolVerification,
   versionedPackageStatus:sv.versionedPackage.availableForLocalReview?`Local V2 package available for review · selected for legacy plan: ${sv.versionedPackage.selectedForThisLegacyPlan?'YES':'NO'} · financial authorization: NONE`:'Legacy offline plan · V2 execution package not authorized',
@@ -190,8 +246,9 @@ export function migrationSummary(draft,prepared=null,observation=null){
   pairWallet0:mig?.pair?.pairWallet0||'NOT PREPARED',
   pairWallet1:mig?.pair?.pairWallet1||'NOT PREPARED',
   routerCodeReferenceHash:mig?.routerCodeReferenceHash||'UNAVAILABLE',
-  liquidityDepositStatus:!launch?'NOT_APPLICABLE':'NOT_SUBMITTED · BLOCKED (200,000,000 DEX tokens & graduated TON not deposited)',
-  migrationReceiptStatus:sv.transactionReceipts===null?'UNKNOWN · NO_AUTHENTIC_TRANSACTION':`${sv.transactionReceipts.length} verified receipts`,
+  liquidityDepositStatus:depositSummary,
+  migrationReceiptStatus:sv.transactionReceipts===null?'UNKNOWN · NO_AUTHENTIC_TRANSACTION':`${sv.transactionReceipts.length} reference-anchored receipt(s) (NOT validator finality; custody ${sv.lpCustodyStatus})`,
+  transactionReceipts:sv.transactionReceipts||[],
   missingOrDelayedLpReceiptState:'PENDING / UNVERIFIED — STON.fi v2.2 minting is multi-hop (Curve → Migration Binding → Router → Pool → LP Wallet → LP Locker V2). Delayed or missing LP receipts never prove failure or custody and never allow blind retry.',
   blockedBy:mig?.blockedBy||['QUALIFIED_EXTERNAL_REVIEW','AUTHENTIC_ROUTER_AND_PAIR_DISCOVERY','VERSIONED_CURVE_MIGRATOR_HANDOFF','ACTUAL_DEPOSIT_AND_LP_CUSTODY_RECEIPTS','FOREIGN_LP_WITHDRAWAL_DELIVERY_EVIDENCE'],
   migrationAuthorized:false,
@@ -207,14 +264,15 @@ export function lpLockerSummary(draft,prepared=null,observation=null){
  const isPermanent=durationRaw==='permanent';
  const durationLabel=isPermanent?'Permanent (duration = 0 · never unlocks)':durationRaw==='180'?'180 days (15,552,000 seconds)':durationRaw==='365'?'365 days (31,536,000 seconds)':'Unsupported duration';
  const mig=launch&&prepared?.migration?prepared.migration:null;
- const sv=normalizeMigrationStatusView(mig);
- const custodyStatus=mig?.custody?.status||'NOT_VERIFIED';
- const receivedUnits=mig?.custody?.received??sv.lpCustodyUnits??null;
+ const sv=normalizeMigrationStatusView(observation??mig);
+ const custodyStatus=sv.lpCustodyStatus!=='UNKNOWN'?sv.lpCustodyStatus:(mig?.custody?.status||'NOT_VERIFIED');
+ const receivedUnits=mig?.custody?.received??sv.lpReceivedUnits??sv.lpCustodyUnits??null;
  const lockedUnits=mig?.custody?.locked??sv.lpRecordedLockedUnits??null;
- const unlockedUnits=mig?.custody?.unlocked??null;
+ const unlockedUnits=mig?.custody?.unlocked??sv.lpRecordedUnlockedUnits??null;
  const unlockTimestamp=mig?.custody?.unlockTimestamp??sv.lpUnlockTimestamp??null;
  const beneficiary=draft?.lp?.beneficiary?.trim()||(mig?.terms?.beneficiary)||'Not set (required)';
  const controller=percentNum===100?'None (100% of received LP tokens locked)':(draft?.lp?.controller?.trim()||mig?.terms?.unlockedController||'Not set (required when lock < 100%)');
+ const withdrawalReceiptsText=sv.lpWithdrawalReceipts===null?'NONE VERIFIED · UNKNOWN (foreign LP wallet provides no authenticated final-delivery receipt)':sv.lpWithdrawalReceipts.length?`${sv.lpWithdrawalReceipts.length} reference-anchored delivery receipt(s) (locker request remains pending without contract callback)`:'0 withdrawal receipts';
  return{
   applicable:launch,
   validPercent,
@@ -224,7 +282,7 @@ export function lpLockerSummary(draft,prepared=null,observation=null){
   durationRaw,
   isPermanent,
   durationLabel,
-  actualVerifiedLpReceivedDisplay:receivedUnits!==null?`${receivedUnits} LP units (Verified)`:'UNKNOWN (0 verified · no authenticated LP receipt)',
+  actualVerifiedLpReceivedDisplay:receivedUnits!==null?`${receivedUnits} LP units (On-chain record)`:'UNKNOWN (0 verified · no authenticated LP receipt)',
   lockedLpDisplay:lockedUnits!==null?`${lockedUnits} LP units (On-chain record)`:`UNKNOWN on-chain (Configured share: ${validPercent?percentNum:'—'}% of received LP tokens, rounded upward; custody NOT VERIFIED)`,
   unlockedLpDisplay:unlockedUnits!==null?`${unlockedUnits} LP units (On-chain record)`:`UNKNOWN on-chain (Configured share: ${validPercent?100-percentNum:'—'}% of received LP tokens; custody NOT VERIFIED)`,
   beneficiary,
@@ -234,7 +292,8 @@ export function lpLockerSummary(draft,prepared=null,observation=null){
   custodyStatus,
   custodyBadgeText:`LP Custody: ${custodyStatus.replaceAll('_',' ')} · On-chain LP balance: UNKNOWN`,
   withdrawalEligibility:isPermanent?'NEVER ELIGIBLE (Permanent lock · withdrawals permanently disabled in Locker V2)':`NOT ELIGIBLE · BLOCKED (eligible: ${sv.lpWithdrawalEligible===null?'UNKNOWN':sv.lpWithdrawalEligible}; requires verified LP custody, elapsed on-chain unlock timestamp, beneficiary signature & FOREIGN_LP_WITHDRAWAL_DELIVERY_EVIDENCE)`,
-  authenticatedWithdrawalReceipts:'NONE VERIFIED · UNKNOWN (foreign LP wallet provides no authenticated final-delivery receipt)',
+  authenticatedWithdrawalReceipts:withdrawalReceiptsText,
+  withdrawalReceipts:sv.lpWithdrawalReceipts||[],
   extensionPolicy:mig?.terms?.extensionPolicy||'each authenticated deposit extends all remaining timed principal',
   lockerAddress:mig?.locker?.address||'NOT PREPARED (prepare offline plan in Step 5)',
   expectedLpWallet:mig?.expectedLpWallet||'NOT PREPARED',
