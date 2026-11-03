@@ -2,7 +2,7 @@
   "schema": 1,
   "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
   "sources": {
-    "build.mjs": "1184897697cecae1ed124c877ae13e843bdd33891827de4662720db09f551fac",
+    "build.mjs": "9db56833453383193f871ee51bf506a3f2b8766f955b0aa15579925b7555b5af",
     "app.js": "f2214539064b7532925298b9bebbb26a79c3e52813aff27b08a696a7857a598b",
     "client-entry.mjs": "26afc78634cc85868ba390377893e1bd319f9962b0c6599482416ff07d33e40d",
     "single-attempt.mjs": "2a3cd10735dda1324a0d044be259498e5b6bef17620c8593878d5f3b9500839d",
@@ -32,8 +32,11 @@
     "recovery-status.js": "e2b437965d1ff5fbe580eb5c2a0a24704aedbda6023b131ca3a20234e96cab92",
     "../lib/v5-self-transfer-receipt.js": "d3347f12f5552c2cd8c86491143a71f7142890ee40bae8cb76c548e038d16d2a",
     "../lib/v5-deployment-receipt.js": "900d30bc7856c5b3373dea3acc9da6a46b541d4576699beb85ae13285d5587c7",
-    "projects/standard-testnet-release.mjs": "0f8453750d96813531908d7669972d76fb915d518988f74b1283a5aa719bce1d",
-    "project-registry-worker.mjs": "35ab0ab6cfab2edfa533bc12b8d199304c4d123381e01b7096e80cbf0f2bf51e",
+    "projects/standard-testnet-release.mjs": "cf46ed6d592124a3770632f78d74536d90a83970f0ed615843d7558047d1b924",
+    "projects/standard-registration.mjs": "ac50d930628cf913a4d8c9aca4915ba4d5d2dff1ca019f55113807e348c11fe3",
+    "projects/standard-deployment-lock.mjs": "aa5e83cb73a88202202cf1946cc68dbb06eaf684b7209ae0cd2db4640b52f406",
+    "../minter-contract/build/standard-jetton-v2.compiled.json": "7f3349c2c3392e5b438c8e6fd0163f01b87639c9adc612d96ce1658edc12366c",
+    "project-registry-worker.mjs": "88205be84ae068b537b54538237f3a2c91b1a10872575919e0e0ec6dc6e4c6de",
     "projects/project-registry.mjs": "c31ec5b4cfa7c92d86879f691ec12d78cbedbb32399290eb5733df92b8618249",
     "projects/project-registration.mjs": "33efe0d4269084fd4dc3295dc58c2f8f9f282ad8154d2ec5d0cdf8617d953b3d",
     "projects/project-providers.mjs": "8f16aba19ba1b2063c6eb02082b2a6c626c93c6c6979bfd137e89006b76c5351",
@@ -46,5 +49,5 @@
     "wizard/model.mjs": "725aab3765abc8b14a243e63711d83f834e5d473ab766f524da38c1967cf3113",
     "../minter-contract/scripts/migration-package-dispatch-v2.js": "a1c92dda7c78e3a905f6ea73435b152eb66421d4cbc5030a4505ef3435d4a4e4"
   },
-  "sha256": "e201d50f067d166052469ec286fd666f13a965f1366edcf3faeebecd593711c9"
+  "sha256": "334bbcd23ec3199c16a3eedcc8570a9268263647060b421deae30d04be9fe3f2"
 }
