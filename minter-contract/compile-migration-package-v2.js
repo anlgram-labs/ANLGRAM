@@ -25,6 +25,7 @@ async function compile(name,source,base){
  const mr=await compile('anlgram-migration-router-v2',router,'anlgram-migration-router.fc');save(path.join(dir,'imports/migration-router-v2-code.fc'),'const int MIGRATION_ROUTER_V2_CODE_HASH = 0x'+mr.codeCellHash+';\n');
  let curve=read('anlgram-bonding-curve.fc');curve=';; VERSIONED V2 DERIVATIVE. V1 source/artifacts unchanged.\n;; Additional initialization reference authenticates V2 Migrator genesis.\n'+curve;
  curve=once(curve,'#include "imports/curve-lifecycle-v3.fc";','#include "imports/curve-lifecycle-v3.fc";\n#include "imports/curve-v2-router.fc";');
+ curve=once(curve,'    if(handle_curve_life(op,query_id,in_msg_body,sender_address,msg_value,my_balance))','    curve_v2_validate_request(op,query_id,sender_address);\n    if(handle_curve_life(op,query_id,in_msg_body,sender_address,msg_value,my_balance))');
  curve=once(curve,'        cell new_wallet_code = in_msg_body~load_ref();','        cell new_wallet_code = in_msg_body~load_ref();\n        cell migration_init = in_msg_body~load_ref();in_msg_body.end_parse();\n        validate_v2_migrator(migration_init,new_migration_router,my_address(),new_locker,new_router,new_master,admin_address);');
  curve+='\n(int,int,int) get_protocol_v2() method_id { return(2,1,0); } ;; lifecycle yes, financial migration authorization NO\n';
  curve=curve.replace(/[ \t]+$/gm,'');

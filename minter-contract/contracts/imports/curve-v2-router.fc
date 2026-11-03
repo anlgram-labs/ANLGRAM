@@ -1,4 +1,17 @@
 #include "migration-router-v2-code.fc";
+int curve_v2_local_ready() inline {
+    (int state,_,_,_,_,_,_,_,_,int ton,int tokens,_,int claims,_,_,int threshold,int escrow,_,_) = load_data();
+    return (state == STATE_GRADUATION_PENDING) & (threshold == 500000000000)
+      & (ton >= threshold) & (tokens == 0) & (claims == 0) & (escrow == 200000000000000000);
+}
+() curve_v2_validate_request(int op,int q,slice sender) impure inline {
+    if((op == 0x414e5801) | (op == 0x414e5803)) {
+        (_,slice admin,slice creator,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_) = load_data();
+        throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,creator));
+        throw_unless(409,(q > 0) & (q < (1 << 62)) & curve_v2_local_ready());
+    }
+}
+(int,int) get_local_authorization_v2() method_id { return(curve_v2_local_ready(),0); }
 () validate_v2_migrator(cell init,slice destination,slice curve,slice guard,slice dex,slice master,slice admin) impure inline {
     throw_unless(408,equal_slices(calculate_jetton_wallet_address(init),destination));slice s = init.begin_parse();throw_unless(408,s~load_uint(2) == 0);
     cell code = s~load_dict();cell data = s~load_dict();throw_unless(408,s~load_uint(1) == 0);s.end_parse();throw_unless(408,cell_hash(code) == MIGRATION_ROUTER_V2_CODE_HASH);

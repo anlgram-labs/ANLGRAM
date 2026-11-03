@@ -395,6 +395,7 @@ int settlement_enabled() inline {
         cell pending_refunds_dict, cell jetton_wallet_code
     ) = load_data();
 
+    curve_v2_validate_request(op,query_id,sender_address);
     if(handle_curve_life(op,query_id,in_msg_body,sender_address,msg_value,my_balance)) { return (); }
     if(handle_curve_return(op,query_id,in_msg_body,sender_address,msg_value,my_balance,in_msg_full)) { return (); }
 

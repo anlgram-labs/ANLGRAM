@@ -17,8 +17,25 @@ cell v2_record() inline {
 }
 int v2_root(cell intent) inline { slice s = intent.begin_parse();s~skip_bits(71);return s~load_uint(64); }
 slice v2_vault() inline { (_,cell b,_) = v2_parts();throw_if(409,cell_null?(b));slice s = b.begin_parse();return s~load_msg_addr(); }
+int v2_local_ready(int q,int balance) inline {
+    (cell intent,cell binding,_) = v2_parts();
+    if((q != v2_root(intent)) | cell_null?(binding)) { return 0; }
+    (int active,_,_,_,_,_) = load_flight();
+    (int found,cell f,_) = migration_life(q);
+    ifnot(found & (active == q)) { return 0; }
+    (_,_,_,_,_,_,int ton,int jettons,_,_,_,int pending_ton,int pending_jettons,_) = load_data();
+    ;; Exact original obligations, authenticated wallet epochs and no returns,
+    ;; outstanding DEX leg, previous dispatch or principal deficit.
+    return (life_get(f,0) >= 500000000000) & (life_get(f,1) == 200000000000000000)
+      & (life_get(f,2) == life_get(f,0)) & (life_get(f,3) == life_get(f,1))
+      & (life_get(f,4) > 0) & (life_get(f,5) > 0) & (life_get(f,6) > 0)
+      & (life_get(f,7) + life_get(f,8) + life_get(f,9) + life_get(f,10) + life_get(f,11) + life_get(f,12) + life_get(f,13) == 0)
+      & (ton == life_get(f,0)) & (jettons == life_get(f,1))
+      & (pending_ton == 0) & (pending_jettons == 0) & (balance >= ton);
+}
 () v2_require_execute(int q) impure inline {
     (cell intent,cell binding,_) = v2_parts();throw_unless(409,(q == v2_root(intent)) & (q > 0) & (q < (1 << 62)) & (~ cell_null?(binding)));
+    throw_unless(414,v2_local_ready(q,get_balance().pair_first()));
     ;; Router current-code proof, exact LP issuance and foreign final-delivery
     ;; capability remain external review prerequisites. No admin bypass exists.
     throw(414);
@@ -26,6 +43,12 @@ slice v2_vault() inline { (_,cell b,_) = v2_parts();throw_if(409,cell_null?(b));
 int handle_migration_lp_v2(int balance,int value,cell full,slice body) impure {
     if(body.slice_bits() < 96) { return 0; } slice h = full.begin_parse();int flags = h~load_uint(4);if(flags & 1) { return 0; }
     int op = body~load_uint(32);int q = body~load_uint(64);
+    if(op == 0x414e5901) {
+        (_,slice expected,_,_,_,_,_,_,_,_,_,_,_,_) = load_data();
+        throw_unless(401,equal_slices(h~load_msg_addr(),expected));
+        (cell i,_,_) = v2_parts();throw_unless(409,q == v2_root(i));
+        return 0; ;; The existing V3 handler performs epoch/funding validation.
+    }
     ifnot((op == 0x414e5a01) | (op == 0x414e5a02) | (op == 0x414c5635)) { return 0; }
     slice sender = h~load_msg_addr();(cell intent,cell binding,cell observation) = v2_parts();throw_unless(409,q == v2_root(intent));
     (_,slice curve,_,slice router,slice master,_,_,_,slice admin,_,_,_,_,cell wallet_code) = load_data();
@@ -65,6 +88,26 @@ int handle_migration_lp_v2(int balance,int value,cell full,slice body) impure {
     cell next = begin_cell().store_uint(lt,64).store_coins(received).store_coins(locked).store_coins(free).store_coins(pending).store_uint(unlock,64).end_cell();
     ifnot(cell_null?(observation)) { slice old = observation.begin_parse();int prior = old~load_uint(64);if(lt < prior) { return_receipt_gas(admin,balance - value,q);return -1; } if(lt == prior) { throw_unless(409,cell_hash(next) == cell_hash(observation));return_receipt_gas(admin,balance - value,q);return -1; } throw_unless(409,received >= old~load_coins()); }
     v2_save(intent,binding,next);return_receipt_gas(admin,balance - value,q);return -1;
+}
+(int,int) get_local_authorization_v2(int q) method_id {
+    return(v2_local_ready(q,get_balance().pair_first()),0); ;; local readiness, external authorization CLOSED
+}
+(int,int,int,int,int,int,int,int,int,int,int,int,int,int,int) get_settlement_v2(int q) method_id {
+    (cell intent,cell binding,cell observation) = v2_parts();throw_unless(409,q == v2_root(intent));
+    (int exists,cell f,_) = migration_life(q);
+    int stage = exists ? 1 : 0;
+    if(exists) {
+        if((life_get(f,2) == life_get(f,0)) & (life_get(f,3) == life_get(f,1))) { stage = 2; }
+        if(life_get(f,11)) { stage = 3; }
+        if(life_get(f,7) + life_get(f,8) + life_get(f,9) + life_get(f,10)) { stage = 4; }
+        if((life_get(f,9) == life_get(f,0)) & (life_get(f,10) == life_get(f,1))) { stage = 5; }
+    }
+    int received = 0;int locked = 0;int free = 0;int pending = 0;int lt = 0;
+    ifnot(cell_null?(observation)) { slice s = observation.begin_parse();lt = s~load_uint(64);received = s~load_coins();locked = s~load_coins();free = s~load_coins();pending = s~load_coins(); }
+    ;; 0 configured,1 funding,2 funded,3 dispatched,4 returning,5 principal
+    ;; returned. NO value is migration COMPLETE. LP observations are cumulative
+    ;; locker records, not current wallet custody or exact issuance attribution.
+    return(stage,life_get(f,0),life_get(f,1),life_get(f,2),life_get(f,3),life_get(f,9),life_get(f,10),life_get(f,11),lt,received,locked,free,pending,~ cell_null?(binding),0);
 }
 (int,int,int,int,int,int,int,int,int) get_lp_v2_state() method_id {
     (cell intent,cell binding,cell o) = v2_parts();int q = v2_root(intent);if(cell_null?(o)) { return(q,~ cell_null?(binding),0,0,0,0,0,0,0); }

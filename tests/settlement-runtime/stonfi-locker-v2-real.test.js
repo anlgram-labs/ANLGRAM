@@ -29,6 +29,38 @@ test('actual captured STON.fi Pool mints LP with V2 tag into source-compiled par
  await f.chain.sendMessage(notifications[0].inMessage);const again=await f.read();again.readBigNumber();again.readBigNumber();again.readBigNumber();assert.equal(again.readBigNumber(),amount);
 });
 module.exports={fixture};
+
+// Capture exact before/after Account cells at each actual Sandbox routing step.
+// These are local execution evidence, never a substituted live block proof.
+async function recorded(f,message,extra=[]){
+ const addresses=[f.vault.pool,f.vault.address,f.vault.lpWallet,...extra],snapshot=async a=>{const x=(await f.chain.getContract(a)).account.account;return beginCell().storeBit(!!x).store(x?core.storeAccount(x):()=>{}).endCell().toBoc().toString('base64');};
+ const m=core.internal({to:message.to,value:message.value,body:message.body,bounce:true}),iter=await f.chain.sendMessageIter({...m,info:{...m.info,src:f.owner.address}}),rows=[];
+ while(true){const before=new Map(await Promise.all(addresses.map(async a=>[a.toRawString(),await snapshot(a)]))),next=await iter.next();if(next.done)break;const t=next.value,a=t.inMessage?.info.dest;
+  if(a&&addresses.some(x=>x.equals(a)))rows.push({tx:t,raw:beginCell().store(core.storeTransaction(t)).endCell().toBoc().toString('base64'),before:before.get(a.toRawString()),after:await snapshot(a)});
+ }return rows;
+}
+test('missing first LP notification retains exact Pool-to-wallet issuance fields but cannot fabricate provenance, attribution or locker credit',async()=>{
+ const api=await import('../../testnet-interface/projects/lp-evidence.mjs'),f=await fixture(100,'permanent'),{freeze,restore}=require('./refund-receipts-support'),old=await freeze(f,f.vault.address),policy=api.lpEvidencePolicy(beginCell().store(core.storeStateInit(f.vault.init)).endCell().toBoc().toString('base64'));let rows=[];
+ assert.throws(()=>api.lpEvidencePolicy(beginCell().store(core.storeStateInit({...f.vault.init,special:{tick:true,tock:false}})).endCell().toBoc().toString('base64')),/Canonical/);
+ for(const m of f.deposit.messages)rows.push(...await recorded(f,m));await restore(f,f.vault.address,old);
+ const wallet=rows.find(r=>r.tx.inMessage?.info.dest?.equals(f.vault.lpWallet)&&r.tx.inMessage.body.beginParse().loadUint(32)===0x178d4519),pool=rows.find(r=>r.tx.inMessage?.info.dest?.equals(f.vault.pool)&&Array.from(r.tx.outMessages.values()).some(m=>m.info.dest?.equals(f.vault.lpWallet)));
+ const raw={poolTransaction:pool.raw,walletTransaction:wallet.raw,pool:{before:pool.before,after:pool.after},wallet:{before:wallet.before,after:wallet.after}},r=api.verifyLpIssuanceFields(policy,raw);assert(BigInt(r.amountUnits)>0n);assert.equal(r.providerInclusionVerified,false);assert.equal(r.migrationAttributionVerified,false);assert.equal(r.contractReceiptAccepted,false);assert.equal(api.isIncludedLpEvidence(r),false);
+ assert.throws(()=>api.verifyProvenLpEvidence(policy,'issuance',raw,{}),/checkpoint/);
+ for(const change of [v=>v.wallet.before=v.wallet.after,v=>v.poolTransaction=v.walletTransaction,v=>v.walletTransaction=v.poolTransaction]){const v=structuredClone(raw);change(v);assert.throws(()=>api.verifyLpIssuanceFields(policy,v));}
+ const status=await import('../../testnet-interface/projects/migration-status.mjs');assert.throws(()=>status.migrationEvidenceStatus(f.vault.terms,[{...r,providerInclusionVerified:true}]),/Included/);const view=await f.read();for(let i=0;i<3;i++)view.readBigNumber();assert.equal(view.readBigNumber(),0n);
+});
+
+test('actual external LP withdrawal fields verify exact authorized final recipient delta; lost receipt stays pending and frozen recipient fails closed',async()=>{
+ const api=await import('../../testnet-interface/projects/lp-evidence.mjs'),f=await fixture(75,'days180');for(const m of f.deposit.messages)await f.owner.send({...m,bounce:true});const state=await f.read();state.readBigNumber();state.readBigNumber();const unlock=state.readBigNumber();state.readBigNumber();const amount=state.readBigNumber();f.chain.now=Number(unlock);
+ const destination=(await f.chain.runGetMethod(f.vault.pool,'get_wallet_address',[{type:'slice',cell:beginCell().storeAddress(f.owner.address).endCell()}])).stackReader.readAddress(),policy=api.lpEvidencePolicy(beginCell().store(core.storeStateInit(f.vault.init)).endCell().toBoc().toString('base64'));
+ const rows=await recorded(f,{to:f.vault.address,value:150000000n,body:beginCell().storeUint(0x414c5633,32).storeUint(1,64).storeBit(true).storeCoins(amount).endCell()},[destination]),locker=rows.find(r=>r.tx.inMessage.info.dest.equals(f.vault.address)),wallet=rows.find(r=>r.tx.inMessage.info.dest.equals(f.vault.lpWallet)),recipient=rows.find(r=>r.tx.inMessage.info.dest.equals(destination));
+ const raw={lockerTransaction:locker.raw,walletTransaction:wallet.raw,recipientTransaction:recipient.raw,locker:{before:locker.before,after:locker.after},wallet:{before:wallet.before,after:wallet.after},recipient:{before:recipient.before,after:recipient.after}},r=api.verifyLpWithdrawalFields(policy,raw);assert.equal(r.amountUnits,amount.toString());assert.equal(r.recipient,f.owner.address.toRawString());assert.equal(r.contractPendingMustRemain,true);assert.equal(r.operationCompleted,false);
+ assert.throws(()=>api.verifyLpWithdrawalFields(policy,{...raw,recipientTransaction:wallet.raw}));assert.throws(()=>api.verifyProvenLpEvidence(policy,'withdrawal',raw,{}),/checkpoint/);
+ const pending=await f.read();for(let i=0;i<6;i++)pending.readBigNumber();assert.equal(pending.readBigNumber(),amount);
+ // A new fixture freezes the authentic receiving wallet before claim routing.
+ const g=await fixture(75,'days180');for(const m of g.deposit.messages)await g.owner.send({...m,bounce:true});const gs=await g.read();gs.readBigNumber();gs.readBigNumber();g.chain.now=Number(gs.readBigNumber());gs.readBigNumber();const ga=gs.readBigNumber(),{freeze}=require('./refund-receipts-support');const recipientInit={code:g.vault.lpInit.code,data:beginCell().storeCoins(0).storeAddress(g.owner.address).storeAddress(g.vault.pool).storeRef(g.vault.lpInit.code).endCell()};await g.owner.send({to:destination,init:recipientInit,value:100000000n,body:beginCell().endCell()});await freeze(g,destination);
+ const failed=await recorded(g,{to:g.vault.address,value:150000000n,body:beginCell().storeUint(0x414c5633,32).storeUint(1,64).storeBit(true).storeCoins(ga).endCell()},[destination]);const bad=failed.find(x=>x.tx.inMessage.info.dest.equals(destination));assert(bad);assert.throws(()=>api.verifyLpWithdrawalFields(policy,{...raw,recipientTransaction:bad.raw,recipient:{before:bad.before,after:bad.after}}));
+});
 test('single token deposit stays in authentic LPAccount, then official refund_me restores exact Jettons without claiming LP or migration completion',async()=>{
  const f=await fixture();await f.owner.send({...f.deposit.messages[0],bounce:true});const account=(await f.chain.runGetMethod(f.vault.pool,'get_lp_account_address',[{type:'slice',cell:beginCell().storeAddress(f.owner.address).endCell()}])).stackReader.readAddress();
  assert.equal((await f.chain.runGetMethod(f.wallet(f.owner.address),'get_wallet_data')).stackReader.readBigNumber(),800000000000000000n);
