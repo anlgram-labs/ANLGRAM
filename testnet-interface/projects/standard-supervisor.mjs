@@ -6,6 +6,7 @@ import {prepareStandardTestnetRelease, standardDeploymentIdentity} from './stand
 import {acquireStandardRegistration, includedActiveState, standardRegistrationIntent} from './standard-registration.mjs';
 import {projectProviders} from './project-providers.mjs';
 import {StandardDeploymentLock} from './standard-deployment-lock.mjs';
+import {authorizationNonce, verifyStandardApproval} from './standard-authorization.mjs';
 import {registryStub} from './project-registry.mjs';
 
 const amount = '50000000';
@@ -56,6 +57,8 @@ export async function readStandardPreflight({draft,publicKey,ownerPolicyCeilingN
   requireExact(destination.state === 'uninitialized' && !destination.code && !destination.data &&
     destination.balance === '0', 'Destination already initialized, funded or unverified');
   const {state,balance} = includedActiveState(owner, manifest.operator.codeHash);
+  requireExact(/^[0-9a-f]{64}$/.test(owner.proof.accountHash ?? '') &&
+    /^\d+$/.test(owner.proof.lastTransactionLt ?? ''), 'Incomplete included wallet checkpoint');
   const seqno = walletSeqno(manifest,state.data);
   const body = await unsignedEmulation(manifest,seqno,expiry);
   const result = await providers.emulateUnsigned(body.request);
@@ -74,35 +77,70 @@ export async function readStandardPreflight({draft,publicKey,ownerPolicyCeilingN
   const identity = await standardDeploymentIdentity(manifest,quote,now());
   requireExact(balance >= BigInt(identity.modeledDebitNano), 'Insufficient Testnet balance');
   return {manifest,quote,identity,simulation,observedAt:started,balanceNano:String(balance),
+    walletCheckpoint:{accountHash:owner.proof.accountHash,lt:owner.proof.lastTransactionLt,
+      block:owner.proof.masterchainSeqno},
     destinationVerification:'AUTHENTICATED_PROVIDER_STATE_AND_EMULATION',financialSigningEnabled:false};
 }
 
+export function standardOperatorStorage(storage, operator) {
+  requireExact(typeof operator === 'string' && /^0:[0-9a-f]{64}$/.test(operator),'Invalid Standard operator');
+  const prefix = 'standard:v2:-3:v5r1:' + operator + ':';
+  const scoped = store => ({
+    async get(key) {
+      const value = await store.get(prefix+key);
+      if (value || key !== 'standardDeployment') return value;
+      const legacy = await store.get(key);
+      return legacy?.operator === operator ? legacy : undefined;
+    },
+    put:(key,value)=>store.put(prefix+key,value)
+  });
+  return {...scoped(storage),transaction:fn=>storage.transaction(txn=>fn(scoped(txn)))};
+}
+
+function reservedIntent(operation) {
+  return operation?.snapshot?.identity && operation.snapshot.identity.fingerprint === operation.identity?.fingerprint
+    ? standardRegistrationIntent(operation.snapshot.input) : null;
+}
+
 export class StandardSupervisor {
-  constructor(storage, env, {verifyOwnerApproval, readOwnershipProof, providers = projectProviders(env)} = {}) {
+  constructor(storage, env, {confirmExclusiveUse, providers = projectProviders(env)} = {}) {
     this.storage = storage;
     this.env = env;
     this.providers = providers;
-    this.verifyOwnerApproval = verifyOwnerApproval;
-    this.readOwnershipProof = readOwnershipProof;
-    this.lock = new StandardDeploymentLock(storage, {
-      verifyOwnerApproval:(...args)=>this.verifyOwnerApproval?.(...args),
+    this.confirmExclusiveUse = confirmExclusiveUse;
+  }
+
+  lock(operator) {
+    const storage = standardOperatorStorage(this.storage,operator), providers = this.providers;
+    return new StandardDeploymentLock(storage, {
+      verifyOwnerApproval:async (approval,fingerprint,_,manifest,identity)=>{
+        const prepared = await storage.get('standardPrepared:'+fingerprint);
+        return !!prepared && verifyStandardApproval(approval,manifest,identity,prepared.nonce,now());
+      },
       verifyCurrentStateAndEmulation:async (manifest,quote,fingerprint)=>{
-        const prepared = await storage.get('standardPrepared');
+        const key = 'standardPrepared:'+fingerprint;
+        const prepared = await storage.get(key);
         requireExact(prepared?.identity.fingerprint === fingerprint, 'No matching prepared quote');
-        const proof = await this.readOwnershipProof?.(manifest.operator.address);
-        requireExact(proof?.verified === true && proof.network === '-3' && proof.address === manifest.operator.address &&
-          proof.domain === 'testnet.anlgram.com' && proof.noConcurrentOperation === true, 'Fresh operator proof and exclusivity required');
-        const current = await readStandardPreflight({...prepared.input,ownerPolicyCeilingNano:quote.ownerPolicyCeilingNano,validUntil:quote.validUntil},providers);
-        requireExact(current.identity.fingerprint === fingerprint, 'Preflight changed; new review required');
-        return {network:'-3',operator:manifest.operator.address,walletId:manifest.operator.walletId,walletCodeHash:manifest.operator.codeHash,
+        requireExact(await this.confirmExclusiveUse?.(operator,fingerprint) === true,'Exclusive operator use required');
+        const current = await readStandardPreflight({...prepared.input,ownerPolicyCeilingNano:quote.ownerPolicyCeilingNano,
+          validUntil:quote.validUntil},providers);
+        const old = prepared.walletCheckpoint, latest = current.walletCheckpoint;
+        requireExact(current.quote.seqno === quote.seqno &&
+          current.quote.modeledSenderFeeNano === quote.modeledSenderFeeNano &&
+          latest.block >= old.block && (latest.block !== old.block || current.quote.referenceRootHash === quote.referenceRootHash) &&
+          latest.accountHash === old.accountHash && latest.lt === old.lt &&
+          current.manifest.deployment.id === manifest.deployment.id &&
+          current.manifest.deployment.receiptExpectation.stateInitHash === manifest.deployment.receiptExpectation.stateInitHash,
+          'Preflight changed; new review required');
+        return {network:'-3',operator,walletId:manifest.operator.walletId,walletCodeHash:manifest.operator.codeHash,
           destination:manifest.minter.raw,destinationState:'uninitialized',emulationSucceeded:true,noConcurrentOperation:true,
-          proofExpiresAt:proof.expiresAt,balanceNano:current.balanceNano,observedAt:current.observedAt,
-          fingerprint,requirePrepared:true,...current.quote};
+          proofExpiresAt:quote.validUntil,balanceNano:current.balanceNano,observedAt:current.observedAt,
+          fingerprint,...quote,preparedKey:key,snapshot:prepared};
       },
       acquireAuthenticatedDeploymentReceipt:async operation=>{
-        const prepared = await storage.get('standardPrepared');
-        if (!prepared || prepared.identity.fingerprint !== operation.identity.fingerprint) return null;
-        return acquireStandardRegistration(await standardRegistrationIntent(prepared.input),providers);
+        const intent = await reservedIntent(operation);
+        if (!intent || intent.identity.fingerprint !== operation.identity.fingerprint) return null;
+        return acquireStandardRegistration(intent,providers);
       }
     });
   }
@@ -111,28 +149,40 @@ export class StandardSupervisor {
     const result = await readStandardPreflight(input,this.providers);
     const {draft,publicKey} = input;
     const intent = await standardRegistrationIntent({projectType:'STANDARD_V2',draft,publicKey,quote:result.quote});
-    await this.storage.transaction(async txn=>{
+    const storage = standardOperatorStorage(this.storage,result.manifest.operator.address);
+    const nonce = await storage.transaction(async txn=>{
       requireExact(!await txn.get('standardDeployment'), 'Permanent reservation exists');
-      await txn.put('standardPrepared',{state:'PREPARED',input:intent.input,identity:result.identity});
+      const key = 'standardPrepared:'+result.identity.fingerprint;
+      const old = await txn.get(key);
+      if (old) return old.nonce;
+      const nonce = authorizationNonce();
+      await txn.put(key,{state:'PREPARED',input:intent.input,identity:result.identity,walletCheckpoint:result.walletCheckpoint,nonce});
+      return nonce;
     });
-    return result;
+    return {...result,authorizationNonce:nonce};
   }
 
-  async reserve(approval) {
-    const prepared = await this.storage.get('standardPrepared');
+  async reserve(operator,fingerprint,approval) {
+    requireExact(/^[0-9a-f]{64}$/.test(fingerprint ?? ''),'Invalid Standard fingerprint');
+    const prepared = await standardOperatorStorage(this.storage,operator).get('standardPrepared:'+fingerprint);
     requireExact(prepared, 'No prepared operation');
     const {draft,publicKey,quote} = prepared.input;
-    return this.lock.reserve(draft,publicKey,quote,approval);
+    requireExact((await prepareStandardTestnetRelease(draft,publicKey)).operator.address === operator,'Prepared operator mismatch');
+    return this.lock(operator).reserve(draft,publicKey,quote,approval);
   }
 
-  async reconcile() {
-    let operation;
-    try { operation = await this.lock.reconcile(); }
-    catch { return {operation:await this.lock.status(),evidence:'UNKNOWN'}; }
-    if (operation?.state !== 'DEPLOYMENT_INCLUDED_FINALITY_UNVERIFIED') return {operation,evidence:'UNKNOWN'};
+  async reconcile(operator) {
+    const storage = standardOperatorStorage(this.storage,operator), lock = this.lock(operator);
+    let operation, intent;
+    try {
+      operation = await lock.reconcile();
+      intent = await reservedIntent(operation);
+    } catch { return {operation:await lock.status(),evidence:'UNKNOWN'}; }
+    if (!intent || operation?.state !== 'DEPLOYMENT_INCLUDED_FINALITY_UNVERIFIED' ||
+      operation.identity.fingerprint !== intent.identity.fingerprint ||
+      operation.receipt?.fingerprint !== intent.identity.fingerprint ||
+      operation.receipt?.deployment?.address !== intent.manifest.minter.raw) return {operation,evidence:'UNKNOWN'};
     if (operation.registryConfirmed) return {operation,evidence:'INCLUDED_FINALITY_UNVERIFIED',registered:true};
-    const prepared = await this.storage.get('standardPrepared');
-    const intent = await standardRegistrationIntent(prepared.input);
     const key = intent.manifest.configurationFingerprint, stub = registryStub(key,this.env);
     // Registry independently reacquires the proof. A failure cannot invalidate
     // the persisted inclusion receipt or permit another wallet request.
@@ -142,7 +192,7 @@ export class StandardSupervisor {
         method:'POST',body:JSON.stringify(intent.input)
       })).ok;
     } catch { /* Registry can be reconciled later. */ }
-    if (registered) operation = await this.storage.transaction(async txn=>{
+    if (registered) operation = await storage.transaction(async txn=>{
       const current = await txn.get('standardDeployment');
       const updated = {...current,registryConfirmed:true};
       await txn.put('standardDeployment',updated);

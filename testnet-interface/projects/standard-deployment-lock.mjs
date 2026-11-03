@@ -13,7 +13,7 @@ export class StandardDeploymentLock {
     const manifest = await prepareStandardTestnetRelease(draft, publicKey);
     if (await this.storage.get('standardDeployment')) throw Error('Standard deployment permanently reserved');
     const identity = await standardDeploymentIdentity(manifest, quote, Math.floor(Date.now() / 1000));
-    const review = await this.supervisor.verifyOwnerApproval(approval, identity.fingerprint, manifest.operator.address);
+    const review = await this.supervisor.verifyOwnerApproval(approval, identity.fingerprint, manifest.operator.address, manifest, identity);
     if (review !== true) throw Error('Exact owner authorization required');
     const live = await this.supervisor.verifyCurrentStateAndEmulation(manifest, quote, identity.fingerprint);
     const now = Math.floor(Date.now() / 1000);
@@ -38,6 +38,11 @@ export class StandardDeploymentLock {
       }
       if (Math.floor(Date.now() / 1000) >= Math.min(identity.validUntil, live.proofExpiresAt, live.observedAt + 16)) {
         throw Error('Preflight expired before reservation');
+      }
+      if (live.preparedKey) {
+        const prepared = await txn.get(live.preparedKey);
+        if (!prepared || JSON.stringify(prepared) !== JSON.stringify(live.snapshot)) throw Error('Prepared quote superseded');
+        operation.snapshot = prepared;
       }
       await txn.put('standardDeployment', operation);
       return operation;

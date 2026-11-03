@@ -4,27 +4,34 @@ import * as core from '@ton/core';
 import artifact from '../../minter-contract/build/standard-jetton-v2.compiled.json' with {type:'json'};
 import {makeLocalReceipt} from './recovery-local-fixture.mjs';
 import {createDraft} from '../wizard/model.mjs';
-import {assertReviewedArtifacts, readStandardPreflight, StandardSupervisor} from '../projects/standard-supervisor.mjs';
-import {exerciseStandardTransport, standardTransportEnabled} from '../projects/standard-transport-fixture.mjs';
+import {assertReviewedArtifacts, readStandardPreflight, StandardSupervisor, standardOperatorStorage} from '../projects/standard-supervisor.mjs';
+import {exerciseStandardTransport, standardTransportEnabled, submitStandardDeployment} from '../projects/standard-transport-fixture.mjs';
 import {prepareStandardTestnetRelease} from '../projects/standard-testnet-release.mjs';
 import {projectProviders} from '../projects/project-providers.mjs';
+
+import {standardApprovalBytes,verifyStandardApproval} from '../projects/standard-authorization.mjs';
+import {createRequire} from 'node:module';
+const require = createRequire(import.meta.url);
+const {sign} = require('../../minter-contract/node_modules/@ton/crypto');
+const approve = (f,prepared) => ({nonce:prepared.authorizationNonce,signature:sign(
+  standardApprovalBytes(prepared.manifest,prepared.identity,prepared.authorizationNonce),f.key.secretKey).toString('hex')});
 
 const hex64 = '12'.repeat(32);
 const b64Hash = cell => cell.hash().toString('base64');
 const walletData = (key, seqno) => core.beginCell().storeBit(true).storeUint(seqno,32)
   .storeInt(2147483645,32).storeBuffer(Buffer.from(key,'hex')).storeBit(false).endCell();
 
-async function fixture() {
+async function fixture(name = 'Private supervisor') {
   const f = await makeLocalReceipt();
   const draft = createDraft('a577a9e3-d751-490a-bce4-91034060574d');
-  Object.assign(draft.metadata,{name:'Private supervisor',symbol:'SV2',creator:f.w.address.toRawString()});
+  Object.assign(draft.metadata,{name,symbol:'SV2',creator:f.w.address.toRawString()});
   const publicKey = f.key.publicKey.toString('hex'), input = {draft,publicKey,ownerPolicyCeilingNano:'70000000'};
   const m = await prepareStandardTestnetRelease(draft,publicKey);
   const code = core.Cell.fromBase64(f.beforeCode.toBoc().toString('base64'));
   const balance = 500000000n;
-  let seqno = 2, state = 'uninitialized', fail = false, traceBlock = 7;
+  let seqno = 2, state = 'uninitialized', fail = false, traceBlock = 7, actualBlock = 7;
   const proofTime = Math.floor(Date.now()/1000);
-  const proof = {masterchainSeqno:7,chainTime:proofTime,masterchainRootHash:hex64};
+  const proof = {chainTime:proofTime,lastTransactionLt:'10'};
   const providers = {
     async account(address) {
       assert.equal(address,m.operator.address);
@@ -32,7 +39,8 @@ async function fixture() {
         addr:core.Address.parse(address),storageStats:{used:{cells:0n,bits:0n},storageExtra:null,lastPaid:0},
         storage:{lastTransLt:0n,balance:{coins:balance},state:{type:'active',state:{code,data:walletData(publicKey,seqno)}}}
       })).endCell();
-      return {proof,raw:{state:account.toBoc().toString('hex')}};
+      return {proof:{...proof,masterchainSeqno:actualBlock,masterchainRootHash:actualBlock.toString(16).padStart(64,'0'),
+        accountHash:account.hash().toString('hex')},raw:{state:account.toBoc().toString('hex')}};
     },
     async observeAddress(address) { assert.equal(address,m.minter.raw); return {state,balance:'0'}; },
     async emulateUnsigned(request) {
@@ -60,13 +68,13 @@ async function fixture() {
     }
   };
   return {f,input,m,providers,update(change){if(change.seqno)seqno=change.seqno;if(change.state)state=change.state;
-    if(change.fail!==undefined)fail=change.fail;if(change.block)traceBlock=change.block;}};
+    if(change.fail!==undefined)fail=change.fail;if(change.block)traceBlock=change.block;if(change.actualBlock)actualBlock=change.actualBlock;}};
 }
 
 function storageFixture() {
   const data = new Map();
   let tail = Promise.resolve();
-  return {get:async k=>structuredClone(data.get(k)),put:async(k,v)=>data.set(k,structuredClone(v)),
+  return {delete:async k=>data.delete(k),get:async k=>structuredClone(data.get(k)),put:async(k,v)=>data.set(k,structuredClone(v)),
     transaction(fn){const work=tail.then(()=>fn(this));tail=work.catch(()=>{});return work;}};
 }
 
@@ -92,16 +100,23 @@ test('reviewed artifacts and exact preflight reject wrong wallet, network, expir
 
 test('changed seqno and unauthorized reservation fail; concurrent mock and restart never retry an unknown outcome',async()=>{
   const f=await fixture(), storage=storageFixture();
-  const deps={providers:f.providers,verifyOwnerApproval:async(token,fingerprint)=>token===fingerprint,
-    readOwnershipProof:async address=>({verified:true,network:'-3',address,domain:'testnet.anlgram.com',
-      expiresAt:Math.floor(Date.now()/1000)+60,noConcurrentOperation:true})};
+  const deps={providers:f.providers,confirmExclusiveUse:async()=>true};
   const supervisor=new StandardSupervisor(storage,{},deps);
   const prepared=await supervisor.prepare(f.input);
-  await assert.rejects(supervisor.reserve('other'),/owner authorization/);
+  const operator=f.m.operator.address, approval=approve(f.f,prepared);
+  const reserve = (value=approval)=>supervisor.reserve(operator,prepared.identity.fingerprint,value);
+  await assert.rejects(reserve({nonce:approval.nonce,signature:'ff'.repeat(64)}),/owner authorization/);
+  assert.equal(verifyStandardApproval(approval,prepared.manifest,prepared.identity,approval.nonce,prepared.identity.validUntil),false);
+  assert.equal(verifyStandardApproval(approval,{...prepared.manifest,operator:{...prepared.manifest.operator,address:'0:'+hex64}},
+    prepared.identity,approval.nonce,0),false);
+  const other=await fixture('Other candidate');
+  const alternate=await new StandardSupervisor(storage,{}, {...deps,providers:other.providers}).prepare(other.input);
+  assert.notEqual(alternate.identity.fingerprint,prepared.identity.fingerprint);
+  await assert.rejects(supervisor.reserve(operator,alternate.identity.fingerprint,approval),/owner authorization/);
   f.update({seqno:3});
-  await assert.rejects(supervisor.reserve(prepared.identity.fingerprint),/changed/);
-  f.update({seqno:2});
-  const both=await Promise.allSettled([supervisor.reserve(prepared.identity.fingerprint),supervisor.reserve(prepared.identity.fingerprint)]);
+  await assert.rejects(reserve(),/changed/);
+  f.update({seqno:2,block:8,actualBlock:8});
+  const both=await Promise.allSettled([reserve(),reserve()]);
   assert.equal(both.filter(r=>r.status==='fulfilled').length,1);
   assert.equal(standardTransportEnabled,false);
   let calls=0;
@@ -110,16 +125,19 @@ test('changed seqno and unauthorized reservation fail; concurrent mock and resta
     assert.equal(request.network,'-3');
     assert.equal(request.messages.length,1);
     assert.equal(request.messages[0].amount,'50000000');
+    assert.equal((await new StandardSupervisor(storage,{},deps).lock(operator).status()).transport,'UNKNOWN');
     throw Error('Mock lost response');
   };
-  const dispatched=await Promise.allSettled([exerciseStandardTransport(storage,mock),exerciseStandardTransport(storage,mock)]);
+  const scoped=standardOperatorStorage(storage,operator);
+  await assert.rejects(submitStandardDeployment(storage,operator,{requestOwnerConfirmation:mock}),/hard-disabled/);
+  const dispatched=await Promise.allSettled([exerciseStandardTransport(scoped,mock),exerciseStandardTransport(scoped,mock)]);
   assert.equal(dispatched.filter(r=>r.status==='fulfilled').length,1);
   assert.equal(calls,1);
   const restart=new StandardSupervisor(storage,{},deps);
-  assert.equal((await restart.reconcile()).evidence,'UNKNOWN');
-  assert.equal((await restart.lock.status()).transport,'UNKNOWN');
-  await assert.rejects(restart.reserve(prepared.identity.fingerprint),/permanently reserved/);
-  await assert.rejects(exerciseStandardTransport(storage,mock),/No unused/);
+  assert.equal((await restart.reconcile(operator)).evidence,'UNKNOWN');
+  assert.equal((await restart.lock(operator).status()).transport,'UNKNOWN');
+  await assert.rejects(restart.reserve(operator,prepared.identity.fingerprint,approval),/permanently reserved/);
+  await assert.rejects(exerciseStandardTransport(scoped,mock),/No unused/);
 });
 
 test('authenticated provider outages and rate limits fail without a second request',async()=>{
@@ -137,9 +155,7 @@ test('authenticated provider outages and rate limits fail without a second reque
 
 test('Sandbox deployment receipt reconciles the reserved message once and rejects altered initial state',async()=>{
   const {f,input,m,providers}=await fixture(), storage=storageFixture();
-  const deps={providers,verifyOwnerApproval:async()=>true,
-    readOwnershipProof:async address=>({verified:true,network:'-3',address,domain:'testnet.anlgram.com',
-      expiresAt:Math.floor(Date.now()/1000)+60,noConcurrentOperation:true})};
+  const deps={providers,confirmExclusiveUse:async()=>true};
   let registrations=0;
   const env={PROJECT_REGISTRY:{idFromName:key=>key,get:()=>({fetch:async(url,req)=>{
     registrations++;
@@ -148,8 +164,9 @@ test('Sandbox deployment receipt reconciles the reserved message once and reject
     return Response.json({registration:'REGISTERED'},{status:201});
   }})}};
   const supervisor=new StandardSupervisor(storage,env,deps);
-  const {quote}=await supervisor.prepare(input);
-  await supervisor.reserve('fixture approval');
+  const prepared=await supervisor.prepare(input), {quote}=prepared, operator=m.operator.address;
+  await supervisor.reserve(operator,prepared.identity.fingerprint,approve(f,prepared));
+  await storage.delete('standard:v2:-3:v5r1:'+operator+':standardPrepared:'+prepared.identity.fingerprint);
   const {message}=m.deployment, dest=core.Address.parseFriendly(message.address);
   const result=await f.send(quote.seqno,[core.internal({to:dest.address,bounce:dest.isBounceable,
     value:BigInt(message.amount),body:core.Cell.fromBase64(message.payload),
@@ -166,14 +183,29 @@ test('Sandbox deployment receipt reconciles the reserved message once and reject
     return {reference:{seqno:8},raw:{state:f.core.beginCell().storeBit(true).store(f.core.storeAccount(copy)).endCell().toBoc().toString('hex')}};
   };
   providers.history=async address=>({rows:rows.filter(row=>row.tx.inMessage.info.dest.toRawString()===address)});
-  assert.equal((await supervisor.reconcile()).evidence,'UNKNOWN');
+  assert.equal((await supervisor.reconcile(operator)).evidence,'UNKNOWN');
   assert.equal(registrations,0);
   alter=false;
-  const included=await supervisor.reconcile();
+  const included=await supervisor.reconcile(operator);
   assert.equal(included.evidence,'INCLUDED_FINALITY_UNVERIFIED');
   assert.equal(included.operation.receipt.validatorFinalityVerified,false);
   assert.equal(included.operation.receipt.deployment.address,m.minter.raw);
   assert.equal(included.registered,true);
-  assert.equal((await new StandardSupervisor(storage,env,deps).reconcile()).registered,true);
+  assert.equal((await new StandardSupervisor(storage,env,deps).reconcile(operator)).registered,true);
   assert.equal(registrations,1);
+});
+
+
+test('shared storage separates operators and missing reserved snapshots fail closed',async()=>{
+  const storage=storageFixture(), a='0:'+'11'.repeat(32), b='0:'+'22'.repeat(32);
+  const one=standardOperatorStorage(storage,a), two=standardOperatorStorage(storage,b);
+  await one.put('standardDeployment',{operator:a,identity:{fingerprint:hex64},state:'DEPLOYMENT_INCLUDED_FINALITY_UNVERIFIED'});
+  assert.equal(await two.get('standardDeployment'),undefined);
+  await two.put('standardDeployment',{operator:b,identity:{fingerprint:hex64},state:'LOCKED_PENDING_RECONCILIATION'});
+  const supervisor=new StandardSupervisor(storage,{}, {providers:{account(){throw Error('No evidence requested');}}});
+  for(const operator of [a,b]){
+    const status=await supervisor.reconcile(operator);
+    assert.equal(status.evidence,'UNKNOWN');
+    assert.equal(status.operation.operator,operator);
+  }
 });
