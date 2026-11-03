@@ -1,7 +1,7 @@
 {
   "contract": "anlgram-guard-vnext.fc",
   "compilerPackageVersion": "0.11.0",
-  "generatorSha256Lf": "3a2779dab5459c20e3dc60f13c5b29f0b757d3be96f269d857ab7ae07d7ef698",
+  "generatorSha256Lf": "5915b3eb2c01cace7f22fa960b7cb3a1f77bfd79b9d5b9b022da374ab27f78e8",
   "derivationBaseline": "e1dacb7dd82d628064950af43e1a20cc3ec2a48f",
   "baseSourcesSha256": {
     "anlgram-bonding-curve-v2.fc": "4a318b2500021c56bcd434f629eb0bfeba35dde5f345346069a4dd346b1e7791",

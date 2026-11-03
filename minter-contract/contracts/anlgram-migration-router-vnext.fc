@@ -260,6 +260,7 @@ int consume_native_receipt(cell full_message) impure inline {
 #include "imports/migration-lifecycle-v3.fc";
 #include "imports/migration-lp-vnext-base.fc";
 #include "imports/migration-vnext-auth.fc";
+#include "imports/migration-vnext-recovery.fc";
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) {
@@ -280,6 +281,7 @@ int consume_native_receipt(cell full_message) impure inline {
     slice dex_router_token_wallet = calculate_user_jetton_wallet_address(dex_router_address, token_minter_address, jetton_wallet_code);
     (int flight_id,int recovery_nonce,int recovery_phase,slice recovery_pool,slice recovery_account,cell used_ids) = load_flight();
 
+    if(handle_vnext_recovery(my_balance,msg_value,in_msg_full,in_msg_body)) { return (); }
     if(handle_vnext_migration_auth(my_balance,msg_value,in_msg_full,in_msg_body)) { return (); }
     if(handle_migration_lp_v2(my_balance,msg_value,in_msg_full,in_msg_body)) { return (); }
     if(handle_migration_life(my_balance,msg_value,in_msg_full,in_msg_body)) { return (); }
@@ -441,55 +443,7 @@ int consume_native_receipt(cell full_message) impure inline {
         return_receipt_gas(admin_address,my_balance - msg_value,query_id);return ();
     }
 
-    ;; Recover only through the configured Router -> pair Pool -> own LP
-    ;; account chain. These replies do NOT authorize migration or prove code.
-    if (op == op::recover_lp_account) {
-        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,admin_address) | equal_slices(sender_address,curve_address));
-        throw_unless(ERROR_INVALID_STATE,(pending_ton > 0) | (pending_tokens > 0));
-        throw_if(ERROR_INVALID_STATE,recovery_phase == 5); ;; handoff receipts, not a DEX-account refund
-        throw_unless(ERROR_INVALID_STATE,~ cell_null?(flight_cell()));
-        throw_unless(ERROR_INSUFFICIENT_GAS,msg_value >= 900000000); ;; 0.8 SDK refund + query chain budget
-        in_msg_body.end_parse();
-        slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();
-        recovery_nonce = cur_lt();
-        save_flight(flight_id,recovery_nonce,1,none,none,used_ids);
-        recovery_query(dex_router_address,begin_cell().store_uint(op::getter_pool_address,32).store_uint(recovery_nonce,64)
-            .store_slice(dex_router_token_wallet).store_slice(expected_pton_wallet).end_cell(),my_balance - msg_value);
-        return ();
-    }
-    if ((op == op::getter_pool_address) | (op == op::getter_lp_account) | (op == op::getter_lp_account_data)) {
-        throw_unless(ERROR_INVALID_STATE,(query_id == recovery_nonce) & (recovery_phase > 0) & (recovery_phase < 4));
-        if (op == op::getter_pool_address) {
-            throw_unless(ERROR_INVALID_STATE,recovery_phase == 1);
-            throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,dex_router_address));
-            slice pool = in_msg_body~load_msg_addr();in_msg_body.end_parse();force_chain(pool);
-            throw_unless(ERROR_INVALID_ADDRESS,pool.preload_uint(2) == 2);
-            save_flight(flight_id,recovery_nonce,2,pool,recovery_account,used_ids);
-            recovery_query(pool,begin_cell().store_uint(op::getter_lp_account,32).store_uint(recovery_nonce,64).store_slice(my_address()).end_cell(),my_balance - msg_value);
-            return ();
-        }
-        if (op == op::getter_lp_account) {
-            throw_unless(ERROR_INVALID_STATE,recovery_phase == 2);
-            throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,recovery_pool));
-            slice account = in_msg_body~load_msg_addr();in_msg_body.end_parse();force_chain(account);
-            throw_unless(ERROR_INVALID_ADDRESS,account.preload_uint(2) == 2);
-            save_flight(flight_id,recovery_nonce,3,recovery_pool,account,used_ids);
-            recovery_query(account,begin_cell().store_uint(op::getter_lp_account_data,32).store_uint(recovery_nonce,64).end_cell(),my_balance - msg_value);
-            return ();
-        }
-        throw_unless(ERROR_INVALID_STATE,recovery_phase == 3);
-        throw_unless(ERROR_UNAUTHORIZED_SENDER,equal_slices(sender_address,recovery_account));
-        slice owner = in_msg_body~load_msg_addr();slice pool = in_msg_body~load_msg_addr();
-        int a0 = in_msg_body~load_coins();int a1 = in_msg_body~load_coins();in_msg_body.end_parse();
-        throw_unless(ERROR_INVALID_ADDRESS,equal_slices(owner,my_address()) & equal_slices(pool,recovery_pool));
-        throw_unless(ERROR_INVALID_STATE,(a0 > 0) | (a1 > 0));
-        save_flight(flight_id,recovery_nonce,4,recovery_pool,recovery_account,used_ids);
-        ;; SDK v2.1/v2.2 wire includes TWO Maybe refs, absent in prose table.
-        recovery_query(recovery_account,begin_cell().store_uint(op::refund_me,32).store_uint(flight_id,64)
-            .store_uint(0,2).end_cell(),my_balance - msg_value);
-        return ();
-    }
-
+    ;; VNext recovery is observations only; refund transition sealed.
     ;; ------------------------------------------------------------------------
     ;; 0B. ONE-TIME ADMIN WALLET BINDING (op::init_migration_wallets)
     ;; ------------------------------------------------------------------------
