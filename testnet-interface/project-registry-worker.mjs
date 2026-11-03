@@ -1,3 +1,4 @@
+import {standardRegistrationIntent, acquireStandardRegistration, standardStatus} from './projects/standard-registration.mjs';
 import {verifyMigrationAccountCheckpoint} from './projects/migration-account.mjs';
 import {deploymentIntent, acquireRegistration, hexHash, hash, stateInit} from './projects/project-registration.mjs';
 import {projectProviders, provenance} from './projects/project-providers.mjs';
@@ -28,7 +29,11 @@ export class ProjectRegistry {
       // Internal namespace invocation only. The public Worker returns 404
       // for all HTTP requests, and Pages forwards only GET /status.
       let intent;
-      try { intent = await deploymentIntent(await readBoundedJson(request)); }
+      try {
+        const input = await readBoundedJson(request);
+        if (input?.projectType === 'STANDARD_V2') return await this.registerStandard(fingerprint, input);
+        intent = await deploymentIntent(input);
+      }
       catch { return json({error: 'Invalid project deployment intent'}, 400); }
       if (intent.record.configurationFingerprint !== fingerprint) return json({error: 'Wrong project key'}, 400);
       return this.register(intent);
@@ -37,6 +42,18 @@ export class ProjectRegistry {
     try {
       const stored = await this.storage.get('registration');
       if (!stored) return json({error: 'Unregistered project'}, 404);
+      if (stored.input?.projectType === 'STANDARD_V2') {
+        const intent = await standardRegistrationIntent(stored.input);
+        const receipt = stored.provenance?.deployment;
+        if (intent.manifest.configurationFingerprint !== fingerprint ||
+          stored.provenance?.fingerprint !== intent.identity.fingerprint ||
+          receipt?.address !== intent.manifest.minter.raw ||
+          receipt.stateInitHash !== intent.manifest.deployment.receiptExpectation.stateInitHash ||
+          receipt.codeHash !== intent.manifest.minter.codeHash ||
+          ![receipt.transactionHash, receipt.sourceTransactionHash, receipt.messageHash, receipt.signedBodyHash].every(hexHash) ||
+          stored.provenance.validatorFinalityVerified !== false) return unavailable();
+        return json(standardStatus(intent, stored.provenance));
+      }
       const intent = await deploymentIntent(stored.input);
       if (!this.validStoredRegistration(intent, stored, fingerprint)) return unavailable();
       if (!this.refreshing) this.refreshing = this.status(intent, stored).finally(() => { this.refreshing = null; });
@@ -65,6 +82,25 @@ export class ProjectRegistry {
           /^[1-9][0-9]{0,19}$/.test(r.sourceTransactionLt) && /^[1-9][0-9]{0,19}$/.test(r.transactionLt) &&
           BigInt(r.sourceTransactionLt) < BigInt(r.transactionLt);
       });
+  }
+
+  async registerStandard(fingerprint, input) {
+    const intent = await standardRegistrationIntent(input);
+    if (intent.manifest.configurationFingerprint !== fingerprint) return json({error:'Wrong project key'},400);
+    const existing = record => JSON.stringify(record.input) === JSON.stringify(intent.input) &&
+      record.provenance?.fingerprint === intent.identity.fingerprint
+      ? json({registration:'ALREADY_REGISTERED'}) : json({error:'Conflicting immutable registration'},409);
+    const old = await this.storage.get('registration');
+    if (old) return existing(old);
+    let proof;
+    try { proof = await acquireStandardRegistration(intent, projectProviders(this.env)); }
+    catch { return unavailable(); }
+    return this.storage.transaction(async txn => {
+      const concurrent = await txn.get('registration');
+      if (concurrent) return existing(concurrent);
+      await txn.put('registration', {input:intent.input, provenance:proof});
+      return json({registration:'REGISTERED'},201);
+    });
   }
 
   async register(intent) {

@@ -69,7 +69,7 @@ function success(tx) {
     (!d.actionPhase || (d.actionPhase.success && d.actionPhase.resultCode === 0 && d.actionPhase.skippedActions === 0));
 }
 
-export function deploymentEdge(destination, init, owner, ownerState, ownerRows, targetRows) {
+export function deploymentEdge(destination, init, owner, ownerState, ownerRows, targetRows, expected) {
   const target = targetRows.find(({tx}) => ['uninitialized', 'non-existing'].includes(tx.oldStatus)
     && tx.endStatus === 'active' && success(tx));
   const incoming = target?.tx.inMessage;
@@ -89,6 +89,8 @@ export function deploymentEdge(destination, init, owner, ownerState, ownerRows, 
   signed.skip(64);
   const expiry = signed.loadUint(32), seqno = signed.loadUint(32);
   need(source.tx.now < expiry, 'Deployment message expired');
+  if (expected) need(String(incoming.info.value.coins) === expected.amount && incoming.info.bounce === expected.bounce &&
+    seqno === expected.seqno && expiry === expected.expiry, 'Deployment does not match the reviewed operation');
   const checked = receipt.verifySignedBody(external.body.toBoc().toString('base64'), {
     network: '-3', walletId, seqno, operator: owner.toRawString(), publicKey, walletCodeHash: hash(ownerState.code),
     message: {
