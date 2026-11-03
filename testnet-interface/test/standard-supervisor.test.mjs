@@ -4,17 +4,29 @@ import * as core from '@ton/core';
 import artifact from '../../minter-contract/build/standard-jetton-v2.compiled.json' with {type:'json'};
 import {makeLocalReceipt} from './recovery-local-fixture.mjs';
 import {createDraft} from '../wizard/model.mjs';
-import {assertReviewedArtifacts, readStandardPreflight, StandardSupervisor, standardOperatorStorage} from '../projects/standard-supervisor.mjs';
-import {exerciseStandardTransport, standardTransportEnabled, submitStandardDeployment} from '../projects/standard-transport-fixture.mjs';
+import {assertReviewedArtifacts, inspectStandardWallet, readStandardPreflight, StandardSupervisor, standardOperatorStorage} from '../projects/standard-supervisor.mjs';
+import {exerciseStandardTransport, exerciseStandardBridgePost, standardTransportEnabled, submitStandardDeployment} from '../projects/standard-transport-fixture.mjs';
 import {prepareStandardTestnetRelease} from '../projects/standard-testnet-release.mjs';
 import {projectProviders} from '../projects/project-providers.mjs';
 
-import {standardApprovalBytes,verifyStandardApproval} from '../projects/standard-authorization.mjs';
+import {verifyStandardApproval} from '../projects/standard-authorization.mjs';
 import {createRequire} from 'node:module';
+import {createHash} from 'node:crypto';
+import {SessionCrypto} from '@tonconnect/protocol';
 const require = createRequire(import.meta.url);
 const {sign} = require('../../minter-contract/node_modules/@ton/crypto');
-const approve = (f,prepared) => ({nonce:prepared.authorizationNonce,signature:sign(
-  standardApprovalBytes(prepared.manifest,prepared.identity,prepared.authorizationNonce),f.key.secretKey).toString('hex')});
+const sessionFor = operator => ({account:{chain:'-3',address:operator.address,publicKey:operator.publicKey},
+  device:{features:[{name:'SignData',types:['text']}]}});
+function approve(f,prepared) {
+  const {signData:payload,manifest} = prepared;
+  const address=manifest.operator.address, domain='testnet.anlgram.com', timestamp=Math.floor(Date.now()/1000);
+  const addr=core.Address.parseRaw(address), time=Buffer.alloc(8), domainBytes=Buffer.from(domain), text=Buffer.from(payload.text);
+  time.writeBigUInt64BE(BigInt(timestamp));
+  const prefix=Buffer.from('ffff','hex'), size=n=>Buffer.from(n.toString(16).padStart(8,'0'),'hex');
+  const digest=createHash('sha256').update(Buffer.concat([prefix,Buffer.from('ton-connect/sign-data/'),
+    size(addr.workChain),addr.hash,size(domainBytes.length),domainBytes,time,Buffer.from('txt'),size(text.length),text])).digest();
+  return {address,domain,timestamp,payload,signature:sign(digest,f.key.secretKey).toString('base64')};
+}
 
 const hex64 = '12'.repeat(32);
 const b64Hash = cell => cell.hash().toString('base64');
@@ -82,6 +94,11 @@ test('reviewed artifacts and exact preflight reject wrong wallet, network, expir
   assertReviewedArtifacts();
   assert.throws(()=>assertReviewedArtifacts({...artifact,minter:{...artifact.minter,codeHash:hex64}}),/Unreviewed/);
   const f=await fixture();
+  const wallet = await inspectStandardWallet(f.m.operator.address,{...f.providers,observeAddress:async()=>({state:'active'})});
+  assert.equal(wallet.publicKey,f.input.publicKey);
+  assert.equal(wallet.subwalletNumber,0);
+  assert.equal(wallet.seqno,2);
+  assert.equal((await inspectStandardWallet(f.m.operator.address,{observeAddress:async()=>({state:'uninitialized',balance:'0'})})).publicKey,null);
   const quote=await readStandardPreflight(f.input,f.providers);
   assert.equal(quote.identity.modeledDebitNano,'52000000');
   assert.equal(quote.identity.maximumTotalDebitNano,null);
@@ -100,15 +117,24 @@ test('reviewed artifacts and exact preflight reject wrong wallet, network, expir
 
 test('changed seqno and unauthorized reservation fail; concurrent mock and restart never retry an unknown outcome',async()=>{
   const f=await fixture(), storage=storageFixture();
-  const deps={providers:f.providers,confirmExclusiveUse:async()=>true};
+  const deps={providers:f.providers,confirmExclusiveUse:async()=>true,readWalletSession:async()=>sessionFor(f.m.operator)};
   const supervisor=new StandardSupervisor(storage,{},deps);
   const prepared=await supervisor.prepare(f.input);
   const operator=f.m.operator.address, approval=approve(f.f,prepared);
   const reserve = (value=approval)=>supervisor.reserve(operator,prepared.identity.fingerprint,value);
-  await assert.rejects(reserve({nonce:approval.nonce,signature:'ff'.repeat(64)}),/owner authorization/);
-  assert.equal(verifyStandardApproval(approval,prepared.manifest,prepared.identity,approval.nonce,prepared.identity.validUntil),false);
-  assert.equal(verifyStandardApproval(approval,{...prepared.manifest,operator:{...prepared.manifest.operator,address:'0:'+hex64}},
-    prepared.identity,approval.nonce,0),false);
+  const verify = (response=approval,session=sessionFor(prepared.manifest.operator),time=approval.timestamp,nonce=prepared.authorizationNonce) =>
+    verifyStandardApproval(response,prepared.manifest,prepared.identity,nonce,time,approval.timestamp,session);
+  assert.equal(verify(),true);
+  for(const invalid of [{signature:Buffer.alloc(64).toString('base64')},{domain:'anlgram.com'},
+    {address:'0:'+hex64},{payload:{...approval.payload,network:'-239'}},{timestamp:approval.timestamp-1}]) {
+    assert.equal(verify({...approval,...invalid}),false);
+  }
+  assert.equal(verify(approval,{...sessionFor(prepared.manifest.operator),device:{features:[]}}),false);
+  const wrongChain=sessionFor(prepared.manifest.operator);wrongChain.account.chain='-239';
+  assert.equal(verify(approval,wrongChain),false);
+  assert.equal(verify(approval,undefined,prepared.identity.validUntil),false);
+  assert.equal(verify(approval,undefined,approval.timestamp,hex64),false);
+  await assert.rejects(reserve({...approval,signature:Buffer.alloc(64).toString('base64')}),/owner authorization/);
   const other=await fixture('Other candidate');
   const alternate=await new StandardSupervisor(storage,{}, {...deps,providers:other.providers}).prepare(other.input);
   assert.notEqual(alternate.identity.fingerprint,prepared.identity.fingerprint);
@@ -155,13 +181,13 @@ test('authenticated provider outages and rate limits fail without a second reque
 
 test('Sandbox deployment receipt reconciles the reserved message once and rejects altered initial state',async()=>{
   const {f,input,m,providers}=await fixture(), storage=storageFixture();
-  const deps={providers,confirmExclusiveUse:async()=>true};
+  const deps={providers,confirmExclusiveUse:async()=>true,readWalletSession:async()=>sessionFor(m.operator)};
   let registrations=0;
   const env={PROJECT_REGISTRY:{idFromName:key=>key,get:()=>({fetch:async(url,req)=>{
     registrations++;
     assert.match(url,/\/register$/);
     assert.equal(JSON.parse(req.body).projectType,'STANDARD_V2');
-    return Response.json({registration:'REGISTERED'},{status:201});
+    return registrations===1 ? new Response('',{status:503}) : Response.json({registration:'REGISTERED'},{status:201});
   }})}};
   const supervisor=new StandardSupervisor(storage,env,deps);
   const prepared=await supervisor.prepare(input), {quote}=prepared, operator=m.operator.address;
@@ -190,9 +216,10 @@ test('Sandbox deployment receipt reconciles the reserved message once and reject
   assert.equal(included.evidence,'INCLUDED_FINALITY_UNVERIFIED');
   assert.equal(included.operation.receipt.validatorFinalityVerified,false);
   assert.equal(included.operation.receipt.deployment.address,m.minter.raw);
-  assert.equal(included.registered,true);
+  assert.equal(included.registered,false);
+  assert.equal((await supervisor.reconcile(operator)).registered,true);
   assert.equal((await new StandardSupervisor(storage,env,deps).reconcile(operator)).registered,true);
-  assert.equal(registrations,1);
+  assert.equal(registrations,2);
 });
 
 
@@ -208,4 +235,30 @@ test('shared storage separates operators and missing reserved snapshots fail clo
     assert.equal(status.evidence,'UNKNOWN');
     assert.equal(status.operation.operator,operator);
   }
+});
+
+
+test('encrypted Standard bridge sends one POST per attempt and never follows redirects or retries timeout',async()=>{
+  const dapp=new SessionCrypto(), wallet=new SessionCrypto(), tx={network:'-3',from:'0:'+hex64,
+    validUntil:Math.floor(Date.now()/1000)+30,messages:[{address:'0:'+hex64,amount:'50000000',stateInit:'fixture'}]};
+  let posts=0, ids=0;
+  const session={crypto:dapp,walletBridgeKey:wallet.sessionId,bridgeUrl:'https://bridge.invalid/tonconnect',
+    allocateRpcId:async()=>String(++ids)};
+  const fetcher=async(url,opts)=>{
+    posts++;
+    assert.equal(url.pathname,'/tonconnect/message');
+    assert.equal(url.searchParams.get('topic'),'sendTransaction');
+    assert.equal(opts.redirect,'manual');
+    assert.equal(opts.method,'POST');
+    const rpc=JSON.parse(wallet.decrypt(Buffer.from(opts.body,'base64'),Buffer.from(dapp.sessionId,'hex')));
+    assert.equal(rpc.method,'sendTransaction');
+    assert.equal(rpc.id,String(ids));
+    assert.deepEqual(JSON.parse(rpc.params[0]),{network:'-3',from:tx.from,valid_until:tx.validUntil,messages:tx.messages});
+    if(posts===2) throw new DOMException('timed out','TimeoutError');
+    return new Response(null,{status:307,headers:{Location:'https://redirect.invalid/'}});
+  };
+  assert.equal(await exerciseStandardBridgePost(tx,session,fetcher),'UNKNOWN');
+  assert.equal(posts,1);
+  await assert.rejects(exerciseStandardBridgePost(tx,session,fetcher),{name:'TimeoutError'});
+  assert.equal(posts,2);
 });

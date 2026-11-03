@@ -1,12 +1,13 @@
 import * as core from '@ton/core';
 import {WalletContractV5R1} from '@ton/ton';
+import {pinned} from '../recovery/policy.mjs';
 import trace from '../../lib/v5-minter-trace.js';
 import artifact from '../../minter-contract/build/standard-jetton-v2.compiled.json' with {type:'json'};
 import {prepareStandardTestnetRelease, standardDeploymentIdentity} from './standard-testnet-release.mjs';
 import {acquireStandardRegistration, includedActiveState, standardRegistrationIntent} from './standard-registration.mjs';
 import {projectProviders} from './project-providers.mjs';
 import {StandardDeploymentLock} from './standard-deployment-lock.mjs';
-import {authorizationNonce, verifyStandardApproval} from './standard-authorization.mjs';
+import {authorizationNonce, standardSignDataPayload, verifyStandardApproval} from './standard-authorization.mjs';
 import {registryStub} from './project-registry.mjs';
 
 const amount = '50000000';
@@ -31,6 +32,33 @@ export function walletSeqno(manifest, data) {
     !s.loadBit(), 'Wrong active V5R1 signing account');
   s.endParse();
   return seqno;
+}
+
+export async function inspectStandardWallet(value, providers) {
+  const address = core.Address.parse(value), operator = address.toRawString();
+  requireExact(address.workChain === 0 && operator !== pinned.operator,'Separate basechain operator required');
+  const observation = await providers.observeAddress(operator);
+  if (observation.state !== 'active') return {network:'-3',operator,state:observation.state,
+    balanceNano:observation.balance,publicKey:null,eligible:false,evidence:'PROVIDER_OBSERVATION_ONLY'};
+  const included = await providers.account(operator);
+  requireExact(Math.abs(now()-included.proof.chainTime)<=15,'Fresh wallet inclusion required');
+  const slice = core.Cell.fromBoc(Buffer.from(included.raw.state,'hex'))[0].beginParse();
+  requireExact(slice.loadBit(),'Wallet account unavailable');
+  const account = core.loadAccount(slice);
+  slice.endParse();
+  requireExact(account.addr.equals(address) && account.storage.state.type === 'active','Unexpected wallet account');
+  const {code,data} = account.storage.state.state;
+  const cursor = data.beginParse();
+  cursor.skip(65);
+  const publicKey = cursor.loadBuffer(32).toString('hex');
+  const wallet = WalletContractV5R1.create({publicKey:Buffer.from(publicKey,'hex'),
+    walletId:{networkGlobalId:-3,context:{workchain:0,walletVersion:'v5r1',subwalletNumber:0}}});
+  requireExact(wallet.address.equals(address) && wallet.init.code.equals(code),'Not Testnet V5R1 subwallet zero');
+  const seqno = walletSeqno({operator:{walletId:2147483645,publicKey}},data);
+  const balanceNano = String(account.storage.balance.coins);
+  return {network:'-3',operator,state:'active',walletId:2147483645,subwalletNumber:0,publicKey,seqno,
+    balanceNano,attachmentFundingPresent:BigInt(balanceNano)>=50000000n,validatorFinalityVerified:false,
+    evidence:'ACCOUNT_INCLUSION_RELATIVE_TO_PROVIDER_REFERENCE'};
 }
 
 async function unsignedEmulation(manifest, seqno, validUntil) {
@@ -103,11 +131,12 @@ function reservedIntent(operation) {
 }
 
 export class StandardSupervisor {
-  constructor(storage, env, {confirmExclusiveUse, providers = projectProviders(env)} = {}) {
+  constructor(storage, env, {confirmExclusiveUse, readWalletSession, providers = projectProviders(env)} = {}) {
     this.storage = storage;
     this.env = env;
     this.providers = providers;
     this.confirmExclusiveUse = confirmExclusiveUse;
+    this.readWalletSession = readWalletSession;
   }
 
   lock(operator) {
@@ -115,7 +144,8 @@ export class StandardSupervisor {
     return new StandardDeploymentLock(storage, {
       verifyOwnerApproval:async (approval,fingerprint,_,manifest,identity)=>{
         const prepared = await storage.get('standardPrepared:'+fingerprint);
-        return !!prepared && verifyStandardApproval(approval,manifest,identity,prepared.nonce,now());
+        return !!prepared && verifyStandardApproval(approval,manifest,identity,prepared.nonce,now(),prepared.preparedAt,
+          await this.readWalletSession?.(operator));
       },
       verifyCurrentStateAndEmulation:async (manifest,quote,fingerprint)=>{
         const key = 'standardPrepared:'+fingerprint;
@@ -156,10 +186,10 @@ export class StandardSupervisor {
       const old = await txn.get(key);
       if (old) return old.nonce;
       const nonce = authorizationNonce();
-      await txn.put(key,{state:'PREPARED',input:intent.input,identity:result.identity,walletCheckpoint:result.walletCheckpoint,nonce});
+      await txn.put(key,{state:'PREPARED',input:intent.input,identity:result.identity,walletCheckpoint:result.walletCheckpoint,nonce,preparedAt:now()});
       return nonce;
     });
-    return {...result,authorizationNonce:nonce};
+    return {...result,authorizationNonce:nonce,signData:standardSignDataPayload(result.manifest,result.identity,nonce)};
   }
 
   async reserve(operator,fingerprint,approval) {
