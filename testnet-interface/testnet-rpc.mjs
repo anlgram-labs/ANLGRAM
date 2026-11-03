@@ -7,10 +7,10 @@ import {minterEmulation} from './minter-emulation.mjs';
 import {OPERATOR,MINTER,TESTNET_RPC} from './config.mjs';
 const TTL=3000,SPACING=1200;
 const json=(body,status=200,extra={})=>Response.json(body,{status,headers:{'Cache-Control':'no-store',...extra}});
-async function rawAccountJson(response){
+export async function readBoundedJson(response, maximum=524288){
  const reader=response.body?.getReader();if(!reader)throw Error('Missing raw account response');
  const chunks=[];let size=0;
- try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>524288)throw Error('Raw account response too large');chunks.push(value);}}catch(e){await reader.cancel().catch(()=>{});throw e;}
+ try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>maximum)throw Error('Raw account response too large');chunks.push(value);}}catch(e){await reader.cancel().catch(()=>{});throw e;}
  const bytes=new Uint8Array(size);let offset=0;for(const value of chunks){bytes.set(value,offset);offset+=value.byteLength;}return JSON.parse(new TextDecoder().decode(bytes));
 }
 export function retryAfter(value,now=Date.now()){
@@ -60,7 +60,7 @@ export class TestnetReads {
    await this.state.storage.put(gateKey,{...gate,nextAt:now()+spacing});
    try{
     const response=await fetch(secondary?'https://testnet.tonapi.io/v2/'+(rawState?'liteserver/get_account_state/':'blockchain/accounts/')+OPERATOR+(history?'/transactions?limit=16&sort_order=desc':''):emulation?'https://testnet.toncenter.com/api/emulate/v1/emulateTrace':TESTNET_RPC+'/jsonRPC',{method:secondary?'GET':'POST',headers,...(secondary?{}:{body:JSON.stringify(emulation?(emulation.request||{boc:emulation.boc,ignore_chksig:true,include_code_data:true,with_actions:false}):rpc)}),redirect:'manual',signal:AbortSignal.timeout(8000)});
-    let data;try{data=rawState||history||reference?await rawAccountJson(response):await response.json();}catch{data=null;}
+    let data;try{data=rawState||history||reference?await readBoundedJson(response):await response.json();}catch{data=null;}
     const code=response.ok&&data?.ok===false?Number(data.code):response.status;
     if(response.ok&&(reference?data?.ok===true&&data.result?.workchain===-1&&data.result.seqno===input.referenceSeqno:history?secondary?Array.isArray(data?.transactions)&&data.transactions.length<=16:data?.ok===true&&Array.isArray(data.result)&&data.result.length<=16:rawState?secondary?typeof data?.state==='string'&&/^[a-f0-9]+$/i.test(data.state)&&data.state.length<131072&&data.id?.workchain===-1&&Number.isSafeInteger(data.id?.seqno):data?.ok===true&&typeof data.result?.bytes==='string'&&data.result.bytes.length<131072:secondary?data?.address===OPERATOR&&data.status==='active'&&/^\d+$/.test(String(data.balance))&&typeof data.code==='string'&&typeof data.data==='string'&&/^[a-f0-9]{64}$/.test(data.last_transaction_hash||''):emulation?data?.is_incomplete===false&&data.transactions&&typeof data.transactions==='object':data?.ok===true&&(getter?data.result?.exit_code===0&&Array.isArray(data.result?.stack)&&data.result.stack.length===5:/^\d+$/.test(String(data.result?.balance))&&['active','uninitialized','frozen'].includes(data.result?.state)))){
      const value={...(reference?{referenceBlock:data.result}:history?{history:secondary?data.transactions:data.result}:rawState?{rawAccount:secondary?data:data.result}:secondary?{independentAccount:data}:emulation?{trace:data,bodyHash:emulation.bodyHash,validUntil:emulation.validUntil??input.validUntil}:getter?{getterResult:data.result}:{account:data.result}),observedAt:now(),observedUtc:new Date().toISOString(),provider:secondary?'TONAPI_TESTNET':'TONCENTER_TESTNET',authentication:secondary?(key?'TESTNET_TONAPI_KEY_ACCEPTED':'ANONYMOUS_TESTNET_TONAPI'):key?'TESTNET_KEY_ACCEPTED':'ANONYMOUS'};

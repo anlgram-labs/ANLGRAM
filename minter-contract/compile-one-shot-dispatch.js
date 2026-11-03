@@ -68,6 +68,12 @@ async function main(){
   save(path.join(__dirname,'build',name+'.compiled.json'),JSON.stringify(a,null,2)+'\n');artifacts.push(a);
  }
  let factory=fs.readFileSync(path.join(__dirname,'scripts/migration-package-vnext.js'),'utf8').replace(/\r\n/g,'\n');factory=once(factory,"'anlgram-bonding-curve-vnext'","'anlgram-bonding-curve-dispatch-v2'");factory=once(factory,"'anlgram-migration-router-vnext'","'anlgram-migration-router-dispatch-v2'");factory=once(factory,"anlgram_protocol:'vnext-migration-permission-only'","anlgram_protocol:'experimental-one-shot-dispatch-v2'");factory=once(factory,'storeBuffer(c.wallet.hash()).storeUint(1,32)','storeBuffer(c.wallet.hash()).storeUint(2,32)');factory=once(factory,'lockerCodeVersion:2','lockerCodeVersion:2,generation:2,sandboxExecutionPathImplemented:true');
+ const bundled=['anlgram-settlement-wallet', 'anlgram-launchpad-jetton-minter', 'anlgram-bonding-curve', 'anlgram-lp-auth-guard', 'anlgram-migration-router', 'anlgram-bonding-curve-dispatch-v2', 'anlgram-guard-vnext', 'anlgram-migration-router-dispatch-v2', 'anlgram-lp-locker-v2'];
+ factory=once(factory,"const fs=require('node:fs'),path=require('node:path'),","const ");
+ factory=once(factory,'function build(core,o){','const bundled={'+bundled.map(n=>JSON.stringify(n)+":require('../build/"+n+".compiled.json')").join(',')+'};\nfunction build(core,o){');
+ factory=once(factory,"JSON.parse(fs.readFileSync(path.join(__dirname,'../build',n+'.compiled.json'),'utf8'))","bundled[n]");
+ factory=once(factory,"const options={creator:","const lockerCode=core.Cell.fromBase64(get('anlgram-lp-locker-v2').codeBocBase64);\n const options={code:lockerCode,creator:");
+ factory=once(factory,"const lockerCode=core.Cell.fromBase64(get('anlgram-lp-locker-v2').codeBocBase64),versions=","const versions=");
  save(path.join(__dirname,'scripts/migration-package-dispatch-v2.js'),factory);
  console.log(JSON.stringify({check,artifacts:artifacts.map(a=>({name:a.contract,hash:a.codeCellHash})),financialDeploymentAuthorized:false}));
 }

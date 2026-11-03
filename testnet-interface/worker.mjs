@@ -1,6 +1,6 @@
 import execution from './execution-version.json' with {type:'json'};
 import {prepareProject} from './projects/prepare.mjs';
-import {getRegisteredProject,projectRegisteredStatus} from './projects/project-registry.mjs';
+import {readRegisteredProjectStatus} from './projects/project-registry.mjs';
 import {verifyRuntimeAuthorization} from './curve-authorization.mjs';
 import {readMvpStatus,readCurveDispatch} from './mvp-status.mjs';
 import {curveOperationRoute,currentCurveAuthorization,storeCurveAuthorization} from './curve-operation.mjs';
@@ -74,11 +74,10 @@ async function route(request,env) {
     try{
       const project=await prepareProject(input);
       if(path==='/api/projects/prepare')return json(project);
-      const registered=await getRegisteredProject(project.configurationFingerprint,env);
-      if(registered){
-        const gen2Res=await projectRegisteredStatus(registered,env);
-        return json(gen2Res);
-      }
+      let registered;
+      try { registered=await readRegisteredProjectStatus(project.configurationFingerprint,env); }
+      catch { return json({error:'Registered project evidence unavailable',financialSigningEnabled:false},503); }
+      if(registered)return json(registered);
       return json({schema:2,network:'-3',configurationFingerprint:project.configurationFingerprint,scope:'PROJECT_CONFIGURATION_NO_REGISTERED_CHAIN_EVIDENCE',status:project.migration?.statusView??null,unavailableReason:project.migration?'NO_REGISTERED_VERSIONED_DEPLOYMENT_AND_FINALIZED_RECEIPTS':'STANDARD_JETTON_HAS_NO_LAUNCHPAD_MIGRATION',financialSigningEnabled:false,migrationAuthorized:false,withdrawalsEnabled:false});
     }catch(e){return json({error:String(e.message).slice(0,2000),financialSigningEnabled:false},400);}
   }
