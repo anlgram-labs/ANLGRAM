@@ -138,5 +138,7 @@
     "commit": "857b8a57a178e6ae0fe7fa86e7d81c5233de8560",
     "path": "crypto/block/check-proof.cpp",
     "scope": "DEPENDENCY_REFERENCE_ONLY_NOT_INTEGRATED_OR_INDEPENDENTLY_AUDITED"
-  }
+  },
+  "architectureDecision": "architecture-decision-financial-feasibility.md",
+  "architectureEvidence": "architecture-feasibility-evidence.json"
 }

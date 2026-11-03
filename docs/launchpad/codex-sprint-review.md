@@ -2317,3 +2317,7 @@ Code review target: `420a17c6c3dd64cc9b3b43e622e16d8837080c60`. Targeted financi
 ## PR #21 security-gap follow-up
 
 Exact independent code-review target: `e1dacb7dd82d628064950af43e1a20cc3ec2a48f`. Added sealed guard registration consumer, caller-funded permanent100% custody-floor queries/receipts and exact persistent withdrawal/bounce evidence checks. Targeted financial:75/0; modified component subset:16/0 (included); backend/receipt:18/0; reproducible compilation PASS. Positive guard producer, validator finality, canonical final DEX settlement, exact on-chain LP recovery credit and foreign final withdrawal acknowledgement remain blocked. See `migration-v2-security-gaps-review.md`; no financial transaction, deployment, lock reset or Cloudflare/frontend publication.
+
+## Architecture feasibility decision
+
+Financial migration Testnet verdict:NO-GO at unchanged financial code baseline `e1dacb7dd82d628064950af43e1a20cc3ec2a48f`. New compiled-contract tests prove Guard denial and rejection of V2 genesis. A captured-bytecode counterexample proves recipient excess+query cannot authenticate the pending withdrawal amount. Focused decision/component tests:10/0; source/artifact compilation matches:7/7. See `architecture-decision-financial-feasibility.md` and `architecture-feasibility-evidence.json`. Coordinated versioned authorization/proof consumers require an independently reviewed design; none implemented or activated. PR #22, original Curve #2, production and financial sources/artifacts remain unchanged.

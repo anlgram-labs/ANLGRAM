@@ -1,5 +1,7 @@
 # Financial security gaps: sealed registration and supported LP evidence
 
+For the definitive compatibility decision, compiled Guard rejection evidence, excess-message counterexample and minimum versioned alternative, see `architecture-decision-financial-feasibility.md`. Financial source review baseline remains e1dacb7; that investigation changes only decision tests/documentation.
+
 **Exact independent code-review target: `e1dacb7dd82d628064950af43e1a20cc3ec2a48f`.**
 
 Base is PR #21 at d7efdc6005ae491f04b968ee2249e185ea73feea, including the prior 420a17c review target. Subsequent documentation-only commits do not change this code target. No qualified independent review has been obtained. AI implementation/tests are not a substitute.
