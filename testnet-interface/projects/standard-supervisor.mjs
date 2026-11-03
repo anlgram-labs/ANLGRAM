@@ -7,7 +7,7 @@ import {prepareStandardTestnetRelease, standardDeploymentIdentity} from './stand
 import {acquireStandardRegistration, includedActiveState, standardRegistrationIntent} from './standard-registration.mjs';
 import {projectProviders} from './project-providers.mjs';
 import {StandardDeploymentLock} from './standard-deployment-lock.mjs';
-import {authorizationNonce, standardSignDataPayload, verifyStandardApproval} from './standard-authorization.mjs';
+import {authorizationNonce, standardSignDataPayload, verifyStandardApproval, localApprovalScheme, verifyLocalStandardApproval} from './standard-authorization.mjs';
 import {registryStub} from './project-registry.mjs';
 
 const amount = '50000000';
@@ -144,7 +144,11 @@ export class StandardSupervisor {
     return new StandardDeploymentLock(storage, {
       verifyOwnerApproval:async (approval,fingerprint,_,manifest,identity)=>{
         const prepared = await storage.get('standardPrepared:'+fingerprint);
-        return !!prepared && verifyStandardApproval(approval,manifest,identity,prepared.nonce,now(),prepared.preparedAt,
+        if (!prepared) return false;
+        if (approval?.scheme === localApprovalScheme) {
+          return verifyLocalStandardApproval(approval,manifest,identity,prepared.nonce,now(),prepared.preparedAt);
+        }
+        return verifyStandardApproval(approval,manifest,identity,prepared.nonce,now(),prepared.preparedAt,
           await this.readWalletSession?.(operator));
       },
       verifyCurrentStateAndEmulation:async (manifest,quote,fingerprint)=>{
@@ -180,16 +184,19 @@ export class StandardSupervisor {
     const {draft,publicKey} = input;
     const intent = await standardRegistrationIntent({projectType:'STANDARD_V2',draft,publicKey,quote:result.quote});
     const storage = standardOperatorStorage(this.storage,result.manifest.operator.address);
-    const nonce = await storage.transaction(async txn=>{
+    const prepared = await storage.transaction(async txn=>{
       requireExact(!await txn.get('standardDeployment'), 'Permanent reservation exists');
       const key = 'standardPrepared:'+result.identity.fingerprint;
       const old = await txn.get(key);
-      if (old) return old.nonce;
+      if (old) return old;
       const nonce = authorizationNonce();
-      await txn.put(key,{state:'PREPARED',input:intent.input,identity:result.identity,walletCheckpoint:result.walletCheckpoint,nonce,preparedAt:now()});
-      return nonce;
+      const value = {state:'PREPARED',input:intent.input,identity:result.identity,walletCheckpoint:result.walletCheckpoint,nonce,preparedAt:now()};
+      await txn.put(key,value);
+      return value;
     });
-    return {...result,authorizationNonce:nonce,signData:standardSignDataPayload(result.manifest,result.identity,nonce)};
+    return {...result,authorizationNonce:prepared.nonce,
+      signData:standardSignDataPayload(result.manifest,result.identity,prepared.nonce),
+      localApprovalRequest:{input:prepared.input,fingerprint:prepared.identity.fingerprint,nonce:prepared.nonce,preparedAt:prepared.preparedAt}};
   }
 
   async reserve(operator,fingerprint,approval) {
