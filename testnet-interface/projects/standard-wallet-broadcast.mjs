@@ -5,6 +5,7 @@ import {join} from 'node:path';
 import {buildWalletInitialization,initializationWallet,prepareWalletInitialization} from './standard-wallet-initialization.mjs';
 import {includedActiveState} from './standard-registration.mjs';
 import {TESTNET_RPC} from '../config.mjs';
+import {assertWalletInitReleaseQuote} from './standard-wallet-init-release.mjs';
 
 const unsignedBits = 4*32+2; // Opcode, wallet ID, deadline, seqno and two empty action flags.
 const now = () => Math.floor(Date.now()/1000);
@@ -14,7 +15,7 @@ const requireExact = (condition,message) => { if (!condition) throw Error(messag
 const fields = ['network','operator','publicKey','walletId','stateInitHash','expectedDataHash','seqno','expectedSeqno',
   'validUntil','outgoingMessages','balanceNano','modeledFeeNano','ownerPolicyCeilingNano','accountHash','unsignedBodyHash'];
 const hashField = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
-export const walletBroadcastEnabled = false;
+export const walletBroadcastEnabled = true;
 
 export async function validateSignedInitialization({wallet,quote}, signed) {
   const contract = initializationWallet(wallet);
@@ -95,6 +96,7 @@ export function exerciseInitializationBroadcast(input,fixtureFetch,clock=now) {
 
 export function broadcastInitialization(input) {
   requireExact(walletBroadcastEnabled,'Real wallet initialization broadcast is hard-disabled');
+  assertWalletInitReleaseQuote(input.prepared);
   return attemptInitialization(input,fetch,now,TESTNET_RPC+'/jsonRPC');
 }
 

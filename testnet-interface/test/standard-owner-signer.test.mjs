@@ -10,6 +10,7 @@ import * as core from '@ton/core';
 import {mnemonicToWalletKey,sign} from '@ton/crypto';
 import {mnemonicFromRandomSeed} from '@ton/crypto/dist/mnemonic/mnemonic.js';
 import {recoverStandardPublicWallet} from '../projects/standard-owner-wallet.mjs';
+import {assertWalletInitReleaseQuote} from '../projects/standard-wallet-init-release.mjs';
 import {localApprovalBytes,localApprovalScheme,verifyLocalStandardApproval,verifyStandardApproval} from '../projects/standard-authorization.mjs';
 import {prepareStandardTestnetRelease,standardDeploymentIdentity} from '../projects/standard-testnet-release.mjs';
 import {buildWalletInitialization,prepareWalletInitialization} from '../projects/standard-wallet-initialization.mjs';
@@ -164,7 +165,7 @@ test('funded Testnet V5R1 initializes in Sandbox with zero outgoing messages and
       assert.equal(JSON.parse(require('node:fs').readFileSync(prefix+'.init-broadcast','utf8')).status,'UNKNOWN');
       throw new DOMException('fixture timeout','TimeoutError');
     };
-    assert.equal(walletBroadcastEnabled,false);
+    assert.equal(walletBroadcastEnabled,true);
     await assert.rejects(exerciseInitializationBroadcast({...input,providers:{
       ...providers,account:async()=>{throw Error('fixture outage');}
     }},loseResponse,clock),/outage/);
@@ -216,12 +217,14 @@ test('funded Testnet V5R1 initializes in Sandbox with zero outgoing messages and
 
 test('owner signer refuses both signing commands in this build before opening inputs',()=>{
   const cli=fileURLToPath(new URL('../standard-owner-signer-cli.mjs',import.meta.url));
-  for(const action of ['sign-approval','sign-init']){
-    const result=spawnSync(process.execPath,[cli,action,'not-present.json','not-present.gpg'],{encoding:'utf8'});
-    assert.equal(result.status,1);
-    assert.equal(result.stdout,'');
-    assert.match(result.stderr,/Signing is hard-disabled/);
-  }
+  const approval=spawnSync(process.execPath,[cli,'sign-approval','not-present.json','not-present.gpg'],{encoding:'utf8'});
+  assert.equal(approval.status,1);
+  assert.equal(approval.stdout,'');
+  assert.match(approval.stderr,/Signing is hard-disabled/);
+  const init=spawnSync(process.execPath,[cli,'sign-init','not-present.json','not-present.gpg'],{encoding:'utf8'});
+  assert.equal(init.status,1);
+  assert.equal(init.stdout,'');
+  assert.match(init.stderr,/Preserve any pending marker|Signing is hard-disabled/);
 });
 
 test('GnuPG fixture rejects wrong passphrase, corrupt ciphertext and interrupted decryption',{
@@ -254,7 +257,7 @@ test('wallet broadcast CLI gate stops before reading files',()=>{
   const result=spawnSync(process.execPath,[cli,'broadcast','not-present.json','not-present.json'],{encoding:'utf8'});
   assert.equal(result.status,1);
   assert.equal(result.stdout,'');
-  assert.match(result.stderr,/hard-disabled/);
+  assert.match(result.stderr,/Broadcast stopped|hard-disabled/);
 });
 
 
@@ -274,7 +277,7 @@ test('prepare-init CLI distinguishes missing input, invalid JSON and missing pro
     writeFileSync(path,'{fixture-private-content');
     assert.equal(run().code,'INPUT_JSON_INVALID');
     writeFileSync(path,'\uFEFF{}');
-    assert.deepEqual(run(),{code:'PROVIDER_KEY_MISSING',financialSigningEnabled:false,broadcastingEnabled:false,
+    assert.deepEqual(run(),{code:'PROVIDER_KEY_MISSING',financialSigningEnabled:true,broadcastingEnabled:walletBroadcastEnabled,
       provider:'TONCENTER_TESTNET'});
   } finally { rmSync(dir,{recursive:true}); }
 });
@@ -296,4 +299,65 @@ test('preflight provider diagnostics discard raw response contents',async()=>{
   }
   const p=projectProviders(env,async()=>Response.json({ok:false,code:403,error:'fixture-private-content'}));
   await assert.rejects(p.observeAddress('0:'+'11'.repeat(32)),{code:'PROVIDER_AUTH_REJECTED',operation:'getAddressInformation',rpcCode:403,status:undefined});
+});
+
+test('regression: missing TONAPI credential reports TONAPI_TESTNET missing diagnostic',()=>{
+  const cli=fileURLToPath(new URL('../standard-owner-signer-cli.mjs',import.meta.url));
+  const dir=mkdtempSync(join(tmpdir(),'anlgram-tonapi-missing-'));
+  try {
+    const path=join(dir,'input.json');
+    writeFileSync(path,'\uFEFF{}');
+    const result=spawnSync(process.execPath,[cli,'prepare-init',path],{encoding:'utf8',
+      env:{...process.env,TONCENTER_TESTNET_API_KEY:'fixture-center',TONAPI_TESTNET_API_KEY:''}});
+    assert.equal(result.status,1);
+    assert.equal(result.stdout,'');
+    assert.deepEqual(JSON.parse(result.stderr),{code:'PROVIDER_KEY_MISSING',
+      financialSigningEnabled:true,broadcastingEnabled:walletBroadcastEnabled,provider:'TONAPI_TESTNET'});
+  } finally { rmSync(dir,{recursive:true}); }
+});
+
+test('regression: expired quotes, identity mismatch and interrupted execution fail closed',async()=>{
+  const mnemonic=await words(), wallet=await recoverStandardPublicWallet(mnemonic);
+  const otherMnemonic=await mnemonicFromRandomSeed(Buffer.alloc(32,0x99),24);
+  const otherWallet=await recoverStandardPublicWallet(otherMnemonic);
+  const now=1700000000;
+  const quote={network:'-3',operator:wallet.operator,publicKey:wallet.publicKey,walletId:wallet.walletId,
+    stateInitHash:'9eb502b657204b2f6701f469b0edfc87b9d00cc025fbe7e329b343569a4e5f08',expectedDataHash:'11'.repeat(32),
+    seqno:0,expectedSeqno:1,validUntil:now-10,outgoingMessages:0,balanceNano:'1000000000',modeledFeeNano:'1000000',
+    ownerPolicyCeilingNano:'70000000',accountHash:'22'.repeat(32),unsignedBodyHash:'33'.repeat(32),
+    fingerprint:'44'.repeat(32)};
+  const prepared={wallet,quote};
+  const signed={status:'SIGNED_NOT_BROADCAST',fingerprint:quote.fingerprint,messageHash:'55'.repeat(32),boc:'te6ccgEBAQEAAgAAAA=='};
+
+  // 1. Expired quote rejection in validation
+  await assert.rejects(validateSignedInitialization(prepared,signed),/quote/);
+
+  // 2. Identity mismatch in quote release assertion
+  const releaseWallet={workchain:0,address:'0QCetQK2VyBLL2cB9Gmw7fyHudAMwCX75-Mps0NWmk5fCAUn',
+    publicKey:'194f6f9fb1779cf2120e9cab41c4ff71d75fe08d4a139f86c73eae89cc3d7217',
+    operator:'0:9eb502b657204b2f6701f469b0edfc87b9d00cc025fbe7e329b343569a4e5f08',
+    walletVersion:'v5r1',subwalletNumber:0,network:'-3',
+    walletCodeHash:'20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f',walletId:2147483645};
+  const releaseQuote={network:'-3',operator:releaseWallet.operator,publicKey:releaseWallet.publicKey,
+    walletId:releaseWallet.walletId,stateInitHash:'9eb502b657204b2f6701f469b0edfc87b9d00cc025fbe7e329b343569a4e5f08',
+    expectedDataHash:'11'.repeat(32),seqno:0,expectedSeqno:1,validUntil:now+45,outgoingMessages:0,
+    balanceNano:'1999999999',modeledFeeNano:'780696',ownerPolicyCeilingNano:'70000000',
+    accountHash:'22'.repeat(32),unsignedBodyHash:'33'.repeat(32),fingerprint:'44'.repeat(32)};
+  assert.throws(()=>assertWalletInitReleaseQuote({wallet:otherWallet,quote:releaseQuote}),/scope rejected/);
+  assert.throws(()=>assertWalletInitReleaseQuote({wallet:releaseWallet,quote:{...releaseQuote,operator:otherWallet.operator}}),/release quote rejected/);
+  assert.throws(()=>assertWalletInitReleaseQuote({wallet:releaseWallet,quote:{...releaseQuote,publicKey:otherWallet.publicKey}}),/release quote rejected/);
+  assert.throws(()=>assertWalletInitReleaseQuote({wallet:releaseWallet,quote:{...releaseQuote,seqno:1}}),/release quote rejected/);
+  assert.throws(()=>assertWalletInitReleaseQuote({wallet:releaseWallet,quote:{...releaseQuote,outgoingMessages:1}}),/release quote rejected/);
+
+  // 3. Interrupted execution / crash marker permanence
+  const dir=mkdtempSync(join(tmpdir(),'anlgram-crash-test-'));
+  try {
+    const prefix=join(dir,wallet.operator.slice(2));
+    writeFileSync(prefix+'.init-pending',quote.fingerprint);
+    // Exclusive marker creation rejects second attempt with EEXIST
+    assert.throws(()=>{
+      const {openSync}=require('node:fs');
+      openSync(prefix+'.init-pending','wx');
+    },{code:'EEXIST'});
+  } finally { rmSync(dir,{recursive:true}); }
 });

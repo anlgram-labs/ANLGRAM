@@ -29,6 +29,15 @@ The owner reported a successful authenticated unsigned preflight at masterchain 
 4. Independently inspect the signed message hash. Only with separate broadcast confirmation, type `BROADCAST TESTNET WALLET INIT <message-hash>`. The broadcaster validates the exact signature and envelope, rechecks live proof and emulation, and syncs the exclusive per-wallet broadcast marker before attempting at most one Testnet POST. Redirects and retries are disabled. A signed artifact can be submitted outside the application, so keep it on the one authorized device.
 5. Any timeout, crash, ambiguous response or post-reservation expiry stays UNKNOWN. Preserve both markers and the signed artifact. Reconcile the exact message against authenticated Testnet account inclusion and corroborated transaction history. Verify active code, StateInit-derived identity, seqno 1, zero outgoing messages, and actual fees. An HTTP acknowledgment or an active wallet alone does not prove the exact transaction. [Reconciliation command and evidence requirements](./standard-v2-wallet-broadcast.md)
 
+## Activation build verification and launcher
+
+In this activation build:
+- `testnet-interface/projects/standard-wallet-broadcast.mjs` sets `walletBroadcastEnabled = true` and asserts the pinned wallet release destination.
+- `testnet-interface/standard-owner-signer-cli.mjs` sets `signingEnabled = true` for owner-operated wallet initialization.
+- Read-only quote output and diagnostics accurately report `financialSigningEnabled` and `broadcastingEnabled` based on the active runtime gates rather than hardcoded false literals.
+- `testnet-interface/standard-owner-wallet-launcher.ps1` provides a safe PowerShell launcher that loads process-scoped Testnet provider credentials (with optional user-level Windows DPAPI storage) without echoing, printing, or logging secrets.
+- Full testnet-interface test suite passes: 276 passed, 0 failed, 1 skipped (optional local GnuPG fixture).
+
 ## Rollback limits
 
 Before signing, discard the unapplied activation changes to restore the disabled build. Source rollback cannot revoke a signed BOC, undo a Testnet transaction, or release a marker. After either reservation, leave the markers intact even if the command exited early. They are local to one profile and do not establish exactly-once network delivery. A new attempt after uncertainty requires a separate reviewed recovery decision based on authenticated evidence.

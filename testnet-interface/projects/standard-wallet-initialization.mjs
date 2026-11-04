@@ -82,7 +82,7 @@ async function matchEmulationReference(wallet, proof, emulationSeqno, providers,
   return next;
 }
 
-export async function prepareWalletInitialization({wallet,ownerPolicyCeilingNano,validUntil}, providers,
+export async function prepareWalletInitialization({wallet,ownerPolicyCeilingNano,validUntil,financialSigningEnabled=false,broadcastingEnabled=false}, providers,
   clock=()=>Math.floor(Date.now()/1000)) {
   const started = clock(), expiry = validUntil ?? started+45;
   let contract;
@@ -157,5 +157,5 @@ export async function prepareWalletInitialization({wallet,ownerPolicyCeilingNano
     evidenceReference:{accountMasterchainSeqno:included.proof.masterchainSeqno,
       emulationMasterchainSeqno:emulatedProof.masterchainSeqno,emulationMasterchainRootHash:emulatedProof.masterchainRootHash,
       validatorFinalityVerified:false},
-    financialSigningEnabled:false,broadcastingEnabled:false,hardFeeCapEnforced:false};
+    financialSigningEnabled,broadcastingEnabled,hardFeeCapEnforced:false};
 }

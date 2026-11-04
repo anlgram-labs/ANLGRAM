@@ -28,7 +28,7 @@ test('wallet-only release pins the owner Testnet destination and rejects a valid
     assert.equal(output.status,1);
     assert.equal(output.stdout,'');
     assert.deepEqual(JSON.parse(output.stderr),{code:'INIT_RELEASE_SCOPE_REJECTED',
-      financialSigningEnabled:false,broadcastingEnabled:false});
+      financialSigningEnabled:true,broadcastingEnabled:true});
     const excluded=spawnSync(process.execPath,[cli,'sign-approval',input,'not-present.gpg'],{encoding:'utf8'});
     assert.equal(excluded.status,1);
     assert.match(excluded.stderr,/outside this wallet-only release/);

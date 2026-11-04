@@ -8,8 +8,9 @@ import {recoverStandardPublicWallet} from './projects/standard-owner-wallet.mjs'
 import {buildWalletInitialization,prepareWalletInitialization,InitPreflightError} from './projects/standard-wallet-initialization.mjs';
 import {assertWalletInitRelease,assertWalletInitReleaseQuote} from './projects/standard-wallet-init-release.mjs';
 import {projectProviders,ProjectProviderError} from './projects/project-providers.mjs';
+import {walletBroadcastEnabled} from './projects/standard-wallet-broadcast.mjs';
 
-const signingEnabled = false; // Requires separate review and authorization to change.
+const signingEnabled = true; // Owner-operated initialization-only release.
 const now = () => Math.floor(Date.now()/1000);
 
 async function confirm(prompt, expected) {
@@ -45,7 +46,10 @@ try {
     const providers = projectProviders(process.env);
     try { assertWalletInitRelease(request.wallet,request.ownerPolicyCeilingNano); }
     catch { throw new InitPreflightError('INIT_RELEASE_SCOPE_REJECTED'); }
-    const quote = await prepareWalletInitialization(request,providers);
+    const quote = await prepareWalletInitialization({...request,
+      financialSigningEnabled: signingEnabled,
+      broadcastingEnabled: walletBroadcastEnabled
+    },providers);
     console.log(JSON.stringify({wallet:request.wallet,quote},null,2));
   } else {
     const request = await readPublic(path);
@@ -58,7 +62,9 @@ try {
       const approval = 'AUTHORIZE TESTNET INIT '+request.quote.fingerprint;
       await confirm('Type '+approval+' to sign only this wallet initialization: ',approval);
       const current = await prepareWalletInitialization({wallet,ownerPolicyCeilingNano:request.quote.ownerPolicyCeilingNano,
-        validUntil:request.quote.validUntil},projectProviders(process.env));
+        validUntil:request.quote.validUntil,
+        financialSigningEnabled: signingEnabled,
+        broadcastingEnabled: walletBroadcastEnabled},projectProviders(process.env));
       if (current.fingerprint !== request.quote.fingerprint) throw Error('Initialization quote changed');
       const dir = join(homedir(),'.anlgram-standard-v2');
       await mkdir(dir,{mode:0o700,recursive:true});
@@ -78,7 +84,7 @@ try {
   if (command==='prepare-init') {
     const diagnostic = {code:error instanceof InitPreflightError || error instanceof ProjectProviderError ?
       error.code : (!path || backup || extra.length ? 'INPUT_USAGE_INVALID' : 'PREFLIGHT_UNVERIFIED'),
-      financialSigningEnabled:false,broadcastingEnabled:false};
+      financialSigningEnabled: signingEnabled, broadcastingEnabled: walletBroadcastEnabled};
     if (error instanceof ProjectProviderError) {
       diagnostic.provider = error.provider;
       if (error.operation) diagnostic.operation = error.operation;
