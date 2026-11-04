@@ -104,10 +104,12 @@ cell vesting_transfer(int q,int amount,slice beneficiary) inline {
   return s;
 }
 async function main() {
-  const wallet = JSON.parse(read('build/anlgram-settlement-wallet.compiled.json'));
+  const standard = process.argv.includes('--standard');
+  const wallet = JSON.parse(read(standard?'build/standard-jetton-settlement-wallet.compiled.json':'build/anlgram-settlement-wallet.compiled.json'));
   const walletHash = Cell.fromBase64(wallet.codeBocBase64).hash().toString('hex');
   if (walletHash!==wallet.codeCellHash) throw Error('Settlement wallet pin mismatch');
-  const target='anlgram-vesting-wallet-v2.fc', generated=versionedSource(walletHash), sourceHashes={};
+  const name=standard?'anlgram-vesting-wallet-standard-v2':'anlgram-vesting-wallet-v2';
+  const target=name+'.fc', generated=versionedSource(walletHash), sourceHashes={};
   const compiled=await compileFunc({targets:[target],sources:file=>{
     const source=file===target?generated:read('contracts/'+file);
     sourceHashes[file]=sha(source);
@@ -117,7 +119,7 @@ async function main() {
   const codeBocBase64=compiled.codeBoc,codeCellHash=Cell.fromBase64(codeBocBase64).hash().toString('hex');
   const output=JSON.stringify({schema:2,target,walletHash,codeCellHash,codeBocBase64,sourceHashes,
     generatorSha256:sha(read('compile-vesting-v2.js'))},null,2)+'\n';
-  const file='build/anlgram-vesting-wallet-v2.compiled.json';
+  const file='build/'+name+'.compiled.json';
   if(process.argv.includes('--check')) {
     if(read(file)!==output)throw Error('Vesting V2 artifact mismatch');
   } else fs.writeFileSync(path.join(__dirname,file),output);

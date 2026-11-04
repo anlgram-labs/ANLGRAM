@@ -2,7 +2,7 @@
   "schema": 1,
   "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
   "sources": {
-    "build.mjs": "0dd90420da307ae47abce4e6082671484f67d151d1326b26e9c062c25c44f7dd",
+    "build.mjs": "627c2fb02c0460562c3e9ccde44afaebb4ee26430baf50465f6ecefb457472ba",
     "app.js": "f2214539064b7532925298b9bebbb26a79c3e52813aff27b08a696a7857a598b",
     "client-entry.mjs": "26afc78634cc85868ba390377893e1bd319f9962b0c6599482416ff07d33e40d",
     "single-attempt.mjs": "2a3cd10735dda1324a0d044be259498e5b6bef17620c8593878d5f3b9500839d",
@@ -32,11 +32,11 @@
     "recovery-status.js": "e2b437965d1ff5fbe580eb5c2a0a24704aedbda6023b131ca3a20234e96cab92",
     "../lib/v5-self-transfer-receipt.js": "d3347f12f5552c2cd8c86491143a71f7142890ee40bae8cb76c548e038d16d2a",
     "../lib/v5-deployment-receipt.js": "900d30bc7856c5b3373dea3acc9da6a46b541d4576699beb85ae13285d5587c7",
-    "projects/standard-testnet-release.mjs": "822d0ded9e2d6b4ab9e4acd80238679164d82abe194a3d232e37f9ac1edab61d",
-    "projects/prepare.mjs": "fdb2d0600a1175d2ee689b99c10a3fc9cc59ea0ab918c0ac001e71316f258c06",
-    "projects/artifacts.mjs": "4d0ec5fad645b9c055aad1637cd12670482cfdc3a816b1e8a28b2aab0fba3495",
-    "projects/distribution.mjs": "0f3cf5523c25ee0e371b69badbc57e49ace8f05b34be5713793db4bac82ceaa6",
-    "../minter-contract/build/anlgram-vesting-wallet-v2.compiled.json": "eb00352d34268c1ae757bbbcd0986095bb4757911bab116ce9d06ec0d5f7bbf1",
+    "projects/standard-testnet-release.mjs": "6357fd3b4acf9f9bebe3cd7f71f7bd1c1b4fc0cab96f5d82d1fbfab3c52edf75",
+    "projects/prepare.mjs": "40fadac738bc7ce6eac2101fc1ef9478c8ea3404f26dba0a353acd6fa7f3b8cc",
+    "projects/artifacts.mjs": "0a87c7cdc10b989c2ae5d8317ed2334d47666f433e7f1bf49860630f364e240d",
+    "projects/distribution.mjs": "14f7e99e79b00052396a7c18fe418f049e0cb8bd589fee95880b3cb7348f72e3",
+    "../minter-contract/build/anlgram-vesting-wallet-v2.compiled.json": "368ca55dede279928f6e341d5240a865b72b1db536d731805665e502f413db9c",
     "projects/standard-registration.mjs": "9af69a3efad698ff03c32fbd64cf08dd047f510af6e1051ce5b22d4e74083736",
     "projects/standard-deployment-lock.mjs": "6a7f297f6a0e41fb8231d8e850b2b7ece66f55b07764dae92d9b34f2be952022",
     "projects/standard-supervisor.mjs": "eb209e577518efa19f21622e7a4122dd01cf10e3029ddf0991861e2936308a19",
@@ -44,7 +44,7 @@
     "projects/standard-transport-fixture.mjs": "1f3fe4176869bfb05d20ed59e20a71a41e44109963ad0ae20e0d7e7579c028e9",
     "projects/project-providers.mjs": "fe8a7057c9b6abc894a2f381b7ff79187ac9506697b0da456f32b16dbeb82f62",
     "../lib/v5-minter-trace.js": "5f35035e8be2810dfcf7c23e30a71846af4e1576c57e20e80ffd876fe09de364",
-    "../minter-contract/build/standard-jetton-v2.compiled.json": "7f3349c2c3392e5b438c8e6fd0163f01b87639c9adc612d96ce1658edc12366c",
+    "../minter-contract/build/standard-jetton-v2.compiled.json": "9deb92ed55737d603151c8e31be7c3c9154b7249099fab28c90d873f6a113d59",
     "project-registry-worker.mjs": "88205be84ae068b537b54538237f3a2c91b1a10872575919e0e0ec6dc6e4c6de",
     "projects/project-registry.mjs": "c31ec5b4cfa7c92d86879f691ec12d78cbedbb32399290eb5733df92b8618249",
     "projects/project-registration.mjs": "33efe0d4269084fd4dc3295dc58c2f8f9f282ad8154d2ec5d0cdf8617d953b3d",
@@ -53,9 +53,11 @@
     "projects/migration-account.mjs": "15086d770bc3b17ffe572f7c091b544168c352b5b7f795837db086165c661345",
     "projects/migration-status.mjs": "14885f3733c8289ef6a63550d34ca640690e59e86af5a2e547a3e3715cd509c7",
     "projects/evidence-brand.mjs": "0384aa8632c250aecbfc085d150be71909e3e31f17df71c76dcfb188881b767d",
-    "wizard/preparation-model.mjs": "79f358875d8923ccf659c3cbd57986dc82545b382ddacb021dd356aba0166367",
-    "wizard/model.mjs": "725aab3765abc8b14a243e63711d83f834e5d473ab766f524da38c1967cf3113",
-    "../minter-contract/scripts/migration-package-dispatch-v2.js": "a1c92dda7c78e3a905f6ea73435b152eb66421d4cbc5030a4505ef3435d4a4e4"
+    "wizard/preparation-model.mjs": "702c03755d8428c1a77870fdf45ddd28ecafb366fdbc14b9a51b89175cc5acff",
+    "wizard/model.mjs": "0070c13a9a9932d56e0e76e21ddd50194adbfb4c7c72bd8e45608fcfb8264183",
+    "../minter-contract/scripts/migration-package-dispatch-v2.js": "a1c92dda7c78e3a905f6ea73435b152eb66421d4cbc5030a4505ef3435d4a4e4",
+    "../minter-contract/build/standard-jetton-settlement-wallet.compiled.json": "bef6300e582da90ca51bf8132a99bab41acbb51ce0269597a4173e1a13c2b921",
+    "../minter-contract/build/anlgram-vesting-wallet-standard-v2.compiled.json": "56d9cb9a04bc507256cf167d813cba28606e6d63b66752d95b47cbd5be8cd654"
   },
-  "sha256": "06a52a7dcc2798c8d6f5d267933574d25ff6bc172bf254cd2ba73a4bd193820b"
+  "sha256": "d18caa386848bc93b91c24ffafd56862e31b4017161d3c09850e5f9b97c9c254"
 }

@@ -24,7 +24,7 @@ All financial rows below are closed to public execution. No feature in this cand
 |---|---|---|
 | Standard Jetton V2 deployment and mint | Shared public/private preparation, source-checked artifacts, authenticated Sandbox deployment and initial mint receipt. Underfunded, bounced, duplicate and unauthorized mint paths covered. | No live Standard V2 deployment or mint verified. Requires isolated V5 initialization, fresh fee and ownership proofs, reviewed transport and operation-specific approval. Mint requires its own authenticated deployment and delivered-supply reconciliation. |
 | Distribution | TEP-74 batches target the Standard V2 creator wallet. Sandbox executes exact-precision deliveries. | No live delivery receipts verified. Requires proved custody, per-batch fresh fee and destination checks, one-attempt orchestration and recipient-level receipt reconciliation. |
-| Vesting | Vesting V2 books only authenticated delivery for settlement-wallet tokens. Sandbox covers frozen recipient, restored principal and delayed or duplicate receipts. | No live V2 vesting verified. Standard V2 and deployed legacy schedules remain blocked by the incompatible wallet receipt protocol. |
+| Vesting | Vesting V2 books only authenticated delivery for settlement-wallet tokens, including the opt-in Standard profile described below. Sandbox covers frozen recipient, restored principal and delayed or duplicate receipts. | No live V2 vesting verified. Original Standard wallets and deployed legacy schedules retain their prior receipt limitations. |
 | Curve buy/sell, fees and refunds | Source-compiled lifecycle and authenticated settlement tests exercise buy/sell, 1% Curve fee, reserve conservation, insufficient gas, frozen recipients, lost notifications and idempotent refund evidence. | No live project buy/sell/refund cycle verified. Requires version-aligned genesis, verified activation and transaction-specific final evidence. Historical Curve #2 remains retired and locked. |
 | Graduation | Local 500 TON threshold and reserve/authorization checks, with the existing 80% Curve and 20% DEX allocation. | No live verified graduation. Eligibility does not authorize migration. |
 | STON.fi migration and partial failure | Actual captured STON.fi Router, LPAccount and Pool bytecode executes both legs and produces LP in Sandbox. Tests cover minimum-LP rejection, independent leg failure and a delayed leg recreating LPAccount. | Closed. The official two-leg protocol can delete and recreate LPAccount. The same address or historical getter cannot establish that all obligations closed. Keep `SETTLEMENT_PENDING` and Gate 414. Require exact operation-bound closure for both deposit and return obligations before real user-funded migration. |
@@ -53,6 +53,47 @@ node minter-contract/compile-one-shot-dispatch.js --check
 ```
 
 ## Release checklist
+
+### PR #35 follow-up for Standard vesting and Gate 414
+
+For a new Standard draft, the wizard's optional vesting section can select `walletProfile: "STANDARD_V2_SETTLEMENT"`. Public preparation, private supervision and registry intent recompute the same canonical configuration fingerprint and minter StateInit. Existing drafts keep their prior profile by default. The new profile keeps the Standard V2 minter code and TEP-74 interface, adds the existing authenticated settlement extension to its wallet, and selects a Vesting V2 artifact pinned to that wallet. No deployed schedule or wallet is migrated.
+
+| Artifact | Code cell SHA-256 |
+|---|---|
+| Standard V2 minter, unchanged | `397faa44a7892b3f2eb0da4cf6f2ef04876d121f87f516c91fe3402808831d8c` |
+| Standard V2 settlement-enabled wallet | `464dc9e767cd096f27597f2952569adbf14aac010ae90aa60595b8ce7aabf765` |
+| Vesting V2 for Standard V2 settlement-enabled wallets | `d436ede674ef3c17781dbf8c4a850e57b114342559dabb8a2405dc050bc2cda9` |
+| One-shot Migrator, unchanged | `7df729a4c2fecf3b4dba2fd16936b56d0e35af0c8f0a237b31d60e39ed89dbf1` |
+| One-shot Curve, unchanged | `d6a24fb21edd77152e5f2ae490bab4a09768b8d0ec472b18d371ff35bc4b5473` |
+
+The new Sandbox path deploys and mints the Standard token, funds vesting via TEP-74, authenticates a 1,000-unit cliff delivery, recovers a 3,000-unit downstream bounce without increasing claimed principal, then reconciles a delayed final receipt with a funded query under the same operation ID. The duplicate and forged receipts cannot add principal. Final total supply equals the sum of the creator, vesting and beneficiary wallet balances. A confirmed failed transfer clears that claim and consumes its ID. A subsequent claim uses a new ID. A missing or delayed receipt keeps its existing ID for reconciliation.
+
+The captured STON.fi tests exercise both actual deposit legs, independent leg failure, LP mint and custody, LPAccount deletion and same-address recreation, and a refund whose dispatch precedes actual receipt. The operation ledger can identify local funding, transit and authenticated returns it has booked. The Router, Pool and LPAccount callbacks do not provide an operation-bound terminal barrier proving no delayed leg, recreated LPAccount balance or downstream return remains. A Locker receipt proves historical LP credit only. A refund callback or local wallet debit cannot prove downstream delivery. The contract therefore preserves Gate 414 and `SETTLEMENT_PENDING` when a return or deposit obligation lacks conclusive closure. No contract or provider trust change is introduced for migration. See [official STON.fi LPAccount interface](https://docs.ston.fi/developer-section/dex/smart-contracts/v2/lpaccount).
+
+The reproducible [LPAccount counterexample](../../tests/settlement-runtime/lpaccount-settlement-evidence.test.js) separates these edges:
+
+| Observed edge | Accounting consequence |
+|---|---|
+| Jetton leg arrives before the native leg | The LPAccount holds only the first principal. Its genuine `0x24cfc100` reply can arrive after the account has been deleted and recreated by the delayed native leg. The reply cannot establish the current obligation. |
+| LPAccount forwards both legs to Pool via `0x06ecd527` | The LPAccount is deleted. The Pool may mint LP or recreate the LPAccount if minimum LP is unmet. Missing state and bounced queries cannot establish zero obligations. |
+| LPAccount dispatches a refund | The Migrator's returned-principal counters remain unchanged until authenticated return messages arrive. The same refund body can affect a recreated LPAccount. |
+| One funding leg bounces and the other returns from DEX | The ledger books each asset once under the original operation. Reconciliation preserves the cumulative amounts and Gate 414 still rejects terminal cancellation. |
+| Locker observes LP or later spends unlocked LP | Historical credit remains separate from current wallet holdings and final delivery to an external withdrawal recipient. |
+
+Reproduce the added artifact and lifecycle checks from the repository root.
+
+```text
+node minter-contract/compile-standard-jetton-settlement-wallet.js --check
+node minter-contract/compile-vesting-v2.js --standard --check
+node --test testnet-interface/test/vesting-v2-lifecycle.test.mjs
+node --test tests/settlement-runtime/lpaccount-settlement-evidence.test.js
+```
+
+| Feature | Testnet execution | Mainnet execution |
+|---|---|---|
+| Standard V2 creation, mint and vesting with the new profile | NO-GO until independent review, fresh network-specific preflight and separately authorized live verification | NO-GO |
+| Curve trading and graduation | NO-GO for public use. Existing Sandbox evidence only | NO-GO |
+| STON.fi migration, LP custody and withdrawals | NO-GO. External terminal settlement and final withdrawal delivery remain unproven | NO-GO |
 
 - Use the isolated PR for review. Keep the live GitHub Pages read-only packaging workflow from production main. The inherited development branch has a different whole-checkout artifact rule and must not replace production packaging.
 - Use reviewed environment-specific deployment manifests with explicit chain IDs, artifact hashes, StateInit, provider and origin bindings, and one enablement decision per feature. Keep Mainnet and Testnet ledgers, wallets and approvals separate. No blanket enablement switch.

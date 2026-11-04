@@ -3,7 +3,7 @@ import {WalletContractV5R1} from '@ton/ton';
 import execution from '../execution-version.json' with {type: 'json'};
 import {pinned} from '../recovery/policy.mjs';
 import {prepareProject} from './prepare.mjs';
-import {standardV2Artifacts as artifact,standardV2Code} from './artifacts.mjs';
+import {standardV2Artifacts,standardSettlementArtifacts,standardV2Code} from './artifacts.mjs';
 import {deploymentEdge, hash, hexHash, stateInit} from './project-registration.mjs';
 
 export async function prepareStandardTestnetRelease(draft, publicKey) {
@@ -17,12 +17,13 @@ export async function prepareStandardTestnetRelease(draft, publicKey) {
     throw Error('A separate, matching Testnet V5 creator is required');
   }
   const [deployment, mint] = plan.operations;
+  const artifact = draft.walletProfile ? standardSettlementArtifacts : standardV2Artifacts;
   return {
     schema: 2, executionVersion: execution.sha256, network: '-3', configurationFingerprint: plan.configurationFingerprint,
     scope: 'OFFLINE_STANDARD_JETTON_TESTNET_RELEASE_CANDIDATE', financialSigningEnabled: false, broadcastingEnabled: false,
     operator: {address: plan.creator, walletId: 2147483645, codeHash: hash(wallet.init.code), publicKey},
     minter: plan.accounts.minter,
-    walletCodeHash: hash(standardV2Code('wallet')), artifact,
+    walletCodeHash: plan.walletCodeHash, artifact,
     mintQueryId: String(BigInt('0x'+plan.configurationFingerprint.slice(0,12)) || 1n),
     expectedMintUnits: plan.configuredSupplyUnits, creationCharge: plan.creationCharge,
     deployment: {...deployment, maxMessages: 1, maxAttempts: 1, maximumTotalDebitNano: null,

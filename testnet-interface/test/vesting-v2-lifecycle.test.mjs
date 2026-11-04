@@ -5,14 +5,101 @@ import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {prepareVesting} from '../projects/distribution.mjs';
-import {createDraft} from '../wizard/model.mjs';
+import {createDraft,loadStore,saveDraft} from '../wizard/model.mjs';
+import {prepareProject} from '../projects/prepare.mjs';
+import {prepareStandardTestnetRelease} from '../projects/standard-testnet-release.mjs';
+import {WalletContractV5R1} from '@ton/ton';
 
 const require=createRequire(new URL('../../tests/settlement-runtime/package.json',import.meta.url));
 const {ready,exit}=require('./one-shot-dispatch-support');
-const {createShardAccount}=require('@ton/sandbox');
+const {Blockchain,createShardAccount}=require('@ton/sandbox');
 const core=require('@ton/core');
 const body=(op,q)=>core.beginCell().storeUint(op,32).storeUint(q,64);
 const opcode=message=>message?.body.bits.length>=32?message.body.beginParse().loadUint(32):null;
+
+test('opt-in Standard V2 conserves vested principal through freeze, bounce and delayed authenticated receipt',async()=>{
+  for(const [script,flags] of [['compile-standard-jetton-settlement-wallet.js',[]],['compile-vesting-v2.js',['--standard']]]){
+    execFileSync(process.execPath,[fileURLToPath(new URL('../../minter-contract/'+script,import.meta.url)),'--check',...flags]);
+  }
+  const chain=await Blockchain.create(),owner=await chain.treasury('standard-vesting-owner'),beneficiary=await chain.treasury('standard-vesting-recipient');
+  const d=createDraft();
+  Object.assign(d.metadata,{name:'Standard with receipts',symbol:'SWR',creator:owner.address.toRawString(),supply:'100',decimals:'2'});
+  d.distribution.skip=true;
+  d.allocations.team='40';
+  Object.assign(d.vesting,{enabled:true,beneficiary:beneficiary.address.toRawString(),amount:'40',startDate:'2027-01-01',cliffMonths:'3',durationMonths:'12'});
+  const legacy=await prepareProject(d);
+  d.walletProfile='STANDARD_V2_SETTLEMENT';
+  const values=new Map(),storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
+  saveDraft(storage,d,0);
+  assert.equal(loadStore(storage).projects[0].walletProfile,d.walletProfile);
+  const plan=await prepareProject(d),vesting=plan.vesting;
+  assert.notEqual(plan.configurationFingerprint,legacy.configurationFingerprint);
+  assert.notEqual(plan.accounts.minter.raw,legacy.accounts.minter.raw);
+  assert.equal(plan.accounts.minter.codeHash,legacy.accounts.minter.codeHash);
+  assert.equal(legacy.vesting.settlementVersion,1);
+  assert.equal(vesting.settlementVersion,2);
+  assert.equal(plan.financialSigningEnabled,false);
+  const publicKey=Buffer.alloc(32,17);
+  const operator=WalletContractV5R1.create({publicKey,walletId:{networkGlobalId:-3,
+    context:{workchain:0,walletVersion:'v5r1',subwalletNumber:0}}});
+  const supervisorDraft={...d,metadata:{...d.metadata,creator:operator.address.toRawString()}};
+  const shared=await prepareProject(supervisorDraft);
+  const release=await prepareStandardTestnetRelease(supervisorDraft,publicKey.toString('hex'));
+  assert.deepEqual(release.deployment.message,shared.operations[0].message);
+  assert.equal(release.walletCodeHash,shared.walletCodeHash);
+
+  chain.now=vesting.schedule.start;
+  const addr=value=>core.Address.parse(value);
+  const send=(who,message)=>who.send({to:addr(message.address),value:BigInt(message.amount),
+    ...(message.stateInit?{init:core.loadStateInit(core.Cell.fromBase64(message.stateInit).beginParse())}:{}),
+    ...(message.payload?{body:core.Cell.fromBase64(message.payload)}:{})});
+  for(const operation of plan.operations) assert(!(await send(owner,operation.message)).transactions.some(tx=>tx.description.aborted));
+  await send(owner,{address:vesting.address,amount:'100000000',stateInit:vesting.stateInit});
+  assert(exit(await send(owner,vesting.deposit),addr(vesting.address),0));
+  const master=addr(plan.accounts.minter.raw),vest=addr(vesting.raw);
+  const wallet=async who=>(await chain.runGetMethod(master,'get_wallet_address',
+    [{type:'slice',cell:core.beginCell().storeAddress(who).endCell()}])).stackReader.readAddress();
+  const source=await wallet(owner.address),vWallet=await wallet(vest),recipient=await wallet(beneficiary.address);
+  const balance=async a=>(await chain.runGetMethod(a,'get_wallet_data')).stackReader.readBigNumber();
+  const pending=async()=>(await chain.runGetMethod(vest,'get_pending_claim')).stack.map(x=>x.value);
+  const claimed=async()=>(await chain.runGetMethod(vest,'get_vesting_data')).stack[1].value;
+  const request=(op,q)=>({to:vest,value:100000000n,bounce:true,body:body(op,q).endCell()});
+  chain.now=vesting.schedule.cliffTimestamp;
+  assert(exit(await beneficiary.send(request(0x414e4c76,1n)),vest,0));
+  assert.equal(await claimed(),1000n);
+  assert.equal(await balance(recipient),1000n);
+  chain.now=vesting.schedule.endTimestamp;
+  const active=await chain.getContract(recipient),saved=active.account;
+  const frozen=createShardAccount({address:recipient,code:core.Cell.EMPTY,data:core.Cell.EMPTY,balance:active.balance});
+  frozen.account.storage.state={type:'frozen',stateHash:1n};
+  await chain.setShardAccount(recipient,frozen);
+  const failed=await beneficiary.send(request(0x414e4c76,2n));
+  assert(failed.transactions.some(tx=>tx.inMessage?.info.dest?.equals(recipient)&&tx.description.aborted));
+  assert.equal(await balance(vWallet),3000n);
+  assert.equal(await claimed(),1000n);
+  assert.deepEqual(await pending(),[2n,0n]);
+  assert(exit(await beneficiary.send(request(0x414e4c76,2n)),vest,409));
+  await chain.setShardAccount(recipient,saved);
+  const next=core.external({to:beneficiary.address,body:beneficiary.createTransfer({messages:[
+    core.internal(request(0x414e4c76,3n))]})});
+  let delayed;
+  for await(const tx of await chain.sendMessageIter(next,{allowParallel:true})){
+    delayed=[...tx.outMessages.values()].find(m=>m.info.dest.equals(vest)&&opcode(m)===0x414e5304);
+    if(delayed)break;
+  }
+  assert(delayed);
+  assert.deepEqual(await pending(),[3n,3000n]);
+  assert.equal(await claimed(),1000n);
+  assert.equal(await balance(recipient),4000n);
+  assert(exit(await owner.send({to:vest,value:50000000n,body:delayed.body}),vest,403));
+  assert(exit(await beneficiary.send(request(0x414e5305,3n)),vest,0));
+  await chain.sendMessage(delayed);
+  assert.equal(await claimed(),4000n);
+  assert.deepEqual(await pending(),[3n,0n]);
+  const supply=(await chain.runGetMethod(master,'get_jetton_data')).stackReader.readBigNumber();
+  assert.equal(supply,10000n);
+  assert.equal(await balance(source)+await balance(vWallet)+await balance(recipient),supply);
+});
 
 test('source-compiled creation, trading, graduation and DEX custody keep terminal settlement pending while Vesting V2 reconciles',async()=>{
   execFileSync(process.execPath,[fileURLToPath(new URL('../../minter-contract/compile-vesting-v2.js',import.meta.url)),'--check']);

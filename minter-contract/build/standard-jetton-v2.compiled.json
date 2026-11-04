@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "generatorSha256": "1746ff02eca8cace143bc3fbf2e223b175a6342226a5d4dccb3b6d10c4a636f7",
+  "generatorSha256": "acb7aef092fe4482a7c9184cba9995dcc680efc6101c1fcc07607782fa10c980",
   "minter": {
     "target": "standard-jetton-minter-v2.fc",
     "sources": {

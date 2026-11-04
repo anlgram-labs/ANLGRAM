@@ -41,11 +41,13 @@ function fill(){
  $('wizard-mode').value=draft.mode;
  for(const [id,[section,key]]of Object.entries(fields))$(id).value=section==='metadata'&&key==='supply'?effective(draft).supply:section==='metadata'&&key==='decimals'?String(effective(draft).decimals):section==='metadata'&&key==='logo'&&draft.metadata.logo.startsWith('data:')?'':draft[section][key];
  $('wizard-skip-distribution').checked=draft.distribution.skip;$('wizard-vesting-enabled').checked=draft.vesting.enabled;
+ $('wizard-standard-settlement').checked=draft.walletProfile==='STANDARD_V2_SETTLEMENT';
  for(const radio of document.querySelectorAll('[name="dist-type"]'))radio.checked=radio.value===draft.distribution.mode;
  render();showStage(false);
 }
 function render(){
  const launch=draft.mode==='launchpad',e=effective(draft),result=validate(draft),prep=preparation.getPrepared(draft.id),prepStatus=preparation.getStatus(draft.id);
+ $('wizard-standard-settlement-option').hidden=launch;
  const migInfo=migrationSummary(draft,prep,prepStatus),lpInfo=lpLockerSummary(draft,prep,prepStatus);
  $('labs-card1-supply').readOnly=launch;$('wizard-decimals').readOnly=launch;
  for(const card of document.querySelectorAll('#wizard-mode-cards [data-mode]'))card.classList.toggle('active',card.dataset.mode===draft.mode);
@@ -128,7 +130,12 @@ function showStage(focus=true){
 }
 function go(n){if(n<1||n>6)return;draft.stage=n;render();if(save(false))text('wizard-status','Configuration progress saved locally. No transaction was requested.');showStage();}
 for(const [id,[section,key]]of Object.entries(fields))$(id).addEventListener('input',()=>{if(section==='metadata'&&['supply','decimals'].includes(key)&&draft.mode==='launchpad')return;draft[section][key]=$(id).value;if(section==='trade'){$('curve-sim-card').hidden=true;text('curve-preview','Amount changed; recalculate the configuration preview. No live trading quote exists.');}if(key==='symbol'){draft[section][key]=draft[section][key].toUpperCase();$(id).value=draft[section][key];}text('wizard-status','Unsaved configuration changes.');render();});
-$('wizard-mode').onchange=()=>{draft.mode=$('wizard-mode').value;$('curve-sim-card').hidden=true;fill();text('wizard-status','Mode changed; Standard supply/precision and optional settings were retained. Save to persist.');};
+$('wizard-mode').onchange=()=>{draft.mode=$('wizard-mode').value;if(draft.mode==='launchpad')delete draft.walletProfile;$('curve-sim-card').hidden=true;fill();text('wizard-status','Mode changed. Review the selected wallet profile before saving.');};
+$('wizard-standard-settlement').onchange=()=>{
+ if($('wizard-standard-settlement').checked&&draft.mode==='standard')draft.walletProfile='STANDARD_V2_SETTLEMENT';
+ else delete draft.walletProfile;
+ text('wizard-status','Unsaved wallet profile change. A new preparation will derive different contract addresses.');render();
+};
 for(const card of document.querySelectorAll('#wizard-mode-cards [data-mode]')){const pick=()=>{if(draft.mode===card.dataset.mode)return;$('wizard-mode').value=card.dataset.mode;$('wizard-mode').onchange();};card.onclick=pick;card.onkeydown=e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();pick();}};}
 $('wizard-skip-distribution').onchange=()=>{draft.distribution.skip=$('wizard-skip-distribution').checked;render();};$('wizard-vesting-enabled').onchange=()=>{draft.vesting.enabled=$('wizard-vesting-enabled').checked;render();};
 for(const radio of document.querySelectorAll('[name="dist-type"]'))radio.onchange=()=>{draft.distribution.mode=radio.value;render();};

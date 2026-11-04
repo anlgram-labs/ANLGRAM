@@ -14,5 +14,5 @@
     "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8",
     "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653"
   },
-  "generatorSha256": "c9c06b5f51bdf76a40f8c091ff8a746dd31621e93c8101cae8cf6e2c16726923"
+  "generatorSha256": "6b94d7e3ceea655672eb87877cf09267d4109dd91bb5bcffdb24a304b3db8e62"
 }
