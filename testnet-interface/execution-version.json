@@ -2,7 +2,7 @@
   "schema": 1,
   "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
   "sources": {
-    "build.mjs": "cd18f8d8846fcf7934aedc65484d2ef3e4a2359d1ea347c1214784ce253f7887",
+    "build.mjs": "0dd90420da307ae47abce4e6082671484f67d151d1326b26e9c062c25c44f7dd",
     "app.js": "f2214539064b7532925298b9bebbb26a79c3e52813aff27b08a696a7857a598b",
     "client-entry.mjs": "26afc78634cc85868ba390377893e1bd319f9962b0c6599482416ff07d33e40d",
     "single-attempt.mjs": "2a3cd10735dda1324a0d044be259498e5b6bef17620c8593878d5f3b9500839d",
@@ -34,7 +34,9 @@
     "../lib/v5-deployment-receipt.js": "900d30bc7856c5b3373dea3acc9da6a46b541d4576699beb85ae13285d5587c7",
     "projects/standard-testnet-release.mjs": "822d0ded9e2d6b4ab9e4acd80238679164d82abe194a3d232e37f9ac1edab61d",
     "projects/prepare.mjs": "fdb2d0600a1175d2ee689b99c10a3fc9cc59ea0ab918c0ac001e71316f258c06",
-    "projects/artifacts.mjs": "daac99f82962c04cc7d7b7357732472dcfbf99aa1e749a76e5d1161e49d84b34",
+    "projects/artifacts.mjs": "4d0ec5fad645b9c055aad1637cd12670482cfdc3a816b1e8a28b2aab0fba3495",
+    "projects/distribution.mjs": "0f3cf5523c25ee0e371b69badbc57e49ace8f05b34be5713793db4bac82ceaa6",
+    "../minter-contract/build/anlgram-vesting-wallet-v2.compiled.json": "eb00352d34268c1ae757bbbcd0986095bb4757911bab116ce9d06ec0d5f7bbf1",
     "projects/standard-registration.mjs": "9af69a3efad698ff03c32fbd64cf08dd047f510af6e1051ce5b22d4e74083736",
     "projects/standard-deployment-lock.mjs": "6a7f297f6a0e41fb8231d8e850b2b7ece66f55b07764dae92d9b34f2be952022",
     "projects/standard-supervisor.mjs": "eb209e577518efa19f21622e7a4122dd01cf10e3029ddf0991861e2936308a19",
@@ -55,5 +57,5 @@
     "wizard/model.mjs": "725aab3765abc8b14a243e63711d83f834e5d473ab766f524da38c1967cf3113",
     "../minter-contract/scripts/migration-package-dispatch-v2.js": "a1c92dda7c78e3a905f6ea73435b152eb66421d4cbc5030a4505ef3435d4a4e4"
   },
-  "sha256": "a6498b40cde144e937be06bea9206f44f5ed5889e8e2c243a0cc9a02bea54779"
+  "sha256": "06a52a7dcc2798c8d6f5d267933574d25ff6bc172bf254cd2ba73a4bd193820b"
 }
