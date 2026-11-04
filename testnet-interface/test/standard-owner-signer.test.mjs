@@ -15,6 +15,7 @@ import {prepareStandardTestnetRelease,standardDeploymentIdentity} from '../proje
 import {buildWalletInitialization,prepareWalletInitialization} from '../projects/standard-wallet-initialization.mjs';
 import {exerciseInitializationBroadcast,reconcileInitialization,validateSignedInitialization,walletBroadcastEnabled}
   from '../projects/standard-wallet-broadcast.mjs';
+import {projectProviders} from '../projects/project-providers.mjs';
 import {cryptBackup} from '../projects/standard-owner-backup.mjs';
 import {createDraft} from '../wizard/model.mjs';
 
@@ -87,14 +88,24 @@ test('funded Testnet V5R1 initializes in Sandbox with zero outgoing messages and
           code_hash:after.accountState.state.code.hash().toString('base64'),data_hash:after.accountState.state.data.hash().toString('base64')}}}};
     }
   };
+  const validInput={wallet,ownerPolicyCeilingNano:String(fees)};
+  for (const [change,code] of [
+    [()=>null,'EMULATION_RESPONSE_INVALID'],
+    [trace=>({...trace,is_incomplete:true}),'EMULATION_INCOMPLETE'],
+    [trace=>({...trace,mc_block_seqno:8}),'EMULATION_REFERENCE_MISMATCH'],
+    [trace=>({...trace,transactions:{wallet:{...trace.transactions.wallet,in_msg:{message_content:{hash:{}}}}}}),'EMULATION_TRACE_MISMATCH']
+  ]) {
+    await assert.rejects(prepareWalletInitialization(validInput,{...providers,
+      emulateUnsigned:async request=>change(await providers.emulateUnsigned(request))},()=>chain.now),{code});
+  }
   const quote=await prepareWalletInitialization({wallet,ownerPolicyCeilingNano:String(fees)},providers,()=>chain.now);
   assert.equal(quote.outgoingMessages,0);
   assert.equal(quote.modeledFeeNano,String(fees));
-  await assert.rejects(prepareWalletInitialization({wallet,ownerPolicyCeilingNano:'1'},providers,()=>chain.now),/above policy ceiling/);
-  await assert.rejects(prepareWalletInitialization({wallet:{...wallet,network:'-239'},ownerPolicyCeilingNano:String(fees)},providers,()=>chain.now),/Wrong V5R1/);
+  await assert.rejects(prepareWalletInitialization({wallet,ownerPolicyCeilingNano:'1'},providers,()=>chain.now),{code:'FEE_POLICY_EXCEEDED'});
+  await assert.rejects(prepareWalletInitialization({wallet:{...wallet,network:'-239'},ownerPolicyCeilingNano:String(fees)},providers,()=>chain.now),{code:'INPUT_WALLET_INVALID'});
   await assert.rejects(prepareWalletInitialization({wallet,ownerPolicyCeilingNano:String(fees)},{
     ...providers,observeAddress:async()=>({state:'active',balance:String(balance)})
-  },()=>chain.now),/funded and uninitialized/);
+  },()=>chain.now),{code:'ACCOUNT_OBSERVATION_MISMATCH'});
 
   const prepared={wallet,quote};
   const signed={status:'SIGNED_NOT_BROADCAST',fingerprint:quote.fingerprint,messageHash:result.messageHash,boc:result.boc};
@@ -209,4 +220,45 @@ test('wallet broadcast CLI gate stops before reading files',()=>{
   assert.equal(result.status,1);
   assert.equal(result.stdout,'');
   assert.match(result.stderr,/hard-disabled/);
+});
+
+
+test('prepare-init CLI distinguishes missing input, invalid JSON and missing provider configuration',()=>{
+  const cli=fileURLToPath(new URL('../standard-owner-signer-cli.mjs',import.meta.url));
+  const dir=mkdtempSync(join(tmpdir(),'anlgram-preflight-diag-'));
+  try {
+    const path=join(dir,'input.json');
+    const run=()=>{
+      const result=spawnSync(process.execPath,[cli,'prepare-init',path],{encoding:'utf8',
+        env:{...process.env,TONCENTER_TESTNET_API_KEY:'',TONAPI_TESTNET_API_KEY:''}});
+      assert.equal(result.status,1);
+      assert.equal(result.stdout,'');
+      return JSON.parse(result.stderr);
+    };
+    assert.equal(run().code,'INPUT_FILE_UNREADABLE');
+    writeFileSync(path,'{fixture-private-content');
+    assert.equal(run().code,'INPUT_JSON_INVALID');
+    writeFileSync(path,'\uFEFF{}');
+    assert.deepEqual(run(),{code:'PROVIDER_KEY_MISSING',financialSigningEnabled:false,broadcastingEnabled:false,
+      provider:'TONCENTER_TESTNET'});
+  } finally { rmSync(dir,{recursive:true}); }
+});
+
+test('preflight provider diagnostics discard raw response contents',async()=>{
+  const env={TONCENTER_TESTNET_API_KEY:'fixture-center',TONAPI_TESTNET_API_KEY:'fixture-tonapi'};
+  for (const [status,code] of [[401,'PROVIDER_AUTH_REJECTED'],[403,'PROVIDER_AUTH_REJECTED'],
+    [429,'PROVIDER_RATE_LIMITED'],[503,'PROVIDER_UNAVAILABLE'],[200,'PROVIDER_RESPONSE_INVALID']]) {
+    const p=projectProviders(env,async()=>new Response('fixture-private-content',{status,headers:{'Retry-After':'4'}}));
+    await assert.rejects(p.emulateUnsigned({}),error=>{
+      assert.equal(error.code,code);
+      assert.equal(error.operation,'emulateTrace');
+      assert.equal(error.provider,'TONCENTER_TESTNET');
+      assert.equal(error.status,status);
+      if(status===429) assert.equal(error.retryMs,4000);
+      assert.doesNotMatch(JSON.stringify(error)+error.message,/fixture/);
+      return true;
+    });
+  }
+  const p=projectProviders(env,async()=>Response.json({ok:false,code:403,error:'fixture-private-content'}));
+  await assert.rejects(p.observeAddress('0:'+'11'.repeat(32)),{code:'PROVIDER_AUTH_REJECTED',operation:'getAddressInformation',rpcCode:403,status:undefined});
 });

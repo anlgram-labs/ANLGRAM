@@ -38,7 +38,7 @@
     "projects/standard-supervisor.mjs": "eb209e577518efa19f21622e7a4122dd01cf10e3029ddf0991861e2936308a19",
     "projects/standard-authorization.mjs": "fbe5b73f477417c7f05de40857845588fa46035f0e039a62768e2a823726d402",
     "projects/standard-transport-fixture.mjs": "1f3fe4176869bfb05d20ed59e20a71a41e44109963ad0ae20e0d7e7579c028e9",
-    "projects/project-providers.mjs": "c38572f42a8dbd65be3d6ba1ad558cf9f742a1fc5a5771194eda0951a8150298",
+    "projects/project-providers.mjs": "fe8a7057c9b6abc894a2f381b7ff79187ac9506697b0da456f32b16dbeb82f62",
     "../lib/v5-minter-trace.js": "5f35035e8be2810dfcf7c23e30a71846af4e1576c57e20e80ffd876fe09de364",
     "../minter-contract/build/standard-jetton-v2.compiled.json": "7f3349c2c3392e5b438c8e6fd0163f01b87639c9adc612d96ce1658edc12366c",
     "project-registry-worker.mjs": "88205be84ae068b537b54538237f3a2c91b1a10872575919e0e0ec6dc6e4c6de",
@@ -53,5 +53,5 @@
     "wizard/model.mjs": "725aab3765abc8b14a243e63711d83f834e5d473ab766f524da38c1967cf3113",
     "../minter-contract/scripts/migration-package-dispatch-v2.js": "a1c92dda7c78e3a905f6ea73435b152eb66421d4cbc5030a4505ef3435d4a4e4"
   },
-  "sha256": "62da9d097d77138887852b9875a30586cd1134ecd71e6b2adea9f1cc42c60b73"
+  "sha256": "e2d38098bcf435191b6ef939798a27f9b3c54debe6b17696ca7449eed7654226"
 }

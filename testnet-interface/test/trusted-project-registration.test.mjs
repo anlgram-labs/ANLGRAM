@@ -77,7 +77,7 @@ test('provider client authenticates captured account proof and anchored raw hist
   assert.equal((await providers.history(pinned.operator, cp)).rows.length, 5);
   assert.deepEqual((await providers.account(pinned.operator, cp.reference)).proof, cp.proof);
   corrupt = true;
-  await assert.rejects(providers.account(pinned.operator), /masterchain hashes disagree/);
+  await assert.rejects(providers.account(pinned.operator), {code:'ACCOUNT_PROOF_REJECTED',provider:'TONAPI_TESTNET'});
   await assert.rejects(providers.account('0:' + '44'.repeat(32)));
   assert.throws(() => projectProviders({}), /Authenticated Testnet providers/);
   await assert.rejects(projectProviders(env, async () => new Response('', {status: 429, headers: {'Retry-After': '4'}}))

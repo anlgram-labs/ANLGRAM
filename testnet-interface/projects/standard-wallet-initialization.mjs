@@ -4,6 +4,8 @@ import {createHash} from 'node:crypto';
 import {pinned} from '../recovery/policy.mjs';
 
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const matchesHash = (value,expected) => typeof value === 'string' &&
+  /^[A-Za-z0-9+/]{43}=$/.test(value) && Buffer.from(value,'base64').toString('hex')===expected;
 const hash = cell => cell.hash().toString('hex');
 const exact = (value,message) => { if (!value) throw Error(message); };
 
@@ -36,43 +38,77 @@ export async function buildWalletInitialization(wallet, validUntil, signer, now)
   return {boc:cell.toBoc().toString('base64'),bodyHash:hash(body),stateInitHash:hash(init),messageHash:hash(cell)};
 }
 
+export class InitPreflightError extends Error {
+  constructor(code,message) { super(message); this.code=code; }
+}
+
+const check = (value,code,message) => { if (!value) throw new InitPreflightError(code,message); };
+
 export async function prepareWalletInitialization({wallet,ownerPolicyCeilingNano,validUntil}, providers,
   clock=()=>Math.floor(Date.now()/1000)) {
   const started = clock(), expiry = validUntil ?? started+45;
-  const contract = initializationWallet(wallet);
-  exact(typeof ownerPolicyCeilingNano === 'string' && /^[1-9][0-9]{0,19}$/.test(ownerPolicyCeilingNano),'Explicit fee ceiling required');
+  let contract;
+  try { contract = initializationWallet(wallet); }
+  catch { throw new InitPreflightError('INPUT_WALLET_INVALID','Invalid initialization wallet'); }
+  check(Number.isSafeInteger(expiry) && expiry>started && expiry<=started+60 && expiry<=0xffffffff,
+    'INPUT_EXPIRY_INVALID','Invalid initialization expiry');
+  check(typeof ownerPolicyCeilingNano === 'string' && /^[1-9][0-9]{0,19}$/.test(ownerPolicyCeilingNano),'INPUT_FEE_CEILING_INVALID','Explicit fee ceiling required');
   const [included, observed] = await Promise.all([providers.account(wallet.operator),providers.observeAddress(wallet.operator)]);
-  const cell = core.Cell.fromBoc(Buffer.from(included.raw.state,'hex'))[0], slice = cell.beginParse();
-  exact(slice.loadBit(),'Funded account required');
-  const account = core.loadAccount(slice);
-  slice.endParse();
+  let cell,account;
+  try {
+    cell = core.Cell.fromBoc(Buffer.from(included.raw.state,'hex'))[0];
+    const slice = cell.beginParse();
+    check(slice.loadBit(),'ACCOUNT_NOT_FUNDED_UNINITIALIZED','Funded account required');
+    account = core.loadAccount(slice);
+    slice.endParse();
+  } catch (error) {
+    if (error instanceof InitPreflightError) throw error;
+    throw new InitPreflightError('ACCOUNT_RESPONSE_INVALID','Invalid included account response');
+  }
+  check(['uninitialized','active','frozen'].includes(observed?.state) &&
+    typeof observed.balance === 'string' && /^\d+$/.test(observed.balance),
+    'ACCOUNT_RESPONSE_INVALID','Invalid provider account response');
   const balance = account.storage.balance.coins;
-  exact(account.addr.equals(contract.address) && account.storage.state.type === 'uninit' &&
-    observed.state === 'uninitialized' && !observed.code && !observed.data && observed.balance === String(balance) &&
-    balance > 0n && hash(cell) === included.proof.accountHash,'Wallet must be funded and uninitialized');
+  check(account.addr.equals(contract.address) && hash(cell)===included.proof.accountHash,
+    'ACCOUNT_PROOF_MISMATCH','Account identity or hash differs from proof');
+  check(account.storage.state.type==='uninit' && balance>0n,
+    'ACCOUNT_NOT_FUNDED_UNINITIALIZED','Wallet must be funded and uninitialized');
+  check(observed.state==='uninitialized' && !observed.code && !observed.data && observed.balance===String(balance),
+    'ACCOUNT_OBSERVATION_MISMATCH','Wallet must be funded and uninitialized in both observations');
+  check(Math.abs(clock()-included.proof.chainTime)<=15 && clock()-started<=15 && clock()<expiry,
+    'ACCOUNT_CHECKPOINT_STALE','Wallet checkpoint is stale');
   const unsigned = await buildWalletInitialization(wallet,expiry,async()=>Buffer.alloc(64),clock());
   const simulation = await providers.emulateUnsigned({boc:unsigned.boc,ignore_chksig:true,include_code_data:true,with_actions:false});
-  const txs = Object.values(simulation.transactions ?? {}), tx = txs[0];
-  exact(simulation.is_incomplete === false && simulation.mc_block_seqno === included.proof.masterchainSeqno &&
-    clock()-started <= 15 && Math.abs(clock()-included.proof.chainTime)<=15 && clock()<expiry &&
-    txs.length===1 && core.Address.parse(tx.account).equals(contract.address) && tx.emulated === true &&
+  check(simulation && typeof simulation.is_incomplete === 'boolean' && Number.isSafeInteger(simulation.mc_block_seqno) &&
+    simulation.transactions && typeof simulation.transactions === 'object',
+    'EMULATION_RESPONSE_INVALID','Invalid emulator response');
+  check(!simulation.is_incomplete,'EMULATION_INCOMPLETE','Incomplete emulation');
+  check(simulation.mc_block_seqno === included.proof.masterchainSeqno,'EMULATION_REFERENCE_MISMATCH','Emulation block differs');
+  check(clock()-started<=15 && Math.abs(clock()-included.proof.chainTime)<=15 && clock()<expiry,
+    'EMULATION_STALE','Emulation exceeded freshness window');
+  const txs = Object.values(simulation.transactions), tx = txs[0];
+  let txAddress;
+  try { txAddress = core.Address.parse(tx?.account); } catch { /* Reject malformed trace below. */ }
+  check(txs.length===1 && txAddress?.equals(contract.address) && tx.emulated === true &&
     tx.orig_status==='uninit' && tx.end_status==='active' && tx.description?.aborted===false &&
-    tx.description.compute_ph?.success===true && tx.description.compute_ph.exit_code===0 &&
+    tx.description?.compute_ph?.success===true && tx.description.compute_ph.exit_code===0 &&
     (!tx.description.action || (tx.description.action.success===true && tx.description.action.result_code===0)) &&
     Array.isArray(tx.out_msgs) && tx.out_msgs.length===0 &&
-    Buffer.from(tx.in_msg?.message_content?.hash ?? '','base64').toString('hex')===unsigned.bodyHash &&
-    Buffer.from(tx.in_msg?.init_state?.hash ?? '','base64').toString('hex')===unsigned.stateInitHash &&
-    Buffer.from(tx.account_state_after?.code_hash ?? '','base64').toString('hex')===wallet.walletCodeHash &&
+    matchesHash(tx.in_msg?.message_content?.hash,unsigned.bodyHash) &&
+    matchesHash(tx.in_msg?.init_state?.hash,unsigned.stateInitHash) &&
+    matchesHash(tx.account_state_after?.code_hash,wallet.walletCodeHash) &&
     tx.account_state_before?.balance === String(balance) &&
-    /^\d+$/.test(tx.account_state_after?.balance ?? '') && /^[1-9][0-9]*$/.test(tx.total_fees ?? ''),
-    'Initialization emulation did not match fresh Testnet state');
+    typeof tx.account_state_after?.balance==='string' && /^\d+$/.test(tx.account_state_after.balance) &&
+    typeof tx.total_fees==='string' && /^[1-9][0-9]*$/.test(tx.total_fees),
+    'EMULATION_TRACE_MISMATCH','Initialization emulation did not match fresh Testnet state');
   const expected = core.beginCell().storeBit(true).storeUint(1,32).storeInt(wallet.walletId,32)
     .storeBuffer(Buffer.from(wallet.publicKey,'hex')).storeBit(false).endCell();
-  exact(Buffer.from(tx.account_state_after.data_hash ?? '','base64').toString('hex')===hash(expected),
-    'Unexpected initialized V5R1 state');
+  check(matchesHash(tx.account_state_after.data_hash,hash(expected)),
+    'EMULATION_STATE_MISMATCH','Unexpected initialized V5R1 state');
   const fee = BigInt(tx.total_fees);
-  exact(balance-BigInt(tx.account_state_after.balance)===fee && fee<balance && fee<=BigInt(ownerPolicyCeilingNano),
-    'Initialization fee mismatch or above policy ceiling');
+  check(balance-BigInt(tx.account_state_after.balance)===fee && fee<balance,
+    'EMULATION_FEE_MISMATCH','Initialization fee accounting mismatch');
+  check(fee<=BigInt(ownerPolicyCeilingNano),'FEE_POLICY_EXCEEDED','Initialization fee above policy ceiling');
   const quote = {network:'-3',operator:wallet.operator,publicKey:wallet.publicKey,walletId:wallet.walletId,
     stateInitHash:unsigned.stateInitHash,expectedDataHash:hash(expected),seqno:0,expectedSeqno:1,validUntil:expiry,
     outgoingMessages:0,balanceNano:String(balance),modeledFeeNano:String(fee),ownerPolicyCeilingNano,

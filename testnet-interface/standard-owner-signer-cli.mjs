@@ -7,8 +7,8 @@ import {backupPath,withBackupWords} from './projects/standard-owner-backup.mjs';
 import {recoverStandardPublicWallet} from './projects/standard-owner-wallet.mjs';
 import {localApprovalBytes,localApprovalScheme} from './projects/standard-authorization.mjs';
 import {standardRegistrationIntent} from './projects/standard-registration.mjs';
-import {buildWalletInitialization,prepareWalletInitialization} from './projects/standard-wallet-initialization.mjs';
-import {projectProviders} from './projects/project-providers.mjs';
+import {buildWalletInitialization,prepareWalletInitialization,InitPreflightError} from './projects/standard-wallet-initialization.mjs';
+import {projectProviders,ProjectProviderError} from './projects/project-providers.mjs';
 
 const signingEnabled = false; // Requires separate review and authorization to change.
 const now = () => Math.floor(Date.now()/1000);
@@ -25,18 +25,26 @@ async function readPublic(path) {
   return JSON.parse(text);
 }
 
+const [command,path,backup,...extra] = process.argv.slice(2);
 try {
-  const [command,path,backup,...extra] = process.argv.slice(2);
   if (!path || extra.length || !['prepare-init','sign-approval','sign-init'].includes(command)) throw Error('Invalid command');
   if (command !== 'prepare-init' && (!signingEnabled || !process.stdin.isTTY || !backup)) {
     throw Error('Owner signing is hard-disabled');
   }
   if (command === 'prepare-init' && backup) throw Error('Read-only initialization quote accepts public input only');
-  const request = await readPublic(path);
   if (command === 'prepare-init') {
+    let text;
+    try { text = await readFile(path,'utf8'); }
+    catch { throw new InitPreflightError('INPUT_FILE_UNREADABLE'); }
+    if (text.length>131072) throw new InitPreflightError('INPUT_FILE_TOO_LARGE');
+    let request;
+    try { request = JSON.parse(text.replace(/^\uFEFF/,'')); }
+    catch { throw new InitPreflightError('INPUT_JSON_INVALID'); }
+    if (!request || typeof request !== 'object' || Array.isArray(request)) throw new InitPreflightError('INPUT_JSON_INVALID');
     const quote = await prepareWalletInitialization(request,projectProviders(process.env));
     console.log(JSON.stringify({wallet:request.wallet,quote},null,2));
   } else {
+    const request = await readPublic(path);
     const target = await backupPath(backup);
     const output = await withBackupWords(target,async words=>{
       const wallet = await recoverStandardPublicWallet(words);
@@ -75,8 +83,22 @@ try {
     });
     console.log(JSON.stringify(output,null,2));
   }
-} catch {
-  console.error(signingEnabled ? 'Owner signer stopped. Preserve any pending marker and reconcile before further action.'
-    : 'Owner signer stopped. Signing is hard-disabled in this build. Only prepare-init with public input is available.');
+} catch (error) {
+  if (command==='prepare-init') {
+    const diagnostic = {code:error instanceof InitPreflightError || error instanceof ProjectProviderError ?
+      error.code : (!path || backup || extra.length ? 'INPUT_USAGE_INVALID' : 'PREFLIGHT_UNVERIFIED'),
+      financialSigningEnabled:false,broadcastingEnabled:false};
+    if (error instanceof ProjectProviderError) {
+      diagnostic.provider = error.provider;
+      if (error.operation) diagnostic.operation = error.operation;
+      if (Number.isInteger(error.status)) diagnostic.httpStatus = error.status;
+      if (Number.isInteger(error.rpcCode)) diagnostic.rpcCode = error.rpcCode;
+      if (Number.isSafeInteger(error.retryMs) && error.retryMs>0) diagnostic.retryAfterMs = error.retryMs;
+    }
+    console.error(JSON.stringify(diagnostic));
+  } else {
+    console.error(signingEnabled ? 'Owner signer stopped. Preserve any pending marker and reconcile before further action.'
+      : 'Owner signer stopped. Signing is hard-disabled in this build.');
+  }
   process.exitCode = 1;
 }
