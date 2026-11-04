@@ -74,11 +74,14 @@ test('funded Testnet V5R1 initializes in Sandbox with zero outgoing messages and
   assert.ok(replay instanceof Error || replay.transactions.every(t=>t.description.aborted));
   const fees=balance-after.balance;
   const providers={
-    account:async()=>({raw:{state:account.toBoc().toString('hex')},proof:{accountHash:account.hash().toString('hex'),chainTime:chain.now,masterchainSeqno:7}}),
+    account:async()=>({raw:{state:account.toBoc().toString('hex')},proof:{accountHash:account.hash().toString('hex'),
+      chainTime:chain.now,masterchainSeqno:7,masterchainRootHash:'11'.repeat(32),masterchainFileHash:'12'.repeat(32),
+      lastTransactionHash:'ab'.repeat(32),lastTransactionLt:'123',proofInclusionVerified:true}}),
     observeAddress:async()=>({state:'uninitialized',balance:String(balance)}),
     emulateUnsigned:async request=>{
       const {body,init}=core.loadMessage(core.Cell.fromBase64(request.boc).beginParse());
       assert.equal(request.ignore_chksig,true);
+      assert.equal(request.mc_block_seqno,7);
       assert.equal(body.beginParse().skip(body.bits.length-512).loadBuffer(64).equals(Buffer.alloc(64)),true);
       return {is_incomplete:false,mc_block_seqno:7,transactions:{wallet:{account:wallet.operator,emulated:true,
         orig_status:'uninit',end_status:'active',description:{aborted:false,compute_ph:{success:true,exit_code:0}},
@@ -92,13 +95,45 @@ test('funded Testnet V5R1 initializes in Sandbox with zero outgoing messages and
   for (const [change,code] of [
     [()=>null,'EMULATION_RESPONSE_INVALID'],
     [trace=>({...trace,is_incomplete:true}),'EMULATION_INCOMPLETE'],
-    [trace=>({...trace,mc_block_seqno:8}),'EMULATION_REFERENCE_MISMATCH'],
+    [trace=>({...trace,mc_block_seqno:6}),'EMULATION_REFERENCE_MISMATCH'],
+    [trace=>({...trace,mc_block_seqno:8}),'EMULATION_REFERENCE_UNVERIFIED'],
+    [trace=>({...trace,mc_block_seqno:'7'}),'EMULATION_RESPONSE_INVALID'],
     [trace=>({...trace,transactions:{wallet:{...trace.transactions.wallet,in_msg:{message_content:{hash:{}}}}}}),'EMULATION_TRACE_MISMATCH']
   ]) {
     await assert.rejects(prepareWalletInitialization(validInput,{...providers,
       emulateUnsigned:async request=>change(await providers.emulateUnsigned(request))},()=>chain.now),{code});
   }
   const quote=await prepareWalletInitialization({wallet,ownerPolicyCeilingNano:String(fees)},providers,()=>chain.now);
+  assert.equal(quote.evidenceReference.emulationMasterchainSeqno,7);
+  const reference={seqno:8,root_hash:Buffer.alloc(32,0x21).toString('base64'),file_hash:Buffer.alloc(32,0x22).toString('base64')};
+  const newerProviders = changes => ({
+    ...providers,reference:async seqno=>{assert.equal(seqno,8);return reference;},
+    account:async (address,at)=>{
+      const bundle=await providers.account();
+      if (!at) return bundle;
+      assert.equal(address,wallet.operator);
+      assert.deepEqual(at,reference);
+      return {...bundle,proof:{...bundle.proof,masterchainSeqno:8,masterchainRootHash:'21'.repeat(32),
+        masterchainFileHash:'22'.repeat(32),...changes}};
+    },
+    emulateUnsigned:async request=>({...await providers.emulateUnsigned(request),mc_block_seqno:8})
+  });
+  const newer=await prepareWalletInitialization(validInput,newerProviders(),()=>chain.now);
+  assert.equal(newer.fingerprint,quote.fingerprint);
+  assert.equal(newer.evidenceReference.emulationMasterchainSeqno,8);
+  assert.equal(newer.evidenceReference.emulationMasterchainRootHash,'21'.repeat(32));
+  for (const [change,code] of [
+    [{accountHash:'42'.repeat(32)},'EMULATION_ACCOUNT_CHANGED'],
+    [{lastTransactionLt:'122'},'EMULATION_ACCOUNT_CHANGED'],
+    [{lastTransactionHash:'43'.repeat(32)},'EMULATION_ACCOUNT_CHANGED'],
+    [{masterchainSeqno:7},'EMULATION_REFERENCE_UNVERIFIED'],
+    [{masterchainRootHash:'43'.repeat(32)},'EMULATION_REFERENCE_UNVERIFIED'],
+    [{proofInclusionVerified:false},'EMULATION_REFERENCE_UNVERIFIED'],
+    [{chainTime:chain.now-16},'EMULATION_REFERENCE_STALE']
+  ]) {
+    await assert.rejects(prepareWalletInitialization(validInput,newerProviders(change),()=>chain.now),
+      {code,accountMasterchainSeqno:7,emulationMasterchainSeqno:8});
+  }
   assert.equal(quote.outgoingMessages,0);
   assert.equal(quote.modeledFeeNano,String(fees));
   await assert.rejects(prepareWalletInitialization({wallet,ownerPolicyCeilingNano:'1'},providers,()=>chain.now),{code:'FEE_POLICY_EXCEEDED'});

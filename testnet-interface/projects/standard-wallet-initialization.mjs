@@ -43,6 +43,44 @@ export class InitPreflightError extends Error {
 }
 
 const check = (value,code,message) => { if (!value) throw new InitPreflightError(code,message); };
+const blockSeqno = value => Number.isInteger(value) && value>0 && value<=0xffffffff;
+const hexHash = value => typeof value==='string' && /^[a-f0-9]{64}$/.test(value);
+
+async function matchEmulationReference(wallet, proof, emulationSeqno, providers, clock) {
+  const accountMasterchainSeqno = proof.masterchainSeqno;
+  function requireReference(ok,code,message) {
+    if (ok) return;
+    const error = new InitPreflightError(code,message);
+    error.accountMasterchainSeqno = accountMasterchainSeqno;
+    error.emulationMasterchainSeqno = emulationSeqno;
+    throw error;
+  }
+  requireReference(emulationSeqno>=accountMasterchainSeqno,'EMULATION_REFERENCE_MISMATCH','Emulation reference is older');
+  if (emulationSeqno===accountMasterchainSeqno) return proof;
+
+  // The emulator reports a height, not a block root or account proof.
+  // Resolve that exact height independently and require a proof at its full reference.
+  let newer, reference;
+  try {
+    reference = await providers.reference(emulationSeqno);
+    newer = await providers.account(wallet.operator,reference);
+  } catch {
+    requireReference(false,'EMULATION_REFERENCE_UNVERIFIED','Unable to authenticate newer emulation reference');
+  }
+  const next = newer?.proof;
+  requireReference(reference?.seqno===emulationSeqno && next?.masterchainSeqno===emulationSeqno && next.proofInclusionVerified===true &&
+    hexHash(next.masterchainRootHash) && hexHash(next.masterchainFileHash) &&
+    matchesHash(reference.root_hash,next.masterchainRootHash) && matchesHash(reference.file_hash,next.masterchainFileHash),
+    'EMULATION_REFERENCE_UNVERIFIED','Account proof did not match exact emulation reference');
+  requireReference(next.chainTime>=proof.chainTime && Math.abs(clock()-next.chainTime)<=15,
+    'EMULATION_REFERENCE_STALE','Newer emulation reference is stale or rolled back');
+  requireReference(hexHash(proof.lastTransactionHash) && typeof proof.lastTransactionLt==='string' &&
+    /^\d+$/.test(proof.lastTransactionLt) &&
+    next.accountHash===proof.accountHash && next.lastTransactionHash===proof.lastTransactionHash &&
+    next.lastTransactionLt===proof.lastTransactionLt,
+    'EMULATION_ACCOUNT_CHANGED','Wallet checkpoint changed at emulation reference');
+  return next;
+}
 
 export async function prepareWalletInitialization({wallet,ownerPolicyCeilingNano,validUntil}, providers,
   clock=()=>Math.floor(Date.now()/1000)) {
@@ -78,13 +116,15 @@ export async function prepareWalletInitialization({wallet,ownerPolicyCeilingNano
   check(Math.abs(clock()-included.proof.chainTime)<=15 && clock()-started<=15 && clock()<expiry,
     'ACCOUNT_CHECKPOINT_STALE','Wallet checkpoint is stale');
   const unsigned = await buildWalletInitialization(wallet,expiry,async()=>Buffer.alloc(64),clock());
-  const simulation = await providers.emulateUnsigned({boc:unsigned.boc,ignore_chksig:true,include_code_data:true,with_actions:false});
-  check(simulation && typeof simulation.is_incomplete === 'boolean' && Number.isSafeInteger(simulation.mc_block_seqno) &&
+  check(blockSeqno(included.proof.masterchainSeqno),'ACCOUNT_RESPONSE_INVALID','Invalid account reference height');
+  const simulation = await providers.emulateUnsigned({boc:unsigned.boc,ignore_chksig:true,include_code_data:true,
+    with_actions:false,mc_block_seqno:included.proof.masterchainSeqno});
+  check(simulation && typeof simulation.is_incomplete === 'boolean' && blockSeqno(simulation.mc_block_seqno) &&
     simulation.transactions && typeof simulation.transactions === 'object',
     'EMULATION_RESPONSE_INVALID','Invalid emulator response');
   check(!simulation.is_incomplete,'EMULATION_INCOMPLETE','Incomplete emulation');
-  check(simulation.mc_block_seqno === included.proof.masterchainSeqno,'EMULATION_REFERENCE_MISMATCH','Emulation block differs');
-  check(clock()-started<=15 && Math.abs(clock()-included.proof.chainTime)<=15 && clock()<expiry,
+  const emulatedProof = await matchEmulationReference(wallet,included.proof,simulation.mc_block_seqno,providers,clock);
+  check(clock()-started<=15 && Math.abs(clock()-emulatedProof.chainTime)<=15 && clock()<expiry,
     'EMULATION_STALE','Emulation exceeded freshness window');
   const txs = Object.values(simulation.transactions), tx = txs[0];
   let txAddress;
@@ -113,5 +153,9 @@ export async function prepareWalletInitialization({wallet,ownerPolicyCeilingNano
     stateInitHash:unsigned.stateInitHash,expectedDataHash:hash(expected),seqno:0,expectedSeqno:1,validUntil:expiry,
     outgoingMessages:0,balanceNano:String(balance),modeledFeeNano:String(fee),ownerPolicyCeilingNano,
     accountHash:included.proof.accountHash,unsignedBodyHash:unsigned.bodyHash};
-  return {...quote,fingerprint:digest(quote),financialSigningEnabled:false,broadcastingEnabled:false,hardFeeCapEnforced:false};
+  return {...quote,fingerprint:digest(quote),
+    evidenceReference:{accountMasterchainSeqno:included.proof.masterchainSeqno,
+      emulationMasterchainSeqno:emulatedProof.masterchainSeqno,emulationMasterchainRootHash:emulatedProof.masterchainRootHash,
+      validatorFinalityVerified:false},
+    financialSigningEnabled:false,broadcastingEnabled:false,hardFeeCapEnforced:false};
 }

@@ -95,6 +95,11 @@ try {
       if (Number.isInteger(error.rpcCode)) diagnostic.rpcCode = error.rpcCode;
       if (Number.isSafeInteger(error.retryMs) && error.retryMs>0) diagnostic.retryAfterMs = error.retryMs;
     }
+    if (error instanceof InitPreflightError) {
+      for (const field of ['accountMasterchainSeqno','emulationMasterchainSeqno']) {
+        if (Number.isInteger(error[field])) diagnostic[field] = error[field];
+      }
+    }
     console.error(JSON.stringify(diagnostic));
   } else {
     console.error(signingEnabled ? 'Owner signer stopped. Preserve any pending marker and reconcile before further action.'
