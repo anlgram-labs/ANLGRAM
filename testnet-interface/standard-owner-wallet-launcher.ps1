@@ -15,6 +15,15 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+function Write-FileNoBom([string]$path, $content) {
+    $folder = Split-Path -Parent $path
+    if ($folder -and -not (Test-Path -LiteralPath $folder)) {
+        New-Item -ItemType Directory -Path $folder -Force | Out-Null
+    }
+    $text = if ($content -is [array]) { $content -join "`n" } else { [string]$content }
+    [System.IO.File]::WriteAllText($path, $text, [System.Text.UTF8Encoding]::new($false))
+}
+
 function Ensure-ProviderCredentials {
     $hasCenter = [bool]($env:TONCENTER_TESTNET_API_KEY -and $env:TONCENTER_TESTNET_API_KEY.Trim())
     $hasTonapi = [bool]($env:TONAPI_TESTNET_API_KEY -and $env:TONAPI_TESTNET_API_KEY.Trim())
@@ -55,7 +64,7 @@ function Ensure-ProviderCredentials {
         $env:TONAPI_TESTNET_API_KEY = [System.Net.NetworkCredential]::new('', $secTonapi).Password
     }
 
-    if (-not $env:TONCENTER_TESTNET_API_KEY?.Trim() -or -not $env:TONAPI_TESTNET_API_KEY?.Trim()) {
+    if (-not ($env:TONCENTER_TESTNET_API_KEY -and $env:TONCENTER_TESTNET_API_KEY.Trim()) -or -not ($env:TONAPI_TESTNET_API_KEY -and $env:TONAPI_TESTNET_API_KEY.Trim())) {
         throw "Both TONCENTER_TESTNET_API_KEY and TONAPI_TESTNET_API_KEY must be provided."
     }
 
@@ -66,14 +75,12 @@ function Ensure-ProviderCredentials {
 }
 
 function Save-ProviderCredentials {
-    $folder = Split-Path -Parent $CredentialPath
-    if (-not (Test-Path -LiteralPath $folder)) {
-        New-Item -ItemType Directory -Path $folder -Force | Out-Null
-    }
     $combo = "$($env:TONCENTER_TESTNET_API_KEY)||$($env:TONAPI_TESTNET_API_KEY)"
-    ConvertTo-SecureString $combo -AsPlainText -Force | ConvertFrom-SecureString | Set-Content -LiteralPath $CredentialPath
+    $encrypted = ConvertTo-SecureString $combo -AsPlainText -Force | ConvertFrom-SecureString
+    Write-FileNoBom $CredentialPath $encrypted
     Write-Host "Credentials encrypted via Windows DPAPI and stored at: $CredentialPath" -ForegroundColor Green
     $combo = $null
+    $encrypted = $null
 }
 
 function Invoke-InspectWallet {
@@ -93,13 +100,9 @@ function Invoke-PrepareInit {
     if ($LASTEXITCODE -ne 0) {
         throw "prepare-init failed with exit code $LASTEXITCODE. See stderr diagnostic above."
     }
-    $quoteDir = Split-Path -Parent $QuoteOutputPath
-    if ($quoteDir -and -not (Test-Path -LiteralPath $quoteDir)) {
-        New-Item -ItemType Directory -Path $quoteDir -Force | Out-Null
-    }
-    $quoteJson | Set-Content -LiteralPath $QuoteOutputPath -Encoding utf8NoBOM
+    Write-FileNoBom $QuoteOutputPath $quoteJson
     Write-Host "Fresh quote saved to: $QuoteOutputPath" -ForegroundColor Green
-    Write-Host "Quote verification: valid for 60 seconds from generation." -ForegroundColor Yellow
+    Write-Host "Quote verification: valid for 300 seconds (5 minutes) from generation." -ForegroundColor Yellow
 }
 
 function Invoke-SignInit {
@@ -117,7 +120,7 @@ function Invoke-SignInit {
     if ($LASTEXITCODE -ne 0) {
         throw "sign-init stopped or failed with exit code $LASTEXITCODE."
     }
-    $signedJson | Set-Content -LiteralPath $SignedOutputPath -Encoding utf8NoBOM
+    Write-FileNoBom $SignedOutputPath $signedJson
     Write-Host "Signed envelope saved to: $SignedOutputPath" -ForegroundColor Green
 }
 
@@ -182,3 +185,4 @@ switch ($Action) {
         }
     }
 }
+

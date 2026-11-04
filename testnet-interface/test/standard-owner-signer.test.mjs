@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn,spawnSync} from 'node:child_process';
 import {existsSync,mkdtempSync,rmSync,writeFileSync} from 'node:fs';
-import {tmpdir} from 'node:os';
+import {homedir,tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
@@ -56,7 +56,7 @@ test('funded Testnet V5R1 initializes in Sandbox with zero outgoing messages and
   const before=await chain.getContract(address);
   assert.equal(before.accountState.type,'uninit');
   const balance=before.balance, account=chainCore.beginCell().storeBit(true).store(chainCore.storeAccount(before.account.account)).endCell();
-  const result=await buildWalletInitialization(wallet,chain.now+45,async cell=>sign(cell.hash(),key.secretKey),chain.now);
+  const result=await buildWalletInitialization(wallet,chain.now+300,async cell=>sign(cell.hash(),key.secretKey),chain.now);
   key.secretKey.fill(0);
   const outcome=await chain.sendMessage(chainCore.Cell.fromBase64(result.boc));
   assert.equal(outcome.transactions.length,1);
@@ -359,5 +359,78 @@ test('regression: expired quotes, identity mismatch and interrupted execution fa
       const {openSync}=require('node:fs');
       openSync(prefix+'.init-pending','wx');
     },{code:'EEXIST'});
+  } finally { rmSync(dir,{recursive:true}); }
+});
+
+test('regression: bounded validity window (300s default, 600s max) and pre-marker expiration enforcement',async()=>{
+  const mnemonic=await words(), wallet=await recoverStandardPublicWallet(mnemonic);
+  const now=1700000000;
+  const providers={
+    account:async()=>({raw:{state:''},proof:{accountHash:'22'.repeat(32),chainTime:now,masterchainSeqno:10,
+      masterchainRootHash:'11'.repeat(32),masterchainFileHash:'12'.repeat(32),lastTransactionHash:'ab'.repeat(32),
+      lastTransactionLt:'123',proofInclusionVerified:true}}),
+    observeAddress:async()=>({state:'uninitialized',balance:'100000000'}),
+    emulateUnsigned:async()=>({is_incomplete:false,mc_block_seqno:10,transactions:{wallet:{account:wallet.operator,
+      emulated:true,orig_status:'uninit',end_status:'active',description:{aborted:false,compute_ph:{success:true,exit_code:0}},
+      out_msgs:[],total_fees:'500000',in_msg:{message_content:{hash:'aa'.repeat(32)},init_state:{hash:'bb'.repeat(32)}},
+      account_state_before:{balance:'100000000'},account_state_after:{balance:'99500000',code_hash:wallet.walletCodeHash,
+      data_hash:'cc'.repeat(32)}}}}),
+    reference:async()=>({seqno:10,root_hash:'11'.repeat(32),file_hash:'12'.repeat(32)})
+  };
+
+  // 1. buildWalletInitialization expiry boundaries:
+  // Accepts up to now+600
+  const validSigned = await buildWalletInitialization(wallet, now+300, async()=>Buffer.alloc(64), now);
+  assert.equal(typeof validSigned.boc, 'string');
+  const maxSigned = await buildWalletInitialization(wallet, now+600, async()=>Buffer.alloc(64), now);
+  assert.equal(typeof maxSigned.boc, 'string');
+  // Rejects > now+600
+  await assert.rejects(buildWalletInitialization(wallet, now+601, async()=>Buffer.alloc(64), now), /Invalid initialization expiry/);
+  // Rejects <= now
+  await assert.rejects(buildWalletInitialization(wallet, now, async()=>Buffer.alloc(64), now), /Invalid initialization expiry/);
+  await assert.rejects(buildWalletInitialization(wallet, now-1, async()=>Buffer.alloc(64), now), /Invalid initialization expiry/);
+
+  // 2. prepareWalletInitialization expiry boundaries:
+  // Rejects > started+600
+  await assert.rejects(prepareWalletInitialization({wallet, ownerPolicyCeilingNano:'70000000', validUntil:now+601}, providers, ()=>now),
+    {code:'INPUT_EXPIRY_INVALID'});
+  // Rejects <= started
+  await assert.rejects(prepareWalletInitialization({wallet, ownerPolicyCeilingNano:'70000000', validUntil:now}, providers, ()=>now),
+    {code:'INPUT_EXPIRY_INVALID'});
+  await assert.rejects(prepareWalletInitialization({wallet, ownerPolicyCeilingNano:'70000000', validUntil:now-10}, providers, ()=>now),
+    {code:'INPUT_EXPIRY_INVALID'});
+
+  // 3. CLI sign-init rejects expired quote BEFORE creating .init-pending marker:
+  const cli=fileURLToPath(new URL('../standard-owner-signer-cli.mjs',import.meta.url));
+  const dir=mkdtempSync(join(tmpdir(),'anlgram-expired-marker-test-'));
+  try {
+    const expiredQuoteFile=join(dir,'expired-quote.json');
+    const fakeBackup=join(dir,'backup.gpg');
+    writeFileSync(fakeBackup,'fake-gpg-content');
+    const releaseWallet={workchain:0,address:'0QCetQK2VyBLL2cB9Gmw7fyHudAMwCX75-Mps0NWmk5fCAUn',
+      publicKey:'194f6f9fb1779cf2120e9cab41c4ff71d75fe08d4a139f86c73eae89cc3d7217',
+      operator:'0:9eb502b657204b2f6701f469b0edfc87b9d00cc025fbe7e329b343569a4e5f08',
+      walletVersion:'v5r1',subwalletNumber:0,network:'-3',
+      walletCodeHash:'20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f',walletId:2147483645};
+    const expiredQuote={network:'-3',operator:releaseWallet.operator,publicKey:releaseWallet.publicKey,
+      walletId:releaseWallet.walletId,stateInitHash:'9eb502b657204b2f6701f469b0edfc87b9d00cc025fbe7e329b343569a4e5f08',
+      expectedDataHash:'11'.repeat(32),seqno:0,expectedSeqno:1,validUntil:1000,outgoingMessages:0,
+      balanceNano:'1999999999',modeledFeeNano:'780696',ownerPolicyCeilingNano:'70000000',
+      accountHash:'22'.repeat(32),unsignedBodyHash:'33'.repeat(32),fingerprint:'44'.repeat(32)};
+    writeFileSync(expiredQuoteFile, '\uFEFF'+JSON.stringify({wallet:releaseWallet, quote:expiredQuote}));
+
+    const markerDir=join(homedir(),'.anlgram-standard-v2');
+    const markerFile=join(markerDir,releaseWallet.operator.slice(2)+'.init-pending');
+    const markerExistedBefore=existsSync(markerFile);
+
+    const result=spawnSync(process.execPath,[cli,'sign-init',expiredQuoteFile,fakeBackup],{
+      encoding:'utf8',
+      env:{...process.env,TONCENTER_TESTNET_API_KEY:'key1',TONAPI_TESTNET_API_KEY:'key2',ANLGRAM_TEST_TTY:'1'}
+    });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Quote expired before signing reservation\. No marker was created/);
+    if (!markerExistedBefore) {
+      assert.equal(existsSync(markerFile), false, 'Expired quote must NOT create .init-pending marker');
+    }
   } finally { rmSync(dir,{recursive:true}); }
 });

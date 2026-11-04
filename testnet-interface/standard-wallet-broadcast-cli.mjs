@@ -9,7 +9,7 @@ import {broadcastInitialization,reconcileInitialization,walletBroadcastEnabled} 
 async function readJson(path) {
   const text = await readFile(path,'utf8');
   if (text.length > 131072) throw Error('Input too large');
-  return JSON.parse(text);
+  return JSON.parse(text.replace(/^\uFEFF/,''));
 }
 
 try {
@@ -33,7 +33,11 @@ try {
     }
   });
   console.log(JSON.stringify(result,null,2));
-} catch {
-  console.error('Initialization tool stopped. Real broadcast is hard-disabled in this build. Preserve all pending markers.');
+} catch (error) {
+  if (walletBroadcastEnabled) {
+    console.error('Initialization tool stopped. Broadcast stopped. Preserve all pending markers and reconcile before further action.');
+  } else {
+    console.error('Initialization tool stopped. Real broadcast is hard-disabled in this build. Preserve all pending markers.');
+  }
   process.exitCode = 1;
 }

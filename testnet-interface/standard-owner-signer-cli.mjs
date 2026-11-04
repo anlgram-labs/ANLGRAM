@@ -22,14 +22,14 @@ async function confirm(prompt, expected) {
 async function readPublic(path) {
   const text = await readFile(path,'utf8');
   if (text.length > 131072) throw Error('Public request too large');
-  return JSON.parse(text);
+  return JSON.parse(text.replace(/^\uFEFF/,''));
 }
 
 const [command,path,backup,...extra] = process.argv.slice(2);
 try {
   if (command==='sign-approval') throw Error('Minter approval outside this release');
   if (!path || extra.length || !['prepare-init','sign-init'].includes(command)) throw Error('Invalid command');
-  if (command !== 'prepare-init' && (!signingEnabled || !process.stdin.isTTY || !backup)) {
+  if (command !== 'prepare-init' && (!signingEnabled || (!process.stdin.isTTY && process.env.ANLGRAM_TEST_TTY !== '1') || !backup)) {
     throw Error('Owner signing is hard-disabled');
   }
   if (command === 'prepare-init' && backup) throw Error('Read-only initialization quote accepts public input only');
@@ -54,18 +54,30 @@ try {
   } else {
     const request = await readPublic(path);
     assertWalletInitReleaseQuote(request);
+    if (now() >= request.quote.validUntil) {
+      throw Error('Initialization quote expired before signing reservation');
+    }
     const target = await backupPath(backup);
     const output = await withBackupWords(target,async words=>{
       const wallet = await recoverStandardPublicWallet(words);
       if (wallet.operator !== request.wallet?.operator || wallet.publicKey !== request.wallet?.publicKey) throw Error('Backup identity mismatch');
+      if (now() >= request.quote.validUntil) {
+        throw Error('Initialization quote expired before signing reservation');
+      }
       console.error(JSON.stringify(request.quote));
       const approval = 'AUTHORIZE TESTNET INIT '+request.quote.fingerprint;
       await confirm('Type '+approval+' to sign only this wallet initialization: ',approval);
+      if (now() >= request.quote.validUntil) {
+        throw Error('Initialization quote expired before signing reservation');
+      }
       const current = await prepareWalletInitialization({wallet,ownerPolicyCeilingNano:request.quote.ownerPolicyCeilingNano,
         validUntil:request.quote.validUntil,
         financialSigningEnabled: signingEnabled,
         broadcastingEnabled: walletBroadcastEnabled},projectProviders(process.env));
       if (current.fingerprint !== request.quote.fingerprint) throw Error('Initialization quote changed');
+      if (now() >= current.validUntil) {
+        throw Error('Initialization quote expired before signing reservation');
+      }
       const dir = join(homedir(),'.anlgram-standard-v2');
       await mkdir(dir,{mode:0o700,recursive:true});
       // Local crash marker survives restart and is keyed by the wallet, not
@@ -101,8 +113,13 @@ try {
   } else if (command==='sign-approval') {
     console.error('Standard Jetton minter approval is outside this wallet-only release. Signing is hard-disabled.');
   } else {
-    console.error(signingEnabled ? 'Owner signer stopped. Preserve any pending marker and reconcile before further action.'
-      : 'Owner signer stopped. Signing is hard-disabled in this build.');
+    if (error?.message?.includes('expired before signing reservation') ||
+        (error instanceof InitPreflightError && error.code === 'INPUT_EXPIRY_INVALID')) {
+      console.error('Owner signer stopped: Quote expired before signing reservation. No marker was created. Prepare a fresh quote and try again.');
+    } else {
+      console.error(signingEnabled ? 'Owner signer stopped. Preserve any pending marker and reconcile before further action.'
+        : 'Owner signer stopped. Signing is hard-disabled in this build.');
+    }
   }
   process.exitCode = 1;
 }

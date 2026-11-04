@@ -14,7 +14,7 @@ test('one server grant supports fresh distinct runtime quotes without changing e
 });
 test('grant validation rejects extended windows, ambiguous versions and changed immutable financial fields',()=>{
  const h=setup(),g=authorize(h);assert(curveAuthorization(h.env));
- for(const patch of [{notAfter:g.issuedAt+91},{issuedAt:g.issuedAt+1},{fingerprint:'aa'.repeat(32)},{validUntil:g.notAfter},{authorizationId:'bad'},{mode:'unknown'},{network:'-239'},{expectedSeqno:0},{amountNano:'100000001'},{policyCeilingNano:'121000000'},{stateInitHash:'00'.repeat(32)}]){h.env.CURVE_TX2_SIGNING_AUTH=JSON.stringify({...g,...patch});assert.equal(curveAuthorization(h.env),null,JSON.stringify(patch));}
+ for(const patch of [{notAfter:g.issuedAt+91},{issuedAt:g.issuedAt+10},{fingerprint:'aa'.repeat(32)},{validUntil:g.notAfter},{authorizationId:'bad'},{mode:'unknown'},{network:'-239'},{expectedSeqno:0},{amountNano:'100000001'},{policyCeilingNano:'121000000'},{stateInitHash:'00'.repeat(32)}]){h.env.CURVE_TX2_SIGNING_AUTH=JSON.stringify({...g,...patch});assert.equal(curveAuthorization(h.env),null,JSON.stringify(patch));}
 });
 test('expired proof/grant, revocation and rotation cannot authorize a previously prepared fingerprint',async t=>{
  const initial=Math.floor(Date.now()/1000);let now=initial;t.mock.method(Date,'now',()=>now*1000);

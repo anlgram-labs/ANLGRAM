@@ -23,7 +23,7 @@ export function initializationWallet(wallet) {
 
 export async function buildWalletInitialization(wallet, validUntil, signer, now) {
   const contract = initializationWallet(wallet);
-  exact(Number.isSafeInteger(validUntil) && validUntil > now && validUntil <= now+60 && validUntil <= 0xffffffff,
+  exact(Number.isSafeInteger(validUntil) && validUntil > now && validUntil <= now+600 && validUntil <= 0xffffffff,
     'Invalid initialization expiry');
   // The initial request activates the wallet and advances seqno, with no internal transfers.
   const body = await contract.createTransfer({seqno:0,timeout:validUntil,sendMode:3,authType:'external',messages:[],signer});
@@ -84,11 +84,11 @@ async function matchEmulationReference(wallet, proof, emulationSeqno, providers,
 
 export async function prepareWalletInitialization({wallet,ownerPolicyCeilingNano,validUntil,financialSigningEnabled=false,broadcastingEnabled=false}, providers,
   clock=()=>Math.floor(Date.now()/1000)) {
-  const started = clock(), expiry = validUntil ?? started+45;
+  const started = clock(), expiry = validUntil ?? started+300;
   let contract;
   try { contract = initializationWallet(wallet); }
   catch { throw new InitPreflightError('INPUT_WALLET_INVALID','Invalid initialization wallet'); }
-  check(Number.isSafeInteger(expiry) && expiry>started && expiry<=started+60 && expiry<=0xffffffff,
+  check(Number.isSafeInteger(expiry) && expiry>started && expiry<=started+600 && expiry<=0xffffffff,
     'INPUT_EXPIRY_INVALID','Invalid initialization expiry');
   check(typeof ownerPolicyCeilingNano === 'string' && /^[1-9][0-9]{0,19}$/.test(ownerPolicyCeilingNano),'INPUT_FEE_CEILING_INVALID','Explicit fee ceiling required');
   const [included, observed] = await Promise.all([providers.account(wallet.operator),providers.observeAddress(wallet.operator)]);
