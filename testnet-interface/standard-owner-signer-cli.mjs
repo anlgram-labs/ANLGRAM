@@ -5,9 +5,8 @@ import {createInterface} from 'node:readline/promises';
 import {mnemonicToWalletKey,sign} from '@ton/crypto';
 import {backupPath,withBackupWords} from './projects/standard-owner-backup.mjs';
 import {recoverStandardPublicWallet} from './projects/standard-owner-wallet.mjs';
-import {localApprovalBytes,localApprovalScheme} from './projects/standard-authorization.mjs';
-import {standardRegistrationIntent} from './projects/standard-registration.mjs';
 import {buildWalletInitialization,prepareWalletInitialization,InitPreflightError} from './projects/standard-wallet-initialization.mjs';
+import {assertWalletInitRelease,assertWalletInitReleaseQuote} from './projects/standard-wallet-init-release.mjs';
 import {projectProviders,ProjectProviderError} from './projects/project-providers.mjs';
 
 const signingEnabled = false; // Requires separate review and authorization to change.
@@ -27,7 +26,8 @@ async function readPublic(path) {
 
 const [command,path,backup,...extra] = process.argv.slice(2);
 try {
-  if (!path || extra.length || !['prepare-init','sign-approval','sign-init'].includes(command)) throw Error('Invalid command');
+  if (command==='sign-approval') throw Error('Minter approval outside this release');
+  if (!path || extra.length || !['prepare-init','sign-init'].includes(command)) throw Error('Invalid command');
   if (command !== 'prepare-init' && (!signingEnabled || !process.stdin.isTTY || !backup)) {
     throw Error('Owner signing is hard-disabled');
   }
@@ -41,31 +41,22 @@ try {
     try { request = JSON.parse(text.replace(/^\uFEFF/,'')); }
     catch { throw new InitPreflightError('INPUT_JSON_INVALID'); }
     if (!request || typeof request !== 'object' || Array.isArray(request)) throw new InitPreflightError('INPUT_JSON_INVALID');
-    const quote = await prepareWalletInitialization(request,projectProviders(process.env));
+    // Keep missing-provider diagnostics available before scope validation.
+    const providers = projectProviders(process.env);
+    try { assertWalletInitRelease(request.wallet,request.ownerPolicyCeilingNano); }
+    catch { throw new InitPreflightError('INIT_RELEASE_SCOPE_REJECTED'); }
+    const quote = await prepareWalletInitialization(request,providers);
     console.log(JSON.stringify({wallet:request.wallet,quote},null,2));
   } else {
     const request = await readPublic(path);
+    assertWalletInitReleaseQuote(request);
     const target = await backupPath(backup);
     const output = await withBackupWords(target,async words=>{
       const wallet = await recoverStandardPublicWallet(words);
-      if (command === 'sign-approval') {
-        const {manifest,identity} = await standardRegistrationIntent(request.input);
-        if (wallet.operator !== manifest.operator.address || wallet.publicKey !== manifest.operator.publicKey ||
-          request.fingerprint !== identity.fingerprint || !/^[a-f0-9]{64}$/.test(request.nonce ?? '') ||
-          !Number.isSafeInteger(request.preparedAt) || now()<request.preparedAt ||
-          identity.validUntil-request.preparedAt>60 || now()>=identity.validUntil) throw Error('Approval mismatch');
-        const bytes = localApprovalBytes(manifest,identity,request.nonce,request.preparedAt);
-        console.error(bytes.toString('utf8'));
-        await confirm('Type APPROVE STANDARD V2 to sign only this off-chain approval: ','APPROVE STANDARD V2');
-        if (now()>=identity.validUntil) throw Error('Approval expired');
-        const key = await mnemonicToWalletKey(words);
-        try { return {scheme:localApprovalScheme,nonce:request.nonce,signature:sign(bytes,key.secretKey).toString('hex')}; }
-        finally { key.secretKey.fill(0); }
-      }
-
       if (wallet.operator !== request.wallet?.operator || wallet.publicKey !== request.wallet?.publicKey) throw Error('Backup identity mismatch');
       console.error(JSON.stringify(request.quote));
-      await confirm('Type AUTHORIZE TESTNET INIT to sign only this wallet initialization: ','AUTHORIZE TESTNET INIT');
+      const approval = 'AUTHORIZE TESTNET INIT '+request.quote.fingerprint;
+      await confirm('Type '+approval+' to sign only this wallet initialization: ',approval);
       const current = await prepareWalletInitialization({wallet,ownerPolicyCeilingNano:request.quote.ownerPolicyCeilingNano,
         validUntil:request.quote.validUntil},projectProviders(process.env));
       if (current.fingerprint !== request.quote.fingerprint) throw Error('Initialization quote changed');
@@ -101,6 +92,8 @@ try {
       }
     }
     console.error(JSON.stringify(diagnostic));
+  } else if (command==='sign-approval') {
+    console.error('Standard Jetton minter approval is outside this wallet-only release. Signing is hard-disabled.');
   } else {
     console.error(signingEnabled ? 'Owner signer stopped. Preserve any pending marker and reconcile before further action.'
       : 'Owner signer stopped. Signing is hard-disabled in this build.');
