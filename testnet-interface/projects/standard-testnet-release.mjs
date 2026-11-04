@@ -3,14 +3,8 @@ import {WalletContractV5R1} from '@ton/ton';
 import execution from '../execution-version.json' with {type: 'json'};
 import {pinned} from '../recovery/policy.mjs';
 import {prepareProject} from './prepare.mjs';
-import artifact from '../../minter-contract/build/standard-jetton-v2.compiled.json' with {type: 'json'};
+import {standardV2Artifacts as artifact,standardV2Code} from './artifacts.mjs';
 import {deploymentEdge, hash, hexHash, stateInit} from './project-registration.mjs';
-
-function code(role) {
-  const cell = core.Cell.fromBase64(artifact[role].codeBocBase64);
-  if (hash(cell) !== artifact[role].codeHash) throw Error('Standard V2 artifact hash mismatch');
-  return cell;
-}
 
 export async function prepareStandardTestnetRelease(draft, publicKey) {
   if (draft?.mode !== 'standard' || draft.network !== '-3' || !hexHash(publicKey) || /^0+$/.test(publicKey)) {
@@ -23,34 +17,17 @@ export async function prepareStandardTestnetRelease(draft, publicKey) {
     throw Error('A separate, matching Testnet V5 creator is required');
   }
   const [deployment, mint] = plan.operations;
-  const genesis = core.loadStateInit(core.Cell.fromBase64(plan.accounts.minter.stateInit).beginParse()).data.beginParse();
-  genesis.loadCoins();
-  genesis.loadAddress();
-  const content = genesis.loadRef();
-  const init = {code: code('minter'), data: core.beginCell().storeCoins(0).storeAddress(wallet.address)
-    .storeRef(content).storeRef(code('wallet')).endCell()};
-  const master = core.contractAddress(0, init), initCell = stateInit(init);
-  const encode = cell => cell.toBoc().toString('base64');
-  const address = master.toString({testOnly:true});
-  const q = (BigInt('0x' + plan.configurationFingerprint.slice(0, 12)) || 1n);
-  const mintBody = core.beginCell().storeUint(21,32).storeUint(q,64).storeAddress(wallet.address)
-    .storeCoins(BigInt(plan.configuredSupplyUnits)).endCell();
-  const update = (operation, message) => ({...operation, id: operation.id + ':standard-v2',
-    message, receiptExpectation: {...operation.receiptExpectation, operationId: operation.id + ':standard-v2',
-      destination: master.toRawString(), payloadHash: hash(core.Cell.fromBase64(message.payload)),
-      stateInitHash: message.stateInit ? hash(initCell) : null}});
-  const deployV2 = update(deployment, {...deployment.message, address, stateInit:encode(initCell)});
-  const mintV2 = update(mint, {...mint.message, address, payload:encode(mintBody)});
   return {
     schema: 2, executionVersion: execution.sha256, network: '-3', configurationFingerprint: plan.configurationFingerprint,
     scope: 'OFFLINE_STANDARD_JETTON_TESTNET_RELEASE_CANDIDATE', financialSigningEnabled: false, broadcastingEnabled: false,
     operator: {address: plan.creator, walletId: 2147483645, codeHash: hash(wallet.init.code), publicKey},
-    minter: {address, raw:master.toRawString(), codeHash:hash(init.code), dataHash:hash(init.data), stateInit:encode(initCell)},
-    walletCodeHash: hash(code('wallet')), artifact, mintQueryId: String(q),
+    minter: plan.accounts.minter,
+    walletCodeHash: hash(standardV2Code('wallet')), artifact,
+    mintQueryId: String(BigInt('0x'+plan.configurationFingerprint.slice(0,12)) || 1n),
     expectedMintUnits: plan.configuredSupplyUnits, creationCharge: plan.creationCharge,
-    deployment: {...deployV2, maxMessages: 1, maxAttempts: 1, maximumTotalDebitNano: null,
+    deployment: {...deployment, maxMessages: 1, maxAttempts: 1, maximumTotalDebitNano: null,
       gate: 'BLOCKED_PENDING_LIVE_PREFLIGHT_AND_EXACT_OWNER_APPROVAL'},
-    mint: {...mintV2, maximumTotalDebitNano: null, gate: 'BLOCKED_PENDING_DEPLOYMENT_AND_MINT_DELIVERY_REVIEW'}
+    mint: {...mint, maximumTotalDebitNano: null, gate: 'BLOCKED_PENDING_DEPLOYMENT_AND_MINT_DELIVERY_REVIEW'}
   };
 }
 
@@ -84,7 +61,7 @@ export function verifyStandardDeploymentFields(manifest, identity, ownerState, o
   const target = core.Address.parse(message.address), owner = core.Address.parse(manifest.operator.address);
   const init = core.loadStateInit(core.Cell.fromBase64(message.stateInit).beginParse());
   if (manifest.network !== '-3' || owner.equals(core.Address.parse(pinned.operator)) || owner.workChain !== 0 ||
-    manifest.schema !== 2 || !init.code?.equals(code('minter')) || !core.contractAddress(0, init).equals(target) ||
+    manifest.schema !== 2 || !init.code?.equals(standardV2Code('minter')) || !core.contractAddress(0, init).equals(target) ||
     hash(stateInit(init)) !== manifest.deployment.receiptExpectation.stateInitHash) throw Error('Wrong deployment identity');
   return {...deploymentEdge(target, init, owner, ownerState, ownerRows, minterRows, {
     amount: message.amount, seqno: identity.seqno, expiry: identity.validUntil,

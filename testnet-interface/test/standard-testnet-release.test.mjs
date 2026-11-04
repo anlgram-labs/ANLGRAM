@@ -7,6 +7,9 @@ import {createRequire} from 'node:module';
 const require = createRequire(import.meta.url);
 import assert from 'node:assert/strict';
 import * as core from '@ton/core';
+import worker from '../worker.mjs';
+import {standardV2Code} from '../projects/artifacts.mjs';
+import {walletAddress} from '../projects/distribution.mjs';
 import {createDraft} from '../wizard/model.mjs';
 import {makeLocalReceipt} from './recovery-local-fixture.mjs';
 import {pinned} from '../recovery/policy.mjs';
@@ -21,6 +24,20 @@ test('Standard Jetton release candidate deploys and mints in Sandbox with distin
   Object.assign(draft.metadata, {name: 'Sandbox standard', symbol: 'SBX', creator: f.w.address.toRawString()});
   const key = f.key.publicKey.toString('hex');
   const manifest = await prepareStandardTestnetRelease(draft, key);
+  const origin='https://testnet.anlgram.com';
+  const response=await worker.fetch(new Request(origin+'/api/projects/prepare',{
+    method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(draft)
+  }),{APP_ORIGIN:origin});
+  assert.equal(response.status,200);
+  const prepared=await response.json();
+  assert.equal(prepared.configurationFingerprint,manifest.configurationFingerprint);
+  assert.deepEqual(prepared.accounts.minter,manifest.minter);
+  assert.deepEqual(prepared.operations.map(op=>op.message),[manifest.deployment.message,manifest.mint.message]);
+  assert.deepEqual(prepared.operations.map(op=>op.id),[manifest.deployment.id,manifest.mint.id]);
+  assert.equal(core.Address.parse(prepared.distribution.creatorWallet).toRawString(),
+    walletAddress(manifest.operator.address,manifest.minter.raw,standardV2Code('wallet')).toRawString());
+  assert.equal(prepared.financialSigningEnabled,false);
+  assert.equal(prepared.broadcastEnabled,false);
   assert.equal(manifest.operator.walletId, 2147483645);
   assert.equal(manifest.financialSigningEnabled, false);
   assert.equal(manifest.creationCharge.mandatoryDonationNano, '20000000');

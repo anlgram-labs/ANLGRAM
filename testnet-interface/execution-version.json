@@ -2,7 +2,7 @@
   "schema": 1,
   "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
   "sources": {
-    "build.mjs": "766be7ae1f394416fae192943a761c0de0f2331528f7ac004807a984058baac9",
+    "build.mjs": "cd18f8d8846fcf7934aedc65484d2ef3e4a2359d1ea347c1214784ce253f7887",
     "app.js": "f2214539064b7532925298b9bebbb26a79c3e52813aff27b08a696a7857a598b",
     "client-entry.mjs": "26afc78634cc85868ba390377893e1bd319f9962b0c6599482416ff07d33e40d",
     "single-attempt.mjs": "2a3cd10735dda1324a0d044be259498e5b6bef17620c8593878d5f3b9500839d",
@@ -32,7 +32,9 @@
     "recovery-status.js": "e2b437965d1ff5fbe580eb5c2a0a24704aedbda6023b131ca3a20234e96cab92",
     "../lib/v5-self-transfer-receipt.js": "d3347f12f5552c2cd8c86491143a71f7142890ee40bae8cb76c548e038d16d2a",
     "../lib/v5-deployment-receipt.js": "900d30bc7856c5b3373dea3acc9da6a46b541d4576699beb85ae13285d5587c7",
-    "projects/standard-testnet-release.mjs": "cf46ed6d592124a3770632f78d74536d90a83970f0ed615843d7558047d1b924",
+    "projects/standard-testnet-release.mjs": "822d0ded9e2d6b4ab9e4acd80238679164d82abe194a3d232e37f9ac1edab61d",
+    "projects/prepare.mjs": "fdb2d0600a1175d2ee689b99c10a3fc9cc59ea0ab918c0ac001e71316f258c06",
+    "projects/artifacts.mjs": "daac99f82962c04cc7d7b7357732472dcfbf99aa1e749a76e5d1161e49d84b34",
     "projects/standard-registration.mjs": "9af69a3efad698ff03c32fbd64cf08dd047f510af6e1051ce5b22d4e74083736",
     "projects/standard-deployment-lock.mjs": "6a7f297f6a0e41fb8231d8e850b2b7ece66f55b07764dae92d9b34f2be952022",
     "projects/standard-supervisor.mjs": "eb209e577518efa19f21622e7a4122dd01cf10e3029ddf0991861e2936308a19",
@@ -53,5 +55,5 @@
     "wizard/model.mjs": "725aab3765abc8b14a243e63711d83f834e5d473ab766f524da38c1967cf3113",
     "../minter-contract/scripts/migration-package-dispatch-v2.js": "a1c92dda7c78e3a905f6ea73435b152eb66421d4cbc5030a4505ef3435d4a4e4"
   },
-  "sha256": "e2d38098bcf435191b6ef939798a27f9b3c54debe6b17696ca7449eed7654226"
+  "sha256": "a6498b40cde144e937be06bea9206f44f5ed5889e8e2c243a0cc9a02bea54779"
 }
