@@ -64,3 +64,20 @@ export function verifyStandardApproval(approval, manifest, identity, nonce, now,
     Buffer.from(manifest.operator.publicKey,'hex')]),format:'der',type:'spki'});
   return verify(null,digest,key,Buffer.from(approval.signature,'base64'));
 }
+
+
+export const localApprovalScheme = 'ANLGRAM_STANDARD_V2_LOCAL_ED25519_V1';
+
+export function localApprovalBytes(manifest,identity,nonce,preparedAt) {
+  const {text} = standardSignDataPayload(manifest,identity,nonce);
+  return Buffer.from(JSON.stringify([localApprovalScheme,preparedAt,text]));
+}
+
+export function verifyLocalStandardApproval(approval,manifest,identity,nonce,now,preparedAt) {
+  if (approval?.scheme !== localApprovalScheme || !/^[0-9a-f]{64}$/.test(nonce ?? '') ||
+    approval.nonce !== nonce || !Number.isSafeInteger(preparedAt) || now < preparedAt || now >= identity.validUntil || identity.validUntil-preparedAt>60 ||
+    !/^[0-9a-f]{128}$/.test(approval.signature ?? '')) return false;
+  const key = createPublicKey({key:Buffer.concat([Buffer.from('302a300506032b6570032100','hex'),
+    Buffer.from(manifest.operator.publicKey,'hex')]),format:'der',type:'spki'});
+  return verify(null,localApprovalBytes(manifest,identity,nonce,preparedAt),key,Buffer.from(approval.signature,'hex'));
+}

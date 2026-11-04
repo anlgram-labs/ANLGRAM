@@ -9,7 +9,7 @@ import {exerciseStandardTransport, exerciseStandardBridgePost, standardTransport
 import {prepareStandardTestnetRelease} from '../projects/standard-testnet-release.mjs';
 import {projectProviders} from '../projects/project-providers.mjs';
 
-import {verifyStandardApproval} from '../projects/standard-authorization.mjs';
+import {verifyStandardApproval,localApprovalBytes,localApprovalScheme} from '../projects/standard-authorization.mjs';
 import {createRequire} from 'node:module';
 import {createHash} from 'node:crypto';
 import {SessionCrypto} from '@tonconnect/protocol';
@@ -191,7 +191,11 @@ test('Sandbox deployment receipt reconciles the reserved message once and reject
   }})}};
   const supervisor=new StandardSupervisor(storage,env,deps);
   const prepared=await supervisor.prepare(input), {quote}=prepared, operator=m.operator.address;
-  await supervisor.reserve(operator,prepared.identity.fingerprint,approve(f,prepared));
+  const request=prepared.localApprovalRequest;
+  const localApproval={scheme:localApprovalScheme,nonce:request.nonce,signature:sign(
+    localApprovalBytes(prepared.manifest,prepared.identity,request.nonce,request.preparedAt),f.key.secretKey).toString('hex')};
+  await supervisor.reserve(operator,prepared.identity.fingerprint,localApproval);
+  await assert.rejects(supervisor.reserve(operator,prepared.identity.fingerprint,localApproval),/permanently reserved/);
   await storage.delete('standard:v2:-3:v5r1:'+operator+':standardPrepared:'+prepared.identity.fingerprint);
   const {message}=m.deployment, dest=core.Address.parseFriendly(message.address);
   const result=await f.send(quote.seqno,[core.internal({to:dest.address,bounce:dest.isBounceable,
