@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn,spawnSync} from 'node:child_process';
-import {mkdtempSync,rmSync} from 'node:fs';
+import {existsSync,mkdtempSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createRequire} from 'node:module';
@@ -13,6 +13,8 @@ import {recoverStandardPublicWallet} from '../projects/standard-owner-wallet.mjs
 import {localApprovalBytes,localApprovalScheme,verifyLocalStandardApproval,verifyStandardApproval} from '../projects/standard-authorization.mjs';
 import {prepareStandardTestnetRelease,standardDeploymentIdentity} from '../projects/standard-testnet-release.mjs';
 import {buildWalletInitialization,prepareWalletInitialization} from '../projects/standard-wallet-initialization.mjs';
+import {exerciseInitializationBroadcast,reconcileInitialization,validateSignedInitialization,walletBroadcastEnabled}
+  from '../projects/standard-wallet-broadcast.mjs';
 import {cryptBackup} from '../projects/standard-owner-backup.mjs';
 import {createDraft} from '../wizard/model.mjs';
 
@@ -93,6 +95,77 @@ test('funded Testnet V5R1 initializes in Sandbox with zero outgoing messages and
   await assert.rejects(prepareWalletInitialization({wallet,ownerPolicyCeilingNano:String(fees)},{
     ...providers,observeAddress:async()=>({state:'active',balance:String(balance)})
   },()=>chain.now),/funded and uninitialized/);
+
+  const prepared={wallet,quote};
+  const signed={status:'SIGNED_NOT_BROADCAST',fingerprint:quote.fingerprint,messageHash:result.messageHash,boc:result.boc};
+  assert.equal((await validateSignedInitialization(prepared,signed)).bodyHash,result.bodyHash);
+  await assert.rejects(validateSignedInitialization(prepared,{...signed,messageHash:'00'.repeat(32)}),/message hash/);
+  await assert.rejects(validateSignedInitialization({wallet,quote:{...quote,seqno:1}},signed),/quote/);
+  const unsigned=await buildWalletInitialization(wallet,quote.validUntil,async()=>Buffer.alloc(64),chain.now);
+  await assert.rejects(validateSignedInitialization(prepared,{...signed,boc:unsigned.boc,messageHash:unsigned.messageHash}),/signature/);
+  const directory=mkdtempSync(join(tmpdir(),'anlgram-broadcast-fixture-')), prefix=join(directory,wallet.operator.slice(2));
+  try {
+    writeFileSync(prefix+'.init-pending',quote.fingerprint);
+    const clock=()=>chain.now;
+    const input={prepared,signed,directory,providers,apiKey:'fixture-only',confirm:async()=>true};
+    let posts=0;
+    const loseResponse=async (url,request)=>{
+      posts++;
+      assert.equal(url,'https://toncenter.invalid/api/v2/jsonRPC');
+      assert.equal(request.redirect,'manual');
+      assert.equal(JSON.parse(request.body).method,'sendBoc');
+      assert.equal(JSON.parse(request.body).params.boc,signed.boc);
+      assert.equal(JSON.parse(require('node:fs').readFileSync(prefix+'.init-broadcast','utf8')).status,'UNKNOWN');
+      throw new DOMException('fixture timeout','TimeoutError');
+    };
+    assert.equal(walletBroadcastEnabled,false);
+    await assert.rejects(exerciseInitializationBroadcast({...input,providers:{
+      ...providers,account:async()=>{throw Error('fixture outage');}
+    }},loseResponse,clock),/outage/);
+    assert.equal(existsSync(prefix+'.init-broadcast'),false);
+    await assert.rejects(exerciseInitializationBroadcast(input,loseResponse,()=>quote.validUntil),/approval required/);
+    assert.equal(posts,0);
+    const concurrent=await Promise.allSettled([exerciseInitializationBroadcast(input,loseResponse,clock),
+      exerciseInitializationBroadcast(input,loseResponse,clock)]);
+    assert.equal(posts,1);
+    assert.equal(concurrent.filter(item=>item.status==='fulfilled').length,1);
+    assert.equal(concurrent.find(item=>item.status==='fulfilled').value.status,'UNKNOWN');
+    await assert.rejects(exerciseInitializationBroadcast(input,loseResponse,clock),{code:'EEXIST'});
+    assert.equal(posts,1);
+    assert.equal((await reconcileInitialization({...input,providers:{
+      account:async()=>{throw Error('fixture read outage');}
+    }},clock)).status,'UNKNOWN');
+    const postAccount=chainCore.beginCell().storeBit(true).store(chainCore.storeAccount(after.account.account)).endCell();
+    const rowCell=core.Cell.fromBase64(chainCore.beginCell().store(chainCore.storeTransaction(tx)).endCell().toBoc().toString('base64'));
+    const row={hash:rowCell.hash().toString('hex'),tx:core.loadTransaction(rowCell.beginParse())};
+    const receiptProviders={account:async()=>({raw:{state:postAccount.toBoc().toString('hex')},reference:{seqno:7},
+      proof:{chainTime:chain.now,accountHash:postAccount.hash().toString('hex'),lastTransactionHash:row.hash,lastTransactionLt:String(row.tx.lt)}}),
+      history:async()=>({rows:[row]})};
+    assert.equal((await reconcileInitialization({...input,providers:{...receiptProviders,
+      history:async()=>({rows:[{...row,hash:'00'.repeat(32)}]})}},clock)).status,'UNKNOWN');
+    const receipt=await reconcileInitialization({...input,providers:receiptProviders},clock);
+    assert.equal(receipt.status,'INCLUDED_FINALITY_UNVERIFIED');
+    assert.equal(receipt.transactionHash,row.hash);
+    assert.equal(receipt.actualFeesNano,String(fees));
+    // A process crash after exclusive file creation can leave an empty marker.
+    const crashed=mkdtempSync(join(directory,'crashed-')), crashPrefix=join(crashed,wallet.operator.slice(2));
+    writeFileSync(crashPrefix+'.init-pending',quote.fingerprint);
+    writeFileSync(crashPrefix+'.init-broadcast','',{flag:'wx'});
+    await assert.rejects(exerciseInitializationBroadcast({...input,directory:crashed},loseResponse,clock),{code:'EEXIST'});
+    assert.equal((await reconcileInitialization({...input,directory:crashed,providers:receiptProviders},clock)).status,'UNKNOWN');
+    assert.equal(posts,1);
+    const redirectDir=mkdtempSync(join(directory,'redirect-'));
+    writeFileSync(join(redirectDir,wallet.operator.slice(2)+'.init-pending'),quote.fingerprint);
+    let redirects=0;
+    const redirect=await exerciseInitializationBroadcast({...input,directory:redirectDir},async (_,options)=>{
+      redirects++;
+      assert.equal(options.redirect,'manual');
+      return new Response(null,{status:307,headers:{Location:'https://redirect.invalid/'}});
+    },clock);
+    assert.equal(redirects,1);
+    assert.equal(redirect.status,'UNKNOWN');
+  } finally { rmSync(directory,{recursive:true}); }
+
 });
 
 test('owner signer refuses both signing commands in this build before opening inputs',()=>{
@@ -127,4 +200,13 @@ test('GnuPG fixture rejects wrong passphrase, corrupt ciphertext and interrupted
     await assert.rejects(cryptBackup('decrypt',encrypted.subarray(0,20),launch('public fixture passphrase')));
     await assert.rejects(cryptBackup('decrypt',encrypted,launch('public fixture passphrase',true)));
   } finally { clear.fill(0); rmSync(dir,{recursive:true,force:true}); }
+});
+
+
+test('wallet broadcast CLI gate stops before reading files',()=>{
+  const cli=fileURLToPath(new URL('../standard-wallet-broadcast-cli.mjs',import.meta.url));
+  const result=spawnSync(process.execPath,[cli,'broadcast','not-present.json','not-present.json'],{encoding:'utf8'});
+  assert.equal(result.status,1);
+  assert.equal(result.stdout,'');
+  assert.match(result.stderr,/hard-disabled/);
 });
