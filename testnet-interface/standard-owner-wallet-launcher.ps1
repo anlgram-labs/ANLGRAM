@@ -6,7 +6,7 @@
 # Guaranteed zero leak of signed envelope, BOC, decrypted material, or credentials in logs or console.
 [CmdletBinding()]
 param(
-    [ValidateSet('menu', 'prepare-init', 'sign-init', 'prepare-and-sign-init', 'broadcast', 'reconcile', 'inspect-wallet', 'store-credentials')]
+    [ValidateSet('menu', 'prepare-init', 'sign-init', 'prepare-and-sign-init', 'test-confirmation', 'broadcast', 'reconcile', 'inspect-wallet', 'store-credentials')]
     [string]$Action = 'menu',
     [string]$PublicInputPath = 'C:\Private\ANLGRAM\public-init-input.json',
     [string]$QuoteOutputPath = 'C:\Private\ANLGRAM\init-quote.json',
@@ -519,6 +519,10 @@ function Invoke-Reconcile {
 }
 
 switch ($Action) {
+    'test-confirmation' {
+        & node (Join-Path $ScriptDirectory 'standard-init-dialog-check.mjs')
+        exit $LASTEXITCODE
+    }
     'inspect-wallet'   { Invoke-InspectWallet }
     'prepare-init'     { Invoke-PrepareInit }
     'sign-init'        { Invoke-SignInit }

@@ -21,6 +21,7 @@ async function readPublic(path) {
 
 const [command,path,backup,...extra] = process.argv.slice(2);
 const dialog=command==='sign-init'&&extra.length===1&&extra[0]==='--windows-dialog'&&process.platform==='win32';
+let signingStage='QUOTE_AND_MARKER_CHECK';
 try {
   if (command==='sign-approval') throw Error('Minter approval outside this release');
   if (!path || (extra.length&&!dialog) || !['prepare-init','sign-init'].includes(command)) throw Error('Invalid command');
@@ -56,9 +57,11 @@ try {
     }
     if (!dialog&&!process.stdin.isTTY) throw Error('Interactive owner terminal or Windows dialog required');
     const address=initializationWallet(request.wallet).address.toString({testOnly:true,bounceable:false});
+    signingStage='OWNER_CONFIRMATION';
     await confirmInitialization({...request,wallet:{...request.wallet,address}},{dialog,now});
     await checkInitMarkers(dir,request.wallet.operator);
     if(now()>=request.quote.validUntil)throw Error('Initialization quote expired before signing reservation');
+    signingStage='PINENTRY_OR_BACKUP_VALIDATION';
     const target = await backupPath(backup);
     const output = await withBackupWords(target,async words=>{
       const wallet = await recoverStandardPublicWallet(words);
@@ -66,6 +69,7 @@ try {
       if (now() >= request.quote.validUntil) {
         throw Error('Initialization quote expired before signing reservation');
       }
+      signingStage='AUTHENTICATED_QUOTE_RECHECK';
       const current = await prepareWalletInitialization({wallet,ownerPolicyCeilingNano:request.quote.ownerPolicyCeilingNano,
         validUntil:request.quote.validUntil,
         financialSigningEnabled: signingEnabled,
@@ -74,12 +78,14 @@ try {
       if (now() >= current.validUntil) {
         throw Error('Initialization quote expired before signing reservation');
       }
+      signingStage='PERMANENT_MARKER_RESERVATION';
       await mkdir(dir,{mode:0o700,recursive:true});
       // Local crash marker survives restart and is keyed by the wallet, not
       // the backup path. It is never removed or rearmed by this program.
       await checkInitMarkers(dir,wallet.operator);
       const marker = await open(join(dir,wallet.operator.slice(2)+'.init-pending'),'wx',0o600);
       try { await marker.writeFile(current.fingerprint); await marker.sync(); } finally { await marker.close(); }
+      signingStage='LOCAL_SIGNED_ENVELOPE_BUILD';
       const key = await mnemonicToWalletKey(words);
       try {
         const signed = await buildWalletInitialization(wallet,current.validUntil,async cell=>sign(cell.hash(),key.secretKey),now());
@@ -109,6 +115,7 @@ try {
   } else if (command==='sign-approval') {
     console.error('Standard Jetton minter approval is outside this wallet-only release. Signing is hard-disabled.');
   } else {
+    console.error('Signing stage: '+signingStage);
     if (error?.message?.includes('expired before signing reservation') ||
         (error instanceof InitPreflightError && error.code === 'INPUT_EXPIRY_INVALID')) {
       console.error('Owner signer stopped: Quote expired before signing reservation. No marker was created. Prepare a fresh quote and try again.');
