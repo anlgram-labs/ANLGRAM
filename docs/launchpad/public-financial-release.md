@@ -66,6 +66,19 @@ The clean rehearsal at `20f648c9ff340ee6af5995ecea4ffa9dae9087da` passed all 9 c
 
 ### Controlled Testnet preparation and operator checklist
 
+The example inventory is labeled `EXAMPLE_KEYS_DETECTED` and always carries `executionEligible: false`. The reviewed Standard operator inventory is a separate [read-only JSON file](./reviewed-standard-testnet-inventory.json). Its V5R1 address and genesis hash reproduce from the owner's public key and match the wallet initialization review. The Standard minter is unassigned until the owner provides an actual Standard draft. Launchpad remains unassigned until a distinct reviewed Testnet operator, real project draft and migration authority public key exist.
+
+```powershell
+node .\testnet-interface\testnet-release-cli.mjs owner-manifest
+node .\testnet-interface\testnet-release-cli.mjs owner-manifest "C:\path\to\real-standard-draft.json"
+```
+
+The optional file contains a canonical Standard draft directly. Set its creator to the reviewed Testnet wallet, choose the actual name, symbol, supply and decimals, and provide real optional distribution or vesting settings. Select `STANDARD_V2_SETTLEMENT` for Vesting V2. The live read-only Standard preflight CLI accepts its separate input envelope only for the pinned owner address and public key. The Standard submission adapter remains hard-disabled and independently checks the reviewed identity behind that gate.
+
+Public TonAPI and TON Center observations both reported the reviewed wallet as uninitialized with `1999999999` nanotons. This is a provider observation and must be refreshed. It does not establish an initialization transaction, operator control, a current seqno or a deployment receipt. Use PR #34's independent initialization review before returning to Standard deployment preflight.
+
+The prior clean release rehearsal at `20f648c9ff340ee6af5995ecea4ffa9dae9087da` passed 9 compiler checks, 30 settlement cases and 70 integration cases. This follow-up passed all 14 focused tests with zero failures and zero skips. A direct CLI check rejected the read-only inventory as a preflight input before opening provider access. The published owner inventory reproduced from the CLI.
+
 The offline release CLI takes a JSON file with `network: "-3"`, `standard: {draft, publicKey}` and `launchpad: {draft, publicKey, migrationAuthorityPublicKey}`. Use current canonical schema-1 Testnet drafts from the wizard and the 64-character lowercase hex public keys of two distinct V5R1 subwallet-zero operators. The two draft creators must match the derived operators. An explicit Testnet-friendly address or a canonical workchain-zero raw address is accepted. A raw address has no network marker, so the Testnet V5 derivation and the explicit chain field establish the operator binding. The historical Curve operator and Curve #2 destination are excluded. PR #34 manages the wallet initialization independently. Enter public configuration only.
 
 ```powershell

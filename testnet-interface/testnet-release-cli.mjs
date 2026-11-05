@@ -1,7 +1,7 @@
 import {readFile} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {buildReleasePlan} from './testnet-release-plan.mjs';
+import {buildReleasePlan,buildReviewedOwnerInventory} from './testnet-release-plan.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const compilerChecks=[
@@ -49,6 +49,8 @@ try {
  const [command,input,...extra]=process.argv.slice(2);
  if(command==='manifest'&&input&&extra.length===0){
   console.log(JSON.stringify(await buildReleasePlan(JSON.parse(await readFile(input,'utf8'))),null,2));
+ }else if(command==='owner-manifest'&&extra.length===0){
+  console.log(JSON.stringify(await buildReviewedOwnerInventory(input?JSON.parse(await readFile(input,'utf8')):undefined),null,2));
  }else if(command==='rehearse'&&!input){
   const git=args=>execFileSync('git',args,{cwd:root,env:environment,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
   const commit=git(['rev-parse','HEAD']),dirtyBefore=!!git(['status','--porcelain']);

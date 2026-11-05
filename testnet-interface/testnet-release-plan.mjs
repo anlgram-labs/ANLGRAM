@@ -4,10 +4,17 @@ import execution from './execution-version.json' with {type:'json'};
 import curveTwo from './curve-two-intent.json' with {type:'json'};
 import foreign from '../tests/settlement-runtime/fixtures/stonfi-testnet-public-snapshot.json' with {type:'json'};
 import profile from '../minter-contract/stonfi-v22-development-profile.json' with {type:'json'};
+import curveArtifact from '../minter-contract/build/anlgram-bonding-curve-dispatch-v2.compiled.json' with {type:'json'};
+import guardArtifact from '../minter-contract/build/anlgram-guard-vnext.compiled.json' with {type:'json'};
+import migrationArtifact from '../minter-contract/build/anlgram-migration-router-dispatch-v2.compiled.json' with {type:'json'};
 import {prepareProject} from './projects/prepare.mjs';
 import {prepareStandardTestnetRelease} from './projects/standard-testnet-release.mjs';
 import {deploymentIntent,hash,stateInit,hexHash} from './projects/project-registration.mjs';
 import {pinned} from './recovery/policy.mjs';
+import {code,standardV2Code} from './projects/artifacts.mjs';
+import {assertReviewedStandardOperator,reviewedStandardOperator,reviewedStandardPublicKey} from './projects/reviewed-standard-operator.mjs';
+const dispatchArtifacts={'anlgram-bonding-curve-dispatch-v2':curveArtifact,
+ 'anlgram-guard-vnext':guardArtifact,'anlgram-migration-router-dispatch-v2':migrationArtifact};
 
 function testnetAddress(value) {
  const raw=/^0:[a-f0-9]{64}$/.test(value);
@@ -46,6 +53,39 @@ function wallet(publicKey) {
  return WalletContractV5R1.create({publicKey:Buffer.from(publicKey,'hex'),
   walletId:{networkGlobalId:-3,context:{workchain:0,walletVersion:'v5r1',subwalletNumber:0}}});
 }
+const obviousPlaceholder = key => /^([0-9a-f]{2})\1{31}$/i.test(key);
+
+export async function buildReviewedOwnerInventory(draft) {
+ const operator=assertReviewedStandardOperator(reviewedStandardOperator);
+ const {stateInit:unused,...genesis}=identity(operator.init,reviewedStandardOperator);
+ const artifactHashes={
+  operatorV5R1:genesis.codeHash,standardMinter:hash(standardV2Code('minter')),legacyStandardWallet:hash(standardV2Code('wallet')),
+  standardSettlementWallet:hash(code('standard-jetton-settlement-wallet')),standardVesting:hash(code('anlgram-vesting-wallet-standard-v2')),
+  launchpadMinter:hash(code('anlgram-launchpad-jetton-minter')),launchpadSettlementWallet:hash(code('anlgram-settlement-wallet')),
+  ...Object.fromEntries(['anlgram-bonding-curve-dispatch-v2','anlgram-guard-vnext','anlgram-migration-router-dispatch-v2'].map(name=>{
+    const artifact=dispatchArtifacts[name],cell=core.Cell.fromBase64(artifact.codeBocBase64);
+    if(hash(cell)!==artifact.codeCellHash)throw Error('Release artifact hash mismatch');
+    return [name,hash(cell)];
+  })),locker:hash(code('anlgram-lp-locker-v2'))
+ };
+ let standard=null;
+ if(draft!==undefined){
+  checkDraftAddresses(draft);
+  assertReviewedStandardOperator(draft.metadata.creator);
+  if(draft.vesting?.enabled&&draft.walletProfile!=='STANDARD_V2_SETTLEMENT')throw Error('Vesting requires settlement wallet');
+  const release=await prepareStandardTestnetRelease(draft,reviewedStandardPublicKey);
+  const {stateInit:discarded,...minter}=fromPrepared(release.minter);
+  standard={configurationFingerprint:release.configurationFingerprint,minter,walletCodeHash:release.walletCodeHash,
+   attachmentNano:release.deployment.message.amount,deploymentMessage:release.deployment.receiptExpectation};
+ }
+ return {schema:1,network:'-3',executionVersion:execution.sha256,scope:'REVIEWED_IDENTITY_READ_ONLY',
+  operator:{...genesis,address:operator.address.toString({testOnly:true,bounceable:false}),
+   raw:reviewedStandardOperator,publicKey:reviewedStandardPublicKey,walletId:2147483645,
+   walletVersion:'v5r1',subwalletNumber:0,workchain:0},artifactHashes,standard,launchpad:null,
+  blockedBy:[...(standard?[]:['OWNER_STANDARD_DRAFT_REQUIRED']),'WALLET_INITIALIZATION_AND_LIVE_PREFLIGHT_REQUIRED',
+   'SEPARATE_LAUNCHPAD_OPERATOR_AND_AUTHORITY_REQUIRED','GATE_414_CLOSED'],
+  financialSigningEnabled:false,broadcastingEnabled:false,executionEligible:false,liveChainVerified:false,feeQuote:null};
+}
 
 export async function buildReleasePlan(input) {
  if(!input||Object.keys(input).sort().join()!=='launchpad,network,standard'||input.network!=='-3'||
@@ -83,7 +123,9 @@ export async function buildReleasePlan(input) {
  if(pool.codeHash!==profile.codes.pool.hash||lpWallet.codeHash!==profile.codes.lpWallet.hash||
     hash(core.Cell.fromBase64(profile.codes.lpAccount.boc))!==profile.codes.lpAccount.hash)throw Error('Foreign profile mismatch');
  return {schema:1,network:'-3',executionVersion:execution.sha256,scope:'OFFLINE_RELEASE_INVENTORY',
-  financialSigningEnabled:false,broadcastingEnabled:false,liveChainVerified:false,feeQuote:null,
+  identityStatus:[input.standard.publicKey,input.launchpad.publicKey,input.launchpad.migrationAuthorityPublicKey].some(obviousPlaceholder)?
+   'EXAMPLE_KEYS_DETECTED':'UNREVIEWED_PUBLIC_IDENTITIES',
+  financialSigningEnabled:false,broadcastingEnabled:false,executionEligible:false,liveChainVerified:false,feeQuote:null,
   standard:{operator:standard.operator,operatorGenesis:identity(wallet(standard.operator.publicKey).init,standard.operator.address),
    fingerprint:standard.configurationFingerprint,minter:fromPrepared(standard.minter),
    walletCodeHash:standard.walletCodeHash,vesting:prepared.vesting.stateInit?fromPrepared(prepared.vesting):null,

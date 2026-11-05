@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {Address,Cell} from '@ton/core';
 import {WalletContractV5R1} from '@ton/ton';
 import {createDraft} from '../wizard/model.mjs';
-import {buildReleasePlan} from '../testnet-release-plan.mjs';
+import {buildReleasePlan,buildReviewedOwnerInventory} from '../testnet-release-plan.mjs';
+import {assertReviewedStandardPreflightInput,reviewedStandardPublicKey} from '../projects/reviewed-standard-operator.mjs';
+import {submitStandardDeployment} from '../projects/standard-transport-fixture.mjs';
 
 function publicInput(){
  const project=(mode,byte,id)=>{
@@ -36,10 +38,40 @@ test('Testnet inventory reproduces both deployment branches and all included Sta
   assert.equal(address.address.hash.toString('hex'),Cell.fromBase64(item.stateInit).hash().toString('hex'));
  }
  assert.equal(a.gates.migration,'GATE_414_CLOSED');
+ assert.equal(a.identityStatus,'EXAMPLE_KEYS_DETECTED');
+ assert.equal(a.executionEligible,false);
  assert.equal(a.financialSigningEnabled,false);
  assert.equal(a.broadcastingEnabled,false);
  assert.equal(a.liveChainVerified,false);
  assert.equal(a.feeQuote,null);
+});
+
+test('reviewed owner inventory pins PR 34 genesis and leaves unassigned projects empty',async()=>{
+ const owner=await buildReviewedOwnerInventory();
+ assert.equal(owner.operator.address,'0QCetQK2VyBLL2cB9Gmw7fyHudAMwCX75-Mps0NWmk5fCAUn');
+ assert.equal(owner.operator.stateInitHash,owner.operator.raw.slice(2));
+ assert.equal(owner.standard,null);
+ assert.equal(owner.launchpad,null);
+ assert.equal(owner.executionEligible,false);
+ assert.equal(owner.liveChainVerified,false);
+ const draft=publicInput().standard.draft;
+ draft.metadata.creator=owner.operator.address;
+ const planned=await buildReviewedOwnerInventory(draft);
+ assert.equal(planned.standard.minter.stateInitHash,Address.parse(planned.standard.minter.address).hash.toString('hex'));
+ assert.equal(planned.standard.minter.stateInit,undefined);
+ assertReviewedStandardPreflightInput({draft,publicKey:reviewedStandardPublicKey});
+ assert.throws(()=>assertReviewedStandardPreflightInput({draft,publicKey:'11'.repeat(32)}),/UNREVIEWED/);
+ draft.metadata.creator=Address.parse(owner.operator.address).toString();
+ assert.throws(()=>assertReviewedStandardPreflightInput({draft,publicKey:reviewedStandardPublicKey}),/UNREVIEWED/);
+});
+
+test('example draft and exported manifest cannot reach reviewed preflight or financial transport',async()=>{
+ const sample=publicInput();
+ const manifest=await buildReleasePlan(sample);
+ assert.throws(()=>assertReviewedStandardPreflightInput(sample.standard),/UNREVIEWED/);
+ assert.throws(()=>assertReviewedStandardPreflightInput(manifest),/UNREVIEWED/);
+ await assert.rejects(buildReviewedOwnerInventory(sample.standard.draft),/UNREVIEWED/);
+ await assert.rejects(submitStandardDeployment(null,manifest.standard.operator.address,null),/hard-disabled/);
 });
 
 test('release input rejects Mainnet, cross-wallet, unsupported workchain and execution overrides',async()=>{
