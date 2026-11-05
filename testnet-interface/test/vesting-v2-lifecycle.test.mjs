@@ -8,6 +8,7 @@ import {prepareVesting} from '../projects/distribution.mjs';
 import {createDraft,loadStore,saveDraft} from '../wizard/model.mjs';
 import {prepareProject} from '../projects/prepare.mjs';
 import {prepareStandardTestnetRelease} from '../projects/standard-testnet-release.mjs';
+import {distributionReceiptRecords} from '../projects/distribution-receipts.mjs';
 import {WalletContractV5R1} from '@ton/ton';
 
 const require=createRequire(new URL('../../tests/settlement-runtime/package.json',import.meta.url));
@@ -24,7 +25,9 @@ test('opt-in Standard V2 conserves vested principal through freeze, bounce and d
   const chain=await Blockchain.create(),owner=await chain.treasury('standard-vesting-owner'),beneficiary=await chain.treasury('standard-vesting-recipient');
   const d=createDraft();
   Object.assign(d.metadata,{name:'Standard with receipts',symbol:'SWR',creator:owner.address.toRawString(),supply:'100',decimals:'2'});
-  d.distribution.skip=true;
+  const airdrop=await chain.treasury('standard-airdrop-recipient'),unavailable=await chain.treasury('standard-airdrop-frozen');
+  d.allocations.community='3';
+  d.distribution={skip:false,mode:'custom',amount:'0',text:airdrop.address.toRawString()+',1\n'+unavailable.address.toRawString()+',2',batchSize:'2'};
   d.allocations.team='40';
   Object.assign(d.vesting,{enabled:true,beneficiary:beneficiary.address.toRawString(),amount:'40',startDate:'2027-01-01',cliffMonths:'3',durationMonths:'12'});
   const legacy=await prepareProject(d);
@@ -61,6 +64,35 @@ test('opt-in Standard V2 conserves vested principal through freeze, bounce and d
     [{type:'slice',cell:core.beginCell().storeAddress(who).endCell()}])).stackReader.readAddress();
   const source=await wallet(owner.address),vWallet=await wallet(vest),recipient=await wallet(beneficiary.address);
   const balance=async a=>(await chain.runGetMethod(a,'get_wallet_data')).stackReader.readBigNumber();
+  const [delivery,rejectedDelivery]=plan.distribution.batches[0].messages;
+  const sourceData=async()=>PublicCell.fromBase64((await chain.getContract(source)).accountState.state.data.toBoc().toString('base64'));
+  const receiptPlan={...plan,operator:{address:owner.address.toRawString()},minter:plan.accounts.minter};
+  const outcomes=async()=>distributionReceiptRecords(await sourceData(),receiptPlan).map(row=>row.outcome);
+  assert.deepEqual(await outcomes(),['UNKNOWN','UNKNOWN']);
+  const airdropWallet=await wallet(airdrop.address),frozenWallet=await wallet(unavailable.address);
+  const failedWallet=createShardAccount({address:frozenWallet,code:core.Cell.EMPTY,data:core.Cell.EMPTY,balance:10000000n});
+  failedWallet.account.storage.state={type:'frozen',stateHash:1n};
+  await chain.setShardAccount(frozenWallet,failedWallet);
+  const deliveryMessage=core.internal({to:source,value:BigInt(delivery.amount),bounce:true,body:core.Cell.fromBase64(delivery.payload)});
+  let delayedAck;
+  for await(const tx of await chain.sendMessageIter(core.external({to:owner.address,
+    body:owner.createTransfer({messages:[deliveryMessage]})}),{allowParallel:true})){
+   delayedAck=[...tx.outMessages.values()].find(m=>m.info.dest.equals(source)&&opcode(m)===0x414e5303);
+   if(delayedAck)break;
+  }
+  assert(delayedAck);
+  assert.deepEqual(await outcomes(),['PENDING','UNKNOWN']);
+  await send(owner,delivery.reconciliationQuery);
+  await chain.sendMessage(delayedAck);
+  const rejection=await send(owner,rejectedDelivery);
+  assert(rejection.transactions.some(tx=>tx.inMessage?.info.dest?.equals(frozenWallet)&&tx.description.aborted));
+  assert.deepEqual(await outcomes(),['DELIVERY_RECORDED','RETURN_RECORDED']);
+  await send(owner,delivery);
+  assert.equal(await balance(airdropWallet),100n);
+  assert.deepEqual(await outcomes(),['DELIVERY_RECORDED','RETURN_RECORDED']);
+  const altered=structuredClone(receiptPlan),currentData=await sourceData();
+  altered.distribution.batches[0].messages[0].receiptExpectation.amountUnits='101';
+  assert.throws(()=>distributionReceiptRecords(currentData,altered),/does not match operation/);
   const pending=async()=>(await chain.runGetMethod(vest,'get_pending_claim')).stack.map(x=>x.value);
   const claimed=async()=>(await chain.runGetMethod(vest,'get_vesting_data')).stack[1].value;
   const request=(op,q)=>({to:vest,value:100000000n,bounce:true,body:body(op,q).endCell()});
@@ -98,7 +130,7 @@ test('opt-in Standard V2 conserves vested principal through freeze, bounce and d
   assert.deepEqual(await pending(),[3n,0n]);
   const supply=(await chain.runGetMethod(master,'get_jetton_data')).stackReader.readBigNumber();
   assert.equal(supply,10000n);
-  assert.equal(await balance(source)+await balance(vWallet)+await balance(recipient),supply);
+  assert.equal(await balance(source)+await balance(vWallet)+await balance(recipient)+await balance(airdropWallet),supply);
 });
 
 test('source-compiled creation, trading, graduation and DEX custody keep terminal settlement pending while Vesting V2 reconciles',async()=>{

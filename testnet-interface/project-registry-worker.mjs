@@ -5,6 +5,9 @@ import {projectProviders, provenance} from './projects/project-providers.mjs';
 import {acquireLpIssuance} from './projects/project-lp-acquisition.mjs';
 import {projectStatusResponse} from './projects/project-registry.mjs';
 import {readBoundedJson} from './testnet-rpc.mjs';
+import {acquireDistributionReceipts} from './projects/distribution-receipts.mjs';
+import {prepareDistribution} from './projects/distribution.mjs';
+import {code} from './projects/artifacts.mjs';
 
 const json = (data, status = 200) => Response.json(data, {status, headers: {'Cache-Control': 'no-store'}});
 const unavailable = () => json({error: 'Project evidence unavailable'}, 503);
@@ -52,7 +55,25 @@ export class ProjectRegistry {
           receipt.codeHash !== intent.manifest.minter.codeHash ||
           ![receipt.transactionHash, receipt.sourceTransactionHash, receipt.messageHash, receipt.signedBodyHash].every(hexHash) ||
           stored.provenance.validatorFinalityVerified !== false) return unavailable();
-        return json(standardStatus(intent, stored.provenance));
+        const result = standardStatus(intent, stored.provenance);
+        if (intent.input.draft.walletProfile==='STANDARD_V2_SETTLEMENT'&&!intent.input.draft.distribution.skip) {
+          if (!this.distributionRead || this.distributionRead.until <= Date.now()) {
+            const read = {until:Date.now()+30_000};
+            read.result = Promise.resolve().then(() => {
+              const manifest=intent.manifest;
+              const distribution=prepareDistribution(intent.input.draft,{master:manifest.minter.raw,
+                walletCode:code('standard-jetton-settlement-wallet'),seed:manifest.configurationFingerprint});
+              return distribution.batches.length ? acquireDistributionReceipts(
+                {...manifest,distribution},projectProviders(this.env),stored.provenance.reference) : null;
+            }).catch(error => {
+              if(error?.retryMs>30_000)read.until=Date.now()+Math.min(error.retryMs,300_000);
+              return null;
+            });
+            this.distributionRead=read;
+          }
+          result.distributionReceipts = await this.distributionRead.result;
+        }
+        return json(result);
       }
       const intent = await deploymentIntent(stored.input);
       if (!this.validStoredRegistration(intent, stored, fingerprint)) return unavailable();

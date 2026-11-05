@@ -54,6 +54,24 @@ node minter-contract/compile-one-shot-dispatch.js --check
 
 ## Release checklist
 
+### Public operation integration follow-up
+
+The settlement-enabled Standard V2 profile now prepares distribution using the pinned wallet's authenticated transfer extension. Each recipient template identifies its owner query ID, expected amount, derived wallet and separate funded reconciliation query. The reconciliation message queries the existing operation and cannot initiate a new principal transfer. The legacy Standard V2 profile still prepares its original TEP-74 message. Historical exports or independently submitted transfers must be reconciled before approving a new distribution, because ordinary TEP-74 delivery does not populate the settlement dictionary.
+
+The existing registered Standard project status route reads the exact creator wallet using the existing Testnet provider integration. The read-only adapter checks wallet code, owner, master, query ID, principal and recipient wallet against the canonical plan. It reports `DELIVERY_RECORDED`, `RETURN_RECORDED`, `PENDING` or `UNKNOWN` relative to the verified account reference. The wizard matches those rows to its current plan before displaying counts. Validator finality and transaction-specific release authorization remain separate requirements.
+
+| Operation | Local evidence and remaining release gate |
+|---|---|
+| Standard creation and mint | The public plan and private supervisor derive the same deployment. Sandbox verifies mint supply and delivery. Public execution still requires an independently reviewed signer, isolated wallet initialization, fresh emulation and authenticated live deployment/mint reconciliation. |
+| Distribution and Vesting V2 | The Standard Sandbox scenario executes mint, funded vesting, a recipient delivery with a delayed acknowledgment, same-ID reconciliation, a frozen recipient return and a duplicate transfer. It checks supply conservation and continues through Vesting V2 claim/recovery. Live recipient evidence and a reviewed one-attempt submission workflow remain prerequisites. |
+| Curve purchase, sale, fees and refunds | The existing exact V5 Sandbox lifecycle verifies reserves and authenticated refund accounting. Production and Testnet still need operation-specific live verification and public authorization. |
+| Graduation, migration, configurable LP lock and withdrawal | The source-compiled Launchpad lifecycle reaches graduation and executes captured STON.fi code through LP custody and an authorized unlocked withdrawal. Gate 414 blocks terminal settlement. A downstream external LP withdrawal still lacks a contract-consumable final receipt. |
+| Telegram Mini App | The existing Telegram integration is preserved. Actual wallet compatibility, origin binding, session recovery and one-attempt financial transport in Telegram clients remain unverified. |
+
+Public financial execution remains NO-GO on Testnet and Mainnet. No source or bytecode changes were made to financial contracts. The contract hashes listed in this report continue to identify the tested artifacts.
+
+Verification recorded 227 settlement passes and 277 interface passes before the final registry refactor. The final focused rerun covered 12 cases across lifecycle, private preparation, registration and execution-version checks. Each run had zero failures and zero skips. The settlement suite used two test workers and captured STON.fi bytecode in Sandbox. The interface runs exercised local fixtures and did not verify live financial transactions.
+
 ### STON.fi terminal settlement and recovery checkpoint
 
 Gate 414 is **NO-GO** on Testnet and Mainnet. STON.fi can delete the LPAccount during Pool handoff and recreate it at the same address. An authenticated balance reply describes one execution of that account. The refund callback initiates another asynchronous transfer. The interface supplies neither a lifetime identifier nor a terminal receipt that accounts for both original deposit legs, all descendant transfers and all recoverable balances. An LP credit, refund dispatch, missing callback or zero balance cannot establish that barrier. [Official STON.fi LPAccount interface](https://docs.ston.fi/developer-section/dex/smart-contracts/v2/lpaccount)
@@ -88,6 +106,7 @@ For a new Standard draft, the wizard's optional vesting section can select `wall
 | Artifact | Code cell SHA-256 |
 |---|---|
 | Standard V2 minter, unchanged | `397faa44a7892b3f2eb0da4cf6f2ef04876d121f87f516c91fe3402808831d8c` |
+| Original Standard V2 wallet, unchanged | `072d50c878949253fa6daee0149d12ed9adb91079cd5134b4d63a10ae6acb470` |
 | Standard V2 settlement-enabled wallet | `464dc9e767cd096f27597f2952569adbf14aac010ae90aa60595b8ce7aabf765` |
 | Vesting V2 for Standard V2 settlement-enabled wallets | `d436ede674ef3c17781dbf8c4a850e57b114342559dabb8a2405dc050bc2cda9` |
 | One-shot Migrator, unchanged | `7df729a4c2fecf3b4dba2fd16936b56d0e35af0c8f0a237b31d60e39ed89dbf1` |
