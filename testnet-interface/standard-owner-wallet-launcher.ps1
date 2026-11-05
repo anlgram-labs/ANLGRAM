@@ -382,7 +382,12 @@ function Invoke-SignInit {
     Write-Host "==========================================================================" -ForegroundColor Cyan
 
     $cli = Join-Path $ScriptDirectory "standard-owner-signer-cli.mjs"
-    $signedJson = & node $cli sign-init $QuoteOutputPath $BackupGpgPath
+    $env:ANLGRAM_OWNER_APPROVAL = $authString
+    try {
+        $signedJson = & node $cli sign-init $QuoteOutputPath $BackupGpgPath
+    } finally {
+        Remove-Item Env:\ANLGRAM_OWNER_APPROVAL -ErrorAction SilentlyContinue
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "sign-init stopped or failed with exit code $LASTEXITCODE."
     }
@@ -489,7 +494,12 @@ function Invoke-Broadcast {
     Write-Host "==========================================================================" -ForegroundColor Cyan
 
     $cli = Join-Path $ScriptDirectory "standard-wallet-broadcast-cli.mjs"
-    & node $cli broadcast $QuoteOutputPath $SignedOutputPath
+    $env:ANLGRAM_BROADCAST_APPROVAL = $authString
+    try {
+        & node $cli broadcast $QuoteOutputPath $SignedOutputPath
+    } finally {
+        Remove-Item Env:\ANLGRAM_BROADCAST_APPROVAL -ErrorAction SilentlyContinue
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "broadcast stopped or failed with exit code $LASTEXITCODE."
     }

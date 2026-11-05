@@ -14,6 +14,21 @@ const signingEnabled = true; // Owner-operated initialization-only release.
 const now = () => Math.floor(Date.now()/1000);
 
 async function confirm(expected, operation = 'wallet initialization') {
+  if (process.env.ANLGRAM_OWNER_APPROVAL) {
+    const envAnswer = process.env.ANLGRAM_OWNER_APPROVAL.trim();
+    if (envAnswer === expected) {
+      console.error('\n' + '='.repeat(72));
+      console.error(`OWNER APPROVAL CONFIRMED FOR ${operation.toUpperCase()}:`);
+      console.error(`  ${expected}`);
+      console.error('='.repeat(72));
+      return;
+    } else {
+      console.error('\n[AUTHORIZATION REJECTED FROM ENVIRONMENT]');
+      console.error(`Expected: ${expected} (${expected.length} chars)`);
+      console.error(`Received: ${envAnswer} (${envAnswer.length} chars)`);
+      throw Error('Owner cancelled');
+    }
+  }
   console.error('\n' + '='.repeat(72));
   console.error('REQUIRED OWNER APPROVAL:');
   console.error(`  ${expected}`);

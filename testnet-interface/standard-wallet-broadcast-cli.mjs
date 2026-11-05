@@ -27,6 +27,21 @@ try {
         policyCeilingNano:quote.ownerPolicyCeilingNano,hardFeeCapEnforced:false,validUntil:quote.validUntil,
         fingerprint:quote.fingerprint,messageHash},null,2));
       const approval = 'BROADCAST TESTNET WALLET INIT '+messageHash;
+      if (process.env.ANLGRAM_BROADCAST_APPROVAL) {
+        const envAnswer = process.env.ANLGRAM_BROADCAST_APPROVAL.trim();
+        if (envAnswer === approval) {
+          console.error('\n' + '='.repeat(72));
+          console.error('OWNER BROADCAST APPROVAL CONFIRMED:');
+          console.error(`  ${approval}`);
+          console.error('='.repeat(72));
+          return true;
+        } else {
+          console.error('\n[BROADCAST REJECTED FROM ENVIRONMENT]');
+          console.error(`Expected: ${approval} (${approval.length} chars)`);
+          console.error(`Received: ${envAnswer} (${envAnswer.length} chars)`);
+          return false;
+        }
+      }
       console.error('\n' + '='.repeat(72));
       console.error('REQUIRED OWNER BROADCAST APPROVAL:');
       console.error(`  ${approval}`);
