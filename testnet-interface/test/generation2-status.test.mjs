@@ -6,6 +6,7 @@ import {migrationAccountFields} from '../projects/migration-account.mjs';
 import {generation2Status} from '../projects/migration-status.mjs';
 import {rememberMigrationCheckpoint} from '../projects/evidence-brand.mjs';
 import {selectLpDelivery} from '../projects/project-lp-acquisition.mjs';
+import {rememberLpEvidence} from '../projects/lp-evidence.mjs';
 
 const core = createRequire(new URL('../../tests/settlement-runtime/one-shot-dispatch-support.js', import.meta.url))('@ton/core');
 
@@ -59,6 +60,19 @@ test('generation 2 projection reads source-compiled state and separates historic
  assert.equal(status.settlement,'SETTLEMENT_PENDING');
  assert.equal(status.unresolvedReturns,'UNKNOWN');
  assert.equal(status.currentWalletUnits,null);
+ const bounce=rememberLpEvidence({kind:'LP_WITHDRAWAL_IMMEDIATE_BOUNCE',operationId:'77',
+  reference:JSON.stringify([after.proof.masterchainSeqno,after.proof.masterchainRootHash,after.proof.masterchainFileHash]),
+  locker:after.locker,pool:after.pool,lpWallet:after.lpWallet,walletTransactionHash:'aa'.repeat(32),
+  contractPrincipalRestoredFields:true,deliveryVerified:false,newAttemptAuthorized:false,operationCompleted:false});
+ const delivery=rememberLpEvidence({...bounce,kind:'LP_WITHDRAWAL_DELIVERY',
+  walletTransactionHash:'bb'.repeat(32),contractPendingMustRemain:true});
+ const receipts=generation2Status(identity,{checkpoint:after,evidence:[bounce,bounce,delivery]});
+ assert.deepEqual(receipts.withdrawalEvidence,[bounce,delivery]);
+ assert.equal(receipts.mint,'NOT_VERIFIED');
+ assert.equal(receipts.settlement,'SETTLEMENT_PENDING');
+ assert.equal(receipts.withdrawalsEnabled,false);
+ assert.throws(()=>generation2Status(identity,{checkpoint:after,
+  evidence:[rememberLpEvidence({...delivery,lpWallet:after.locker})]}),/Wrong project/);
  const legs=status.principalAccounting;
  assert(BigInt(legs.tonNano.original)>0n&&BigInt(legs.jettonUnits.original)>0n);
  for(const leg of [legs.tonNano,legs.jettonUnits]){

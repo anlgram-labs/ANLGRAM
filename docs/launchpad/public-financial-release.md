@@ -54,6 +54,14 @@ node minter-contract/compile-one-shot-dispatch.js --check
 
 ## Release checklist
 
+### LP withdrawal evidence acquisition
+
+The registered Generation 2 project status now looks for both the exact immediate LP-wallet request bounce and the authorized delivery path from Locker to its LP wallet to the derived beneficiary or controller wallet. Acquisition reuses the bounded Testnet histories and account snapshots, then passes the matched transactions to the existing inclusion and state-transition verifier. The mint and withdrawal lookups share the Locker LP wallet history. Missing state snapshots, ambiguous matches and provider outages leave the affected observation unavailable.
+
+The separate `withdrawalEvidence` field and MemeLabs status distinguish a reference-relative recipient delivery from restoration after an immediate bounce. The delivery observation does not clear Locker pending state. A downstream failure, timeout or missing callback still cannot authorize a retry or release. Gate 414 and all financial execution controls remain closed. No contract source or code cell changed in this phase.
+
+Both paths are tested with captured STON.fi wallet bytecode routed through Sandbox. Tests compare exact message edges and reject wrong wallets, missing descendants, replay and substituted state. These runs do not establish live Testnet receipts or validator finality.
+
 ### Controlled Testnet preparation and operator checklist
 
 The offline release CLI takes a JSON file with `network: "-3"`, `standard: {draft, publicKey}` and `launchpad: {draft, publicKey, migrationAuthorityPublicKey}`. Use current canonical schema-1 Testnet drafts from the wizard and the 64-character lowercase hex public keys of two distinct V5R1 subwallet-zero operators. The two draft creators must match the derived operators. An explicit Testnet-friendly address or a canonical workchain-zero raw address is accepted. A raw address has no network marker, so the Testnet V5 derivation and the explicit chain field establish the operator binding. The historical Curve operator and Curve #2 destination are excluded. PR #34 manages the wallet initialization independently. Enter public configuration only.

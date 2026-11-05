@@ -2,7 +2,7 @@ import {standardRegistrationIntent, acquireStandardRegistration, standardStatus}
 import {verifyMigrationAccountCheckpoint} from './projects/migration-account.mjs';
 import {deploymentIntent, acquireRegistration, hexHash, hash, stateInit} from './projects/project-registration.mjs';
 import {projectProviders, provenance} from './projects/project-providers.mjs';
-import {acquireLpIssuance} from './projects/project-lp-acquisition.mjs';
+import {acquireLpObservations} from './projects/project-lp-acquisition.mjs';
 import {projectStatusResponse} from './projects/project-registry.mjs';
 import {readBoundedJson} from './testnet-rpc.mjs';
 import {acquireDistributionReceipts} from './projects/distribution-receipts.mjs';
@@ -181,8 +181,13 @@ export class ProjectRegistry {
       });
       if (result.dispatch !== 'DEX_DISPATCHED') return result;
       try {
-        const issuance = await acquireLpIssuance(candidate, providers, acquired.reference, previousReference);
-        return issuance ? status({checkpoint: current, previous, evidence: [issuance]}, 'REFERENCE_VERIFIED') : result;
+        const observations = await acquireLpObservations(candidate, providers, acquired.reference, previousReference, !!result.historicalLp);
+        const evidence = [];
+        for (const observation of observations) {
+          if (observation.status === 'rejected') await this.backoff(observation.reason);
+          else if (observation.value) evidence.push(observation.value);
+        }
+        return evidence.length ? status({checkpoint: current, previous, evidence}, 'REFERENCE_VERIFIED') : result;
       } catch (error) {
         await this.backoff(error);
         return result;

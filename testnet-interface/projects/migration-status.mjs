@@ -61,7 +61,7 @@ export function generation2Status(identity, {checkpoint, previous, evidence = []
   operationId: String(identity.operationId), scope: 'REFERENCE_RELATIVE_READ_ONLY',
   dispatch: 'UNKNOWN', mint: 'NOT_VERIFIED', custody: 'UNKNOWN', lock: 'UNKNOWN',
   settlement: 'UNKNOWN', historicalLp: null, currentWalletUnits: null,
-  unresolvedReturns: 'UNKNOWN', evidence: [], checkpoint: null, principalAccounting: null,
+  unresolvedReturns: 'UNKNOWN', evidence: [], withdrawalEvidence: [], checkpoint: null, principalAccounting: null,
   financialSigningEnabled: false, broadcastingEnabled: false, tradingEnabled: false,
   migrationAuthorized: false, withdrawalsEnabled: false, recoveryEnabled: false,
  };
@@ -118,15 +118,23 @@ export function generation2Status(identity, {checkpoint, previous, evidence = []
  const reference = JSON.stringify([proof.masterchainSeqno, proof.masterchainRootHash, proof.masterchainFileHash]);
  const seen = new Set();
  for (const receipt of evidence) {
-  if (!isIncludedLpEvidence(receipt) || receipt.kind !== 'LP_ISSUANCE' ||
+  if (!isIncludedLpEvidence(receipt) || !['LP_ISSUANCE','LP_WITHDRAWAL_IMMEDIATE_BOUNCE','LP_WITHDRAWAL_DELIVERY'].includes(receipt.kind) ||
    receipt.operationId !== result.operationId || receipt.reference !== reference ||
    receipt.locker !== checkpoint.locker || receipt.pool !== checkpoint.pool || receipt.lpWallet !== checkpoint.lpWallet) {
    throw Error('Wrong project mint evidence');
   }
-  if (!dispatched) throw Error('Mint evidence without dispatch');
-  if (seen.has(receipt.walletTransactionHash)) continue;
-  seen.add(receipt.walletTransactionHash);
-  result.evidence.push(receipt);
+  if (!dispatched) throw Error('LP evidence without dispatch');
+  const key=receipt.kind+':'+receipt.walletTransactionHash;
+  if (seen.has(key)) continue;
+  seen.add(key);
+  if(receipt.kind==='LP_ISSUANCE')result.evidence.push(receipt);
+  else {
+   if(!observation||receipt.newAttemptAuthorized!==false||receipt.operationCompleted!==false||
+      (receipt.kind==='LP_WITHDRAWAL_IMMEDIATE_BOUNCE'&&
+       (receipt.contractPrincipalRestoredFields!==true||receipt.deliveryVerified!==false))||
+      (receipt.kind==='LP_WITHDRAWAL_DELIVERY'&&receipt.contractPendingMustRemain!==true))throw Error('Invalid withdrawal recovery evidence');
+   result.withdrawalEvidence.push(receipt);
+  }
  }
  result.evidence.sort((a,b) => {
   const delta = BigInt(a.walletTransactionLt) - BigInt(b.walletTransactionLt);
