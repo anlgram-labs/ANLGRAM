@@ -63,6 +63,35 @@ test('PowerShell 5.1 host prompt retries empty and wrong input before handing of
  assert.equal(result.stdout.match(/Authorization was empty or did not match/g)?.length,2);
 });
 
+test('PowerShell 5.1 writes exact ASCII bytes to a captured Node signer independent of OutputEncoding',
+ {skip:process.platform!=='win32'},async()=>{
+ const path=fileURLToPath(new URL('../standard-owner-wallet-launcher.ps1',import.meta.url)).replaceAll("'","''");
+ const directory=await mkdtemp(join(tmpdir(),'anlgram stdin fixture '));
+ try{
+  const cli=join(directory,'mock signer.cjs');
+  await writeFile(cli,`const fs=require('node:fs');
+const bytes=fs.readFileSync(0);
+if(bytes.toString('ascii')!==${JSON.stringify(phrase)} || bytes.length!==87 ||
+   process.argv[2]!=='sign-init' || !process.argv[3].endsWith('quote file.json') ||
+   !process.argv[4].endsWith('backup file.gpg') || process.argv[5]!=='--launcher-stdin')process.exit(9);
+console.log('MOCK_SIGNER_HANDOFF_OK');`);
+  const script=`
+   $OutputEncoding=[Text.Encoding]::Unicode
+   $t=$null;$e=$null
+   $ast=[System.Management.Automation.Language.Parser]::ParseFile('${path}',[ref]$t,[ref]$e)
+   if($e.Count){exit 4}
+   $func=$ast.Find({param($x) $x -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $x.Name -eq 'Invoke-OwnerSignerWithInput'},$true)
+   . ([scriptblock]::Create($func.Extent.Text))
+   $r=Invoke-OwnerSignerWithInput -Cli '${cli.replaceAll("'","''")}' -QuotePath 'quote file.json' -BackupPath 'backup file.gpg' -Approval '${phrase}'
+   if($r.ExitCode -ne 0 -or $r.Output.Trim() -cne 'MOCK_SIGNER_HANDOFF_OK'){exit 5}
+   $r.Output
+  `;
+  const result=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{encoding:'utf8',timeout:10000});
+  assert.equal(result.status,0,result.stderr);
+  assert.match(result.stdout,/MOCK_SIGNER_HANDOFF_OK/);
+ }finally{await rm(directory,{recursive:true,force:true});}
+});
+
 test('dialog response is exact, expires after confirmation, and handles unavailable or cancelled host',async()=>{
  const request=fixture();
  await confirmInitialization(request,{dialog:true,execute:async (_,args,options)=>{

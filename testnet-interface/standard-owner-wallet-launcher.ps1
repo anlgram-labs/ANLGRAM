@@ -360,6 +360,27 @@ function Read-OwnerInitApproval([string]$Fingerprint, [long]$Expiry) {
     throw 'Quote expired during owner confirmation. No signing was requested.'
 }
 
+function Invoke-OwnerSignerWithInput([string]$Cli, [string]$QuotePath, [string]$BackupPath, [string]$Approval) {
+    if ($Approval -cnotmatch '^AUTHORIZE TESTNET INIT [a-f0-9]{64}$') { throw 'Malformed owner authorization.' }
+    $files = @($Cli,$QuotePath,$BackupPath) | ForEach-Object { [IO.Path]::GetFullPath($_) }
+    if (@($files | Where-Object { $_ -match '["\r\n]|\\$' }).Count) { throw 'Invalid signer file path.' }
+    $start = New-Object Diagnostics.ProcessStartInfo
+    $start.FileName = Get-Command node.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1 -ExpandProperty Path
+    $start.Arguments = '"{0}" sign-init "{1}" "{2}" --launcher-stdin' -f $files
+    $start.UseShellExecute = $false
+    $start.RedirectStandardInput = $true
+    $start.RedirectStandardOutput = $true
+    $child = [Diagnostics.Process]::Start($start)
+    try {
+        $output = $child.StandardOutput.ReadToEndAsync()
+        $bytes = [Text.Encoding]::ASCII.GetBytes($Approval)
+        $pipe = $child.StandardInput.BaseStream
+        try { $pipe.Write($bytes, 0, $bytes.Length) } finally { $pipe.Dispose() }
+        $child.WaitForExit()
+        return @{ ExitCode=$child.ExitCode; Output=$output.GetAwaiter().GetResult() }
+    } finally { $child.Dispose() }
+}
+
 function Invoke-SignInit {
     Assert-NoInitializationAttempt
     Assert-NativeGnuPG
@@ -423,12 +444,16 @@ function Invoke-SignInit {
     if ($Confirmation -eq 'Terminal') {
         if ([Console]::IsInputRedirected) { throw 'Terminal confirmation requires a visible interactive PowerShell console.' }
         $ownerApproval = Read-OwnerInitApproval -Fingerprint $quoteParsed.quote.fingerprint -Expiry $validUntil
-        $signedJson = $ownerApproval | & node $cli sign-init $QuoteOutputPath $BackupGpgPath --launcher-stdin
+        $result = Invoke-OwnerSignerWithInput -Cli $cli -QuotePath $QuoteOutputPath -BackupPath $BackupGpgPath -Approval $ownerApproval
+        $signExit = $result.ExitCode
+        $signedJson = $result.Output
+        $result = $null
     } else {
         $signedJson = & node $cli sign-init $QuoteOutputPath $BackupGpgPath --windows-dialog
+        $signExit = $LASTEXITCODE
     }
-    if ($LASTEXITCODE -ne 0) {
-        throw "sign-init stopped or failed with exit code $LASTEXITCODE."
+    if ($signExit -ne 0) {
+        throw "sign-init stopped or failed with exit code $signExit."
     }
 
     # Normalize stdout to single string and verify Signed Envelope Integrity
