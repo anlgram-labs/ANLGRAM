@@ -21,10 +21,11 @@ async function readPublic(path) {
 
 const [command,path,backup,...extra] = process.argv.slice(2);
 const dialog=command==='sign-init'&&extra.length===1&&extra[0]==='--windows-dialog'&&process.platform==='win32';
+const launcherInput=command==='sign-init'&&extra.length===1&&extra[0]==='--launcher-stdin'&&process.platform==='win32';
 let signingStage='QUOTE_AND_MARKER_CHECK';
 try {
   if (command==='sign-approval') throw Error('Minter approval outside this release');
-  if (!path || (extra.length&&!dialog) || !['prepare-init','sign-init'].includes(command)) throw Error('Invalid command');
+  if (!path || (extra.length&&!dialog&&!launcherInput) || !['prepare-init','sign-init'].includes(command)) throw Error('Invalid command');
   if (command !== 'prepare-init' && (!signingEnabled || !backup)) {
     throw Error('Owner signing is hard-disabled');
   }
@@ -55,10 +56,10 @@ try {
     if (now() >= request.quote.validUntil) {
       throw Error('Initialization quote expired before signing reservation');
     }
-    if (!dialog&&!process.stdin.isTTY) throw Error('Interactive owner terminal or Windows dialog required');
+    if (!dialog&&!launcherInput&&!process.stdin.isTTY) throw Error('Interactive owner terminal or Windows dialog required');
     const address=initializationWallet(request.wallet).address.toString({testOnly:true,bounceable:false});
     signingStage='OWNER_CONFIRMATION';
-    await confirmInitialization({...request,wallet:{...request.wallet,address}},{dialog,now});
+    await confirmInitialization({...request,wallet:{...request.wallet,address}},{dialog,launcherInput,now});
     await checkInitMarkers(dir,request.wallet.operator);
     if(now()>=request.quote.validUntil)throw Error('Initialization quote expired before signing reservation');
     signingStage='PINENTRY_OR_BACKUP_VALIDATION';

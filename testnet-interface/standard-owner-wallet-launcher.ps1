@@ -8,6 +8,8 @@
 param(
     [ValidateSet('menu', 'prepare-init', 'sign-init', 'prepare-and-sign-init', 'test-confirmation', 'broadcast', 'reconcile', 'inspect-wallet', 'store-credentials')]
     [string]$Action = 'menu',
+    [ValidateSet('Dialog','Terminal')]
+    [string]$Confirmation = 'Dialog',
     [string]$PublicInputPath = 'C:\Private\ANLGRAM\public-init-input.json',
     [string]$QuoteOutputPath = 'C:\Private\ANLGRAM\init-quote.json',
     [string]$BackupGpgPath = 'C:\Private\ANLGRAM\standard-v2-testnet.gpg',
@@ -338,8 +340,24 @@ function Invoke-PrepareInit {
     Write-Host " Expiry Epoch : $($parsedQuote.quote.validUntil) Unix seconds" -ForegroundColor Cyan
     Write-Host " Saved Quote  : $QuoteOutputPath" -ForegroundColor Green
     Write-Host "--------------------------------------------------------------------------" -ForegroundColor DarkGray
-    Write-Host " Next step: Run sign-init before the quote expires. Authorization is entered in its separate dialog." -ForegroundColor Yellow
+    Write-Host " Confirm the current fingerprint before the quote expires." -ForegroundColor Yellow
     Write-Host "==========================================================================" -ForegroundColor Green
+}
+
+function Read-OwnerInitApproval([string]$Fingerprint, [long]$Expiry) {
+    if ($Fingerprint -cnotmatch '^[a-f0-9]{64}$') { throw 'Malformed initialization fingerprint.' }
+    $expected = 'AUTHORIZE TESTNET INIT ' + $Fingerprint
+    Write-Host "Wallet initialization only | TON Testnet (-3) | $PINNED_WALLET_ADDRESS"
+    Write-Host "Fingerprint: $Fingerprint"
+    Write-Host "Enter the exact line below only when the 'Owner authorization:' prompt is active."
+    Write-Host $expected
+    while ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -lt $Expiry) {
+        $answer = Read-Host 'Owner authorization'
+        if ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -ge $Expiry) { break }
+        if ($answer -ceq $expected) { return $answer }
+        Write-Host 'Authorization was empty or did not match. Try again, or press Ctrl+C to cancel.' -ForegroundColor Yellow
+    }
+    throw 'Quote expired during owner confirmation. No signing was requested.'
 }
 
 function Invoke-SignInit {
@@ -392,13 +410,23 @@ function Invoke-SignInit {
     Write-Host " Validity Window  : $remaining seconds remaining (expires at $validUntil Unix epoch)" -ForegroundColor Cyan
     Write-Host "--------------------------------------------------------------------------" -ForegroundColor DarkGray
     Write-Host " Instructions:" -ForegroundColor Yellow
-    Write-Host " 1. In the separate ANLGRAM window, enter the exact line shown and click Confirm signing." -ForegroundColor Yellow
+    if ($Confirmation -eq 'Dialog') {
+        Write-Host " 1. In the separate ANLGRAM window, enter the exact line shown and click Confirm signing." -ForegroundColor Yellow
+    } else {
+        Write-Host " 1. Enter the exact line at the Owner authorization prompt below." -ForegroundColor Yellow
+    }
     Write-Host " 2. After approval, enter your backup passphrase only in GnuPG Pinentry." -ForegroundColor Yellow
     Write-Host " This action saves a signed file locally. It does not broadcast." -ForegroundColor Yellow
     Write-Host "==========================================================================" -ForegroundColor Cyan
 
     $cli = Join-Path $ScriptDirectory "standard-owner-signer-cli.mjs"
-    $signedJson = & node $cli sign-init $QuoteOutputPath $BackupGpgPath --windows-dialog
+    if ($Confirmation -eq 'Terminal') {
+        if ([Console]::IsInputRedirected) { throw 'Terminal confirmation requires a visible interactive PowerShell console.' }
+        $ownerApproval = Read-OwnerInitApproval -Fingerprint $quoteParsed.quote.fingerprint -Expiry $validUntil
+        $signedJson = $ownerApproval | & node $cli sign-init $QuoteOutputPath $BackupGpgPath --launcher-stdin
+    } else {
+        $signedJson = & node $cli sign-init $QuoteOutputPath $BackupGpgPath --windows-dialog
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "sign-init stopped or failed with exit code $LASTEXITCODE."
     }

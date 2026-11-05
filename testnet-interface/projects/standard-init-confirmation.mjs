@@ -15,11 +15,24 @@ export async function checkInitMarkers(directory,operator) {
   }
 }
 
-export async function confirmInitialization(request, {dialog=false, now=nowSeconds,
+export async function confirmInitialization(request, {dialog=false, launcherInput=false, now=nowSeconds,
   execute=promisify(execFile), input=process.stdin, output=process.stderr}={}) {
   const {quote,wallet}=request;
   const expected='AUTHORIZE TESTNET INIT '+quote.fingerprint;
   if(now()>=quote.validUntil)throw expired();
+  if(launcherInput){
+    const chunks=[];
+    let size=0;
+    for await(const chunk of input){
+      const bytes=Buffer.from(chunk);
+      size+=bytes.length;
+      if(size>128)throw Error('Exact owner authorization required');
+      chunks.push(bytes);
+    }
+    if(now()>=quote.validUntil)throw expired();
+    if(Buffer.concat(chunks).toString('utf8').replace(/\r?\n$/,'')!==expected)throw Error('Exact owner authorization required');
+    return;
+  }
   if(dialog){
     let response;
     try {

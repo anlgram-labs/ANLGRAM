@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {PassThrough} from 'node:stream';
+import {PassThrough,Readable} from 'node:stream';
 import {mkdtemp,rm,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -31,6 +31,36 @@ test('terminal end of input cancels explicitly without authorization',async()=>{
  const input=new PassThrough(),output=new PassThrough();
  setImmediate(()=>input.end());
  await assert.rejects(confirmInitialization(fixture(),{input,output}),/Owner cancelled/);
+});
+
+test('PowerShell handoff accepts only the exact owner input and refuses extra lines',async()=>{
+ const handoff=text=>confirmInitialization(fixture(),{launcherInput:true,input:Readable.from([text])});
+ await handoff(phrase+'\r\n');
+ for(const text of ['',phrase.slice(0,-1),phrase+'\n\n',phrase+'x'.repeat(128)]){
+  await assert.rejects(handoff(text),/Exact owner authorization/);
+ }
+});
+
+test('PowerShell 5.1 host prompt retries empty and wrong input before handing off the exact line',{skip:process.platform!=='win32'},()=>{
+ const path=fileURLToPath(new URL('../standard-owner-wallet-launcher.ps1',import.meta.url)).replaceAll("'","''");
+ const script=`
+ $t=$null;$e=$null
+ $ast=[System.Management.Automation.Language.Parser]::ParseFile('${path}',[ref]$t,[ref]$e)
+ if($e.Count){exit 4}
+ $func=$ast.Find({param($x) $x -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $x.Name -eq 'Read-OwnerInitApproval'},$true)
+ . ([scriptblock]::Create($func.Extent.Text))
+ $PINNED_WALLET_ADDRESS='DISPOSABLE FIXTURE'
+ $script:answers=[System.Collections.Queue]::new()
+ foreach($item in @('','wrong','${phrase}')){$script:answers.Enqueue($item)}
+ function Read-Host { param($Prompt) $script:answers.Dequeue() }
+ $value=Read-OwnerInitApproval -Fingerprint '${fingerprint}' -Expiry ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds()+10)
+ if($value -cne '${phrase}' -or $script:answers.Count -ne 0){exit 5}
+ 'OWNER_HANDOFF_VERIFIED'
+ `;
+ const result=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{encoding:'utf8',timeout:10000});
+ assert.equal(result.status,0,result.stderr);
+ assert.match(result.stdout,/OWNER_HANDOFF_VERIFIED/);
+ assert.equal(result.stdout.match(/Authorization was empty or did not match/g)?.length,2);
 });
 
 test('dialog response is exact, expires after confirmation, and handles unavailable or cancelled host',async()=>{
