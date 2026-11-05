@@ -62,6 +62,8 @@ The separate `withdrawalEvidence` field and MemeLabs status distinguish a refere
 
 Both paths are tested with captured STON.fi wallet bytecode routed through Sandbox. Tests compare exact message edges and reject wrong wallets, missing descendants, replay and substituted state. These runs do not establish live Testnet receipts or validator finality.
 
+The clean rehearsal at `20f648c9ff340ee6af5995ecea4ffa9dae9087da` passed all 9 compiler checks, 30 settlement cases and 70 integration cases. The separate focused run passed 31 cases. Both runs recorded zero failures and zero skips. The unchanged contract hashes are listed below.
+
 ### Controlled Testnet preparation and operator checklist
 
 The offline release CLI takes a JSON file with `network: "-3"`, `standard: {draft, publicKey}` and `launchpad: {draft, publicKey, migrationAuthorityPublicKey}`. Use current canonical schema-1 Testnet drafts from the wizard and the 64-character lowercase hex public keys of two distinct V5R1 subwallet-zero operators. The two draft creators must match the derived operators. An explicit Testnet-friendly address or a canonical workchain-zero raw address is accepted. A raw address has no network marker, so the Testnet V5 derivation and the explicit chain field establish the operator binding. The historical Curve operator and Curve #2 destination are excluded. PR #34 manages the wallet initialization independently. Enter public configuration only.
