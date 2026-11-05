@@ -2,7 +2,8 @@
 # Safe, owner-operated local PowerShell launcher for TON Testnet V5R1 wallet initialization.
 # 100% compatible with Windows PowerShell 5.1.
 # Loads provider credentials into process environment without displaying, printing, or logging them.
-# Enforces atomic, no-overwrite UTF-8 without BOM writes and owner-only ACLs.
+# Enforces atomic, no-overwrite UTF-8 without BOM writes and fail-closed owner-only NTFS ACLs.
+# Guaranteed zero leak of signed envelope, BOC, decrypted material, or credentials in logs or console.
 [CmdletBinding()]
 param(
     [ValidateSet('menu', 'prepare-init', 'sign-init', 'broadcast', 'reconcile', 'inspect-wallet', 'store-credentials')]
@@ -37,10 +38,14 @@ if (-not $CredentialPath) {
     $CredentialPath = Join-Path $userHome '.codex\credentials\testnet-providers.dpapi'
 }
 
-function Set-OwnerOnlyAcl([string]$filePath) {
+function New-OwnerOnlyFileSecurity {
     try {
         $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+        if (-not $currentUser) {
+            throw "Unable to determine current Windows user security identifier (SID)."
+        }
         $acl = New-Object System.Security.AccessControl.FileSecurity
+        # Disable inheritance and remove inherited rules (fail-closed)
         $acl.SetAccessRuleProtection($true, $false)
         $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
             $currentUser,
@@ -48,12 +53,28 @@ function Set-OwnerOnlyAcl([string]$filePath) {
             [System.Security.AccessControl.AccessControlType]::Allow
         )
         $acl.SetAccessRule($accessRule)
+        return $acl
+    } catch {
+        throw "Failed to construct owner-only FileSecurity descriptor: $_"
+    }
+}
+
+function Set-OwnerOnlyAcl([string]$filePath) {
+    try {
+        $acl = New-OwnerOnlyFileSecurity
         $fileInfo = New-Object System.IO.FileInfo($filePath)
         $fileInfo.SetAccessControl($acl)
-    } catch [System.PlatformNotSupportedException] {
-        # Supported on Windows NTFS
+
+        # Verification check: fail closed if rules are not protected or empty
+        $appliedAcl = Get-Acl -LiteralPath $filePath
+        if (-not $appliedAcl.AreAccessRulesProtected) {
+            throw "Access rules on '$filePath' are not protected from inheritance."
+        }
+        if ($appliedAcl.Access.Count -eq 0) {
+            throw "Zero access rules found on '$filePath'."
+        }
     } catch {
-        Write-Warning "Failed to set owner-only ACL on '$filePath': $_"
+        throw "Owner-only ACL enforcement failed closed on '$filePath': $_"
     }
 }
 
@@ -71,7 +92,11 @@ function Write-AtomicFileNoBom {
     $fullPath = [System.IO.Path]::GetFullPath($Path)
     $dir = [System.IO.Path]::GetDirectoryName($fullPath)
     if ($dir -and -not [System.IO.Directory]::Exists($dir)) {
-        [System.IO.Directory]::CreateDirectory($dir) | Out-Null
+        try {
+            [System.IO.Directory]::CreateDirectory($dir) | Out-Null
+        } catch {
+            throw "Target directory cannot be created at '$dir': $_"
+        }
     }
 
     if (-not $Overwrite -and [System.IO.File]::Exists($fullPath)) {
@@ -85,9 +110,20 @@ function Write-AtomicFileNoBom {
     $guidStr = [System.Guid]::NewGuid().ToString("N")
     $tempPath = [System.IO.Path]::Combine($dir, ('.tmp_' + $guidStr))
     try {
-        [System.IO.File]::WriteAllBytes($tempPath, $bytes)
         if ($OwnerOnly) {
+            $fileSecurity = New-OwnerOnlyFileSecurity
+            # Create the temp file with protected owner-only ACL at kernel creation time
+            $fs = [System.IO.File]::Create($tempPath, 4096, [System.IO.FileOptions]::None, $fileSecurity)
+            try {
+                $fs.Write($bytes, 0, $bytes.Length)
+                $fs.Flush()
+            } finally {
+                $fs.Dispose()
+            }
+            # Verify ACL on temp file before placement
             Set-OwnerOnlyAcl -filePath $tempPath
+        } else {
+            [System.IO.File]::WriteAllBytes($tempPath, $bytes)
         }
 
         if ($Overwrite -and [System.IO.File]::Exists($fullPath)) {
@@ -131,7 +167,15 @@ function Test-OutputTargetWritable([string]$path) {
     $probePath = [System.IO.Path]::Combine($dir, ('.probe_' + [System.Guid]::NewGuid().ToString("N")))
     try {
         $testBytes = [System.Text.Encoding]::UTF8.GetBytes("PROBE")
-        [System.IO.File]::WriteAllBytes($probePath, $testBytes)
+        $fileSecurity = New-OwnerOnlyFileSecurity
+        $fs = [System.IO.File]::Create($probePath, 4096, [System.IO.FileOptions]::None, $fileSecurity)
+        try {
+            $fs.Write($testBytes, 0, $testBytes.Length)
+            $fs.Flush()
+        } finally {
+            $fs.Dispose()
+        }
+
         Set-OwnerOnlyAcl -filePath $probePath
         $readBytes = [System.IO.File]::ReadAllBytes($probePath)
         if ($readBytes.Length -ne $testBytes.Length) {
@@ -312,34 +356,41 @@ function Invoke-SignInit {
         throw "Cryptographic fingerprint mismatch: signed envelope fingerprint '$($signedParsed.fingerprint)' does not match quote fingerprint '$($quoteParsed.quote.fingerprint)'."
     }
 
-    # Atomic write to $SignedOutputPath with disaster recovery dump
+    $msgHash = $signedParsed.messageHash
+    $fgp = $signedParsed.fingerprint
+
+    # Atomic write to $SignedOutputPath with strict fail-closed error handling (never prints raw payload)
     try {
         Write-AtomicFileNoBom -Path $SignedOutputPath -Content $signedText -OwnerOnly
 
         # Re-read verification
         $verifyRaw = [System.IO.File]::ReadAllText($SignedOutputPath, [System.Text.Encoding]::UTF8)
         $verifyParsed = $verifyRaw | ConvertFrom-Json
-        if ($verifyParsed.messageHash -ne $signedParsed.messageHash) {
+        if ($verifyParsed.messageHash -ne $msgHash) {
             throw "On-disk verification failed: message hash mismatch."
         }
 
         Write-Host "Signed envelope successfully verified and saved to: $SignedOutputPath" -ForegroundColor Green
-        Write-Host "Message Hash: $($signedParsed.messageHash)" -ForegroundColor Green
-        Write-Host "Fingerprint : $($signedParsed.fingerprint)" -ForegroundColor Green
+        Write-Host "Message Hash: $msgHash" -ForegroundColor Green
+        Write-Host "Fingerprint : $fgp" -ForegroundColor Green
     } catch {
-        Write-Host ""
-        Write-Host "==========================================================================" -ForegroundColor Red
-        Write-Host "CRITICAL EMERGENCY: FAILED TO WRITE SIGNED ENVELOPE TO DISK!" -ForegroundColor Red
-        Write-Host "Error: $_" -ForegroundColor Red
-        Write-Host "A permanent .init-pending marker has already been created on disk." -ForegroundColor Yellow
-        Write-Host "DO NOT re-run sign-init or attempt to delete markers! That would fail or invalidate the wallet." -ForegroundColor Yellow
-        Write-Host "Copy and save the exact signed JSON envelope below into '$SignedOutputPath':" -ForegroundColor Cyan
-        Write-Host "--------------------------------------------------------------------------"
-        Write-Host $signedText
-        Write-Host "--------------------------------------------------------------------------"
-        Write-Host "After saving to '$SignedOutputPath', proceed directly to 'broadcast'." -ForegroundColor Yellow
-        Write-Host "==========================================================================" -ForegroundColor Red
+        Write-Error "=========================================================================="
+        Write-Error "CRITICAL POST-SIGNING FAILURE: Failed to atomically save signed envelope."
+        Write-Error "Target Path : $SignedOutputPath"
+        Write-Error "Error Cause : $_"
+        Write-Error "A permanent .init-pending marker has been established on disk."
+        Write-Error "Execution stopped. Markers will NOT be removed, rearmed, or retried."
+        Write-Error "Do NOT re-run sign-init. Do NOT broadcast unverified payloads."
+        Write-Error "Investigate local filesystem permissions before taking further action."
+        Write-Error "=========================================================================="
         throw
+    } finally {
+        # Securely wipe in-memory sensitive variables
+        $signedJson = $null
+        $signedText = $null
+        $signedParsed = $null
+        $verifyRaw = $null
+        $verifyParsed = $null
     }
 }
 

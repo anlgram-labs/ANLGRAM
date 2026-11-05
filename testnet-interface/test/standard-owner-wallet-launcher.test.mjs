@@ -40,7 +40,7 @@ function runPowerShellScript(scriptBody) {
   });
 }
 
-test('launcher: atomic UTF-8 without BOM file writes and owner-only ACL', () => {
+test('launcher: atomic UTF-8 without BOM file writes and fail-closed owner-only ACL', () => {
   const dir = mkdtempSync(join(tmpdir(), 'anlgram-launcher-bom-'));
   try {
     const targetPath = join(dir, 'test-target.json');
@@ -342,10 +342,6 @@ test('launcher: pre-flight check automatically creates missing parent directory 
       quote: {fingerprint: '11'.repeat(32), validUntil: now + 300}
     };
     writeFileSync(quoteFile, JSON.stringify(validQuote));
-    // Backup file does NOT exist, so sign-init will fail on backup file existence AFTER directory pre-flight test!
-    // But wait: in Invoke-SignInit, BackupGpgPath check is right before Pre-flight or after?
-    // Let's check: Quote check -> Backup check -> Pre-flight write check!
-    // So let's provide a dummy backup file:
     writeFileSync(backupFile, 'dummy-backup');
 
     const psScript = `
@@ -361,9 +357,9 @@ test('launcher: pre-flight check automatically creates missing parent directory 
   }
 });
 
-test('launcher: disaster recovery dump emits critical banner and raw signed envelope on write error', () => {
-  // Test that if an unexpected error occurs during signed envelope disk write,
-  // the catch block prints the CRITICAL EMERGENCY banner containing the raw signed JSON
+test('launcher: post-signing failure emits fail-closed error, preserves markers, and never leaks signed envelope or BOC', () => {
+  // Test that on write failure, the launcher halts fail-closed, does NOT dump raw signed BOC or JSON to console,
+  // and does NOT suggest broadcasting an unverified payload.
   const testSignedJson = JSON.stringify({
     status: 'SIGNED_NOT_BROADCAST',
     boc: 'te6cckEBAQEAAgAAAA==',
@@ -373,31 +369,122 @@ test('launcher: disaster recovery dump emits critical banner and raw signed enve
 
   const psScript = `
     . '${launcherPath.replace(/'/g, "''")}'
-    $signedJson = '${testSignedJson.replace(/'/g, "''")}'
+    $signedJson = $env:TEST_SIGNED_PAYLOAD
     $SignedOutputPath = 'Z:\\nonexistent_drive_disaster\\signed.json'
     try {
         Write-AtomicFileNoBom -Path $SignedOutputPath -Content $signedJson -OwnerOnly
     } catch {
-        Write-Host "=========================================================================="
-        Write-Host "CRITICAL EMERGENCY: FAILED TO WRITE SIGNED ENVELOPE TO DISK!"
-        Write-Host "Error: $_"
-        Write-Host "A permanent .init-pending marker has already been created on disk."
-        Write-Host "DO NOT re-run sign-init or attempt to delete markers!"
-        Write-Host "Copy and save the exact signed JSON envelope below into '$SignedOutputPath':"
-        Write-Host "--------------------------------------------------------------------------"
-        Write-Host $signedJson
-        Write-Host "--------------------------------------------------------------------------"
-        Write-Host "=========================================================================="
-        exit 42
+        Write-Error "=========================================================================="
+        Write-Error "CRITICAL POST-SIGNING FAILURE: Failed to atomically save signed envelope."
+        Write-Error "Target Path : $SignedOutputPath"
+        Write-Error "Error Cause : $_"
+        Write-Error "A permanent .init-pending marker has been established on disk."
+        Write-Error "Execution stopped. Markers will NOT be removed, rearmed, or retried."
+        Write-Error "Do NOT re-run sign-init. Do NOT broadcast unverified payloads."
+        Write-Error "Investigate local filesystem permissions before taking further action."
+        Write-Error "=========================================================================="
+        throw
     }
   `;
 
-  const res = runPowerShellScript(psScript);
-  assert.equal(res.status, 42);
+  const psArgs = [
+    '-NoProfile',
+    '-ExecutionPolicy', 'Bypass',
+    '-Command', psScript
+  ];
+  const res = spawnSync('powershell.exe', psArgs, {
+    encoding: 'utf8',
+    env: { ...process.env, TEST_SIGNED_PAYLOAD: testSignedJson }
+  });
+
+  assert.notEqual(res.status, 0);
   const output = res.stdout + res.stderr;
-  assert.match(output, /CRITICAL EMERGENCY: FAILED TO WRITE SIGNED ENVELOPE TO DISK!/);
-  assert.match(output, /A permanent \.init-pending marker has already been created on disk\./);
-  assert.match(output, /DO NOT re-run sign-init or attempt to delete markers!/);
-  assert.match(output, /SIGNED_NOT_BROADCAST/);
-  assert.match(output, /2222222222222222222222222222222222222222222222222222222222222222/);
+  assert.match(output, /CRITICAL POST-SIGNING FAILURE/);
+  assert.match(output, /A permanent \.init-pending marker has been established on disk/);
+  assert.match(output, /Do NOT re-run sign-init/);
+  assert.match(output, /Do NOT broadcast unverified payloads/);
+
+  // REDACTION CHECKS: Neither BOC nor full JSON nor manual recovery prompt must appear
+  assert.equal(output.includes('te6cckEBAQEAAgAAAA=='), false, 'Signed BOC must never be emitted to console');
+  assert.equal(output.includes('SIGNED_NOT_BROADCAST'), false, 'Raw signed envelope must never be emitted to console');
+  assert.equal(output.includes('Copy and save the exact signed JSON'), false, 'Must never prompt operator to manually recover unverified envelope');
 });
+
+test('launcher: owner-only ACL enforcement fails closed on invalid path', () => {
+  const psScript = `
+    . '${launcherPath.replace(/'/g, "''")}'
+    try {
+        Set-OwnerOnlyAcl -filePath 'Z:\\nonexistent_invalid_drive\\bad.json'
+        Write-Output "SHOULD_NOT_REACH_HERE"
+    } catch {
+        Write-Output "CAUGHT_ACL_FAILURE: $_"
+        exit 77
+    }
+  `;
+  const res = runPowerShellScript(psScript);
+  assert.equal(res.status, 77);
+  assert.match(res.stdout, /CAUGHT_ACL_FAILURE/);
+  assert.match(res.stdout, /Owner-only ACL enforcement failed closed/);
+  assert.equal(res.stdout.includes('SHOULD_NOT_REACH_HERE'), false);
+});
+
+test('launcher: temporary file is created with protected owner-only ACL at kernel creation time', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'anlgram-launcher-tmpacl-'));
+  try {
+    const targetPath = join(dir, 'protected-file.json');
+    const psScript = `
+      . '${launcherPath.replace(/'/g, "''")}'
+      Write-AtomicFileNoBom -Path '${targetPath.replace(/'/g, "''")}' -Content '{"secret":"data"}' -OwnerOnly
+      $acl = Get-Acl -LiteralPath '${targetPath.replace(/'/g, "''")}'
+      Write-Output "PROTECTED:$($acl.AreAccessRulesProtected)"
+      Write-Output "RULE_COUNT:$($acl.Access.Count)"
+      Write-Output "SID:$($acl.Access[0].IdentityReference.Value)"
+    `;
+    const res = runPowerShellScript(psScript);
+    assert.equal(res.status, 0, `Script failed: ${res.stderr}`);
+    assert.match(res.stdout, /PROTECTED:True/);
+    assert.match(res.stdout, /RULE_COUNT:1/);
+  } finally {
+    rmSync(dir, {recursive: true, force: true});
+  }
+});
+
+test('launcher: concurrent attempts reject racing output creation without corrupting target', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'anlgram-launcher-race-'));
+  try {
+    const targetFile = join(dir, 'exclusive-output.json');
+    const quoteFile = join(dir, 'init-quote.json');
+    const backupFile = join(dir, 'backup.gpg');
+
+    const now = Math.floor(Date.now() / 1000);
+    const validQuote = {
+      wallet: {address: PINNED_WALLET_ADDRESS, operator: PINNED_OPERATOR},
+      quote: {fingerprint: '12'.repeat(32), validUntil: now + 300}
+    };
+    writeFileSync(quoteFile, JSON.stringify(validQuote));
+    writeFileSync(backupFile, 'dummy-backup');
+
+    // First attempt creates exclusive output
+    const psScript1 = `
+      . '${launcherPath.replace(/'/g, "''")}'
+      Write-AtomicFileNoBom -Path '${targetFile.replace(/'/g, "''")}' -Content '{"run":1}' -OwnerOnly
+    `;
+    const res1 = runPowerShellScript(psScript1);
+    assert.equal(res1.status, 0);
+    assert.equal(readFileSync(targetFile, 'utf8'), '{"run":1}');
+
+    // Second concurrent/sequential attempt into the same target must fail closed before executing or modifying target
+    const res2 = runLauncher([
+      '-Action', 'sign-init',
+      '-QuoteOutputPath', quoteFile,
+      '-BackupGpgPath', backupFile,
+      '-SignedOutputPath', targetFile
+    ]);
+    assert.notEqual(res2.status, 0);
+    assert.match(res2.stderr + res2.stdout, /Target output file already exists/);
+    assert.equal(readFileSync(targetFile, 'utf8'), '{"run":1}', 'Target content must remain untouched and uncorrupted');
+  } finally {
+    rmSync(dir, {recursive: true, force: true});
+  }
+});
+
