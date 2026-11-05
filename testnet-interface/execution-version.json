@@ -45,13 +45,13 @@
     "projects/project-providers.mjs": "fe8a7057c9b6abc894a2f381b7ff79187ac9506697b0da456f32b16dbeb82f62",
     "../lib/v5-minter-trace.js": "5f35035e8be2810dfcf7c23e30a71846af4e1576c57e20e80ffd876fe09de364",
     "../minter-contract/build/standard-jetton-v2.compiled.json": "9deb92ed55737d603151c8e31be7c3c9154b7249099fab28c90d873f6a113d59",
-    "project-registry-worker.mjs": "88205be84ae068b537b54538237f3a2c91b1a10872575919e0e0ec6dc6e4c6de",
+    "project-registry-worker.mjs": "0b7cc7ee55a9df0a12d32d7ae6dd41e2cebf2181930e6ee615d6c7a5534814c7",
     "projects/project-registry.mjs": "c31ec5b4cfa7c92d86879f691ec12d78cbedbb32399290eb5733df92b8618249",
     "projects/project-registration.mjs": "33efe0d4269084fd4dc3295dc58c2f8f9f282ad8154d2ec5d0cdf8617d953b3d",
-    "projects/project-lp-acquisition.mjs": "1040e81ad60ec25928d218a6bbc4b89ec261ed37fb42fa6270b91c0e6765c119",
-    "projects/lp-evidence.mjs": "e57c8f759605c220745f5424544e3ddd026bc79b31b3bd3339ad24b93db8393f",
+    "projects/project-lp-acquisition.mjs": "3cbf14b1317d459618da99fc9fb973ef572d403ffafcac0a01ce59525765af8a",
+    "projects/lp-evidence.mjs": "4aa0271a4ea95de0917d073388917da48610f411d763d8f7f74d177d9d1e04ca",
     "projects/migration-account.mjs": "15086d770bc3b17ffe572f7c091b544168c352b5b7f795837db086165c661345",
-    "projects/migration-status.mjs": "14885f3733c8289ef6a63550d34ca640690e59e86af5a2e547a3e3715cd509c7",
+    "projects/migration-status.mjs": "417cfbdad79d13645feabd44d47a73eb0f3a79965b8645e73023ea75353487f2",
     "projects/evidence-brand.mjs": "0384aa8632c250aecbfc085d150be71909e3e31f17df71c76dcfb188881b767d",
     "wizard/preparation-model.mjs": "702c03755d8428c1a77870fdf45ddd28ecafb366fdbc14b9a51b89175cc5acff",
     "wizard/model.mjs": "0070c13a9a9932d56e0e76e21ddd50194adbfb4c7c72bd8e45608fcfb8264183",
@@ -59,5 +59,5 @@
     "../minter-contract/build/standard-jetton-settlement-wallet.compiled.json": "bef6300e582da90ca51bf8132a99bab41acbb51ce0269597a4173e1a13c2b921",
     "../minter-contract/build/anlgram-vesting-wallet-standard-v2.compiled.json": "56d9cb9a04bc507256cf167d813cba28606e6d63b66752d95b47cbd5be8cd654"
   },
-  "sha256": "d18caa386848bc93b91c24ffafd56862e31b4017161d3c09850e5f9b97c9c254"
+  "sha256": "c09b5145f8b350a477085298886bf6a14bef667e83a21cb892233256d29c1bfa"
 }

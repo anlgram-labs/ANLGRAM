@@ -43,6 +43,13 @@ export function migrationEvidenceStatus(terms,evidence=[],checkpoints=[]){
  return s;
 }
 
+function returnLeg(original, funded, fundingBounced, inTransit, curveBooked) {
+ const remaining = BigInt(original) - BigInt(curveBooked);
+ if (remaining < 0n || BigInt(inTransit) > remaining) throw Error('Invalid principal accounting');
+ return {original, funded, fundingBounced, inTransit, curveBooked,
+  notBookedByCurve: remaining.toString(), dexTerminalOutcome: 'UNKNOWN'};
+}
+
 // Internal status projection. Identity and the previous checkpoint come from
 // the server's project context. Clients cannot submit evidence to this path.
 export function generation2Status(identity, {checkpoint, previous, evidence = []} = {}) {
@@ -54,7 +61,7 @@ export function generation2Status(identity, {checkpoint, previous, evidence = []
   operationId: String(identity.operationId), scope: 'REFERENCE_RELATIVE_READ_ONLY',
   dispatch: 'UNKNOWN', mint: 'NOT_VERIFIED', custody: 'UNKNOWN', lock: 'UNKNOWN',
   settlement: 'UNKNOWN', historicalLp: null, currentWalletUnits: null,
-  unresolvedReturns: 'UNKNOWN', evidence: [], checkpoint: null,
+  unresolvedReturns: 'UNKNOWN', evidence: [], checkpoint: null, principalAccounting: null,
   financialSigningEnabled: false, broadcastingEnabled: false, tradingEnabled: false,
   migrationAuthorized: false, withdrawalsEnabled: false, recoveryEnabled: false,
  };
@@ -81,6 +88,22 @@ export function generation2Status(identity, {checkpoint, previous, evidence = []
   }
  }
  result.checkpoint = proof;
+ const life = checkpoint.lifecycle;
+ if (checkpoint.activeOperationId === result.operationId && life) {
+  const old = previous?.activeOperationId === result.operationId ? previous.lifecycle : null;
+  if (old && (old.originalTonNano !== life.originalTonNano || old.originalJettonUnits !== life.originalJettonUnits ||
+   ['fundedTonNano','fundedJettonUnits','fundingBouncedTonNano','fundingBouncedJettonUnits',
+    'curveBookedTonNano','curveBookedJettonUnits'].some(field => BigInt(life[field]) < BigInt(old[field])))) {
+   throw Error('Regressed operation principal accounting');
+  }
+  result.principalAccounting = {
+   scope: 'REFERENCE_RELATIVE_CONTRACT_COUNTERS',
+   tonNano: returnLeg(life.originalTonNano,life.fundedTonNano,life.fundingBouncedTonNano,
+    life.returnTransitTonNano,life.curveBookedTonNano),
+   jettonUnits: returnLeg(life.originalJettonUnits,life.fundedJettonUnits,life.fundingBouncedJettonUnits,
+    life.returnTransitJettonUnits,life.curveBookedJettonUnits),
+  };
+ }
  const dispatched = checkpoint.activeOperationId === result.operationId && checkpoint.lifecycle?.dexDispatched === '1';
  if (dispatched) {
   result.dispatch = 'DEX_DISPATCHED';

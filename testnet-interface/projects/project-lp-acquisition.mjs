@@ -1,22 +1,27 @@
 import * as core from '@ton/core';
-import {lpEvidencePolicy, verifyProvenLpEvidence} from './lp-evidence.mjs';
+import {lpEvidencePolicy, readLpIssuanceMessage, verifyProvenLpEvidence} from './lp-evidence.mjs';
 import {includedAccountCell} from './project-providers.mjs';
 import {hash, stateInit} from './project-registration.mjs';
 
 const b64 = cell => cell.toBoc().toString('base64');
 const messageHash = message => hash(core.beginCell().store(core.storeMessage(message)).endCell());
 
+export function selectLpDelivery(policy, rows) {
+  const candidates = new Map();
+  for (const row of rows) {
+    try { readLpIssuanceMessage(policy, row.tx.inMessage); }
+    catch { continue; }
+    candidates.set(hash(row.cell), row);
+  }
+  return candidates.size === 1 ? candidates.values().next().value : null;
+}
+
 export async function acquireLpIssuance(candidate, providers, reference, previousReference) {
   const policy = lpEvidencePolicy(b64(stateInit(candidate.vault.init)));
   const pool = policy.pool.toRawString(), wallet = policy.lpWallet.toRawString();
   const [p, w] = await Promise.all([pool, wallet].map(async address =>
     providers.history(address, await providers.account(address, reference))));
-  const transfer = w.rows.find(({tx}) => {
-    const m = tx.inMessage;
-    if (m?.info.type !== 'internal' || m.info.bounced || !m.info.src.equals(policy.pool) || m.body.bits.length < 96) return false;
-    const s = m.body.beginParse();
-    return s.loadUint(32) === 0x178d4519 && s.loadUintBig(64) === policy.q;
-  });
+  const transfer = selectLpDelivery(policy, w.rows);
   if (!transfer) return null;
   const incomingHash = messageHash(transfer.tx.inMessage);
   const issuance = p.rows.find(({tx}) => [...tx.outMessages.values()].some(m => messageHash(m) === incomingHash));

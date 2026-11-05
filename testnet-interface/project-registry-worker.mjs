@@ -124,14 +124,19 @@ export class ProjectRegistry {
 
   async status(intent, stored) {
     const {record, candidate} = intent;
-    const previousRaw = await this.storage.get('checkpoint');
-    const previous = checkpoint(record, previousRaw);
     const status = (options, state) => projectStatusResponse(record, options, {
       status: state, ...provenance, registration: stored.provenance
     });
-    const cooldown = await this.storage.get('nextReadAt');
-    if (cooldown > Date.now()) return status({checkpoint: previous}, 'REFRESH_THROTTLED_HISTORICAL_ONLY');
-    await this.storage.put('nextReadAt', Date.now() + 30_000);
+    const refresh = await this.storage.transaction(async txn => {
+      const now = Date.now();
+      if ((await txn.get('nextReadAt')) > now) return false;
+      await txn.put('nextReadAt', now + 30_000);
+      return true;
+    });
+    const historical = async state => status({
+      checkpoint: checkpoint(record, await this.storage.get('checkpoint'))
+    }, state);
+    if (!refresh) return historical('REFRESH_THROTTLED_HISTORICAL_ONLY');
     let providers, acquired, current;
     try {
       providers = projectProviders(this.env);
@@ -144,13 +149,18 @@ export class ProjectRegistry {
           (acquired.reference.root_hash !== registeredAt.root_hash || acquired.reference.file_hash !== registeredAt.file_hash))) {
         throw Error('Checkpoint predates or conflicts with registration');
       }
-      const result = status({checkpoint: current, previous}, 'REFERENCE_VERIFIED');
-      if (!previous || current.proof.masterchainSeqno > previous.proof.masterchainSeqno) {
-        await this.storage.put('checkpoint', {raw: acquired.raw, reference: acquired.reference});
-      }
+      const {result, previous, previousReference} = await this.storage.transaction(async txn => {
+        const latest = await txn.get('checkpoint');
+        const previous = checkpoint(record, latest);
+        const result = status({checkpoint: current, previous}, 'REFERENCE_VERIFIED');
+        if (!previous || current.proof.masterchainSeqno > previous.proof.masterchainSeqno) {
+          await txn.put('checkpoint', {raw: acquired.raw, reference: acquired.reference});
+        }
+        return {result, previous, previousReference: latest?.reference};
+      });
       if (result.dispatch !== 'DEX_DISPATCHED') return result;
       try {
-        const issuance = await acquireLpIssuance(candidate, providers, acquired.reference, previousRaw?.reference);
+        const issuance = await acquireLpIssuance(candidate, providers, acquired.reference, previousReference);
         return issuance ? status({checkpoint: current, previous, evidence: [issuance]}, 'REFERENCE_VERIFIED') : result;
       } catch (error) {
         await this.backoff(error);
@@ -158,12 +168,15 @@ export class ProjectRegistry {
       }
     } catch (error) {
       await this.backoff(error);
-      return status({checkpoint: previous}, 'PROVIDER_OR_PROOF_UNAVAILABLE_HISTORICAL_ONLY');
+      return historical('PROVIDER_OR_PROOF_UNAVAILABLE_HISTORICAL_ONLY');
     }
   }
 
   async backoff(error) {
-    if (error.retryMs > 30_000) await this.storage.put('nextReadAt', Date.now() + Math.min(error.retryMs, 300_000));
+    if (error.retryMs > 30_000) await this.storage.transaction(async txn => {
+      const deadline = Date.now() + Math.min(error.retryMs, 300_000);
+      if (!((await txn.get('nextReadAt')) >= deadline)) await txn.put('nextReadAt', deadline);
+    });
   }
 }
 

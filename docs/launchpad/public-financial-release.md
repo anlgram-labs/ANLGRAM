@@ -54,6 +54,33 @@ node minter-contract/compile-one-shot-dispatch.js --check
 
 ## Release checklist
 
+### STON.fi terminal settlement and recovery checkpoint
+
+Gate 414 is **NO-GO** on Testnet and Mainnet. STON.fi can delete the LPAccount during Pool handoff and recreate it at the same address. An authenticated balance reply describes one execution of that account. The refund callback initiates another asynchronous transfer. The interface supplies neither a lifetime identifier nor a terminal receipt that accounts for both original deposit legs, all descendant transfers and all recoverable balances. An LP credit, refund dispatch, missing callback or zero balance cannot establish that barrier. [Official STON.fi LPAccount interface](https://docs.ston.fi/developer-section/dex/smart-contracts/v2/lpaccount)
+
+The registered Generation 2 status now includes `principalAccounting` for the exact active operation. Each leg reports original principal, funded amount, bounced funding, return in transit and principal booked by the Curve. `notBookedByCurve` equals original principal minus booked returns. It includes principal that might have been deposited successfully and does not represent a refund entitlement. Both DEX terminal outcomes and unresolved returns remain `UNKNOWN`. Historical LP custody remains separate.
+
+The registry reserves a refresh transactionally, then validates and stores the new checkpoint against the latest durable checkpoint in a second transaction. An overlapping or delayed provider read cannot roll the persisted status backwards. Conflicting immutable obligations, decreasing cumulative counters and returns exceeding original principal are rejected. A provider outage or interrupted refresh preserves the last verified checkpoint and the bounded refresh cooldown. None of these operations send financial messages.
+
+| Recovery evidence | Safe treatment |
+|---|---|
+| Missing first LP notification | The read-only acquisition filters for the exact Pool, wallet, contributor and operation payload before proof verification. Duplicate copies of the same transaction are collapsed and multiple distinct matches leave the result unknown. The existing verifier then requires matching histories and state hashes. It cannot book Locker custody from that observation. |
+| Authenticated immediate Locker-to-wallet request bounce | The existing Locker can restore that exact request once. A missing callback does not qualify. |
+| Downstream withdrawal failure or missing final delivery | Preserve the existing pending request. The foreign wallet can restore its own balance after a downstream bounce but supplies no contract-consumable operation receipt to the Locker. Do not retry or release a second payment. |
+| Delayed deposit or refund after LPAccount recreation | Keep the original migration operation and both leg counters. A repeated refund to the same address can target a different account lifetime. Keep automated refunds and terminal settlement blocked. |
+
+Reproduce the financial and monitoring checks with two test workers. In PowerShell, run the compiler and interface commands at the repository root and the last two lines inside `tests/settlement-runtime`.
+
+```powershell
+node minter-contract/compile-one-shot-dispatch.js --check
+node minter-contract/compile-lp-locker-v2.js --check
+node --test --test-concurrency=2 testnet-interface/test/generation2-status.test.mjs testnet-interface/test/generation2-integration.test.mjs testnet-interface/test/trusted-project-registration.test.mjs
+$testFiles=(Get-Content package.json -Raw | ConvertFrom-Json).scripts.test.Split(' ') | Select-Object -Skip 2
+node --test --test-concurrency=2 @testFiles
+```
+
+The unchanged LP Locker V2 code cell reproduced as `22d689df2f32d5fd00c72b50f31ab77291117a7625ad1bb654a4b6dbc796e001`. The unchanged Curve and Migrator reproduced the hashes below. The settlement suite passed 227 tests and the focused interface run passed 19 tests, each with zero failures and zero skips. These runs used local TVM execution, captured STON.fi bytecode, provider fixtures and a SQLite Durable Object restart. Live Testnet execution was outside this verification.
+
 ### PR #35 follow-up for Standard vesting and Gate 414
 
 For a new Standard draft, the wizard's optional vesting section can select `walletProfile: "STANDARD_V2_SETTLEMENT"`. Public preparation, private supervision and registry intent recompute the same canonical configuration fingerprint and minter StateInit. Existing drafts keep their prior profile by default. The new profile keeps the Standard V2 minter code and TEP-74 interface, adds the existing authenticated settlement extension to its wallet, and selects a Vesting V2 artifact pinned to that wallet. No deployed schedule or wallet is migrated.

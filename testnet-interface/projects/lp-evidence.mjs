@@ -38,12 +38,16 @@ export function lpEvidencePolicy(stateInit){
  return{locker,config:cfg,percent,duration,q,beneficiary,controller,contributor,...derived};
 }
 
+export function readLpIssuanceMessage(policy,message){
+ const s=internal(message,policy.pool,policy.lpWallet),amount=transfer(s,0x178d4519,policy.q);
+ need(amount>0n&&equal(s.loadAddress(),policy.contributor),'Wrong LP liquidity provider');
+ s.loadMaybeAddress();need(s.loadCoins()>0n,'Operation payload forwarding required');const referenced=s.loadBit(),payload=referenced?s.loadRef().beginParse():s;if(referenced)s.endParse();need(payload.loadUint(32)===0x414c5632&&payload.loadUintBig(64)===policy.q,'Wrong immutable LP operation payload');payload.endParse();
+ return amount;
+}
 export function verifyLpIssuanceFields(policy,raw){
  const pool=transaction(raw.poolTransaction,policy.pool),delivery=transaction(raw.walletTransaction,policy.lpWallet);success(pool.tx);success(delivery.tx);edge(pool.tx,delivery.tx);
  states(raw.pool,policy.pool,pool.tx,policy.poolInit.code);
- const w=states(raw.wallet,policy.lpWallet,delivery.tx,policy.lpInit.code),s=internal(delivery.tx.inMessage,policy.pool,policy.lpWallet),amount=transfer(s,0x178d4519,policy.q);
- need(amount>0n&&equal(s.loadAddress(),policy.contributor),'Wrong LP liquidity provider');
- s.loadMaybeAddress();need(s.loadCoins()>0n,'Operation payload forwarding required');const referenced=s.loadBit(),payload=referenced?s.loadRef().beginParse():s;if(referenced)s.endParse();need(payload.loadUint(32)===0x414c5632&&payload.loadUintBig(64)===policy.q,'Wrong immutable LP operation payload');payload.endParse();
+ const w=states(raw.wallet,policy.lpWallet,delivery.tx,policy.lpInit.code),amount=readLpIssuanceMessage(policy,delivery.tx.inMessage);
  const before=wallet(w.before,policy.locker,policy.pool,policy.lpInit.code),after=wallet(w.after,policy.locker,policy.pool,policy.lpInit.code);need(after-before===amount,'LP issuance delta mismatch');
  return result({kind:'LP_ISSUANCE',operationId:policy.q.toString(),pool:policy.pool.toRawString(),locker:policy.locker.toRawString(),lpWallet:policy.lpWallet.toRawString(),amountUnits:amount.toString(),balanceBeforeUnits:before.toString(),balanceAfterUnits:after.toString(),poolTransactionHash:hash(pool.cell),poolTransactionLt:String(pool.tx.lt),walletTransactionLt:String(delivery.tx.lt),walletTransactionHash:hash(delivery.cell),firstNotificationRecovery:'EXACT_DELIVERY_FIELDS_ONLY_NO_CONTRACT_CREDIT',lockedAllocationUnits:null});
 }

@@ -166,8 +166,11 @@ export class Fixture extends Registry {
   mf = make();
   try {
     const s = await stub(mf);
-    const response = await s.fetch(url + '/status'), status = await response.json();
-    assert.equal(response.status, 200, JSON.stringify(status));
+    const responses = await Promise.all([s.fetch(url + '/status'), s.fetch(url + '/status')]);
+    assert(responses.every(response => response.status === 200));
+    const statuses = await Promise.all(responses.map(response => response.json()));
+    const status = statuses.find(value => value.acquisition.status === 'PROVIDER_OR_PROOF_UNAVAILABLE_HISTORICAL_ONLY');
+    assert(statuses.some(value => value.acquisition.status === 'REFRESH_THROTTLED_HISTORICAL_ONLY'));
     assert.equal(status.configurationFingerprint, fingerprint);
     assert.equal(status.acquisition.status, 'PROVIDER_OR_PROOF_UNAVAILABLE_HISTORICAL_ONLY');
     assert.deepEqual(status.acquisition.registration, seeded.provenance);
@@ -181,5 +184,13 @@ export class Fixture extends Registry {
     assert.equal((await s.fetch(post(url + '/register', conflicting))).status, 409);
     await s.fetch(post('https://fixture/test-seed', {...seeded, record: {...record, executionVersion: 'wrong'}}));
     assert.equal((await s.fetch(url + '/status')).status, 503);
+  } finally { await mf.dispose(); }
+  mf = make();
+  try {
+    const s = await stub(mf);
+    await s.fetch(post('https://fixture/test-seed', seeded));
+    const status = await (await s.fetch(url + '/status')).json();
+    assert.equal(status.acquisition.status, 'REFRESH_THROTTLED_HISTORICAL_ONLY');
+    assert.equal(status.settlement, 'UNKNOWN');
   } finally { await mf.dispose(); }
 });
