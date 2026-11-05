@@ -2,6 +2,7 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
+import {readFileSync} from 'node:fs';
 import {lstat} from 'node:fs/promises';
 import {createInterface} from 'node:readline/promises';
 
@@ -21,16 +22,29 @@ export async function confirmInitialization(request, {dialog=false, launcherInpu
   const expected='AUTHORIZE TESTNET INIT '+quote.fingerprint;
   if(now()>=quote.validUntil)throw expired();
   if(launcherInput){
-    const chunks=[];
-    let size=0;
-    for await(const chunk of input){
-      const bytes=Buffer.from(chunk);
-      size+=bytes.length;
-      if(size>128)throw Error('Exact owner authorization required');
-      chunks.push(bytes);
+    let raw = '';
+    if(input === process.stdin) {
+      try {
+        raw = readFileSync(0, 'utf8');
+      } catch {
+        raw = '';
+      }
+    }
+    if(!raw) {
+      const chunks=[];
+      let size=0;
+      for await(const chunk of input){
+        const bytes=Buffer.from(chunk);
+        size+=bytes.length;
+        if(size>128) throw Error('Exact owner authorization required');
+        chunks.push(bytes);
+      }
+      raw = Buffer.concat(chunks).toString('utf8');
     }
     if(now()>=quote.validUntil)throw expired();
-    if(Buffer.concat(chunks).toString('utf8').replace(/\r?\n$/,'')!==expected)throw Error('Exact owner authorization required');
+    if(raw.replace(/\r?\n$/,'')!==expected){
+      throw Error('Exact owner authorization required');
+    }
     return;
   }
   if(dialog){

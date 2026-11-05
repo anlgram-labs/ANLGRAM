@@ -347,15 +347,18 @@ function Invoke-PrepareInit {
 function Read-OwnerInitApproval([string]$Fingerprint, [long]$Expiry) {
     if ($Fingerprint -cnotmatch '^[a-f0-9]{64}$') { throw 'Malformed initialization fingerprint.' }
     $expected = 'AUTHORIZE TESTNET INIT ' + $Fingerprint
+    try { Set-Clipboard -Value $expected } catch {}
     Write-Host "Wallet initialization only | TON Testnet (-3) | $PINNED_WALLET_ADDRESS"
     Write-Host "Fingerprint: $Fingerprint"
     Write-Host "Enter the exact line below only when the 'Owner authorization:' prompt is active."
     Write-Host $expected
+    Write-Host "(String has been copied to your clipboard; press Ctrl+V or Right-Click)" -ForegroundColor DarkGray
     while ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -lt $Expiry) {
         $answer = Read-Host 'Owner authorization'
         if ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -ge $Expiry) { break }
-        if ($answer -ceq $expected) { return $answer }
-        Write-Host 'Authorization was empty or did not match. Try again, or press Ctrl+C to cancel.' -ForegroundColor Yellow
+        $cleanAnswer = if ($answer) { $answer.Trim() } else { '' }
+        if ($cleanAnswer -ceq $expected) { return $cleanAnswer }
+        Write-Host "Authorization was empty or did not match (Expected $($expected.Length) chars, received $($cleanAnswer.Length) chars). Try again, or press Ctrl+C to cancel." -ForegroundColor Yellow
     }
     throw 'Quote expired during owner confirmation. No signing was requested.'
 }
@@ -375,7 +378,12 @@ function Invoke-OwnerSignerWithInput([string]$Cli, [string]$QuotePath, [string]$
         $output = $child.StandardOutput.ReadToEndAsync()
         $bytes = [Text.Encoding]::ASCII.GetBytes($Approval)
         $pipe = $child.StandardInput.BaseStream
-        try { $pipe.Write($bytes, 0, $bytes.Length) } finally { $pipe.Dispose() }
+        try {
+            $pipe.Write($bytes, 0, $bytes.Length)
+            $pipe.Flush()
+        } finally {
+            $pipe.Dispose()
+        }
         $child.WaitForExit()
         return @{ ExitCode=$child.ExitCode; Output=$output.GetAwaiter().GetResult() }
     } finally { $child.Dispose() }
