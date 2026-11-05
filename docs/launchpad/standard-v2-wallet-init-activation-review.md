@@ -43,3 +43,20 @@ In this activation build:
 Before signing, discard the unapplied activation changes to restore the disabled build. Source rollback cannot revoke a signed BOC, undo a Testnet transaction, or release a marker. After either reservation, leave the markers intact even if the command exited early. They are local to one profile and do not establish exactly-once network delivery. A new attempt after uncertainty requires a separate reviewed recovery decision based on authenticated evidence.
 
 **GO for review and read-only preflight. NO-GO for execution in the delivered build.** Execution also requires the exact future activation build to be reviewed, successful fresh preflight, and the owner's separate confirmations. A Standard Jetton minter deployment requires its own authorization.
+# Windows owner confirmation follow-up
+
+The signing launcher uses a dedicated Windows PowerShell 5.1 confirmation window. The window shows the complete Testnet wallet address, operation, fingerprint, modeled fee and policy ceiling. Enter the exact authorization line shown inside the window. Empty or altered text leaves **Confirm signing** disabled. The line can be selected and copied inside the dialog, or entered manually if pasting fails. Cancel or let the quote expire to stop before Pinentry.
+
+The new action prepares a quote when the saved one is expired or missing, then opens the confirmation window. It checks for the existing signed output and both permanent marker types before attempting signing. After manual approval, GnuPG Pinentry is the only place to enter the backup passphrase. The signer rechecks quote freshness and current state, reserves the operation atomically, and only saves the signed envelope locally. Broadcast is a separate operation. Preserve the marker if signing is interrupted or the final file cannot be saved.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\testnet-interface\standard-owner-wallet-launcher.ps1 -Action prepare-and-sign-init
+```
+
+Read-only checks used public provider responses only. TonAPI and TON Center both observed the reviewed wallet as uninitialized with `1999999999` nanotons. The saved local quote was expired. Neither permanent marker nor the default signed envelope existed at the time of the check. No authenticated replacement quote was created because provider credentials were unavailable in the diagnostic process. The launcher obtains them through the existing owner-controlled mechanism.
+
+The focused signer, launcher and confirmation run passed 31 cases with zero failures and zero skips. A separate Windows PowerShell 5.1 smoke test opened the native dialog with disposable details and verified that it closed on expiry without a response. Exact approval, wrong input, cancellation and the GnuPG and file-write failure paths used local fixtures. The owner's signer and Pinentry were not invoked.
+
+If the window does not appear, append `-Confirmation Terminal` to the launcher command. Enter the exact phrase only at the `Owner authorization:` prompt. PowerShell keeps prompting after empty or incorrect input. It hands the entered line to the signer, which independently matches the exact fingerprint and checks expiry before GnuPG is invoked. This mode requires a visible PowerShell console. It does not copy anything to the clipboard or broadcast.
+
+The terminal handoff writes exactly 87 ASCII bytes to the private child process input stream. It does not depend on the native PowerShell pipeline's encoding. The regression uses Windows PowerShell 5.1 with Unicode pipeline encoding and a disposable Node fixture, and verifies the exact bytes, exit status and paths with spaces.

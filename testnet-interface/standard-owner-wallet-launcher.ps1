@@ -6,8 +6,10 @@
 # Guaranteed zero leak of signed envelope, BOC, decrypted material, or credentials in logs or console.
 [CmdletBinding()]
 param(
-    [ValidateSet('menu', 'prepare-init', 'sign-init', 'broadcast', 'reconcile', 'inspect-wallet', 'store-credentials')]
+    [ValidateSet('menu', 'prepare-init', 'sign-init', 'prepare-and-sign-init', 'test-confirmation', 'broadcast', 'reconcile', 'inspect-wallet', 'store-credentials')]
     [string]$Action = 'menu',
+    [ValidateSet('Dialog','Terminal')]
+    [string]$Confirmation = 'Dialog',
     [string]$PublicInputPath = 'C:\Private\ANLGRAM\public-init-input.json',
     [string]$QuoteOutputPath = 'C:\Private\ANLGRAM\init-quote.json',
     [string]$BackupGpgPath = 'C:\Private\ANLGRAM\standard-v2-testnet.gpg',
@@ -66,7 +68,7 @@ function Set-OwnerOnlyAcl([string]$filePath) {
         $fileInfo.SetAccessControl($acl)
 
         # Verification check: fail closed if rules are not protected or empty
-        $appliedAcl = Get-Acl -LiteralPath $filePath
+        $appliedAcl = $fileInfo.GetAccessControl()
         if (-not $appliedAcl.AreAccessRulesProtected) {
             throw "Access rules on '$filePath' are not protected from inheritance."
         }
@@ -255,6 +257,33 @@ function Invoke-InspectWallet {
     & node $cli --inspect-wallet $PINNED_WALLET_ADDRESS
 }
 
+function Assert-NoInitializationAttempt {
+    if (Test-Path -LiteralPath $SignedOutputPath) {
+        throw 'Target output file already exists. Refusing to overwrite existing file. Preserve it and reconcile before any further signing.'
+    }
+    $homePath = & node -p "require('node:os').homedir()"
+    if ($LASTEXITCODE -ne 0 -or -not $homePath) { throw 'Cannot locate the signing marker directory.' }
+    $prefix = Join-Path (Join-Path $homePath '.anlgram-standard-v2') $PINNED_OPERATOR.Substring(2)
+    foreach ($suffix in @('.init-pending','.init-broadcast')) {
+        if (Test-Path -LiteralPath ($prefix+$suffix)) {
+            throw 'An initialization attempt marker exists. Preserve it and reconcile before any further signing.'
+        }
+    }
+}
+
+function Assert-NativeGnuPG {
+    if (Get-Command gpg.exe -ErrorAction SilentlyContinue) { return }
+    foreach ($base in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+        if (-not $base) { continue }
+        $bin = Join-Path $base 'GnuPG\bin'
+        if (Test-Path -LiteralPath (Join-Path $bin 'gpg.exe')) {
+            $env:Path = "$bin;$env:Path"
+            return
+        }
+    }
+    throw 'GnuPG was not found. Install GnuPG with a graphical Pinentry before starting owner signing.'
+}
+
 function Invoke-PrepareInit {
     Ensure-ProviderCredentials
     Write-Host "`n=== Generating Fresh Authenticated Unsigned Quote ===" -ForegroundColor Cyan
@@ -303,9 +332,6 @@ function Invoke-PrepareInit {
         throw "Quote disk verification failed: fingerprint mismatch."
     }
 
-    $authString = "AUTHORIZE TESTNET INIT $($parsedQuote.quote.fingerprint)"
-    try { Set-Clipboard -Value $authString } catch {}
-
     Write-Host ""
     Write-Host "==========================================================================" -ForegroundColor Green
     Write-Host " FRESH INITIALIZATION QUOTE GENERATED (VALID FOR 300 SECONDS)" -ForegroundColor Green
@@ -314,16 +340,58 @@ function Invoke-PrepareInit {
     Write-Host " Expiry Epoch : $($parsedQuote.quote.validUntil) Unix seconds" -ForegroundColor Cyan
     Write-Host " Saved Quote  : $QuoteOutputPath" -ForegroundColor Green
     Write-Host "--------------------------------------------------------------------------" -ForegroundColor DarkGray
-    Write-Host " Next step: Run option 3 (sign-init) before quote expires." -ForegroundColor Yellow
-    Write-Host " When prompted by sign-init, paste the exact authorization string below:" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "   $authString" -ForegroundColor White
-    Write-Host ""
-    Write-Host " (String has been copied to your clipboard; press Ctrl+V or Right-Click)" -ForegroundColor DarkGray
+    Write-Host " Confirm the current fingerprint before the quote expires." -ForegroundColor Yellow
     Write-Host "==========================================================================" -ForegroundColor Green
 }
 
+function Read-OwnerInitApproval([string]$Fingerprint, [long]$Expiry) {
+    if ($Fingerprint -cnotmatch '^[a-f0-9]{64}$') { throw 'Malformed initialization fingerprint.' }
+    $expected = 'AUTHORIZE TESTNET INIT ' + $Fingerprint
+    try { Set-Clipboard -Value $expected } catch {}
+    Write-Host "Wallet initialization only | TON Testnet (-3) | $PINNED_WALLET_ADDRESS"
+    Write-Host "Fingerprint: $Fingerprint"
+    Write-Host "Enter the exact line below only when the 'Owner authorization:' prompt is active."
+    Write-Host $expected
+    Write-Host "(String has been copied to your clipboard; press Ctrl+V or Right-Click)" -ForegroundColor DarkGray
+    while ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -lt $Expiry) {
+        $answer = Read-Host 'Owner authorization'
+        if ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -ge $Expiry) { break }
+        $cleanAnswer = if ($answer) { $answer.Trim() } else { '' }
+        if ($cleanAnswer -ceq $expected) { return $cleanAnswer }
+        Write-Host "Authorization was empty or did not match (Expected $($expected.Length) chars, received $($cleanAnswer.Length) chars). Try again, or press Ctrl+C to cancel." -ForegroundColor Yellow
+    }
+    throw 'Quote expired during owner confirmation. No signing was requested.'
+}
+
+function Invoke-OwnerSignerWithInput([string]$Cli, [string]$QuotePath, [string]$BackupPath, [string]$Approval) {
+    if ($Approval -cnotmatch '^AUTHORIZE TESTNET INIT [a-f0-9]{64}$') { throw 'Malformed owner authorization.' }
+    $files = @($Cli,$QuotePath,$BackupPath) | ForEach-Object { [IO.Path]::GetFullPath($_) }
+    if (@($files | Where-Object { $_ -match '["\r\n]|\\$' }).Count) { throw 'Invalid signer file path.' }
+    $start = New-Object Diagnostics.ProcessStartInfo
+    $start.FileName = Get-Command node.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1 -ExpandProperty Path
+    $start.Arguments = '"{0}" sign-init "{1}" "{2}" --launcher-stdin' -f $files
+    $start.UseShellExecute = $false
+    $start.RedirectStandardInput = $true
+    $start.RedirectStandardOutput = $true
+    $child = [Diagnostics.Process]::Start($start)
+    try {
+        $output = $child.StandardOutput.ReadToEndAsync()
+        $bytes = [Text.Encoding]::ASCII.GetBytes($Approval)
+        $pipe = $child.StandardInput.BaseStream
+        try {
+            $pipe.Write($bytes, 0, $bytes.Length)
+            $pipe.Flush()
+        } finally {
+            $pipe.Dispose()
+        }
+        $child.WaitForExit()
+        return @{ ExitCode=$child.ExitCode; Output=$output.GetAwaiter().GetResult() }
+    } finally { $child.Dispose() }
+}
+
 function Invoke-SignInit {
+    Assert-NoInitializationAttempt
+    Assert-NativeGnuPG
     Ensure-ProviderCredentials
     Write-Host "`n=== Interactive Owner Signing Workflow ===" -ForegroundColor Cyan
     Write-Host "Requires local GnuPG Pinentry and exact quote fingerprint confirmation." -ForegroundColor Yellow
@@ -361,30 +429,39 @@ function Invoke-SignInit {
     # PRE-FLIGHT WRITE PERMISSION & NO-OVERWRITE CHECK (Strictly BEFORE sign-init)
     Test-OutputTargetWritable -path $SignedOutputPath
 
-    $authString = "AUTHORIZE TESTNET INIT $($quoteParsed.quote.fingerprint)"
-    try { Set-Clipboard -Value $authString } catch {}
-
     Write-Host "Pre-flight checks passed." -ForegroundColor Green
     Write-Host ""
     Write-Host "==========================================================================" -ForegroundColor Cyan
     Write-Host " STAGE 3: OWNER SIGNING AUTHORIZATION" -ForegroundColor Cyan
     Write-Host " Target Wallet    : $PINNED_WALLET_ADDRESS" -ForegroundColor Cyan
+    Write-Host " Network          : TON Testnet (-3) | Wallet initialization only" -ForegroundColor Cyan
     Write-Host " Quote Fingerprint: $($quoteParsed.quote.fingerprint)" -ForegroundColor Yellow
     Write-Host " Validity Window  : $remaining seconds remaining (expires at $validUntil Unix epoch)" -ForegroundColor Cyan
     Write-Host "--------------------------------------------------------------------------" -ForegroundColor DarkGray
     Write-Host " Instructions:" -ForegroundColor Yellow
-    Write-Host " 1. Decrypt your backup when the GnuPG Pinentry GUI window appears." -ForegroundColor Yellow
-    Write-Host " 2. When the terminal prompts '> ', enter the exact authorization string:" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "   $authString" -ForegroundColor White
-    Write-Host ""
-    Write-Host " (String has been copied to your clipboard; press Ctrl+V or Right-Click)" -ForegroundColor DarkGray
+    if ($Confirmation -eq 'Dialog') {
+        Write-Host " 1. In the separate ANLGRAM window, enter the exact line shown and click Confirm signing." -ForegroundColor Yellow
+    } else {
+        Write-Host " 1. Enter the exact line at the Owner authorization prompt below." -ForegroundColor Yellow
+    }
+    Write-Host " 2. After approval, enter your backup passphrase only in GnuPG Pinentry." -ForegroundColor Yellow
+    Write-Host " This action saves a signed file locally. It does not broadcast." -ForegroundColor Yellow
     Write-Host "==========================================================================" -ForegroundColor Cyan
 
     $cli = Join-Path $ScriptDirectory "standard-owner-signer-cli.mjs"
-    $signedJson = & node $cli sign-init $QuoteOutputPath $BackupGpgPath
-    if ($LASTEXITCODE -ne 0) {
-        throw "sign-init stopped or failed with exit code $LASTEXITCODE."
+    if ($Confirmation -eq 'Terminal') {
+        if ([Console]::IsInputRedirected) { throw 'Terminal confirmation requires a visible interactive PowerShell console.' }
+        $ownerApproval = Read-OwnerInitApproval -Fingerprint $quoteParsed.quote.fingerprint -Expiry $validUntil
+        $result = Invoke-OwnerSignerWithInput -Cli $cli -QuotePath $QuoteOutputPath -BackupPath $BackupGpgPath -Approval $ownerApproval
+        $signExit = $result.ExitCode
+        $signedJson = $result.Output
+        $result = $null
+    } else {
+        $signedJson = & node $cli sign-init $QuoteOutputPath $BackupGpgPath --windows-dialog
+        $signExit = $LASTEXITCODE
+    }
+    if ($signExit -ne 0) {
+        throw "sign-init stopped or failed with exit code $signExit."
     }
 
     # Normalize stdout to single string and verify Signed Envelope Integrity
@@ -418,16 +495,7 @@ function Invoke-SignInit {
         Write-Host "Message Hash: $msgHash" -ForegroundColor Green
         Write-Host "Fingerprint : $fgp" -ForegroundColor Green
     } catch {
-        Write-Error "=========================================================================="
-        Write-Error "CRITICAL POST-SIGNING FAILURE: Failed to atomically save signed envelope."
-        Write-Error "Target Path : $SignedOutputPath"
-        Write-Error "Error Cause : $_"
-        Write-Error "A permanent .init-pending marker has been established on disk."
-        Write-Error "Execution stopped. Markers will NOT be removed, rearmed, or retried."
-        Write-Error "Do NOT re-run sign-init. Do NOT broadcast unverified payloads."
-        Write-Error "Investigate local filesystem permissions before taking further action."
-        Write-Error "=========================================================================="
-        throw
+        throw 'CRITICAL POST-SIGNING FAILURE: Could not save or verify signed envelope. Preserve the .init-pending marker. Do not re-run sign-init or broadcast.'
     } finally {
         # Securely wipe in-memory sensitive variables
         $signedJson = $null
@@ -512,9 +580,25 @@ function Invoke-Reconcile {
 }
 
 switch ($Action) {
+    'test-confirmation' {
+        & node (Join-Path $ScriptDirectory 'standard-init-dialog-check.mjs')
+        exit $LASTEXITCODE
+    }
     'inspect-wallet'   { Invoke-InspectWallet }
     'prepare-init'     { Invoke-PrepareInit }
     'sign-init'        { Invoke-SignInit }
+    'prepare-and-sign-init' {
+        Assert-NoInitializationAttempt
+        Assert-NativeGnuPG
+        Test-OutputTargetWritable -path $SignedOutputPath
+        $reuse = $false
+        if (Test-Path -LiteralPath $QuoteOutputPath) {
+            $existing = [IO.File]::ReadAllText($QuoteOutputPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            $reuse = [int64]$existing.quote.validUntil -gt [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        }
+        if (-not $reuse) { Invoke-PrepareInit }
+        Invoke-SignInit
+    }
     'broadcast'        { Invoke-Broadcast }
     'reconcile'        { Invoke-Reconcile }
     'store-credentials'{ Ensure-ProviderCredentials; Save-ProviderCredentials }
