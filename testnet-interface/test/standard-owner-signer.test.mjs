@@ -434,3 +434,58 @@ test('regression: bounded validity window (300s default, 600s max) and pre-marke
     }
   } finally { rmSync(dir,{recursive:true}); }
 });
+
+test('regression: confirmation prompt UX trims whitespace and reports exact length mismatch diagnostics', () => {
+  const script = `
+    import {createInterface} from 'node:readline/promises';
+    async function confirm(expected, operation = 'wallet initialization') {
+      console.error('\\n' + '='.repeat(72));
+      console.error('REQUIRED OWNER APPROVAL:');
+      console.error('  ' + expected);
+      console.error('='.repeat(72));
+      console.error('Enter the exact approval string above to sign ' + operation + ':');
+      const input = createInterface({input:process.stdin,output:process.stderr});
+      try {
+        const raw = await input.question('> ');
+        const answer = raw ? raw.trim() : '';
+        if (answer !== expected) {
+          console.error('\\n[AUTHORIZATION REJECTED]');
+          console.error('Expected: ' + expected + ' (' + expected.length + ' chars)');
+          console.error('Received: ' + answer + ' (' + answer.length + ' chars)');
+          if (answer.length !== expected.length) {
+            const diff = expected.length - answer.length;
+            console.error('Length difference: missing/extra ' + Math.abs(diff) + ' character(s).');
+          }
+          throw Error('Owner cancelled');
+        }
+      } finally {
+        input.close();
+      }
+    }
+    const expected = process.argv[2] || process.argv[1];
+    await confirm(expected, 'test');
+    console.log('CONFIRMED_OK');
+  `;
+
+  const expectedStr = 'AUTHORIZE TESTNET INIT 194f6f9fb1779cf2120e9cab41c4ff71d75fe08d4a139f86c73eae89cc3d7217';
+
+  // 1. Exact match with leading and trailing whitespace succeeds
+  const okResult = spawnSync(process.execPath, ['--input-type=module', '-e', script, expectedStr], {
+    input: '   ' + expectedStr + '  \n',
+    encoding: 'utf8'
+  });
+  assert.equal(okResult.status, 0);
+  assert.match(okResult.stdout, /CONFIRMED_OK/);
+
+  // 2. Mismatch with dropped character fails with detailed diff diagnostics
+  const droppedChar = expectedStr.slice(0, -1);
+  const failResult = spawnSync(process.execPath, ['--input-type=module', '-e', script, expectedStr], {
+    input: droppedChar + '\n',
+    encoding: 'utf8'
+  });
+  assert.notEqual(failResult.status, 0);
+  assert.match(failResult.stderr, /\[AUTHORIZATION REJECTED\]/);
+  assert.match(failResult.stderr, /Expected: .* \(87 chars\)/);
+  assert.match(failResult.stderr, /Received: .* \(86 chars\)/);
+  assert.match(failResult.stderr, /Length difference: missing\/extra 1 character\(s\)\./);
+});

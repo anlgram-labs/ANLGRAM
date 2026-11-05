@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {existsSync,mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {existsSync,mkdirSync,mkdtempSync,readdirSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -133,6 +133,37 @@ test('launcher: pre-flight check rejects existing quote file before prepare-init
     assert.notEqual(res.status, 0, 'Should fail before prepare when quote output file exists');
     assert.match(res.stderr + res.stdout, /Target output file already exists/);
     assert.equal(readFileSync(quoteFile, 'utf8'), 'existing-quote');
+  } finally {
+    rmSync(dir, {recursive: true, force: true});
+  }
+});
+
+test('launcher: prepare-init auto-archives expired existing quote file', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'anlgram-launcher-expired-quote-'));
+  try {
+    const publicInputFile = join(dir, 'public-input.json');
+    const quoteFile = join(dir, 'init-quote.json');
+
+    writeFileSync(publicInputFile, JSON.stringify({wallet: {address: PINNED_WALLET_ADDRESS}}));
+    const expiredContent = JSON.stringify({
+      quote: {
+        validUntil: 1000
+      }
+    });
+    writeFileSync(quoteFile, expiredContent);
+
+    // Run launcher with prepare-init
+    const res = runLauncher([
+      '-Action', 'prepare-init',
+      '-PublicInputPath', publicInputFile,
+      '-QuoteOutputPath', quoteFile
+    ]);
+
+    // Check that an archive file was created in the directory
+    const files = readdirSync(dir);
+    const archived = files.find(f => f.startsWith('init-quote.expired_'));
+    assert.ok(archived, 'Expired quote must be archived to init-quote.expired_<timestamp>.json');
+    assert.equal(readFileSync(join(dir, archived), 'utf8'), expiredContent);
   } finally {
     rmSync(dir, {recursive: true, force: true});
   }

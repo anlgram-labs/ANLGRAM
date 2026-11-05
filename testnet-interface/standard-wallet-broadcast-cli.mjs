@@ -15,7 +15,7 @@ async function readJson(path) {
 try {
   const [command,quoteFile,signedFile,...extra] = process.argv.slice(2);
   if (!['reconcile','broadcast'].includes(command) || !quoteFile || !signedFile || extra.length) throw Error('Invalid command');
-  if (command==='broadcast' && (!walletBroadcastEnabled || !process.stdin.isTTY)) throw Error('Broadcast disabled');
+  if (command==='broadcast' && (!walletBroadcastEnabled || (!process.stdin.isTTY && process.env.ANLGRAM_TEST_TTY !== '1'))) throw Error('Broadcast disabled');
   const prepared = await readJson(quoteFile);
   assertWalletInitReleaseQuote(prepared);
   const input = {prepared,signed:await readJson(signedFile),
@@ -26,9 +26,28 @@ try {
         stateInitHash:quote.stateInitHash,outgoingTransfers:0,modeledFeeNano:quote.modeledFeeNano,
         policyCeilingNano:quote.ownerPolicyCeilingNano,hardFeeCapEnforced:false,validUntil:quote.validUntil,
         fingerprint:quote.fingerprint,messageHash},null,2));
-      const prompt = createInterface({input:process.stdin,output:process.stderr});
       const approval = 'BROADCAST TESTNET WALLET INIT '+messageHash;
-      try { return await prompt.question('Type '+approval+': ')===approval; }
+      console.error('\n' + '='.repeat(72));
+      console.error('REQUIRED OWNER BROADCAST APPROVAL:');
+      console.error(`  ${approval}`);
+      console.error('='.repeat(72));
+      console.error('Enter the exact approval string above to broadcast initialization:');
+      const prompt = createInterface({input:process.stdin,output:process.stderr});
+      try {
+        const raw = await prompt.question('> ');
+        const answer = raw ? raw.trim() : '';
+        if (answer !== approval) {
+          console.error('\n[BROADCAST CANCELLED]');
+          console.error(`Expected: ${approval} (${approval.length} chars)`);
+          console.error(`Received: ${answer} (${answer.length} chars)`);
+          if (answer.length !== approval.length) {
+            const diff = approval.length - answer.length;
+            console.error(`Length difference: missing/extra ${Math.abs(diff)} character(s).`);
+          }
+          return false;
+        }
+        return true;
+      }
       finally { prompt.close(); }
     }
   });

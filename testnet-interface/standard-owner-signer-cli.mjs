@@ -13,10 +13,29 @@ import {walletBroadcastEnabled} from './projects/standard-wallet-broadcast.mjs';
 const signingEnabled = true; // Owner-operated initialization-only release.
 const now = () => Math.floor(Date.now()/1000);
 
-async function confirm(prompt, expected) {
+async function confirm(expected, operation = 'wallet initialization') {
+  console.error('\n' + '='.repeat(72));
+  console.error('REQUIRED OWNER APPROVAL:');
+  console.error(`  ${expected}`);
+  console.error('='.repeat(72));
+  console.error(`Enter the exact approval string above to sign ${operation}:`);
   const input = createInterface({input:process.stdin,output:process.stderr});
-  try { if (await input.question(prompt) !== expected) throw Error('Owner cancelled'); }
-  finally { input.close(); }
+  try {
+    const raw = await input.question('> ');
+    const answer = raw ? raw.trim() : '';
+    if (answer !== expected) {
+      console.error('\n[AUTHORIZATION REJECTED]');
+      console.error(`Expected: ${expected} (${expected.length} chars)`);
+      console.error(`Received: ${answer} (${answer.length} chars)`);
+      if (answer.length !== expected.length) {
+        const diff = expected.length - answer.length;
+        console.error(`Length difference: missing/extra ${Math.abs(diff)} character(s).`);
+      }
+      throw Error('Owner cancelled');
+    }
+  } finally {
+    input.close();
+  }
 }
 
 async function readPublic(path) {
@@ -64,9 +83,13 @@ try {
       if (now() >= request.quote.validUntil) {
         throw Error('Initialization quote expired before signing reservation');
       }
-      console.error(JSON.stringify(request.quote));
+      console.error('\n--- Verified Testnet V5R1 Quote ---');
+      console.error(`Destination : ${request.quote.operator}`);
+      console.error(`Fee Ceiling : ${request.quote.ownerPolicyCeilingNano} nanotons`);
+      console.error(`Fingerprint : ${request.quote.fingerprint}`);
+      console.error(`Valid Until : ${request.quote.validUntil} (${request.quote.validUntil - now()}s remaining)`);
       const approval = 'AUTHORIZE TESTNET INIT '+request.quote.fingerprint;
-      await confirm('Type '+approval+' to sign only this wallet initialization: ',approval);
+      await confirm(approval, 'this Testnet V5R1 wallet initialization');
       if (now() >= request.quote.validUntil) {
         throw Error('Initialization quote expired before signing reservation');
       }

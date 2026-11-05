@@ -262,6 +262,22 @@ function Invoke-PrepareInit {
         throw "Public input file not found: $PublicInputPath"
     }
 
+    # If QuoteOutputPath exists and is already expired, safely archive it
+    if (Test-Path -LiteralPath $QuoteOutputPath) {
+        try {
+            $existingRaw = [System.IO.File]::ReadAllText($QuoteOutputPath, [System.Text.Encoding]::UTF8)
+            $existingParsed = $existingRaw | ConvertFrom-Json
+            $nowUtc = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+            if ($existingParsed.quote.validUntil -and ([int64]$existingParsed.quote.validUntil -le $nowUtc)) {
+                $dirPath = [System.IO.Path]::GetDirectoryName([System.IO.Path]::GetFullPath($QuoteOutputPath))
+                $archiveName = "init-quote.expired_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".json"
+                $archivePath = [System.IO.Path]::Combine($dirPath, $archiveName)
+                Move-Item -LiteralPath $QuoteOutputPath -Destination $archivePath -Force
+                Write-Host "Archived previous expired quote to: $archivePath" -ForegroundColor DarkGray
+            }
+        } catch {}
+    }
+
     # Pre-flight check on QuoteOutputPath before doing external RPC work
     Test-OutputTargetWritable -path $QuoteOutputPath
 
@@ -287,10 +303,24 @@ function Invoke-PrepareInit {
         throw "Quote disk verification failed: fingerprint mismatch."
     }
 
-    Write-Host "Fresh quote saved to: $QuoteOutputPath" -ForegroundColor Green
-    Write-Host "Quote Fingerprint   : $($parsedQuote.quote.fingerprint)" -ForegroundColor Green
-    Write-Host "Quote Expiry        : $($parsedQuote.quote.validUntil) (Unix epoch)" -ForegroundColor Green
-    Write-Host "Quote verification  : valid for 300 seconds (5 minutes) from generation." -ForegroundColor Yellow
+    $authString = "AUTHORIZE TESTNET INIT $($parsedQuote.quote.fingerprint)"
+    try { Set-Clipboard -Value $authString } catch {}
+
+    Write-Host ""
+    Write-Host "==========================================================================" -ForegroundColor Green
+    Write-Host " FRESH INITIALIZATION QUOTE GENERATED (VALID FOR 300 SECONDS)" -ForegroundColor Green
+    Write-Host " Destination  : $PINNED_WALLET_ADDRESS" -ForegroundColor Cyan
+    Write-Host " Fingerprint  : $($parsedQuote.quote.fingerprint)" -ForegroundColor Yellow
+    Write-Host " Expiry Epoch : $($parsedQuote.quote.validUntil) Unix seconds" -ForegroundColor Cyan
+    Write-Host " Saved Quote  : $QuoteOutputPath" -ForegroundColor Green
+    Write-Host "--------------------------------------------------------------------------" -ForegroundColor DarkGray
+    Write-Host " Next step: Run option 3 (sign-init) before quote expires." -ForegroundColor Yellow
+    Write-Host " When prompted by sign-init, paste the exact authorization string below:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "   $authString" -ForegroundColor White
+    Write-Host ""
+    Write-Host " (String has been copied to your clipboard; press Ctrl+V or Right-Click)" -ForegroundColor DarkGray
+    Write-Host "==========================================================================" -ForegroundColor Green
 }
 
 function Invoke-SignInit {
@@ -331,11 +361,25 @@ function Invoke-SignInit {
     # PRE-FLIGHT WRITE PERMISSION & NO-OVERWRITE CHECK (Strictly BEFORE sign-init)
     Test-OutputTargetWritable -path $SignedOutputPath
 
+    $authString = "AUTHORIZE TESTNET INIT $($quoteParsed.quote.fingerprint)"
+    try { Set-Clipboard -Value $authString } catch {}
+
     Write-Host "Pre-flight checks passed." -ForegroundColor Green
-    Write-Host "Target Wallet    : $PINNED_WALLET_ADDRESS" -ForegroundColor Cyan
-    Write-Host "Quote Fingerprint: $($quoteParsed.quote.fingerprint)" -ForegroundColor Cyan
-    Write-Host "Validity Window  : $remaining seconds remaining (expires at $validUntil Unix epoch)" -ForegroundColor Cyan
-    Write-Host "GnuPG Pinentry prompt will appear for local encrypted backup decryption." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "==========================================================================" -ForegroundColor Cyan
+    Write-Host " STAGE 3: OWNER SIGNING AUTHORIZATION" -ForegroundColor Cyan
+    Write-Host " Target Wallet    : $PINNED_WALLET_ADDRESS" -ForegroundColor Cyan
+    Write-Host " Quote Fingerprint: $($quoteParsed.quote.fingerprint)" -ForegroundColor Yellow
+    Write-Host " Validity Window  : $remaining seconds remaining (expires at $validUntil Unix epoch)" -ForegroundColor Cyan
+    Write-Host "--------------------------------------------------------------------------" -ForegroundColor DarkGray
+    Write-Host " Instructions:" -ForegroundColor Yellow
+    Write-Host " 1. Decrypt your backup when the GnuPG Pinentry GUI window appears." -ForegroundColor Yellow
+    Write-Host " 2. When the terminal prompts '> ', enter the exact authorization string:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "   $authString" -ForegroundColor White
+    Write-Host ""
+    Write-Host " (String has been copied to your clipboard; press Ctrl+V or Right-Click)" -ForegroundColor DarkGray
+    Write-Host "==========================================================================" -ForegroundColor Cyan
 
     $cli = Join-Path $ScriptDirectory "standard-owner-signer-cli.mjs"
     $signedJson = & node $cli sign-init $QuoteOutputPath $BackupGpgPath
@@ -425,9 +469,24 @@ function Invoke-Broadcast {
         throw "Initialization quote expired at $validUntil (current time: $now). Refusing to broadcast expired transaction."
     }
 
-    Write-Host "Verified signed message hash: $($signedParsed.messageHash)" -ForegroundColor Green
-    Write-Host "Verified quote fingerprint : $($signedParsed.fingerprint)" -ForegroundColor Green
-    Write-Host "Validity remaining          : $($validUntil - $now) seconds" -ForegroundColor Green
+    $authString = "BROADCAST TESTNET WALLET INIT $($signedParsed.messageHash)"
+    try { Set-Clipboard -Value $authString } catch {}
+
+    Write-Host ""
+    Write-Host "==========================================================================" -ForegroundColor Cyan
+    Write-Host " STAGE 4: OWNER BROADCAST AUTHORIZATION" -ForegroundColor Cyan
+    Write-Host " Target Wallet    : $PINNED_WALLET_ADDRESS" -ForegroundColor Cyan
+    Write-Host " Message Hash     : $($signedParsed.messageHash)" -ForegroundColor Yellow
+    Write-Host " Quote Fingerprint: $($signedParsed.fingerprint)" -ForegroundColor Cyan
+    Write-Host " Validity Window  : $($validUntil - $now) seconds remaining" -ForegroundColor Cyan
+    Write-Host "--------------------------------------------------------------------------" -ForegroundColor DarkGray
+    Write-Host " Instructions:" -ForegroundColor Yellow
+    Write-Host " When the terminal prompts '> ', enter the exact authorization string below:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "   $authString" -ForegroundColor White
+    Write-Host ""
+    Write-Host " (String has been copied to your clipboard; press Ctrl+V or Right-Click)" -ForegroundColor DarkGray
+    Write-Host "==========================================================================" -ForegroundColor Cyan
 
     $cli = Join-Path $ScriptDirectory "standard-wallet-broadcast-cli.mjs"
     & node $cli broadcast $QuoteOutputPath $SignedOutputPath
