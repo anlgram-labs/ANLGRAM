@@ -6,6 +6,7 @@ import {createDraft} from '../wizard/model.mjs';
 import {buildReleasePlan,buildReviewedOwnerInventory} from '../testnet-release-plan.mjs';
 import {assertReviewedStandardPreflightInput,reviewedStandardPublicKey} from '../projects/reviewed-standard-operator.mjs';
 import {submitStandardDeployment} from '../projects/standard-transport-fixture.mjs';
+import {createStandardOwnerDraft} from '../projects/standard-owner-draft.mjs';
 
 function publicInput(){
  const project=(mode,byte,id)=>{
@@ -72,6 +73,31 @@ test('example draft and exported manifest cannot reach reviewed preflight or fin
  assert.throws(()=>assertReviewedStandardPreflightInput(manifest),/UNREVIEWED/);
  await assert.rejects(buildReviewedOwnerInventory(sample.standard.draft),/UNREVIEWED/);
  await assert.rejects(submitStandardDeployment(null,manifest.standard.operator.address,null),/hard-disabled/);
+});
+
+test('owner settings generate a canonical settlement draft and exact mint and wallet identities',async()=>{
+ const owner=await buildReviewedOwnerInventory();
+ const choices={name:'Local test only',symbol:'LOCAL',supply:'100.50',decimals:'2',
+  distribution:{csv:'address,amount\n'+owner.operator.address+',1.25',batchSize:'1'},
+  vesting:{beneficiary:owner.operator.address,amount:'2.50',startDate:'2027-01-01',cliffMonths:'1',durationMonths:'6'}};
+ const draft=createStandardOwnerDraft(choices);
+ assert.equal(draft.walletProfile,'STANDARD_V2_SETTLEMENT');
+ assert.equal(draft.allocations.community,'1.25');
+ assert.equal(draft.allocations.team,'2.50');
+ const manifest=await buildReviewedOwnerInventory(draft);
+ assert.deepEqual(manifest,await buildReviewedOwnerInventory(draft));
+ assert.equal(manifest.standard.expectedMintUnits,'10050');
+ assert.equal(manifest.standard.distributionRecipientCount,1);
+ assert.equal(manifest.standard.creatorJettonWallet.codeHash,manifest.standard.walletCodeHash);
+ assert.equal(manifest.standard.creatorJettonWallet.stateInitHash,Address.parse(manifest.standard.creatorJettonWallet.address).hash.toString('hex'));
+ assert.notEqual(manifest.standard.mintMessage.operationId,manifest.standard.deploymentMessage.operationId);
+ assert.equal(manifest.standard.chainState,'UNVERIFIED');
+ assert.equal(manifest.feeQuote,null);
+ assert.equal(manifest.executionEligible,false);
+ assert.throws(()=>createStandardOwnerDraft({...choices,creator:publicInput().standard.draft.metadata.creator}),/INVALID/);
+ assert.throws(()=>createStandardOwnerDraft({...choices,supply:'',decimals:'2'}),/INVALID/);
+ assert.throws(()=>createStandardOwnerDraft({...choices,supply:'1'}),/INVALID/);
+ await assert.rejects(buildReviewedOwnerInventory({...draft,liveChainVerified:true}),/Non-canonical/);
 });
 
 test('release input rejects Mainnet, cross-wallet, unsupported workchain and execution overrides',async()=>{

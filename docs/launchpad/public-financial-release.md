@@ -79,6 +79,22 @@ Public TonAPI and TON Center observations both reported the reviewed wallet as u
 
 The prior clean release rehearsal at `20f648c9ff340ee6af5995ecea4ffa9dae9087da` passed 9 compiler checks, 30 settlement cases and 70 integration cases. This follow-up passed all 14 focused tests with zero failures and zero skips. A direct CLI check rejected the read-only inventory as a preflight input before opening provider access. The published owner inventory reproduced from the CLI.
 
+#### Prepare the first owner Standard V2 draft
+
+From the PR #35 worktree, run the reviewed script in Windows PowerShell 5.1. The execution policy applies only to that process.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\testnet-interface\prepare-standard-testnet-draft.ps1 -OutputDirectory "$env:USERPROFILE\Documents\ANLGRAM-Standard-Testnet"
+```
+
+Enter the approved token name, symbol, total supply and decimals. Press Enter to skip optional distribution or vesting. Distribution takes a UTF-8 public CSV with `address,amount` rows and one to four recipients per batch. Vesting takes an exact Testnet beneficiary, amount, UTC start date, cliff and duration, and selects `STANDARD_V2_SETTLEMENT`. The script pins the reviewed creator and checks that distribution and vesting fit the supply. It writes a canonical draft and a sanitized manifest into the selected directory. Keep the draft to preserve its project ID and deterministic contract addresses. The script refuses to overwrite either output. To reproduce the same manifest, pass the existing draft to `owner-manifest`.
+
+The manifest includes the minter and creator Jetton wallet code, data and StateInit hashes, separate deployment and mint operation IDs and payload hashes, expected supply, and the optional vesting address. It omits transaction BOCs and financial authorization. The planned deployment and mint attachments are respectively 0.050 and 0.150 Testnet TON. Network fees and chain state remain unset or unverified.
+
+After PR #34 verifies initialization, the Standard deployment requires a fresh included active V5R1 operator checkpoint, current seqno and funded balance, an independently confirmed empty uninitialized minter destination, and exact unsigned emulation at the authenticated reference. The separate read-only preflight input contains the saved draft, reviewed public key and explicitly approved `ownerPolicyCeilingNano`. The policy ceiling is not a guaranteed network fee cap. An independently reviewed single-attempt submission path, exact owner authorization and persistent reservation are still required. Reconcile the minter deployment before separately approving mint, and verify delivered supply before distribution or vesting. Launchpad and Gate 414 remain outside this flow.
+
+Verification passed 13 focused tests with zero failures or skips. The Standard minter and original wallet, settlement wallet and Standard Vesting V2 artifact checks reproduced their committed code. A Windows PowerShell 5.1 smoke test generated both files using disposable token metadata, with chain state unverified and no fee quote. The smoke-test draft was not published.
+
 The offline release CLI takes a JSON file with `network: "-3"`, `standard: {draft, publicKey}` and `launchpad: {draft, publicKey, migrationAuthorityPublicKey}`. Use current canonical schema-1 Testnet drafts from the wizard and the 64-character lowercase hex public keys of two distinct V5R1 subwallet-zero operators. The two draft creators must match the derived operators. An explicit Testnet-friendly address or a canonical workchain-zero raw address is accepted. A raw address has no network marker, so the Testnet V5 derivation and the explicit chain field establish the operator binding. The historical Curve operator and Curve #2 destination are excluded. PR #34 manages the wallet initialization independently. Enter public configuration only.
 
 ```powershell

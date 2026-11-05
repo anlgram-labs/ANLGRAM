@@ -70,13 +70,34 @@ export async function buildReviewedOwnerInventory(draft) {
  };
  let standard=null;
  if(draft!==undefined){
+  if(Object.keys(draft??{}).some(key=>!['schema','network','id','stage','mode','metadata','allocations',
+   'distribution','vesting','lp','trade','savedAt','walletProfile'].includes(key)))throw Error('Non-canonical owner draft');
   checkDraftAddresses(draft);
   assertReviewedStandardOperator(draft.metadata.creator);
   if(draft.vesting?.enabled&&draft.walletProfile!=='STANDARD_V2_SETTLEMENT')throw Error('Vesting requires settlement wallet');
   const release=await prepareStandardTestnetRelease(draft,reviewedStandardPublicKey);
   const {stateInit:discarded,...minter}=fromPrepared(release.minter);
+  const minterInit=core.loadStateInit(core.Cell.fromBase64(release.minter.stateInit).beginParse());
+  const minterData=minterInit.data.beginParse();
+  minterData.loadRef();
+  const walletCode=minterData.loadRef();
+  if(hash(walletCode)!==release.walletCodeHash)throw Error('Standard wallet artifact mismatch');
+  const creatorWalletInit={code:walletCode,data:core.beginCell().storeCoins(0).storeAddress(operator.address)
+   .storeAddress(testnetAddress(minter.address)).storeRef(walletCode).endCell()};
+  const creatorWalletAddress=core.contractAddress(0,creatorWalletInit);
+  const {stateInit:walletBoc,...creatorJettonWallet}=identity(creatorWalletInit,creatorWalletAddress.toRawString());
+  const prepared=await prepareProject(draft);
+  if(testnetAddress(prepared.distribution.creatorWallet).toRawString()!==creatorWalletAddress.toRawString()||
+     release.deployment.receiptExpectation.stateInitHash!==minter.stateInitHash)throw Error('Standard project derivation mismatch');
   standard={configurationFingerprint:release.configurationFingerprint,minter,walletCodeHash:release.walletCodeHash,
-   attachmentNano:release.deployment.message.amount,deploymentMessage:release.deployment.receiptExpectation};
+   creatorJettonWallet,expectedMintUnits:release.expectedMintUnits,
+   attachmentNano:release.deployment.message.amount,deploymentMessage:release.deployment.receiptExpectation,
+   mintAttachmentNano:release.mint.message.amount,mintMessage:release.mint.receiptExpectation,
+   distributionRecipientCount:prepared.distribution.batches.reduce((total,batch)=>total+batch.recipientCount,0),
+   vesting:prepared.vesting.stateInit?{address:prepared.vesting.address,codeHash:prepared.vesting.codeHash,
+    stateInitHash:hash(core.Cell.fromBase64(prepared.vesting.stateInit))}:null,
+   chainState:'UNVERIFIED',dependencyOrder:['VERIFIED_WALLET_INITIALIZATION','FRESH_DEPLOYMENT_PREFLIGHT',
+    'EXACT_OWNER_AUTHORIZATION','AUTHENTIC_DEPLOYMENT_RECONCILIATION','SEPARATE_MINT_APPROVAL_AND_DELIVERY']};
  }
  return {schema:1,network:'-3',executionVersion:execution.sha256,scope:'REVIEWED_IDENTITY_READ_ONLY',
   operator:{...genesis,address:operator.address.toString({testOnly:true,bounceable:false}),

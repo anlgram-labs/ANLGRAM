@@ -2,6 +2,7 @@ import {readFile} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {buildReleasePlan,buildReviewedOwnerInventory} from './testnet-release-plan.mjs';
+import {createStandardOwnerDraft} from './projects/standard-owner-draft.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const compilerChecks=[
@@ -47,10 +48,15 @@ function runSuite(files) {
 
 try {
  const [command,input,...extra]=process.argv.slice(2);
+ const jsonFile=async file=>JSON.parse((await readFile(file,'utf8')).replace(/^\uFEFF/,''));
  if(command==='manifest'&&input&&extra.length===0){
-  console.log(JSON.stringify(await buildReleasePlan(JSON.parse(await readFile(input,'utf8'))),null,2));
+  console.log(JSON.stringify(await buildReleasePlan(await jsonFile(input)),null,2));
+ }else if(command==='standard-draft'&&input&&extra.length===0){
+  const draft=createStandardOwnerDraft(await jsonFile(input));
+  await buildReviewedOwnerInventory(draft);
+  console.log(JSON.stringify(draft,null,2));
  }else if(command==='owner-manifest'&&extra.length===0){
-  console.log(JSON.stringify(await buildReviewedOwnerInventory(input?JSON.parse(await readFile(input,'utf8')):undefined),null,2));
+  console.log(JSON.stringify(await buildReviewedOwnerInventory(input?await jsonFile(input):undefined),null,2));
  }else if(command==='rehearse'&&!input){
   const git=args=>execFileSync('git',args,{cwd:root,env:environment,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
   const commit=git(['rev-parse','HEAD']),dirtyBefore=!!git(['status','--porcelain']);
