@@ -6,7 +6,7 @@
 # Guaranteed zero leak of signed envelope, BOC, decrypted material, or credentials in logs or console.
 [CmdletBinding()]
 param(
-    [ValidateSet('menu', 'prepare-init', 'sign-init', 'broadcast', 'reconcile', 'inspect-wallet', 'store-credentials')]
+    [ValidateSet('menu', 'prepare-init', 'sign-init', 'prepare-and-sign-init', 'broadcast', 'reconcile', 'inspect-wallet', 'store-credentials')]
     [string]$Action = 'menu',
     [string]$PublicInputPath = 'C:\Private\ANLGRAM\public-init-input.json',
     [string]$QuoteOutputPath = 'C:\Private\ANLGRAM\init-quote.json',
@@ -515,6 +515,20 @@ switch ($Action) {
     'inspect-wallet'   { Invoke-InspectWallet }
     'prepare-init'     { Invoke-PrepareInit }
     'sign-init'        { Invoke-SignInit }
+    'prepare-and-sign-init' {
+        Test-OutputTargetWritable -path $SignedOutputPath
+        $reuse = $false
+        if (Test-Path -LiteralPath $QuoteOutputPath) {
+            try {
+                $existing = [System.IO.File]::ReadAllText($QuoteOutputPath, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+                $reuse = [int64]$existing.quote.validUntil -gt ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + $MinQuoteValiditySeconds)
+            } catch {
+                $reuse = $false
+            }
+        }
+        if (-not $reuse) { Invoke-PrepareInit }
+        Invoke-SignInit
+    }
     'broadcast'        { Invoke-Broadcast }
     'reconcile'        { Invoke-Reconcile }
     'store-credentials'{ Ensure-ProviderCredentials; Save-ProviderCredentials }

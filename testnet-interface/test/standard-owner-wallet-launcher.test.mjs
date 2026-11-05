@@ -519,3 +519,33 @@ test('launcher: concurrent attempts reject racing output creation without corrup
   }
 });
 
+test('launcher: prepare-and-sign-init validates preconditions and stops safely on invalid mock backup', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'anlgram-test-'));
+  try {
+    const targetFile = join(dir, 'signed-init.json');
+    const quoteFile = join(dir, 'init-quote.json');
+    const backupFile = join(dir, 'test-backup.gpg');
+
+    const now = Math.floor(Date.now() / 1000);
+    const validQuote = {
+      wallet: {address: PINNED_WALLET_ADDRESS, operator: PINNED_OPERATOR},
+      quote: {fingerprint: '12'.repeat(32), validUntil: now + 300}
+    };
+    writeFileSync(quoteFile, JSON.stringify(validQuote));
+    writeFileSync(backupFile, 'dummy-mock-backup');
+
+    const res = runLauncher([
+      '-Action', 'prepare-and-sign-init',
+      '-QuoteOutputPath', quoteFile,
+      '-BackupGpgPath', backupFile,
+      '-SignedOutputPath', targetFile
+    ]);
+    assert.notEqual(res.status, 0);
+    assert.match(res.stderr + res.stdout, /Pre-flight checks passed|sign-init stopped/);
+    assert.equal(existsSync(targetFile), false);
+  } finally {
+    rmSync(dir, {recursive: true, force: true});
+  }
+});
+
+
