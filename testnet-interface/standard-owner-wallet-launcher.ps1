@@ -11,7 +11,7 @@ param(
     [string]$QuoteOutputPath = 'C:\Private\ANLGRAM\init-quote.json',
     [string]$BackupGpgPath = 'C:\Private\ANLGRAM\standard-v2-testnet.gpg',
     [string]$SignedOutputPath = 'C:\Private\ANLGRAM\signed-init.json',
-    [string]$CredentialPath = (Join-Path $env:USERPROFILE '.codex\credentials\testnet-providers.dpapi'),
+    [string]$CredentialPath = '',
     [int]$MinQuoteValiditySeconds = 10
 )
 
@@ -21,6 +21,21 @@ Set-StrictMode -Version Latest
 # Reviewed, pinned Testnet V5R1 destination
 $PINNED_WALLET_ADDRESS = '0QCetQK2VyBLL2cB9Gmw7fyHudAMwCX75-Mps0NWmk5fCAUn'
 $PINNED_OPERATOR = '0:9eb502b657204b2f6701f469b0edfc87b9d00cc025fbe7e329b343569a4e5f08'
+
+# Script directory resolution compatible across all PowerShell 5.1 invocation styles
+$ScriptDirectory = if ($PSScriptRoot) {
+    $PSScriptRoot
+} elseif ($MyInvocation.MyCommand.Path) {
+    Split-Path -Parent $MyInvocation.MyCommand.Path
+} else {
+    (Get-Location).Path
+}
+
+# Resolve default DPAPI credential path if not explicitly provided
+if (-not $CredentialPath) {
+    $userHome = if ($env:USERPROFILE) { $env:USERPROFILE } else { [System.Environment]::GetFolderPath('UserProfile') }
+    $CredentialPath = Join-Path $userHome '.codex\credentials\testnet-providers.dpapi'
+}
 
 function Set-OwnerOnlyAcl([string]$filePath) {
     try {
@@ -192,7 +207,7 @@ function Save-ProviderCredentials {
 
 function Invoke-InspectWallet {
     Write-Host "`n=== Querying Current On-Chain State ===" -ForegroundColor Cyan
-    $cli = Join-Path $PSScriptRoot "standard-preflight-cli.mjs"
+    $cli = Join-Path $ScriptDirectory "standard-preflight-cli.mjs"
     & node $cli --inspect-wallet $PINNED_WALLET_ADDRESS
 }
 
@@ -206,19 +221,20 @@ function Invoke-PrepareInit {
     # Pre-flight check on QuoteOutputPath before doing external RPC work
     Test-OutputTargetWritable -path $QuoteOutputPath
 
-    $cli = Join-Path $PSScriptRoot "standard-owner-signer-cli.mjs"
+    $cli = Join-Path $ScriptDirectory "standard-owner-signer-cli.mjs"
     $quoteJson = & node $cli prepare-init $PublicInputPath
     if ($LASTEXITCODE -ne 0) {
         throw "prepare-init failed with exit code $LASTEXITCODE. See stderr diagnostic above."
     }
 
-    # Verify quote JSON integrity
-    $parsedQuote = $quoteJson | ConvertFrom-Json
+    # Normalize stdout to single string and verify quote JSON integrity
+    $quoteText = if ($quoteJson -is [array]) { $quoteJson -join [System.Environment]::NewLine } else { [string]$quoteJson }
+    $parsedQuote = $quoteText | ConvertFrom-Json
     if (-not $parsedQuote.quote -or -not $parsedQuote.quote.fingerprint -or -not $parsedQuote.quote.validUntil) {
         throw "Generated quote is missing required fields (quote.fingerprint, quote.validUntil)."
     }
 
-    Write-AtomicFileNoBom -Path $QuoteOutputPath -Content $quoteJson -OwnerOnly
+    Write-AtomicFileNoBom -Path $QuoteOutputPath -Content $quoteText -OwnerOnly
 
     # Re-read verification
     $verifyRaw = [System.IO.File]::ReadAllText($QuoteOutputPath, [System.Text.Encoding]::UTF8)
@@ -237,7 +253,7 @@ function Invoke-SignInit {
     Ensure-ProviderCredentials
     Write-Host "`n=== Interactive Owner Signing Workflow ===" -ForegroundColor Cyan
     Write-Host "Requires local GnuPG Pinentry and exact quote fingerprint confirmation." -ForegroundColor Yellow
-    
+
     if (-not (Test-Path -LiteralPath $QuoteOutputPath)) {
         throw "Quote file not found: $QuoteOutputPath. Run prepare-init first."
     }
@@ -277,14 +293,15 @@ function Invoke-SignInit {
     Write-Host "Validity Window  : $remaining seconds remaining (expires at $validUntil Unix epoch)" -ForegroundColor Cyan
     Write-Host "GnuPG Pinentry prompt will appear for local encrypted backup decryption." -ForegroundColor Yellow
 
-    $cli = Join-Path $PSScriptRoot "standard-owner-signer-cli.mjs"
+    $cli = Join-Path $ScriptDirectory "standard-owner-signer-cli.mjs"
     $signedJson = & node $cli sign-init $QuoteOutputPath $BackupGpgPath
     if ($LASTEXITCODE -ne 0) {
         throw "sign-init stopped or failed with exit code $LASTEXITCODE."
     }
 
-    # Verify Signed Envelope Integrity
-    $signedParsed = $signedJson | ConvertFrom-Json
+    # Normalize stdout to single string and verify Signed Envelope Integrity
+    $signedText = if ($signedJson -is [array]) { $signedJson -join [System.Environment]::NewLine } else { [string]$signedJson }
+    $signedParsed = $signedText | ConvertFrom-Json
     if ($signedParsed.status -ne 'SIGNED_NOT_BROADCAST') {
         throw "Signed envelope status is invalid: expected SIGNED_NOT_BROADCAST, got '$($signedParsed.status)'."
     }
@@ -297,7 +314,7 @@ function Invoke-SignInit {
 
     # Atomic write to $SignedOutputPath with disaster recovery dump
     try {
-        Write-AtomicFileNoBom -Path $SignedOutputPath -Content $signedJson -OwnerOnly
+        Write-AtomicFileNoBom -Path $SignedOutputPath -Content $signedText -OwnerOnly
 
         # Re-read verification
         $verifyRaw = [System.IO.File]::ReadAllText($SignedOutputPath, [System.Text.Encoding]::UTF8)
@@ -318,7 +335,7 @@ function Invoke-SignInit {
         Write-Host "DO NOT re-run sign-init or attempt to delete markers! That would fail or invalidate the wallet." -ForegroundColor Yellow
         Write-Host "Copy and save the exact signed JSON envelope below into '$SignedOutputPath':" -ForegroundColor Cyan
         Write-Host "--------------------------------------------------------------------------"
-        Write-Host $signedJson
+        Write-Host $signedText
         Write-Host "--------------------------------------------------------------------------"
         Write-Host "After saving to '$SignedOutputPath', proceed directly to 'broadcast'." -ForegroundColor Yellow
         Write-Host "==========================================================================" -ForegroundColor Red
@@ -361,7 +378,7 @@ function Invoke-Broadcast {
     Write-Host "Verified quote fingerprint : $($signedParsed.fingerprint)" -ForegroundColor Green
     Write-Host "Validity remaining          : $($validUntil - $now) seconds" -ForegroundColor Green
 
-    $cli = Join-Path $PSScriptRoot "standard-wallet-broadcast-cli.mjs"
+    $cli = Join-Path $ScriptDirectory "standard-wallet-broadcast-cli.mjs"
     & node $cli broadcast $QuoteOutputPath $SignedOutputPath
     if ($LASTEXITCODE -ne 0) {
         throw "broadcast stopped or failed with exit code $LASTEXITCODE."
@@ -377,7 +394,7 @@ function Invoke-Reconcile {
     if (-not (Test-Path -LiteralPath $SignedOutputPath)) {
         throw "Signed envelope not found: $SignedOutputPath"
     }
-    $cli = Join-Path $PSScriptRoot "standard-wallet-broadcast-cli.mjs"
+    $cli = Join-Path $ScriptDirectory "standard-wallet-broadcast-cli.mjs"
     & node $cli reconcile $QuoteOutputPath $SignedOutputPath
     if ($LASTEXITCODE -ne 0) {
         throw "reconcile failed with exit code $LASTEXITCODE."
