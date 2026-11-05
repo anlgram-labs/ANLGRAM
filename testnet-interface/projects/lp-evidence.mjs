@@ -38,12 +38,16 @@ export function lpEvidencePolicy(stateInit){
  return{locker,config:cfg,percent,duration,q,beneficiary,controller,contributor,...derived};
 }
 
+export function readLpIssuanceMessage(policy,message){
+ const s=internal(message,policy.pool,policy.lpWallet),amount=transfer(s,0x178d4519,policy.q);
+ need(amount>0n&&equal(s.loadAddress(),policy.contributor),'Wrong LP liquidity provider');
+ s.loadMaybeAddress();need(s.loadCoins()>0n,'Operation payload forwarding required');const referenced=s.loadBit(),payload=referenced?s.loadRef().beginParse():s;if(referenced)s.endParse();need(payload.loadUint(32)===0x414c5632&&payload.loadUintBig(64)===policy.q,'Wrong immutable LP operation payload');payload.endParse();
+ return amount;
+}
 export function verifyLpIssuanceFields(policy,raw){
  const pool=transaction(raw.poolTransaction,policy.pool),delivery=transaction(raw.walletTransaction,policy.lpWallet);success(pool.tx);success(delivery.tx);edge(pool.tx,delivery.tx);
  states(raw.pool,policy.pool,pool.tx,policy.poolInit.code);
- const w=states(raw.wallet,policy.lpWallet,delivery.tx,policy.lpInit.code),s=internal(delivery.tx.inMessage,policy.pool,policy.lpWallet),amount=transfer(s,0x178d4519,policy.q);
- need(amount>0n&&equal(s.loadAddress(),policy.contributor),'Wrong LP liquidity provider');
- s.loadMaybeAddress();need(s.loadCoins()>0n,'Operation payload forwarding required');const referenced=s.loadBit(),payload=referenced?s.loadRef().beginParse():s;if(referenced)s.endParse();need(payload.loadUint(32)===0x414c5632&&payload.loadUintBig(64)===policy.q,'Wrong immutable LP operation payload');payload.endParse();
+ const w=states(raw.wallet,policy.lpWallet,delivery.tx,policy.lpInit.code),amount=readLpIssuanceMessage(policy,delivery.tx.inMessage);
  const before=wallet(w.before,policy.locker,policy.pool,policy.lpInit.code),after=wallet(w.after,policy.locker,policy.pool,policy.lpInit.code);need(after-before===amount,'LP issuance delta mismatch');
  return result({kind:'LP_ISSUANCE',operationId:policy.q.toString(),pool:policy.pool.toRawString(),locker:policy.locker.toRawString(),lpWallet:policy.lpWallet.toRawString(),amountUnits:amount.toString(),balanceBeforeUnits:before.toString(),balanceAfterUnits:after.toString(),poolTransactionHash:hash(pool.cell),poolTransactionLt:String(pool.tx.lt),walletTransactionLt:String(delivery.tx.lt),walletTransactionHash:hash(delivery.cell),firstNotificationRecovery:'EXACT_DELIVERY_FIELDS_ONLY_NO_CONTRACT_CREDIT',lockedAllocationUnits:null});
 }
@@ -63,7 +67,7 @@ export function verifyLpWithdrawalFields(policy,raw){
  const own=states(raw.wallet,policy.lpWallet,sender.tx,policy.lpInit.code),dest=states(raw.recipient,destination,received.tx,policy.lpInit.code);
  need(wallet(own.before,policy.locker,policy.pool,policy.lpInit.code)-wallet(own.after,policy.locker,policy.pool,policy.lpInit.code)===amount,'Sender LP debit mismatch');
  need(wallet(dest.after,recipient,policy.pool,policy.lpInit.code)-wallet(dest.before,recipient,policy.pool,policy.lpInit.code)===amount,'Recipient LP credit mismatch');
- return result({kind:'LP_WITHDRAWAL_DELIVERY',operationId:policy.q.toString(),withdrawalQueryId:q.toString(),amountUnits:amount.toString(),recipient:recipient.toRawString(),recipientWallet:destination.toRawString(),lockedPrincipal:locked,lockerTransactionHash:hash(claim.cell),walletTransactionHash:hash(sender.cell),recipientTransactionHash:hash(received.cell),persistentRequestMatched:true,contractPendingMustRemain:true});
+ return result({kind:'LP_WITHDRAWAL_DELIVERY',operationId:policy.q.toString(),withdrawalQueryId:q.toString(),amountUnits:amount.toString(),recipient:recipient.toRawString(),recipientWallet:destination.toRawString(),lockedPrincipal:locked,locker:policy.locker.toRawString(),pool:policy.pool.toRawString(),lpWallet:policy.lpWallet.toRawString(),lockerTransactionHash:hash(claim.cell),lockerTransactionLt:String(claim.tx.lt),walletTransactionHash:hash(sender.cell),walletTransactionLt:String(sender.tx.lt),recipientTransactionHash:hash(received.cell),recipientTransactionLt:String(received.tx.lt),persistentRequestMatched:true,contractPendingMustRemain:true,newAttemptAuthorized:false});
 }
 
 // Only an immediate authenticated bounce of the original LP-wallet request can
@@ -77,7 +81,7 @@ export function verifyLpWithdrawalBounceFields(policy,raw){
  const v=states(raw.locker,policy.locker,recovery.tx,code('anlgram-lp-locker-v2')),before=vaultAccount(v.before,policy),after=vaultAccount(v.after,policy),request=before.requests.get(q)?.beginParse();need(request&&request.loadCoins()===amount,'Missing exact pending request');const locked=request.loadBit();request.endParse();need(!after.requests.has(q),'Request not removed after recovery');
  const original=internal(failed.tx.inMessage,policy.locker,policy.lpWallet);need(transfer(original,0x0f8a7ea5,q)===amount&&equal(original.loadAddress(),locked?policy.beneficiary:policy.controller),'Unrelated original wallet request');
  need(after.received===before.received&&after.next===before.next&&after.pending===before.pending-amount&&after.locked===before.locked+(locked?amount:0n)&&after.free===before.free+(locked?0n:amount)&&after.unlock===before.unlock,'Bounce restoration accounting mismatch');
- return result({kind:'LP_WITHDRAWAL_IMMEDIATE_BOUNCE',operationId:policy.q.toString(),withdrawalQueryId:q.toString(),amountUnits:amount.toString(),lockedPrincipal:locked,lockerTransactionHash:hash(recovery.cell),walletTransactionHash:hash(failed.cell),persistentRequestMatched:true,contractPrincipalRestoredFields:true,contractPendingMustRemain:after.pending>0n,deliveryVerified:false,newAttemptAuthorized:false});
+ return result({kind:'LP_WITHDRAWAL_IMMEDIATE_BOUNCE',operationId:policy.q.toString(),withdrawalQueryId:q.toString(),amountUnits:amount.toString(),lockedPrincipal:locked,locker:policy.locker.toRawString(),pool:policy.pool.toRawString(),lpWallet:policy.lpWallet.toRawString(),lockerTransactionHash:hash(recovery.cell),lockerTransactionLt:String(recovery.tx.lt),walletTransactionHash:hash(failed.cell),walletTransactionLt:String(failed.tx.lt),persistentRequestMatched:true,contractPrincipalRestoredFields:true,contractPendingMustRemain:after.pending>0n,deliveryVerified:false,newAttemptAuthorized:false});
 }
 
 // Internal server-acquired bundles only. Reuses inclusion + independent raw

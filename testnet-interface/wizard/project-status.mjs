@@ -161,7 +161,10 @@ export function normalizeMigrationStatusView(input){
    currentWalletUnits:null,
    unresolvedReturns:'UNKNOWN',
    lpWithdrawalEligible:false,
-   lpWithdrawalReceipts:null,
+   lpWithdrawalReceipts:validScope&&Array.isArray(g.withdrawalEvidence)&&g.withdrawalEvidence.some(r=>r.kind==='LP_WITHDRAWAL_DELIVERY')
+    ?g.withdrawalEvidence.filter(r=>r.kind==='LP_WITHDRAWAL_DELIVERY'&&r.contractPendingMustRemain===true&&r.operationCompleted===false):null,
+   lpWithdrawalBounceCount:validScope&&Array.isArray(g.withdrawalEvidence)?g.withdrawalEvidence.filter(r=>
+    r.kind==='LP_WITHDRAWAL_IMMEDIATE_BOUNCE'&&r.contractPrincipalRestoredFields===true&&r.deliveryVerified===false).length:0,
    versionedPackage:{availableForLocalReview:true,selectedForThisLegacyPlan:true,financialAuthorization:false},
    migrationAuthorized:false,
    financialSigningEnabled:false,
@@ -431,7 +434,8 @@ export function lpLockerSummary(draft,prepared=null,observation=null){
   custodyStatus,
   custodyBadgeText:`LP Custody: ${custodyStatus.replaceAll('_',' ')}${sv.lpObservedLt?` (at LT ${sv.lpObservedLt})`:''} · Current LP balance: UNKNOWN`,
   withdrawalEligibility:isPermanent?'NEVER ELIGIBLE (Permanent lock · withdrawals permanently disabled in Locker V2)':`NOT ELIGIBLE · BLOCKED (eligible: ${sv.lpWithdrawalEligible===null?'UNKNOWN':sv.lpWithdrawalEligible}; requires verified LP custody, elapsed on-chain unlock timestamp, beneficiary signature & FOREIGN_LP_WITHDRAWAL_DELIVERY_EVIDENCE)`,
-  authenticatedWithdrawalReceipts:withdrawalReceiptsText,
+  authenticatedWithdrawalReceipts:withdrawalReceiptsText+(sv.lpWithdrawalBounceCount?
+   ` · ${sv.lpWithdrawalBounceCount} immediate bounce restoration(s) observed`:''),
   withdrawalReceipts:sv.lpWithdrawalReceipts||[],
   extensionPolicy:mig?.terms?.extensionPolicy||'each authenticated deposit extends all remaining timed principal',
   lockerAddress:mig?.locker?.address||'NOT PREPARED (prepare offline plan in Step 5)',

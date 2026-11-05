@@ -1,9 +1,10 @@
 // Source-compiled Sandbox only. No network, keys, signing or real transactions.
-import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {createRequire} from 'node:module';
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {createRequire} from 'node:module';import {execFileSync} from 'node:child_process';import {fileURLToPath} from 'node:url';
+import {standardV2Code} from '../projects/artifacts.mjs';
 import {prepareProject} from '../projects/prepare.mjs';import {createDraft} from '../wizard/model.mjs';
 const require=createRequire(new URL('../../tests/settlement-runtime/package.json',import.meta.url));
 const {Address,Cell,beginCell,loadStateInit}=require('@ton/core');
-const {Blockchain}=require('@ton/sandbox'),{compileFunc}=require('@ton-community/func-js');
+const {Blockchain,createShardAccount}=require('@ton/sandbox'),{compileFunc}=require('@ton-community/func-js');
 const compiled=new Map();async function compile(name){if(!compiled.has(name)){const r=await compileFunc({targets:[name+'.fc'],sources:f=>readFileSync(new URL('../../minter-contract/contracts/'+f,import.meta.url),'utf8').replace(/\r\n/g,'\n')});assert.equal(r.status,'ok',r.message);compiled.set(name,Cell.fromBase64(r.codeBoc));}return compiled.get(name);}
 const addr=a=>Address.parse(a.toRawString()),init=s=>loadStateInit(Cell.fromBase64(s).beginParse());
 async function send(actor,m){return actor.send({to:addr(Address.parse(m.address)),value:BigInt(m.amount),bounce:false,...(m.stateInit?{init:init(m.stateInit)}:{}),body:m.payload?Cell.fromBase64(m.payload):beginCell().endCell()});}
@@ -17,7 +18,10 @@ test('custom Launchpad graph uses source-compiled contracts, authentic initial c
 });
 test('new creator Standard plan compiles from source, deploys, mints exact custom precision and distributes to real recipient wallets',async()=>{
  const chain=await Blockchain.create(),owner=await chain.treasury('standard-owner'),a=await chain.treasury('recipient-a'),b=await chain.treasury('recipient-b'),d=draft(owner);d.allocations.community='30';d.distribution={skip:false,mode:'custom',amount:'0',text:a.address.toRawString()+',10.01\n'+b.address.toRawString()+',19.99',batchSize:'1'};
- const p=await prepareProject(d);assert.equal((await compile('jetton-minter')).hash().toString('hex'),p.accounts.minter.codeHash);const state=init(p.accounts.minter.stateInit),wallet=state.data.beginParse();wallet.loadRef();assert.equal((await compile('jetton-wallet')).hash().toString('hex'),wallet.loadRef().hash().toString('hex'));
+ execFileSync(process.execPath,[fileURLToPath(new URL('../../minter-contract/compile-standard-jetton-v2.js',import.meta.url)),'--check']);
+ const p=await prepareProject(d);assert.equal(standardV2Code('minter').hash().toString('hex'),p.accounts.minter.codeHash);
+ const state=init(p.accounts.minter.stateInit),wallet=state.data.beginParse();wallet.loadRef();
+ assert.equal(standardV2Code('wallet').hash().toString('hex'),wallet.loadRef().hash().toString('hex'));
  for(const o of p.operations){const r=await send(owner,o.message);assert(!r.transactions.some(t=>t.description.aborted));}
  const master=Address.parse(p.accounts.minter.address);assert.equal((await chain.runGetMethod(master,'get_jetton_data')).stackReader.readBigNumber(),10000n);
  for(const batch of p.distribution.batches){const r=await send(owner,batch.messages[0]);assert(!r.transactions.some(t=>t.description.aborted));}
@@ -33,6 +37,22 @@ test('prepared vesting deposits authenticate custody, reject strangers/early cla
  assert.equal((await chain.runGetMethod(Address.parse(v.address),'get_vesting_data')).stack.at(-1).value,1n);
  const claim=who=>who.send({to:Address.parse(v.address),value:100000000n,body:beginCell().storeUint(0x414e4c76,32).storeUint(1,64).endCell()});
  assert((await claim(stranger)).transactions.some(t=>t.description.computePhase?.exitCode===401));chain.now=v.schedule.cliffTimestamp-1;assert((await claim(beneficiary)).transactions.some(t=>t.description.computePhase?.exitCode===402));chain.now=v.schedule.cliffTimestamp;const first=await claim(beneficiary);assert(first.transactions.filter(t=>t.description.aborted).every(t=>t.inMessage.info.dest.equals(beneficiary.address)&&t.inMessage.info.value.coins===1n&&t.description.computePhase.type==='skipped'&&t.description.computePhase.reason==='no-gas'),'Only the optional 1-nanoTON owner notification may skip; wallet delivery must succeed');assert.equal((await record()).readBigNumber(),4000n);let data=(await chain.runGetMethod(Address.parse(v.address),'get_vesting_data')).stack;assert.equal(data[1].value,1000n);assert((await claim(beneficiary)).transactions.some(t=>t.description.computePhase?.exitCode===405));
- chain.now=v.schedule.endTimestamp;const last=await claim(beneficiary);assert(last.transactions.filter(t=>t.description.aborted).every(t=>t.inMessage.info.dest.equals(beneficiary.address)&&t.inMessage.info.value.coins===1n&&t.description.computePhase.type==='skipped'&&t.description.computePhase.reason==='no-gas'));data=(await chain.runGetMethod(Address.parse(v.address),'get_vesting_data')).stack;assert.equal(data[1].value,4000n);
+ chain.now=v.schedule.endTimestamp;
+ const master=Address.parse(p.accounts.minter.address);
+ const beneficiaryWallet=(await chain.runGetMethod(master,'get_wallet_address',[{type:'slice',
+   cell:beginCell().storeAddress(addr(beneficiary.address)).endCell()}])).stackReader.readAddress();
+ const vestingJettonWallet=(await chain.runGetMethod(master,'get_wallet_address',[{type:'slice',
+   cell:beginCell().storeAddress(Address.parse(v.address)).endCell()}])).stackReader.readAddress();
+ const snapshot=chain.snapshot(), recipient=await chain.getContract(beneficiaryWallet);
+ const frozen=createShardAccount({address:beneficiaryWallet,code:Cell.EMPTY,data:Cell.EMPTY,balance:recipient.balance});
+ frozen.account.storage.state={type:'frozen',stateHash:1n};
+ await chain.setShardAccount(beneficiaryWallet,frozen);
+ const rejected=await claim(beneficiary);
+ assert(rejected.transactions.some(t=>t.inMessage?.info.dest?.equals(beneficiaryWallet)&&t.description.aborted));
+ assert.equal((await chain.runGetMethod(vestingJettonWallet,'get_wallet_data')).stackReader.readBigNumber(),3000n);
+ assert.equal((await chain.runGetMethod(Address.parse(v.address),'get_vesting_data')).stack[1].value,4000n,
+   'Known blocker: vesting books a downstream-failed claim while principal returns to its Jetton wallet');
+ await chain.loadFrom(snapshot);
+ const last=await claim(beneficiary);assert(last.transactions.filter(t=>t.description.aborted).every(t=>t.inMessage.info.dest.equals(beneficiary.address)&&t.inMessage.info.value.coins===1n&&t.description.computePhase.type==='skipped'&&t.description.computePhase.reason==='no-gas'));data=(await chain.runGetMethod(Address.parse(v.address),'get_vesting_data')).stack;assert.equal(data[1].value,4000n);
  const w=(await chain.runGetMethod(Address.parse(p.accounts.minter.address),'get_wallet_address',[{type:'slice',cell:beginCell().storeAddress(addr(beneficiary.address)).endCell()}])).stackReader.readAddress();assert.equal((await chain.runGetMethod(w,'get_wallet_data')).stackReader.readBigNumber(),4000n);
 });

@@ -74,6 +74,16 @@ export function attachPreparation(current){
   }
   if($('wizard-sequence'))$('wizard-sequence').replaceChildren(...p.operations.map(o=>{const li=document.createElement('li');li.textContent=o.name.replaceAll('-',' ')+' · NOT SUBMITTED / NOT AUTHORIZED';return li;}));
   text('wizard-project-status',projectStatusText(p,s));
+  const receipts=s?.distributionReceipts;
+  if($('wizard-project-status')&&receipts?.scope==='WALLET_RECORDS_RELATIVE_TO_TESTNET_REFERENCE'&&
+     receipts.validatorFinalityVerified===false&&receipts.source===p.distribution.creatorWalletRaw&&Array.isArray(receipts.recipients)){
+   const expected=p.distribution.batches.flatMap(batch=>batch.messages.map(message=>message.receiptExpectation));
+   if(expected.length===receipts.recipients.length&&expected.every((entry,i)=>entry&&
+      ['operationId','queryId','amountUnits','recipientWallet'].every(key=>entry[key]===receipts.recipients[i]?.[key]))){
+    const count=outcome=>receipts.recipients.filter(row=>row.outcome===outcome).length;
+    $('wizard-project-status').textContent+=`\nDistribution wallet records: ${count('DELIVERY_RECORDED')} delivered · ${count('RETURN_RECORDED')} returned · ${count('PENDING')} pending · ${count('UNKNOWN')} unknown. Relative to the verified account reference. Validator finality remains unverified.`;
+   }
+  }
   text('wizard-preparation',`OFFLINE PLAN · NOT AUTHORIZED · DEPLOYMENT UNKNOWN\nProject ${p.draftId} / ${p.metadata.symbol}\nMinter ${p.accounts.minter.address}\nConfiguration ${hash}\nConfigured supply: ${p.configuredSupplyUnits} base units; actual on-chain supply: UNKNOWN.\n${p.operations.length} proposed operations; every operation NOT_SUBMITTED. Network fees UNKNOWN.\nDistribution: ${p.distribution.batches.length} unfunded batches / ${p.distribution.totalUnits} base units (available balance: UNKNOWN).\nVesting: ${p.vesting.status}; configured ${p.vesting.amountUnits??'UNAVAILABLE'} base units; escrowed balance: UNKNOWN; custody NOT VERIFIED.\nLP ${p.migration?JSON.stringify(p.migration.terms):'not applicable'}; LP balance: UNKNOWN; custody NOT VERIFIED; migration BLOCKED.\nExport includes exact public StateInit and message templates, never an authorization or receipt.`);
   if(p.vesting.schedule&&$('wizard-preparation'))$('wizard-preparation').textContent+=`\nVesting beneficiary: ${p.vesting.beneficiary}; cliff ${new Date(p.vesting.schedule.cliffTimestamp*1000).toISOString()}; full vesting ${new Date(p.vesting.schedule.endTimestamp*1000).toISOString()}. Months are 30 days, matching the existing builder.`;
   if($('wizard-preparation'))$('wizard-preparation').textContent+=`\nProposed creation-operation attachments: ${format(p.creationCharge.proposedOperationAttachmentsNano)} Testnet TON; separate mandatory donation 0.02 TON; base-charge reconciliation and fresh fees required. This is not a quote or maximum debit.`;

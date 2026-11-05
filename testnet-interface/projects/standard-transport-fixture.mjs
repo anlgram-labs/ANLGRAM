@@ -1,5 +1,6 @@
 import {standardOperatorStorage} from './standard-supervisor.mjs';
 import {prepareStandardTestnetRelease} from './standard-testnet-release.mjs';
+import {assertReviewedStandardOperator} from './reviewed-standard-operator.mjs';
 
 // No real signer or network transport is provided. The public application
 // must not import this module. A future real adapter needs its own review.
@@ -64,7 +65,9 @@ export function exerciseStandardBridgePost(transaction,session,fetcher) {
 
 export async function submitStandardDeployment(storage, operator, privateWalletBridge) {
   if (!standardTransportEnabled) throw Error('Real Standard transport is hard-disabled');
+  assertReviewedStandardOperator(operator);
   return exerciseStandardTransport(standardOperatorStorage(storage,operator), async (transaction, context) => {
+    assertReviewedStandardOperator(operator,context.publicKey);
     const account = await privateWalletBridge.readAuthenticatedAccount();
     if (account?.network !== '-3' || account.address !== operator || account.publicKey !== context.publicKey ||
       account.walletId !== 2147483645 || account.seqno !== context.expectedSeqno ||

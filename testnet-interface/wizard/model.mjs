@@ -24,6 +24,10 @@ export function createDraft(id=crypto.randomUUID()){
 export function normalizeDraft(input){
  if(input?.schema!==1||input.network!=='-3'||!/^[-a-f0-9]{36}$/.test(input.id||''))throw Error('Unsupported draft; existing data was preserved.');
  const d=createDraft(input.id);d.stage=Number.isInteger(input.stage)&&input.stage>=1&&input.stage<=6?input.stage:1;d.mode=input.mode==='launchpad'?'launchpad':'standard';
+ if(input.walletProfile!==undefined){
+  if(d.mode!=='standard'||input.walletProfile!=='STANDARD_V2_SETTLEMENT')throw Error('Unsupported Standard wallet profile.');
+  d.walletProfile=input.walletProfile;
+ }
  for(const section of ['metadata','allocations','distribution','vesting','lp','trade'])for(const key of Object.keys(d[section])){
   const v=input[section]?.[key];if(typeof d[section][key]==='boolean'){if(typeof v==='boolean')d[section][key]=v;}else if(typeof v==='string'&&v.length<=(key==='logo'?360000:key==='text'?100000:2000))d[section][key]=v;
  }

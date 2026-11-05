@@ -6,6 +6,10 @@ const core=require('@ton/core'),{compileFunc}=require('@ton-community/func-js');
 const {setup,snap}=require('./stonfi-snapshot-support'),lp=require('../../minter-contract/scripts/lp-locker-v2'),wire=require('../../minter-contract/scripts/stonfi-lp-v2-wire');
 const {beginCell,contractAddress,Address}=core;let compiled;
 const {fixture}=require('./stonfi-locker-v2-support');
+async function publicRows(...rows){
+ const publicCore=await import('../../testnet-interface/node_modules/@ton/core/dist/index.js');
+ return rows.map(({raw})=>{const cell=publicCore.Cell.fromBase64(raw);return{cell,tx:publicCore.loadTransaction(cell.beginParse())};});
+}
 test('actual captured STON.fi Pool mints LP with V2 tag into source-compiled partial timed Locker V2',async()=>{
  const f=await fixture();let all=[];for(const m of f.deposit.messages){const r=await f.owner.send({...m,bounce:true});all.push(...r.transactions);}
  const held=(await f.chain.runGetMethod(f.vault.lpWallet,'get_wallet_data')).stackReader;const amount=held.readBigNumber();assert(amount>0n);assert(held.readAddress().equals(f.vault.address));assert(held.readAddress().equals(f.vault.pool));
@@ -56,6 +60,11 @@ test('actual external LP withdrawal fields verify exact authorized final recipie
  const destination=(await f.chain.runGetMethod(f.vault.pool,'get_wallet_address',[{type:'slice',cell:beginCell().storeAddress(f.owner.address).endCell()}])).stackReader.readAddress(),policy=api.lpEvidencePolicy(beginCell().store(core.storeStateInit(f.vault.init)).endCell().toBoc().toString('base64'));
  const rows=await recorded(f,{to:f.vault.address,value:150000000n,body:beginCell().storeUint(0x414c5633,32).storeUint(1,64).storeBit(true).storeCoins(amount).endCell()},[destination]),locker=rows.find(r=>r.tx.inMessage.info.dest.equals(f.vault.address)),wallet=rows.find(r=>r.tx.inMessage.info.dest.equals(f.vault.lpWallet)),recipient=rows.find(r=>r.tx.inMessage.info.dest.equals(destination));
  const raw={lockerTransaction:locker.raw,walletTransaction:wallet.raw,recipientTransaction:recipient.raw,locker:{before:locker.before,after:locker.after},wallet:{before:wallet.before,after:wallet.after},recipient:{before:recipient.before,after:recipient.after}},r=api.verifyLpWithdrawalFields(policy,raw);assert.equal(r.amountUnits,amount.toString());assert.equal(r.recipient,f.owner.address.toRawString());assert.equal(r.contractPendingMustRemain,true);assert.equal(r.operationCompleted,false);
+ const {selectLpWithdrawalDelivery}=await import('../../testnet-interface/projects/project-lp-acquisition.mjs');
+ const [claimRow,walletRow,recipientRow]=await publicRows(locker,wallet,recipient);
+ assert.equal(selectLpWithdrawalDelivery(policy,[claimRow,claimRow],[walletRow]).recipient.toRawString(),destination.toRawString());
+ assert.equal(selectLpWithdrawalDelivery(policy,[claimRow],[recipientRow]),null);
+ assert.equal(selectLpWithdrawalDelivery({...policy,beneficiary:policy.locker},[claimRow],[walletRow]),null);
  assert.throws(()=>api.verifyLpWithdrawalFields(policy,{...raw,recipientTransaction:wallet.raw}));assert.throws(()=>api.verifyProvenLpEvidence(policy,'withdrawal',raw,{}),/checkpoint/);
  const pending=await f.read();for(let i=0;i<6;i++)pending.readBigNumber();assert.equal(pending.readBigNumber(),amount);
  // A new fixture freezes the authentic receiving wallet before claim routing.
@@ -72,6 +81,11 @@ test('authentic immediate LP-wallet bounce restores only its exact persistent cl
  const api=await import('../../testnet-interface/projects/lp-evidence.mjs'),f=await fixture(75,'days180');for(const m of f.deposit.messages)await f.owner.send({...m,bounce:true});let s=await f.read();s.readBigNumber();s.readBigNumber();f.chain.now=Number(s.readBigNumber());s.readBigNumber();const amount=s.readBigNumber(),{freeze}=require('./refund-receipts-support');await freeze(f,f.vault.lpWallet);
  const rows=await recorded(f,{to:f.vault.address,value:150000000n,body:beginCell().storeUint(0x414c5633,32).storeUint(1,64).storeBit(true).storeCoins(amount).endCell()}),failed=rows.find(r=>r.tx.inMessage?.info.dest?.equals(f.vault.lpWallet)),restored=rows.find(r=>r.tx.inMessage?.info.dest?.equals(f.vault.address)&&r.tx.inMessage.info.bounced),policy=api.lpEvidencePolicy(beginCell().store(core.storeStateInit(f.vault.init)).endCell().toBoc().toString('base64'));
  assert(failed&&restored);const raw={walletTransaction:failed.raw,lockerTransaction:restored.raw,locker:{before:restored.before,after:restored.after}},r=api.verifyLpWithdrawalBounceFields(policy,raw);assert.equal(r.amountUnits,amount.toString());assert.equal(r.contractPrincipalRestoredFields,true);assert.equal(r.newAttemptAuthorized,false);assert.equal(r.deliveryVerified,false);assert.equal(r.operationCompleted,false);
+ const {selectLpWithdrawalBounce}=await import('../../testnet-interface/projects/project-lp-acquisition.mjs');
+ const [walletRow,lockerRow]=await publicRows(failed,restored);
+ assert.equal(selectLpWithdrawalBounce(policy,[lockerRow,lockerRow],[walletRow]).recovery,lockerRow);
+ assert.equal(selectLpWithdrawalBounce({...policy,locker:policy.beneficiary},[lockerRow],[walletRow]),null);
+ assert.equal(selectLpWithdrawalBounce(policy,[],[walletRow]),null);
  assert.throws(()=>api.verifyProvenLpEvidence(policy,'withdrawalBounce',raw,{}),/checkpoint/);assert.throws(()=>api.verifyLpWithdrawalBounceFields(policy,{...raw,locker:{before:restored.after,after:restored.after}}));
  await f.chain.sendMessage(restored.tx.inMessage);s=await f.read();for(let i=0;i<4;i++)s.readBigNumber();assert.equal(s.readBigNumber(),amount,'duplicate bounce cannot restore principal twice');s.readBigNumber();assert.equal(s.readBigNumber(),0n);
 });

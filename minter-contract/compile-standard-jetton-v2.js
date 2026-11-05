@@ -182,4 +182,5 @@ async function main() {
   } else fs.writeFileSync(pathOut,output);
   console.log(JSON.stringify({minter:entries.minter.codeHash,wallet:entries.wallet.codeHash}));
 }
-main().catch(error=>{console.error(error.message);process.exitCode=1;});
+module.exports = {wallet};
+if (require.main === module) main().catch(error=>{console.error(error.message);process.exitCode=1;});

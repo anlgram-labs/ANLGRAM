@@ -43,6 +43,13 @@ export function migrationEvidenceStatus(terms,evidence=[],checkpoints=[]){
  return s;
 }
 
+function returnLeg(original, funded, fundingBounced, inTransit, curveBooked) {
+ const remaining = BigInt(original) - BigInt(curveBooked);
+ if (remaining < 0n || BigInt(inTransit) > remaining) throw Error('Invalid principal accounting');
+ return {original, funded, fundingBounced, inTransit, curveBooked,
+  notBookedByCurve: remaining.toString(), dexTerminalOutcome: 'UNKNOWN'};
+}
+
 // Internal status projection. Identity and the previous checkpoint come from
 // the server's project context. Clients cannot submit evidence to this path.
 export function generation2Status(identity, {checkpoint, previous, evidence = []} = {}) {
@@ -54,7 +61,7 @@ export function generation2Status(identity, {checkpoint, previous, evidence = []
   operationId: String(identity.operationId), scope: 'REFERENCE_RELATIVE_READ_ONLY',
   dispatch: 'UNKNOWN', mint: 'NOT_VERIFIED', custody: 'UNKNOWN', lock: 'UNKNOWN',
   settlement: 'UNKNOWN', historicalLp: null, currentWalletUnits: null,
-  unresolvedReturns: 'UNKNOWN', evidence: [], checkpoint: null,
+  unresolvedReturns: 'UNKNOWN', evidence: [], withdrawalEvidence: [], checkpoint: null, principalAccounting: null,
   financialSigningEnabled: false, broadcastingEnabled: false, tradingEnabled: false,
   migrationAuthorized: false, withdrawalsEnabled: false, recoveryEnabled: false,
  };
@@ -81,6 +88,22 @@ export function generation2Status(identity, {checkpoint, previous, evidence = []
   }
  }
  result.checkpoint = proof;
+ const life = checkpoint.lifecycle;
+ if (checkpoint.activeOperationId === result.operationId && life) {
+  const old = previous?.activeOperationId === result.operationId ? previous.lifecycle : null;
+  if (old && (old.originalTonNano !== life.originalTonNano || old.originalJettonUnits !== life.originalJettonUnits ||
+   ['fundedTonNano','fundedJettonUnits','fundingBouncedTonNano','fundingBouncedJettonUnits',
+    'curveBookedTonNano','curveBookedJettonUnits'].some(field => BigInt(life[field]) < BigInt(old[field])))) {
+   throw Error('Regressed operation principal accounting');
+  }
+  result.principalAccounting = {
+   scope: 'REFERENCE_RELATIVE_CONTRACT_COUNTERS',
+   tonNano: returnLeg(life.originalTonNano,life.fundedTonNano,life.fundingBouncedTonNano,
+    life.returnTransitTonNano,life.curveBookedTonNano),
+   jettonUnits: returnLeg(life.originalJettonUnits,life.fundedJettonUnits,life.fundingBouncedJettonUnits,
+    life.returnTransitJettonUnits,life.curveBookedJettonUnits),
+  };
+ }
  const dispatched = checkpoint.activeOperationId === result.operationId && checkpoint.lifecycle?.dexDispatched === '1';
  if (dispatched) {
   result.dispatch = 'DEX_DISPATCHED';
@@ -95,15 +118,23 @@ export function generation2Status(identity, {checkpoint, previous, evidence = []
  const reference = JSON.stringify([proof.masterchainSeqno, proof.masterchainRootHash, proof.masterchainFileHash]);
  const seen = new Set();
  for (const receipt of evidence) {
-  if (!isIncludedLpEvidence(receipt) || receipt.kind !== 'LP_ISSUANCE' ||
+  if (!isIncludedLpEvidence(receipt) || !['LP_ISSUANCE','LP_WITHDRAWAL_IMMEDIATE_BOUNCE','LP_WITHDRAWAL_DELIVERY'].includes(receipt.kind) ||
    receipt.operationId !== result.operationId || receipt.reference !== reference ||
    receipt.locker !== checkpoint.locker || receipt.pool !== checkpoint.pool || receipt.lpWallet !== checkpoint.lpWallet) {
    throw Error('Wrong project mint evidence');
   }
-  if (!dispatched) throw Error('Mint evidence without dispatch');
-  if (seen.has(receipt.walletTransactionHash)) continue;
-  seen.add(receipt.walletTransactionHash);
-  result.evidence.push(receipt);
+  if (!dispatched) throw Error('LP evidence without dispatch');
+  const key=receipt.kind+':'+receipt.walletTransactionHash;
+  if (seen.has(key)) continue;
+  seen.add(key);
+  if(receipt.kind==='LP_ISSUANCE')result.evidence.push(receipt);
+  else {
+   if(!observation||receipt.newAttemptAuthorized!==false||receipt.operationCompleted!==false||
+      (receipt.kind==='LP_WITHDRAWAL_IMMEDIATE_BOUNCE'&&
+       (receipt.contractPrincipalRestoredFields!==true||receipt.deliveryVerified!==false))||
+      (receipt.kind==='LP_WITHDRAWAL_DELIVERY'&&receipt.contractPendingMustRemain!==true))throw Error('Invalid withdrawal recovery evidence');
+   result.withdrawalEvidence.push(receipt);
+  }
  }
  result.evidence.sort((a,b) => {
   const delta = BigInt(a.walletTransactionLt) - BigInt(b.walletTransactionLt);
