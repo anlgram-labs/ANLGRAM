@@ -54,6 +54,42 @@ node minter-contract/compile-one-shot-dispatch.js --check
 
 ## Release checklist
 
+### Controlled Testnet preparation and operator checklist
+
+The offline release CLI takes a JSON file with `network: "-3"`, `standard: {draft, publicKey}` and `launchpad: {draft, publicKey, migrationAuthorityPublicKey}`. Use current canonical schema-1 Testnet drafts from the wizard and the 64-character lowercase hex public keys of two distinct V5R1 subwallet-zero operators. The two draft creators must match the derived operators. An explicit Testnet-friendly address or a canonical workchain-zero raw address is accepted. A raw address has no network marker, so the Testnet V5 derivation and the explicit chain field establish the operator binding. The historical Curve operator and Curve #2 destination are excluded. PR #34 manages the wallet initialization independently. Enter public configuration only.
+
+```powershell
+node testnet-interface/testnet-release-cli.mjs manifest "C:\path\to\public-testnet-drafts.json"
+node testnet-interface/testnet-release-cli.mjs rehearse
+```
+
+The manifest contains exact StateInit hashes and test-only display addresses, operation identities, the existing Standard deployment and mint message fingerprints, and a separate coordinated Generation 2 graph. The public Launchpad wizard's legacy preview addresses are separate. Use the Generation 2 record from this manifest for any subsequent review of that graph. The manifest has no fee quote or submission authorization. The rehearsal runs offline compiler checks and two-worker test suites and emits only the reviewed commit, worktree status, check names and counts. Provider credentials are not passed to its child processes. The only foreign identities in the manifest are pinned or captured references, including the Router and pTON family and the derived Pool, LPAccount code and Locker LP wallet. Check live code, libraries, pair bindings and external upgrade authority during a separately authorized preflight.
+
+| Order | Standard path | Generation 2 Launchpad path |
+|---|---|---|
+| 1 | Confirm the separately initialized V5R1 operator, subwallet 0, Testnet wallet ID 2147483645, ownership, balance and current seqno | Confirm a separate V5R1 operator and exact Testnet migration-only authority public key |
+| 2 | Deploy the exact Standard minter and verify initial admin, code, data and zero supply | Deploy minter → Curve → Guard → Migrator → Locker from the coordinated graph |
+| 3 | Mint configured supply, then verify delivery to the creator's derived wallet and exact total supply | Initialize the Curve, mint and verify Curve wallet custody, then verify renunciation and activation |
+| 4 | Reconcile creation charge separately, then review distribution or deploy and fund Vesting V2 before claims | Execute and reconcile individually quoted buy and sell operations. Verify fee, reserves and any refund before checking graduation |
+| 5 | Reconcile every recipient or vesting claim under its exact operation ID | Verify 500 TON graduation, bind Locker and pair, establish return epochs, verify pre-funding permit, observe both funding legs, verify post-funding permit, then review DEX dispatch |
+| 6 | Keep unsettled operations reserved | Observe both DEX legs and LP custody separately. Keep Gate 414 closed and require independent withdrawal delivery evidence |
+
+**Before any future authorized Testnet operation:** use a clean reviewed commit, rederive the candidate, check the exact owner, chain, seqno, destination, state and absence of concurrent work, then obtain fresh unsigned emulation and a separately approved policy ceiling. The existing `standard-preflight-cli.mjs` accepts the Standard supervisor's public preflight input and performs read-only Testnet provider checks in an operator environment. It is outside the offline rehearsal. The maximum total network fee is not enforced by its policy ceiling. Reserve through the reviewed operation-specific lock before any possible submission and require explicit owner approval. The Standard deployment lock does not authorize mint, vesting, trading, migration or withdrawal.
+
+**After an authorized operation:** match the signed V5 source transaction and exact outgoing message to the descendant transaction and its compute/action outcome. The existing Standard registration and Generation 2 adapters verify reference-relative inclusion and exact deployment edges. Generation 2 deployment registration covers minter, Curve and Migrator. Guard and Locker deployment, binding, final custody and asset transfers require their own evidence. Use the existing wallet receipt adapters for delivery or returned principal, and record the actual fee, balance delta, operation ID and expected versus observed state. Public reports should include only chain, scope, block reference, relevant account and message or transaction hashes, logical times, fee/amount deltas and explicit outcome. Keep raw provider bundles, approvals and internal logs private. Provider-reference inclusion and canonical validator finality are separate evidence levels.
+
+**Crash, partial execution or provider outage:** retain the original reservation and operation ID even after expiry or restart. Compare source seqno, source and descendant history, actual account state and persistent receipt counters. A successful source action with a missing child is pending. A failed read, 429, conflicting proof or missing callback yields unknown. Resume read-only reconciliation after the provider cooldown. Never replay principal, reset a lock, or infer that a recreated LPAccount closes the older obligation. A failed immediate LP wallet request can restore only its exact authenticated bounce. A downstream failed withdrawal stays pending without contract-verifiable outcome evidence.
+
+| Release area | Testnet readiness | Mainnet readiness |
+|---|---|---|
+| External V5R1 initialization | Owner-managed in PR #34. This checklist does not establish live wallet state | Disabled |
+| Standard minter deployment | Offline candidate. Requires qualified review, live unsigned preflight, exact approval and a reviewed submission path | Disabled |
+| Mint, distribution and vesting | Sandbox evidence. Requires per-operation live reconciliation and reviewed transport | Disabled |
+| Launchpad initialization, activation and trading | Coordinated identities and Sandbox lifecycle. Requires separate deployment and transaction-specific live evidence | Disabled |
+| Graduation, STON.fi, LP custody and withdrawals | Sandbox evidence. Gate 414, terminal refunds and external withdrawal receipts still block financial release | Disabled |
+
+For eventual Mainnet, pin a separately reviewed chain `-239` manifest with independently derived V5 wallet IDs, production contract and DEX identities, provider and origin bindings, distinct storage namespaces, and one disabled-by-default gate per operation. Preserve the production donation configuration. Testnet addresses, operation locks, permits and evidence must remain in their Testnet scope. Configuration can open a fully validated feature only after independent review and genuine Testnet verification. Missing terminal proofs or submission paths remain implementation blockers.
+
 ### Public operation integration follow-up
 
 The settlement-enabled Standard V2 profile now prepares distribution using the pinned wallet's authenticated transfer extension. Each recipient template identifies its owner query ID, expected amount, derived wallet and separate funded reconciliation query. The reconciliation message queries the existing operation and cannot initiate a new principal transfer. The legacy Standard V2 profile still prepares its original TEP-74 message. Historical exports or independently submitted transfers must be reconciled before approving a new distribution, because ordinary TEP-74 delivery does not populate the settlement dictionary.
