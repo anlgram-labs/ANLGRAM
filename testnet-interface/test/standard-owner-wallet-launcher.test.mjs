@@ -466,7 +466,7 @@ test('launcher: temporary file is created with protected owner-only ACL at kerne
     const psScript = `
       . '${launcherPath.replace(/'/g, "''")}'
       Write-AtomicFileNoBom -Path '${targetPath.replace(/'/g, "''")}' -Content '{"secret":"data"}' -OwnerOnly
-      $acl = Get-Acl -LiteralPath '${targetPath.replace(/'/g, "''")}'
+      $acl = ([IO.FileInfo]'${targetPath.replace(/'/g, "''")}').GetAccessControl()
       Write-Output "PROTECTED:$($acl.AreAccessRulesProtected)"
       Write-Output "RULE_COUNT:$($acl.Access.Count)"
       Write-Output "SID:$($acl.Access[0].IdentityReference.Value)"
