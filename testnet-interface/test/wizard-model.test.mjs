@@ -9,7 +9,7 @@ function valid(){const d=createDraft();Object.assign(d.metadata,{name:'Real draf
 function memory(){const m=new Map();return{getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v),m};}
 test('both modes preserve configuration; launchpad effective economics are immutable and default LP lock is100% permanent',()=>{
  const d=valid();d.metadata.supply='123.45';d.metadata.decimals='2';assert.equal(effective(d).supply,'123.45');assert.equal(validate(d).valid,true);
- d.mode='launchpad';d.lp.beneficiary=owner;assert.deepEqual(effective(d),{supply:'1000000000',decimals:9});assert.equal(validate(d).valid,true);assert.equal(d.lp.percent,'100');assert.equal(d.lp.duration,'permanent');d.metadata.decimals='invalid';assert.equal(validate(d).valid,true);d.metadata.decimals='2';d.mode='standard';assert.equal(effective(d).supply,'123.45');assert.equal(d.metadata.decimals,'2');assert.equal(CURVE.thresholdTon,'500');assert.equal(CURVE.feeBps,'100');
+ d.mode='launchpad';d.lp.beneficiary=owner;assert.deepEqual(effective(d),{supply:'1000000000',decimals:9});assert.equal(validate(d).valid,true);assert.equal(d.lp.percent,'100');assert.equal(d.lp.duration,'permanent');d.metadata.decimals='invalid';assert.equal(validate(d).valid,true);d.metadata.decimals='2';d.mode='standard';assert.equal(effective(d).supply,'123.45');assert.equal(d.metadata.decimals,'2');assert.equal(CURVE.thresholdTon,'300');assert.equal(CURVE.feeBps,'100');
 });
 test('exact units support zero decimals and large balances without float coercion; reject precision/exponent/overflow',()=>{
  assert.equal(units('9007199254740993.123456789',9),9007199254740993123456789n);assert.equal(units('12',0),12n);assert.equal(format(12n,0),'12');assert.equal(format(0n,9),'0');

@@ -1,9 +1,117 @@
 'use strict';
 // Complete real local message routing, no preloaded project financial state.
 const test=require('node:test'),assert=require('node:assert/strict'),core=require('@ton/core');
-const {ready,exit}=require('./one-shot-dispatch-support'),{beginCell}=core;
+const {fixture,ready,exit}=require('./one-shot-dispatch-support'),{beginCell}=core;
+const TON = 300000000001n;
 const op=m=>m?.body.bits.length>=32?m.body.beginParse().loadUint(32):0;
 const summary=txs=>txs.filter(t=>t.description.computePhase.type==='vm'&&![0,1].includes(t.description.computePhase.exitCode)).map(t=>({to:t.inMessage?.info.dest?.toRawString(),op:op(t.inMessage).toString(16),exit:t.description.computePhase.exitCode}));
+test('VNext caps an oversized purchase and returns the entire unspent principal',async()=>{
+ const f=await fixture();
+ await require('./vnext-package-support').bootstrap(f);
+ const curve=f.c.addresses.curve;
+ const curveBalance=async()=>(await f.chain.getContract(curve)).balance;
+ const state=async()=>(await f.chain.runGetMethod(curve,'get_curve_state')).stack.map(item=>item.value);
+ const before=await state(),balanceBefore=await curveBalance(),inventory=before[5];
+ const buy=(value,min)=>f.send(curve,beginCell().storeUint(0x5fcc3d14,32)
+   .storeUint(100,64).storeCoins(min).endCell(),value);
+ assert(exit(await buy(510000000000n,inventory+1n),curve,404));
+ assert.deepEqual(await state(),before);
+ assert.equal(await curveBalance(),balanceBefore);
+
+ const snapshot=f.chain.snapshot();
+ const boundary=[
+  [303030303029n,299999999999n,666668n,3n],
+  [303030303030n,300000000000n,1n,4n],
+ ];
+ for(const [gross,principal,remainder,stage] of boundary){
+  await f.chain.loadFrom(snapshot);
+  assert(exit(await buy(gross+40000000n,inventory-remainder),curve,0));
+  const after=await state();
+  assert.equal(after[0],stage);
+  assert.equal(after[4],principal);
+  assert.equal(after[5],remainder);
+  assert.equal(after[6],gross/100n);
+ }
+ // A gross amount that is sufficient under the normal floor-fee rule
+ // enters the capped branch, where the fee inversion requires one more.
+ await f.chain.loadFrom(snapshot);
+ const minimalCapped=await buy(303030303031n+40000000n,inventory);
+ assert(exit(minimalCapped,curve,407));
+ assert.deepEqual(await state(),before);
+ await f.chain.loadFrom(snapshot);
+ assert(exit(await buy(303030303032n+40000000n,inventory),curve,0));
+ assert.equal((await state())[4],TON);
+ assert.equal((await state())[5],0n);
+
+ const refunds=[];
+ for(const attachment of [510000000000n,610000000000n]){
+  await f.chain.loadFrom(snapshot);
+  const result=await buy(attachment,inventory);
+  assert(exit(result,curve,0));
+  const after=await state(),principal=after[4]-before[4],fees=after[6]-before[6];
+  assert.equal(after[0],4n);
+  assert.equal(after[5],0n);
+  assert.equal(principal,TON);
+  assert.equal(fees,3030303031n,'current capped fee, including the known one-nanoton rounding difference');
+  assert.equal(await curveBalance(),balanceBefore+principal+fees);
+  const refund=attachment-40000000n-principal-fees;
+  assert(result.transactions.some(({inMessage:m})=>m?.info.type==='internal'
+    &&m.info.src.equals(curve)&&m.info.dest.equals(f.owner.address)
+    &&m.info.value.coins===refund&&op(m)===0xd53276db));
+  const buyerWallet=core.contractAddress(0,{code:f.c.wallet,data:beginCell().storeCoins(0)
+    .storeAddress(f.owner.address).storeAddress(f.c.addresses.minter).storeRef(f.c.wallet).endCell()});
+  const delivered=await f.chain.runGetMethod(buyerWallet,'get_wallet_data');
+  assert.equal(delivered.stackReader.readBigNumber(),inventory);
+  refunds.push(refund);
+ }
+ assert.equal(refunds[1]-refunds[0],100000000000n);
+
+ // Reproduce the release blocker: the action-phase failure rolls back
+ // accounting, but the incoming principal remains in the Curve.
+ await f.chain.loadFrom(snapshot);
+ const config=core.Dictionary.loadDirect(core.Dictionary.Keys.Int(32),core.Dictionary.Values.Cell(),f.chain.config);
+ const prices=config.get(25).beginParse();
+ assert.equal(prices.loadUint(8),0xea);
+ prices.loadUintBig(64);
+ config.set(25,beginCell().storeUint(0xea,8).storeUint(100000000n,64).storeSlice(prices).endCell());
+ f.chain.setConfig(beginCell().storeDictDirect(config).endCell());
+ const failed=await buy(510000000000n,inventory);
+ const failedBuy=failed.transactions.find(t=>t.inMessage?.info.dest?.equals(curve)&&op(t.inMessage)===0x5fcc3d14);
+ assert.equal(failedBuy.description.computePhase.exitCode,0);
+ assert.equal(failedBuy.description.actionPhase.resultCode,37);
+ assert.equal(failedBuy.description.aborted,true);
+ assert.equal(await curveBalance(),balanceBefore+510000000000n-failedBuy.totalFees.coins);
+ assert.deepEqual(await state(),before);
+ assert.equal(failedBuy.outMessages.size,0);
+});
+
+test('non-bounceable native excess credits a frozen buyer account without recipient code execution',async()=>{
+ const f=await fixture();
+ await require('./vnext-package-support').bootstrap(f);
+ const {freeze}=require('./refund-receipts-support');
+ const {internal}=require('@ton/sandbox');
+ const curve=f.c.addresses.curve,buyer=f.owner.address;
+ const body=beginCell().storeUint(0x5fcc3d14,32).storeUint(302,64).storeCoins(1).endCell();
+ const attachment=510000000000n,refund=attachment-40000000n-TON-3030303031n;
+ let received=false,frozen=false,buyerBefore;
+ for await(const tx of await f.chain.sendMessageIter(internal({from:buyer,to:curve,value:attachment,body}))){
+  const m=tx.inMessage;
+  if(m?.info.dest?.equals(curve)&&op(m)===0x5fcc3d14){
+   await freeze(f,buyer);
+   buyerBefore=(await f.chain.getContract(buyer)).balance;
+   frozen=true;
+  }
+  if(m?.info.type==='internal'&&m.info.src.equals(curve)&&m.info.dest.equals(buyer)&&m.info.value.coins===refund){
+   assert.equal(m.info.bounce,false);
+   assert.equal(op(m),0xd53276db);
+   assert.equal(tx.description.computePhase.type,'skipped');
+   assert.equal((await f.chain.getContract(buyer)).balance,buyerBefore+refund-tx.totalFees.coins);
+   assert.equal(tx.outMessages.size,0);
+   received=true;
+  }
+ }
+ assert(frozen&&received);
+});
 test('experimental generation2 routes actual Curve funding through STON.fi into authenticated permanent Locker custody; full settlement stays pending',async()=>{
  const f=await ready(),c=f.c;assert.equal((await f.chain.runGetMethod(c.addresses.curve,'get_dispatch_state_curve',[{type:'int',value:77n}])).stackReader.readBigNumber(),1n);const funding=await f.fund();assert.equal((await f.chain.runGetMethod(c.addresses.curve,'get_dispatch_state_curve',[{type:'int',value:77n}])).stackReader.readBigNumber(),2n);assert.equal((await f.stage())[0],3n);
  const p=await f.authorize(),before=f.transactions.length,r=await f.execute(p);console.log('ONE_SHOT_UNEXPECTED_FAILURES',JSON.stringify(summary(r.transactions)));assert(exit(r,c.addresses.migration,0));
@@ -12,9 +120,9 @@ test('experimental generation2 routes actual Curve funding through STON.fi into 
  // Balance conservation at each real dispatch includes the remaining
  // forwarding fee on outgoing messages, not only transaction.totalFees.
  const balanceRelease=(result,address)=>{const t=result.transactions.find(t=>t.inMessage?.info.dest?.equals(address));const outs=[...t.outMessages.values()].reduce((n,m)=>n+(m.info.type==='internal'?m.info.value.coins+m.info.forwardFee:0n),0n);return outs+t.totalFees.coins-t.inMessage.info.value.coins;};
- assert.equal(balanceRelease(funding,c.addresses.curve),500000000000n);assert.equal(balanceRelease(r,c.addresses.migration),500000000000n);
- const poolResult=await f.chain.runGetMethod(c.vault.pool,'get_pool_data'),pool=poolResult.stackReader;assert.equal(pool.readBigNumber(),0n);assert(pool.readAddress().equals(c.dex));const lpSupply=pool.readBigNumber();assert(lpSupply>=s[1]);const reserves=[pool.readBigNumber(),pool.readBigNumber()];assert(reserves.includes(500000000000n)&&reserves.includes(200000000000000000n));
- const liabilities=(await f.chain.runGetMethod(c.addresses.migration,'get_migration_extended_data')).stackReader;liabilities.readBigNumber();for(let i=0;i<3;i++)liabilities.readAddress();assert.equal(liabilities.readBigNumber(),500000000000n);assert.equal(liabilities.readBigNumber(),200000000000000000n,'LP custody does not erase unresolved deposit obligations');
+ assert.equal(balanceRelease(funding,c.addresses.curve),TON);assert.equal(balanceRelease(r,c.addresses.migration),TON);
+ const poolResult=await f.chain.runGetMethod(c.vault.pool,'get_pool_data'),pool=poolResult.stackReader;assert.equal(pool.readBigNumber(),0n);assert(pool.readAddress().equals(c.dex));const lpSupply=pool.readBigNumber();assert(lpSupply>=s[1]);const reserves=[pool.readBigNumber(),pool.readBigNumber()];assert(reserves.includes(TON)&&reserves.includes(200000000000000000n));
+ const liabilities=(await f.chain.runGetMethod(c.addresses.migration,'get_migration_extended_data')).stackReader;liabilities.readBigNumber();for(let i=0;i<3;i++)liabilities.readAddress();assert.equal(liabilities.readBigNumber(),TON);assert.equal(liabilities.readBigNumber(),200000000000000000n,'LP custody does not erase unresolved deposit obligations');
  assert.equal((await f.chain.runGetMethod(c.addresses.migration,'get_registration_vnext')).stack[3].value,1n);
  assert(exit(await f.send(c.addresses.curve,f.dispatch(),250000000n),c.addresses.curve,409));assert(exit(await f.execute(p),c.addresses.migration,409));assert.equal((await f.stage())[1],s[1]);
  const receipt=r.transactions.find(t=>t.inMessage?.info.src?.equals(c.vault.address)&&op(t.inMessage)===0x414c5635).inMessage;
@@ -52,8 +160,8 @@ test('expired permission and actual non-Testnet execution context fail closed be
 
 test('genuine funding recipient failure preserves Curve-wallet tokens and Migrator TON, cannot rearm or dispatch another principal copy',async()=>{
  const f=await ready(),c=f.c,{freeze,restore}=require('./refund-receipts-support');const own=core.contractAddress(0,{code:c.wallet,data:beginCell().storeCoins(0).storeAddress(c.addresses.migration).storeAddress(c.addresses.minter).storeRef(c.wallet).endCell()}),old=await freeze(f,own);
- const r=await f.send(c.addresses.curve,f.dispatch(),250000000n);assert(exit(r,c.addresses.curve,0));await f.sync();const l=await f.life();assert.equal(l[2],500000000000n);assert.equal(l[3],0n);assert.equal((await f.stage())[0],2n);
- assert.equal((await f.chain.runGetMethod(c.curveWallet,'get_wallet_data')).stackReader.readBigNumber(),200000000000000000n);assert((await f.chain.getContract(c.addresses.migration)).balance>=500000000000n);
+ const r=await f.send(c.addresses.curve,f.dispatch(),250000000n);assert(exit(r,c.addresses.curve,0));await f.sync();const l=await f.life();assert.equal(l[2],TON);assert.equal(l[3],0n);assert.equal((await f.stage())[0],2n);
+ assert.equal((await f.chain.runGetMethod(c.curveWallet,'get_wallet_data')).stackReader.readBigNumber(),200000000000000000n);assert((await f.chain.getContract(c.addresses.migration)).balance>=TON);
  await restore(f,own,old);assert(exit(await f.send(c.addresses.curve,f.dispatch(),250000000n),c.addresses.curve,409));assert.equal((await f.life())[3],0n);
  assert(exit(await f.send(c.addresses.migration,beginCell().storeUint(0x414e5904,32).storeUint(77,64).endCell(),120000000n),c.addresses.migration,414));
 });
@@ -64,7 +172,7 @@ test('delayed actual Curve-generated token leg leaves FUNDING_PENDING, then auth
  // below is taken verbatim from the actual Curve transaction's outMessages.
  const root=await(await f.chain.getContract(c.addresses.curve)).receiveMessage(internal({from:f.owner.address,to:c.addresses.curve,value:250000000n,body:f.dispatch()}));assert(!root.description.aborted);assert(root.description.actionPhase.success);
  const native=[...root.outMessages.values()].find(m=>m.info.dest.equals(c.addresses.migration)),tokens=[...root.outMessages.values()].find(m=>m.info.dest.equals(c.curveWallet));assert(native&&tokens);
- await f.chain.sendMessage(native);await f.sync();assert.equal((await f.stage())[0],2n);assert.equal((await f.life())[2],500000000000n);assert.equal((await f.life())[3],0n);
+ await f.chain.sendMessage(native);await f.sync();assert.equal((await f.stage())[0],2n);assert.equal((await f.life())[2],TON);assert.equal((await f.life())[3],0n);
  await f.chain.sendMessage(tokens);await f.sync();assert.equal((await f.stage())[0],3n);assert.equal((await f.life())[3],200000000000000000n);
  const p=await f.authorize();assert(exit(await f.execute(p),c.addresses.migration,0));assert.equal((await f.stage())[0],5n);
 });
@@ -79,9 +187,9 @@ test('lost first actual LP notification retains physical LP but cannot become ob
 
 test('actual DEX pTON leg failure keeps token deposit/refund obligations separate and settlement pending, with no concurrent recovery',async()=>{
  const f=await ready(),c=f.c;await f.fund();const p=await f.authorize(),{freeze}=require('./refund-receipts-support');await freeze(f,c.ptonWallet);const r=await f.execute(p);assert(exit(r,c.addresses.migration,0));
- assert.equal((await f.stage())[1],0n);const d=(await f.chain.runGetMethod(c.addresses.migration,'get_migration_data')).stackReader;d.readBigNumber();for(let i=0;i<5;i++)d.readAddress();assert.equal(d.readBigNumber(),500000000000n);assert.equal(d.readBigNumber(),0n);
+ assert.equal((await f.stage())[1],0n);const d=(await f.chain.runGetMethod(c.addresses.migration,'get_migration_data')).stackReader;d.readBigNumber();for(let i=0;i<5;i++)d.readAddress();assert.equal(d.readBigNumber(),TON);assert.equal(d.readBigNumber(),0n);
  assert(exit(await f.send(c.addresses.migration,beginCell().storeUint(0x414e4c3c,32).storeUint(77,64).endCell(),900000000n),c.addresses.migration,414));assert(exit(await f.execute(p),c.addresses.migration,409));
- await f.send(c.addresses.migration,beginCell().storeUint(0x414e5d20,32).storeUint(77,64).endCell(),20000000n);assert.equal((await f.stage())[0],6n);assert.equal((await f.stage())[6],0n);assert((await f.chain.getContract(c.addresses.migration)).balance>=500000000000n);
+ await f.send(c.addresses.migration,beginCell().storeUint(0x414e5d20,32).storeUint(77,64).endCell(),20000000n);assert.equal((await f.stage())[0],6n);assert.equal((await f.stage())[6],0n);assert((await f.chain.getContract(c.addresses.migration)).balance>=TON);
 });
 
 test('a genuine delayed Locker notification remains consumable after permit expiry because dispatch was already consumed while fresh',async()=>{
@@ -96,10 +204,10 @@ test('a genuine delayed Locker notification remains consumable after permit expi
 test('real Pool minimum-LP rejection preserves both assets in the exact LPAccount; observations cannot rearm or fabricate refunds',async()=>{
  const f=await ready(),c=f.c;await f.fund();const p=await f.authorize(1000000000000000000n),r=await f.execute(p);assert(exit(r,c.addresses.migration,0));assert.equal((await f.stage())[1],0n);
  const account=(await f.chain.runGetMethod(c.vault.pool,'get_lp_account_address',[{type:'slice',cell:beginCell().storeAddress(c.addresses.migration).endCell()}])).stackReader.readAddress();
- const held=(await f.chain.runGetMethod(account,'get_lp_account_data')).stackReader;assert(held.readAddress().equals(c.addresses.migration));assert(held.readAddress().equals(c.vault.pool));const amounts=[held.readBigNumber(),held.readBigNumber()];assert(amounts.includes(500000000000n)&&amounts.includes(200000000000000000n));
+ const held=(await f.chain.runGetMethod(account,'get_lp_account_data')).stackReader;assert(held.readAddress().equals(c.addresses.migration));assert(held.readAddress().equals(c.vault.pool));const amounts=[held.readBigNumber(),held.readBigNumber()];assert(amounts.includes(TON)&&amounts.includes(200000000000000000n));
  const data=(await f.chain.runGetMethod(c.addresses.migration,'get_migration_data')).stackReader;data.readBigNumber();for(let i=0;i<5;i++)data.readAddress();assert.equal(data.readBigNumber(),0n);assert.equal(data.readBigNumber(),0n,'held foreign assets are not already-refunded Migrator custody');
- const reconciliation=(await f.chain.runGetMethod(c.addresses.migration,'get_migration_settlement')).stackReader;assert.equal(reconciliation.readBigNumber(),3n);reconciliation.readBigNumber();reconciliation.readBigNumber();assert.equal(reconciliation.readBigNumber(),500000000000n);assert.equal(reconciliation.readBigNumber(),200000000000000000n);assert.equal(reconciliation.readBigNumber(),0n);assert.equal(reconciliation.readBigNumber(),0n);
- await f.send(c.addresses.migration,beginCell().storeUint(0x414e5c10,32).storeUint(77,64).endCell(),150000000n);const observation=(await f.chain.runGetMethod(c.addresses.migration,'get_recovery_observation_vnext')).stack.map(x=>x.value);assert.equal(observation[2],4n);assert.equal(observation[3],200000000000000000n);assert.equal(observation[4],500000000000n);assert.equal(observation[7],0n);
+ const reconciliation=(await f.chain.runGetMethod(c.addresses.migration,'get_migration_settlement')).stackReader;assert.equal(reconciliation.readBigNumber(),3n);reconciliation.readBigNumber();reconciliation.readBigNumber();assert.equal(reconciliation.readBigNumber(),TON);assert.equal(reconciliation.readBigNumber(),200000000000000000n);assert.equal(reconciliation.readBigNumber(),0n);assert.equal(reconciliation.readBigNumber(),0n);
+ await f.send(c.addresses.migration,beginCell().storeUint(0x414e5c10,32).storeUint(77,64).endCell(),150000000n);const observation=(await f.chain.runGetMethod(c.addresses.migration,'get_recovery_observation_vnext')).stack.map(x=>x.value);assert.equal(observation[2],4n);assert.equal(observation[3],200000000000000000n);assert.equal(observation[4],TON);assert.equal(observation[7],0n);
  assert.equal((await f.life())[11],1n);assert(exit(await f.execute(p),c.addresses.migration,409));assert(exit(await f.send(c.addresses.curve,f.dispatch(),250000000n),c.addresses.curve,409));assert(exit(await f.send(c.addresses.migration,beginCell().storeUint(0x414e4c3c,32).storeUint(77,64).endCell(),900000000n),c.addresses.migration,414));
 });
 
@@ -111,5 +219,5 @@ test('forward-fee exhaustion in the action phase emits neither critical leg and 
  config.set(25,beginCell().storeUint(0xea,8).storeUint(100000000n,64).storeSlice(prices).endCell());f.chain.setConfig(beginCell().storeDictDirect(config).endCell());
  const r=await f.execute(p),root=r.transactions.find(t=>t.inMessage?.info.dest?.equals(c.addresses.migration));assert.equal(root.description.computePhase.exitCode,0);assert.equal(root.description.actionPhase.resultCode,37);assert.equal(root.description.aborted,true);assert.equal(root.outMessages.size,0);
  assert.equal((await f.chain.runGetMethod(c.addresses.migration,'get_registration_vnext')).stack[3].value,0n);assert.equal((await f.life())[11],0n);assert.equal((await f.stage())[0],3n);
- const own=core.contractAddress(0,{code:c.wallet,data:beginCell().storeCoins(0).storeAddress(c.addresses.migration).storeAddress(c.addresses.minter).storeRef(c.wallet).endCell()});assert.equal((await f.chain.runGetMethod(own,'get_wallet_data')).stackReader.readBigNumber(),200000000000000000n);assert((await f.chain.getContract(c.addresses.migration)).balance>=500000000000n);
+ const own=core.contractAddress(0,{code:c.wallet,data:beginCell().storeCoins(0).storeAddress(c.addresses.migration).storeAddress(c.addresses.minter).storeRef(c.wallet).endCell()});assert.equal((await f.chain.runGetMethod(own,'get_wallet_data')).stackReader.readBigNumber(),200000000000000000n);assert((await f.chain.getContract(c.addresses.migration)).balance>=TON);
 });

@@ -9,7 +9,9 @@ test('published wizard reuses original styles and six forms, with no legacy inli
  const html=readFileSync(new URL('../public-pages/memelabs.html',import.meta.url),'utf8'),controller=readFileSync(new URL('../wizard/controller.mjs',import.meta.url),'utf8');
  for(let n=1;n<=6;n++)assert(html.includes(`id="wizard-panel-${n}"`));assert(!/\son[a-z]+\s*=/.test(html));assert(!html.includes('anl-labs.js'));assert(!html.includes('launchpad.js'));assert(!controller.includes('.sendTransaction('));assert(!controller.includes('/api/operation/claim'));assert(!controller.includes('/api/curve-two/claim'));
  assert.match(html,/<button[^>]*disabled>Create on-chain/);assert.match(html,/<button[^>]*disabled>Buy/);assert.match(html,/<button[^>]*disabled>Sell/);assert(html.includes('0.02 TON'));assert(html.includes('NOT your draft token'));assert(!controller.includes('testnet-mvp-offline-plan.json'),'new user guidance must not use ANLTEST operations');
- assert(html.includes('500 Real TON Target'));assert(!html.includes('1,000 Real TON Target'));assert(!html.includes('1,000 TON'));
+ assert(html.includes('300 Real TON Target'));assert(!html.includes('1,000 Real TON Target'));assert(!html.includes('1,000 TON'));
+ assert.match(html,/Graduation Progress Toward 300 Real TON/);
+ assert.match(html,/aria-label="Graduation progress toward 300 TON" aria-valuemin="0" aria-valuemax="300"/);
  for(const id of ['wizard-mode-cards','wizard-step1-feedback','labs-allocation-summary','labs-csv-example-btn','labs-recipients-table-wrap','curve-sim-card','lp-custody-badge'])assert(html.includes(`id="${id}"`),`missing UX element ${id}`);
  assert.deepEqual(readFileSync(new URL('../public-pages/wizard-accessibility.css',import.meta.url)),readFileSync(new URL('../wizard/wizard-accessibility.css',import.meta.url)));
  assert.deepEqual(readFileSync(new URL('../public-pages/wizard-labs.css',import.meta.url)),readFileSync(new URL('../../assets/css/anl-labs.css',import.meta.url)));assert.deepEqual(readFileSync(new URL('../public-pages/wizard-design.css',import.meta.url)),readFileSync(new URL('../../assets/css/design-system.css',import.meta.url)));

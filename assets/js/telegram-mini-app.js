@@ -57,12 +57,21 @@
     return Boolean(hasInitData || isRealPlatform);
   }
 
-  function getTelegramUser() {
-    if (!isTelegramEnvironment()) return null;
+  let verifiedUser = null;
+  function getTelegramUser() { return verifiedUser; }
+  async function verifyTelegramUser() {
     try {
-      return window.Telegram.WebApp.initDataUnsafe?.user || null;
+      const initData=window.Telegram.WebApp.initData;
+      if(!initData)return;
+      const response=await fetch('/api/telegram/verify',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({initData}),cache:'no-store',redirect:'error'});
+      if(!response.ok)return;
+      const result=await response.json();
+      if(result.financialSigningEnabled!==false||!/^[1-9]\d*$/.test(result.user?.id))return;
+      verifiedUser=Object.freeze(result.user);
+      displayUserIndicator();
     } catch (e) {
-      return null;
+      // Identity stays unavailable if the verification service is unreachable.
     }
   }
 
@@ -224,9 +233,10 @@
       container.innerHTML = `
         <span class="tma-user-pill" title="Telegram Mini App Session">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.46.93-4.12 2.73-.39.26-.74.39-1.06.38-.35-.01-1.02-.2-1.52-.36-.61-.2-1.1-.31-1.08-.66.01-.18.27-.36.78-.55 3.05-1.33 5.09-2.21 6.12-2.64 2.91-1.21 3.51-1.42 3.91-1.43.09 0 .28.02.4.11.1.08.13.19.14.28-.01.05.01.17 0 .2z"/></svg>
-          <span>${name}</span>
+          <span></span>
         </span>
       `;
+      container.querySelector('span > span').textContent=name;
     });
   }
 
@@ -298,9 +308,9 @@
       setupExternalLinksInterceptor();
 
       // 10. Display user indicator if present
-      displayUserIndicator();
+      void verifyTelegramUser();
 
-      console.log('[ANLGRAM] Telegram Mini App SDK initialised successfully. Platform:', tg.platform, '| User:', tg.initDataUnsafe?.user?.username || 'Guest');
+      console.log('[ANLGRAM] Telegram Mini App SDK initialised. Platform:', tg.platform);
       isTmaInitialized = true;
     } catch (e) {
       console.warn('[ANLGRAM] Telegram Mini App initialization note:', e);

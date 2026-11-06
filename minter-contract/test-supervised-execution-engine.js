@@ -348,14 +348,14 @@ test('Secret Sanitization: redacts 12/24-word mnemonics and 64-char private keys
 // ---------------------------------------------------------------------------
 // 12. Financial Budget Consistency
 // ---------------------------------------------------------------------------
-test('Financial Invariant: 8 items sum to exactly 0.71 TON, minimum balance 2.71 TON, 500 TON user liquidity', () => {
+test('Financial Invariant: 8 items sum to exactly 0.71 TON, minimum balance 2.71 TON, 300 TON user liquidity', () => {
   assert.equal(SUPERVISED_BUDGET.items.length, 8);
   const itemsSum = SUPERVISED_BUDGET.items.reduce((acc, it) => acc + it.costTon, 0);
   assert.ok(Math.abs(itemsSum - 0.71) < 0.0001, `Items sum (${itemsSum}) must equal 0.71 TON`);
   assert.equal(SUPERVISED_BUDGET.operationalReserveBuffer, 1.50);
   assert.equal(SUPERVISED_BUDGET.minimumRequiredBalance, 2.71);
   assert.equal(SUPERVISED_BUDGET.recommendedBalance, 3.50);
-  assert.equal(SUPERVISED_BUDGET.graduationTargetTon, 500.0);
+  assert.equal(SUPERVISED_BUDGET.graduationTargetTon, 300.0);
 });
 
 // ---------------------------------------------------------------------------

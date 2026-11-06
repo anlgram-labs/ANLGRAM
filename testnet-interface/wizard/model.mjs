@@ -107,4 +107,5 @@ export function previewBuy(attachment){
  const q=new BondingCurveEngine().quoteBuy(n-overhead,50n);if(!q.success)throw Error(q.message||q.error);
  return{scope:'CONFIGURATION_PREVIEW_NOT_LIVE_QUOTE',attachmentNano:n.toString(),settlementFundingNano:overhead.toString(),tokens:format(q.tokensOut??q.cappedTokensOut),protocolFeeTon:format(q.feeTon),financialSigningEnabled:false};
 }
-export const CURVE={supply:format(DEFAULT_CONFIG.totalSupply),curve:format(DEFAULT_CONFIG.curveTokens),dex:format(DEFAULT_CONFIG.gradTokens),thresholdTon:format(DEFAULT_CONFIG.graduationThresholdTon),feeBps:DEFAULT_CONFIG.protocolFeeBps.toString()};
+export const GRADUATION_TARGET_NANO=300000000000n;
+export const CURVE={supply:format(DEFAULT_CONFIG.totalSupply),curve:format(DEFAULT_CONFIG.curveTokens),dex:format(DEFAULT_CONFIG.gradTokens),thresholdTon:format(GRADUATION_TARGET_NANO),feeBps:DEFAULT_CONFIG.protocolFeeBps.toString()};

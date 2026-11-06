@@ -475,9 +475,9 @@ function buildLaunchpadInitialStates(params, tonCore = require('@ton/core')) {
         .storeCoins(800000000n * 1000000000n)     // real_token_reserve (800M)
         .storeCoins(0n)                           // accrued_protocol_fees
         .storeCoins(0n)                           // pending_refunds_tokens
-        .storeCoins(166666666666n)                // virtual_ton_reserve
-        .storeCoins(266666666665600000n)          // virtual_token_reserve
-        .storeCoins(500n * 1000000000n)           // graduation_threshold_ton (500 TON)
+        .storeCoins(100000000000n)                // virtual_ton_reserve (100 TON)
+        .storeCoins(266666666666666666n)          // virtual_token_reserve (266.666M)
+        .storeCoins(300n * 1000000000n)           // graduation_threshold_ton (300 TON)
         .storeCoins(200000000n * 1000000000n)     // dex_tokens_escrow (200M)
         .endCell()
     )
@@ -855,7 +855,7 @@ async function main(argv = process.argv.slice(2), env = process.env) {
       console.log('  BLOCKER: With a distinct deployer as Minter admin, the Curve cannot automatically renounce that admin: its change_admin request is rejected by the Minter.');
       console.log('  Step 4a: After confirmed custody and state 2, the Minter admin explicitly calls change_admin (op 3) with addr_none.');
       console.log('  Step 4b: Call check_renounce (0x51c9d382) on Curve; route its query to Minter and verify authenticated reply activates state 3. This sequence passes local TVM routing, not live deployment verification.');
-      console.log('  Step 5 (At Graduation): Authorized caller invokes op::initiate_migration (0x414e4c35) on Curve (>= 0.25 TON gas), delivering 500 TON and 200M Jettons to Migration Router.');
+      console.log('  Step 5 (At Graduation): Authorized caller invokes op::initiate_migration (0x414e4c35) on Curve (>= 0.25 TON gas), delivering 300 TON and 200M Jettons to Migration Router.');
       console.log('  Step 6 (DEX Provision): Authorized caller invokes op::execute_dex_provision (0x414e4c37) on Migration Router (>= 0.40 TON gas), sending TEP-74 op::transfer to Migration Router Jetton Wallet and pTON ton_transfer to pTON Wallet.');
       console.log('Funding estimate: Minimum ~2.5 TON testnet recommended for initial contract state storage rent and bootstrap messages.');
     } else {

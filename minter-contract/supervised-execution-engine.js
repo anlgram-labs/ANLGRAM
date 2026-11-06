@@ -15,13 +15,13 @@
  * 4. Zero Secrets / Private Keys: Delegated external signing via TON Connect 2.0.
  * 5. Single-Message Isolation: Exactly 1 message per transaction (messages.length === 1).
  * 6. Fail-Closed On-Chain Gates: Blocks on rate limits (429), timeouts, bounces, or missing pre-requisites.
- * 7. Tokenomics Invariant: 1B total supply, 800M curve, 200M DEX escrow, 500 TON user graduation liquidity.
+ * 7. Tokenomics Invariant: 1B total supply, 800M curve, 200M DEX escrow, 300 TON user graduation liquidity.
  */
 
 const crypto = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs');
-const { Cell, beginCell, contractAddress, Address } = require('@ton/core');
+const { Cell, beginCell, contractAddress, Address, storeStateInit } = require('@ton/core');
 
 const EXPECTED_TESTNET_GLOBAL_ID = '-3';
 const EXPECTED_TESTNET_CHAIN = -3;
@@ -51,7 +51,7 @@ const SUPERVISED_BUDGET = {
   operationalReserveBuffer: 1.50, // Buffer for network fee fluctuations and storage across blocks
   minimumRequiredBalance: 2.71,   // Hard-stop floor: items sum (0.71) + reserve (1.50) + provision buffer (0.50)
   recommendedBalance: 3.50,      // Recommended operator wallet balance
-  graduationTargetTon: 500.0,    // 500 TON target liquidity provided solely by users during trading
+  graduationTargetTon: 300.0,    // 300 TON target liquidity provided solely by users during trading
 };
 
 // TON Connect 2.0 Protocol Specifications & Staging Manifest Requirements
@@ -160,9 +160,9 @@ function deriveDeterministicAddresses(deployerAddress, artifacts, dexConfig = AP
   const minterAddress = contractAddress(0, minterStateInit);
 
   // 2. Bonding Curve StateInit
-  const vTon = 166666666666n;
-  const vTok = 266666666665600000n;
-  const tGrad = 500000000000n; // 500 TON
+  const vTon = 100000000000n; // 100 TON
+  const vTok = 266666666666666666n; // 266.666666666M tokens
+  const tGrad = 300000000000n; // 300 TON
   const curveTokens = 800000000000000000n; // 800M
   const dexEscrow = 200000000000000000n; // 200M
 
@@ -260,28 +260,28 @@ function deriveDeterministicAddresses(deployerAddress, artifacts, dexConfig = AP
       rawAddress: minterAddress.toRawString(),
       codeHash: minterCode.hash().toString('hex'),
       stateInit: minterStateInit,
-      stateInitBocBase64: beginCell().storeBit(0).storeBit(0).storeBit(1).storeRef(minterCode).storeBit(1).storeRef(minterData).endCell().toBoc().toString('base64'),
+      stateInitBocBase64: beginCell().store(storeStateInit(minterStateInit)).endCell().toBoc().toString('base64'),
     },
     bondingCurve: {
       address: curveAddress.toString({ testOnly: true, bounceable: true }),
       rawAddress: curveAddress.toRawString(),
       codeHash: curveCode.hash().toString('hex'),
       stateInit: curveStateInit,
-      stateInitBocBase64: beginCell().storeBit(0).storeBit(0).storeBit(1).storeRef(curveCode).storeBit(1).storeRef(curveData).endCell().toBoc().toString('base64'),
+      stateInitBocBase64: beginCell().store(storeStateInit(curveStateInit)).endCell().toBoc().toString('base64'),
     },
     lpLocker: {
       address: lockerAddress.toString({ testOnly: true, bounceable: true }),
       rawAddress: lockerAddress.toRawString(),
       codeHash: lockerCode.hash().toString('hex'),
       stateInit: lockerStateInit,
-      stateInitBocBase64: beginCell().storeBit(0).storeBit(0).storeBit(1).storeRef(lockerCode).storeBit(1).storeRef(lockerData).endCell().toBoc().toString('base64'),
+      stateInitBocBase64: beginCell().store(storeStateInit(lockerStateInit)).endCell().toBoc().toString('base64'),
     },
     migrationRouter: {
       address: migratorAddress.toString({ testOnly: true, bounceable: true }),
       rawAddress: migratorAddress.toRawString(),
       codeHash: migratorCode.hash().toString('hex'),
       stateInit: migratorStateInit,
-      stateInitBocBase64: beginCell().storeBit(0).storeBit(0).storeBit(1).storeRef(migratorCode).storeBit(1).storeRef(migratorData).endCell().toBoc().toString('base64'),
+      stateInitBocBase64: beginCell().store(storeStateInit(migratorStateInit)).endCell().toBoc().toString('base64'),
     },
   };
 }
@@ -353,7 +353,7 @@ function buildDeploymentOperations(deployerAddress, predictedAddresses, dexConfi
         description: 'Curve active on-chain in STATE_UNINITIALIZED (0).',
       },
       irreversibleEffects: [
-        'Permanently locks AMM parameters: virtual TON (166.666 TON), virtual Token (266.666M), graduation threshold (500 TON), 1% fee.',
+        'Permanently locks AMM parameters: virtual TON (100 TON), virtual Token (266.666M), graduation threshold (300 TON), 1% fee.',
       ],
     },
     {

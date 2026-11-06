@@ -32,7 +32,7 @@ cell migration_binding() inline { slice s = get_data().begin_parse();s~load_uint
     int ce = epochs~load_uint(64);int fe = epochs~load_uint(64);int de = epochs~load_uint(64);throw_unless(408,epochs~load_uint(256) == versions);epochs.end_parse();
     throw_unless(409,((phase == 1) | (phase == 2)) & (q == root) & (q > 0) & (q < (1 << 62)) & (nonce > 0));
     throw_unless(409,(deadline > starts) & (deadline <= starts + 60));if(fresh) { throw_unless(409,(starts <= now()) & (now() < deadline)); }
-    throw_unless(409,(ton >= 500000000000) & (tokens == 200000000000000000) & (minimum > 0) & (ce > 0));
+    throw_unless(409,(ton >= 300000000000) & (tokens == 200000000000000000) & (minimum > 0) & (ce > 0));
     throw_unless(409,(phase == 1) ? ((fe == 0) & (de == 0)) : ((fe > 0) & (de > 0)));
     return(phase,q,nonce,deadline,ton,tokens,minimum,ce,fe,de);
 }

@@ -125,6 +125,7 @@
       .endCell();
 
     return {
+      network: '-3',
       validUntil: Math.floor(Date.now() / 1000) + 300,
       messages: [{
         address: quote.factoryAddress,
@@ -147,6 +148,10 @@
     if (!tc.connected) {
       alert("Connect your TON wallet first using 'Connect Wallet'!");
       tc.openModal(); return;
+    }
+    if (String(tc.account?.chain) !== '-3') {
+      alert('Red incorrecta: Tu billetera está conectada a TON Mainnet. Cambia a TON Testnet para operar en MemeLabs.');
+      return;
     }
     if (!window.TON_CORE?.Address) {
       alert('TON libraries still loading. Please retry in a few seconds.'); return;
@@ -187,6 +192,7 @@
       const tx = await buildFactoryTransaction(quote, formData);
 
       showProgress(btn, 2, 'Confirm in your wallet — ONE transaction...');
+      if (String(tc.account?.chain) !== '-3' || quote.network !== 'testnet' || tx.network !== '-3') throw new Error('MemeLabs requires TON Testnet.');
       await tc.sendTransaction(tx);
 
       // A wallet response and a recent transaction to the factory do not prove

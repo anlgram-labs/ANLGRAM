@@ -1,7 +1,7 @@
 {
   "network": "-3",
-  "activeCandidate": "testnet-v5-candidate.json",
-  "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
+  "activeCandidate": "testnet-v5-release-candidate.json",
+  "candidateSha256": "ce0a2d547a9fdc53cfa43d8fb521889e808f17fc35a2e611738ba50c2409a8bb",
   "version": "V5R1",
   "readyForSigning": false,
   "obsoleteForExecution": [

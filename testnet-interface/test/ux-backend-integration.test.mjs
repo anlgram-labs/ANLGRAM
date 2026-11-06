@@ -5,9 +5,9 @@ import {projectStatus,projectStatusText,LIFECYCLE_STAGES,MIGRATION_LIFECYCLE_STE
 import worker from '../worker.mjs';
 const creator='0:'+'11'.repeat(32);
 test('merged frontend uses verified economics and keeps basechain validation in both canonical and detailed CSV parsers',()=>{
- assert.deepEqual(CURVE,{supply:'1000000000',curve:'800000000',dex:'200000000',thresholdTon:'500',feeBps:'100'});assert.equal(KEY,'anlgram:testnet:memelabs-drafts:v1');assert.throws(()=>address('-1:'+'11'.repeat(32)),/workchain 0/);
+ assert.deepEqual(CURVE,{supply:'1000000000',curve:'800000000',dex:'200000000',thresholdTon:'300',feeBps:'100'});assert.equal(KEY,'anlgram:testnet:memelabs-drafts:v1');assert.throws(()=>address('-1:'+'11'.repeat(32)),/workchain 0/);
  const d=createDraft();d.distribution.mode='custom';d.distribution.text='-1:'+'11'.repeat(32)+',1';const parsed=parseRecipientsDetailed(d);assert.equal(parsed[0].valid,false);assert.match(parsed[0].error,/workchain 0/);
- const html=readFileSync(new URL('../public/memelabs.html',import.meta.url),'utf8');assert.match(html,/500 Real TON Target/);assert(!/1,000 Real TON|reaches 1,000 TON/.test(html));assert.match(html,/migration.*disabled/i);
+ const html=readFileSync(new URL('../public/memelabs.html',import.meta.url),'utf8');assert.match(html,/300 Real TON Target/);assert(!/500 Real TON Target|\b500 TON\b|1,000 Real TON|reaches 1,000 TON/.test(html));assert.match(html,/migration.*disabled/i);
  assert(html.includes('id="wizard-status-refresh"'));assert(html.includes('id="wizard-status-endpoint-output"'));
 });
 test('existing project preparation maps unknown chain data to null/UNKNOWN, never to ANLTEST or zero',async()=>{
@@ -31,7 +31,7 @@ test('lifecycle tracker, Curve V2 graduation, STON.fi migration, LP Locker V2 an
  const p=await prepareProject(d),life=deriveLifecycleStage(d,p),migLife=deriveMigrationLifecycle(d,p),mig=migrationSummary(d,p),lp=lpLockerSummary(d,p);
  assert.equal(life.id,'DRAFT');assert.equal(life.confirmedOnChain,false);
  assert.equal(migLife.confirmedStep,0);assert.equal(migLife.retryAllowed,false);assert.equal(migLife.steps.length,9);
- assert.equal(mig.thresholdTon,'500');assert.equal(mig.observedRealTonReserveNano,null);assert.equal(mig.migrationAuthorized,false);
+ assert.equal(mig.thresholdTon,'300');assert.equal(mig.observedRealTonReserveNano,null);assert.equal(mig.migrationAuthorized,false);
  assert.equal(lp.percent,100);assert.equal(lp.isPermanent,true);assert.equal(lp.custodyStatus,'NOT_VERIFIED');assert.equal(lp.withdrawalsEnabled,false);
 });
 test('POST /api/projects/status positive and negative response verification with frontend adapter',async()=>{

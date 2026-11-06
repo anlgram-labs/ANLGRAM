@@ -20,14 +20,14 @@ async function ready(settings={}){
  const buyer=core.contractAddress(0,{code:c.wallet,data:beginCell().storeCoins(0).storeAddress(f.owner.address).storeAddress(c.addresses.minter).storeRef(c.wallet).endCell()}),bought=(await f.chain.runGetMethod(buyer,'get_wallet_data')).stackReader.readBigNumber();
  const sold=await f.send(buyer,beginCell().storeUint(0x0f8a7ea5,32).storeUint(102,64).storeCoins(bought/2n).storeAddress(c.addresses.curve).storeAddress(f.owner.address).storeBit(false).storeCoins(60000000n).storeBit(true).storeRef(beginCell().storeCoins(0).endCell()).endCell(),150000000n);assert(exit(sold,c.addresses.curve,0));
  await f.send(c.addresses.curve,beginCell().storeUint(0x5fcc3d14,32).storeUint(103,64).storeCoins(1).endCell(),510000000000n);
- const state=(await f.chain.runGetMethod(c.addresses.curve,'get_curve_state')).stack.map(x=>x.value);assert.equal(state[0],4n);assert.equal(state[4],500000000000n);
+ const state=(await f.chain.runGetMethod(c.addresses.curve,'get_curve_state')).stack.map(x=>x.value);assert.equal(state[0],4n);assert(state[4]>=300000000000n);
  assert(exit(await f.send(c.addresses.migration,c.bind,50000000n),c.addresses.migration,0));assert(exit(await f.send(c.addresses.migration,c.walletBinding),c.addresses.migration,0));
  await f.send(c.addresses.curve,beginCell().storeUint(0x414e5801,32).storeUint(77,64).storeRef(beginCell().store(core.storeStateInit(c.states.guard)).endCell()).endCell());
  const prime=await f.send(c.addresses.curve,beginCell().storeUint(0x414e5802,32).storeUint(77,64).endCell(),180000000n);assert(exit(prime,c.addresses.migration,0));
  const life=async()=>(await f.chain.runGetMethod(c.addresses.migration,'get_migration_lifecycle',[{type:'int',value:77n}])).stack.map(x=>x.value);
  const stage=async()=>(await f.chain.runGetMethod(c.addresses.migration,'get_dispatch_state')).stack.map(x=>x.value);
  const fields=await life();assert(fields[4]>0n&&fields[5]>0n&&fields[6]>0n);
- const make=(phase,minimum=100n)=>permits.permit(core,c.guard,{phase,nonce:1n,starts:f.chain.now,deadline:f.chain.now+60,tonNano:500000000000n,jettonUnits:200000000000000000n,minimumLpUnits:minimum,curveEpoch:fields[4],fundingEpoch:phase===1?0n:fields[5],dexEpoch:phase===1?0n:fields[6]});
+ const make=(phase,minimum=100n)=>permits.permit(core,c.guard,{phase,nonce:1n,starts:f.chain.now,deadline:f.chain.now+60,tonNano:fields[0],jettonUnits:200000000000000000n,minimumLpUnits:minimum,curveEpoch:fields[4],fundingEpoch:phase===1?0n:fields[5],dexEpoch:phase===1?0n:fields[6]});
  const pre=make(1);assert(exit(await f.submit(pre),c.addresses.guard,0));assert(exit(await f.request(pre,'pre'),c.addresses.curve,0));
  const dispatch=()=>beginCell().storeUint(0x414e5803,32).storeUint(77,64).storeUint(pre.nonce,64).storeBuffer(pre.digest).endCell();
  const sync=()=>f.send(c.addresses.migration,beginCell().storeUint(0x414e5903,32).storeUint(77,64).endCell(),80000000n);

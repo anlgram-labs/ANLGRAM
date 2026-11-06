@@ -87,7 +87,8 @@ test('capped buy refunds the exact unspent input and delivers the full curve inv
   const [curve, wallet] = await codes; const s = await setup(curve, wallet);
   const result = await s.buy(1000000000000n);
   const state = await s.chain.runGetMethod(curveAddress, 'get_curve_state');
-  assert.equal(state.stack[4].value, 500000000000n); assert.equal(state.stack[5].value, 0n);
+  // The calibrated virtual inventory rounds the constant-product ceiling up one nanoton.
+  assert.equal(state.stack[4].value, 300000000001n); assert.equal(state.stack[5].value, 0n);
   const recipient = (await s.chain.runGetMethod(s.buyerWallet, 'get_wallet_data')).stackReader.readBigNumber();
   assert.equal(recipient, 800000000000000000n);
   const fees = state.stack[6].value;

@@ -36,8 +36,8 @@
     gradTokens:    200_000_000n * ONE_TOKEN,       // 200M tokens for DEX liquidity (20%)
     creatorTokens: 0n,                             // 0 tokens (Fair launch)
     treasuryTokens: 0n,                            // 0 tokens
-    initialVirtualTon: 166_666_666_666n,           // 166.666666666 TON virtual reserve (derived for exact price continuity)
-    graduationThresholdTon: 500n * 1_000_000_000n, // 500 TON real threshold
+    initialVirtualTon: 100_000_000_000n,           // 100 TON virtual reserve (derived for exact price continuity with 300 TON target)
+    graduationThresholdTon: 300n * 1_000_000_000n, // 300 TON real threshold
     protocolFeeBps: 100n,                          // 100 bps = 1.00%
     decimals: 9n,
   };
@@ -177,8 +177,9 @@
         // dx_req = ceil(K / (Y - dy_req)) - X
         const targetY = Y - availableTokens;
         if (targetY > 0n) {
-          // Ceil division: (K + targetY - 1) / targetY
-          const requiredX = (this.K + targetY - 1n) / targetY;
+          // Ceil division: (K + targetY - 1) / targetY using active dynamic invariant
+          const targetK = this.lastK > this.K ? this.lastK : this.K;
+          const requiredX = (targetK + targetY - 1n) / targetY;
           if (requiredX > X) {
             actualNetTon = requiredX - X;
             // Recompute gross with fee

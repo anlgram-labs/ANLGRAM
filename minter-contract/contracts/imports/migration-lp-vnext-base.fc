@@ -43,7 +43,7 @@ int v2_local_ready(int q,int balance) inline {
     (_,_,_,_,_,_,int ton,int jettons,_,_,_,int pending_ton,int pending_jettons,_) = load_data();
     ;; Exact original obligations, authenticated wallet epochs and no returns,
     ;; outstanding DEX leg, previous dispatch or principal deficit.
-    return (life_get(f,0) >= 500000000000) & (life_get(f,1) == 200000000000000000)
+    return (life_get(f,0) >= 300000000000) & (life_get(f,1) == 200000000000000000)
       & (life_get(f,2) == life_get(f,0)) & (life_get(f,3) == life_get(f,1))
       & (life_get(f,4) > 0) & (life_get(f,5) > 0) & (life_get(f,6) > 0)
       & (life_get(f,7) + life_get(f,8) + life_get(f,9) + life_get(f,10) + life_get(f,11) + life_get(f,12) + life_get(f,13) == 0)

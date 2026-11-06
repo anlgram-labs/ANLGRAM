@@ -2,9 +2,45 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
+import {createHash} from 'node:crypto';
 import {OPERATOR,MINTER,PUBLIC_KEY} from '../config.mjs';
 const require=createRequire(import.meta.url),core=require('@ton/core');
 const p=require('../../docs/launchpad/testnet-v5-candidate.json');
+test('candidate verification rejects inconsistent Guard code, corrupt StateInit and wrong network',()=>{
+ const {assertCandidateStateInit}=require('../../lib/v5-candidate-state-init.js');
+ assert.doesNotThrow(()=>assertCandidateStateInit(p,core));
+ const release=require('../../docs/launchpad/testnet-v5-release-candidate.json');
+ assert.throws(()=>assertCandidateStateInit(release,core),/mismatch: guard$/);
+ const missing=structuredClone(p);
+ delete missing.dependentAccounts.guard;
+ assert.throws(()=>assertCandidateStateInit(missing,core),/mismatch: guard$/);
+ for(const change of [
+  {stateInit:'corrupt'},
+  {dataHash:'00'.repeat(32)},
+  {testnet:core.Address.parse(p.dependentAccounts.guard.raw).toString({testOnly:false})}
+ ]){
+  const changed=structuredClone(p);
+  Object.assign(changed.dependentAccounts.guard,change);
+  assert.throws(()=>assertCandidateStateInit(changed,core),/mismatch: guard$/);
+ }
+});
+test('the Pages build records independent release and historical candidate identities',()=>{
+ const active=require('../../docs/launchpad/active-testnet-candidate.json');
+ const release=require('../../docs/launchpad/testnet-v5-release-candidate.json');
+ const sha=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
+ const historical=sha(p);
+ assert.equal(active.activeCandidate,'testnet-v5-release-candidate.json');
+ assert.equal(sha(release),active.candidateSha256);
+ assert.notEqual(historical,active.candidateSha256);
+ assert.equal(release.broadcastEnabled,false);
+ for(const name of ['minter-intent','curve-two-intent'])assert.equal(require('../'+name+'.json').candidateSha256,historical);
+ for(const name of ['execution-version','client-build']){
+  const built=require('../'+name+'.json');
+  assert.equal(built.candidateSha256,historical);
+  assert.equal(built.releaseCandidateSha256,active.candidateSha256);
+ }
+ assert.deepEqual(require('../execution-version.json').releaseCandidateStateInitMismatches,['guard']);
+});
 test('active V5 registry invalidates legacy plans and carries over no approval',()=>{
  const active=require('../../docs/launchpad/active-testnet-candidate.json');
  assert.equal(active.version,'V5R1');assert.equal(active.priorTransactionApprovalsInvalid,true);assert.equal(active.readyForSigning,false);

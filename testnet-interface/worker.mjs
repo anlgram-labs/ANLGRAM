@@ -1,4 +1,5 @@
 import execution from './execution-version.json' with {type:'json'};
+import {verifyTelegramInitData} from './telegram-init-data.mjs';
 import {prepareProject} from './projects/prepare.mjs';
 import {readRegisteredProjectStatus} from './projects/project-registry.mjs';
 import {verifyRuntimeAuthorization} from './curve-authorization.mjs';
@@ -68,6 +69,15 @@ async function route(request,env) {
   let origin; try { origin=approvedOrigin(u.origin); } catch { return json({error:'Wrong Testnet origin'},403); }
   if (u.search) return json({error:'Query overrides are forbidden'},400);
   const path=u.pathname;
+  if(path==='/api/telegram/verify'){
+    if(request.method!=='POST')return json({error:'Method rejected'},405);
+    if(request.headers.get('Origin')!==u.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Origin/content type rejected'},403);
+    if(!env.TELEGRAM_BOT_TOKEN)return json({error:'Telegram verification unavailable'},503);
+    let input;try{input=JSON.parse(await boundedBody(request,16384));}catch{return json({error:'Invalid Telegram request'},400);}
+    if(!input||Object.keys(input).join()!=='initData')return json({error:'Invalid Telegram request'},400);
+    const user=await verifyTelegramInitData(input.initData,env.TELEGRAM_BOT_TOKEN);
+    return user?json({user,financialSigningEnabled:false},200,{'Cache-Control':'no-store'}):json({error:'Telegram proof rejected'},401);
+  }
   if(request.method==='POST'&&['/api/projects/prepare','/api/projects/status'].includes(path)){
     if(request.headers.get('Origin')!==u.origin||!request.headers.get('Content-Type')?.startsWith('application/json'))return json({error:'Origin/content type rejected'},403);
     let input;try{input=JSON.parse(await boundedBody(request,128000));}catch{return json({error:'Invalid or oversized project configuration'},400);}

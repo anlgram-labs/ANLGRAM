@@ -1,13 +1,26 @@
 import {configurationFingerprint} from './preparation-model.mjs';
-import {format} from './model.mjs';
+import {CURVE,format} from './model.mjs';
 import {projectStatusText,LIFECYCLE_STAGES,deriveLifecycleStage,deriveMigrationLifecycle,migrationSummary,lpLockerSummary,validateProjectStatusResponse,isAuthenticTxHash,tonviewerTxUrl,tonviewerAccountUrl} from './project-status.mjs';
 
 // Cached configuration only: never a quote, authority, operation ledger or receipt.
 export function renderMigrationAndLpGrids(d,p=null,s=null){
  const $=id=>document.getElementById(id),mig=migrationSummary(d,p,s),lp=lpLockerSummary(d,p,s),migLife=deriveMigrationLifecycle(d,p,s);
+ const bar=$('curve-grad-bar'),fill=$('curve-grad-fill'),percent=mig.graduationProgressPercent;
+ if(bar&&fill&&mig.applicable){
+  bar.setAttribute('aria-label',`Graduation progress toward ${mig.thresholdTon} TON`);
+  bar.setAttribute('aria-valuemax',mig.thresholdTon);
+  if(percent===null)bar.removeAttribute('aria-valuenow');
+  else bar.setAttribute('aria-valuenow',String(Math.min(100,percent)*Number(mig.thresholdTon)/100));
+  fill.style.width=`${Math.min(100,percent??0)}%`;
+  const badge=$('curve-grad-badge'),reserve=$('curve-grad-ton'),inventory=$('curve-grad-inventory');
+  if(badge)badge.textContent=mig.curveGraduated?'Curva graduada · Migración a STON.fi pendiente':
+   percent===null?'Estado: Conectando a Testnet RPC...':mig.graduationProgressDisplay;
+  if(reserve)reserve.textContent=mig.observedRealTonReserveDisplay;
+  if(inventory)inventory.textContent=mig.observedCurveInventoryDisplay;
+ }
  const rows=[
   ['Bonding Curve Trading Progress',mig.applicable?`Accumulated TON: ${mig.observedRealTonReserveDisplay} · Curve inventory: ${mig.observedCurveInventoryDisplay}`:'Not applicable (Standard Jetton mode)'],
-  ['Graduation Progress (500 TON Target)',mig.applicable?mig.graduationProgressDisplay:'Not applicable (no Bonding Curve)'],
+  [`Graduation Progress (${mig.applicable?mig.thresholdTon:CURVE.thresholdTon} TON Target)`,mig.applicable?mig.graduationProgressDisplay:'Not applicable (no Bonding Curve)'],
   ['Migration Eligibility',mig.migrationEligibility],
   ['STON.fi v2.2 Pool & Router Verification',mig.applicable?`Expected Pool: ${mig.stonfiPoolAddress} (Pool: ${mig.poolVerification} · Router: ${mig.routerVerification}) · Router Ref: ${mig.routerCodeReferenceHash.slice(0,16)}…`:'Not applicable'],
   ['Migration Binding & LP Locker V2',mig.applicable?`Binding V2: ${mig.migrationBindingAddress} · Vault V2: ${mig.lpLockerAddress} · Locker LP Wallet: ${mig.expectedLpWalletAddress} · ${mig.versionedPackageStatus}`:'Not applicable'],
@@ -99,8 +112,9 @@ export function attachPreparation(current){
  }
  async function queryStatus(){
   if(statusBusy)return;statusBusy=true;if($('wizard-status-refresh'))$('wizard-status-refresh').disabled=true;
+  const input=structuredClone(current());
   try{
-   const input=structuredClone(current()),hash=await configurationFingerprint(input);
+   const hash=await configurationFingerprint(input);
    if($('wizard-status-endpoint-output'))text('wizard-status-endpoint-output','Querying /api/projects/status · read-only, no wallet request...');
    const response=await fetch('/api/projects/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),signal:AbortSignal.timeout(30000)}),s=await response.json();
    if(!response.ok)throw Error(s.error||'Project status unavailable');
@@ -109,6 +123,8 @@ export function attachPreparation(current){
    statuses.set(input.id,s);await render();
    if($('wizard-status-endpoint-output'))text('wizard-status-endpoint-output',`Project status received (schema ${s.schema}${s.generation?`, gen ${s.generation}`:''}). Scope: ${s.scope}`);
   }catch(e){
+   statuses.delete(input.id);
+   await render();
    if($('wizard-status-endpoint-output'))text('wizard-status-endpoint-output','Project status unavailable: '+e.message);
   }finally{
    statusBusy=false;if($('wizard-status-refresh'))$('wizard-status-refresh').disabled=false;

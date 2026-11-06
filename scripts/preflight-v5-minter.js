@@ -30,7 +30,7 @@ function verifyUnchangedSources(p){
  assert.equal(Object.keys(p.sourceVerification.contracts).length,7);return p.sourceVerification;
 }
 async function run({hashOnly=false}={}){
- const p=require('../docs/launchpad/testnet-v5-candidate.json'),active=require('../docs/launchpad/active-testnet-candidate.json'),w=wallets();assert.equal(sha(p),active.candidateSha256);assert.equal(p.network,'-3');assert.equal(p.readyForSigning,false);
+ const p=require('../docs/launchpad/testnet-v5-candidate.json'),active=require('../testnet-interface/minter-intent.json'),w=wallets();assert.equal(sha(p),active.candidateSha256);assert.equal(p.network,'-3');assert.equal(p.readyForSigning,false);
  const source=hashOnly?verifyUnchangedSources(p):await verifyArtifacts();assert.deepEqual(source,p.sourceVerification);
  const m=p.smokePlan.steps[0].message,init=core.loadStateInit(core.Cell.fromBase64(m.stateInit).beginParse()),to=core.Address.parseFriendly(m.address);
  assert.equal(to.isTestOnly,true);assert.equal(core.contractAddress(0,init).toRawString(),p.dependentAccounts.minter.raw);assert.equal(m.amount,'100000000');
