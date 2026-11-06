@@ -16,7 +16,7 @@ export const LIFECYCLE_STAGES=Object.freeze([
 ]);
 
 export const MIGRATION_LIFECYCLE_STEPS=Object.freeze([
- {step:1,id:'TRADING_ON_CURVE',label:'Trading on Curve',description:'Active Curve V2 trading toward the 500 real TON graduation threshold (800M Curve supply, 1% fee).'},
+ {step:1,id:'TRADING_ON_CURVE',label:'Trading on Curve',description:'Active Curve V2 trading toward the 300 real TON graduation threshold (800M Curve supply, 1% fee).'},
  {step:2,id:'GRADUATION_THRESHOLD_REACHED',label:'Graduation threshold reached',description:'Verify the real TON reserve against the project threshold. The new release targets 300 TON (300,000,000,000 nanoTON).'},
  {step:3,id:'MIGRATION_AUTHORIZED',label:'Migration authorized',description:'Positive V2 Curve-to-Migrator authorization and security gates satisfied (currently gated/disabled).'},
  {step:4,id:'LIQUIDITY_DEPOSIT_SUBMITTED',label:'Liquidity deposit submitted',description:'200,000,000 DEX tokens and graduated TON dispatched to STON.fi v2.2 Router and pair wallets.'},
