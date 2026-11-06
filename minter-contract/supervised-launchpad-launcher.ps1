@@ -111,10 +111,22 @@ function Write-AtomicFileNoBom {
     }
 }
 
+function Get-DeployerCli {
+    $candidates = @(
+        (Join-Path $ScriptDirectory 'supervised-launchpad-deployer-cli.mjs'),
+        (Join-Path (Join-Path $ScriptDirectory '..') 'minter-contract\supervised-launchpad-deployer-cli.mjs'),
+        (Join-Path $ScriptDirectory 'minter-contract\supervised-launchpad-deployer-cli.mjs')
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path -LiteralPath $c) { return (Resolve-Path -LiteralPath $c).Path }
+    }
+    throw "supervised-launchpad-deployer-cli.mjs not found."
+}
+
 function Invoke-Preflight {
     Ensure-ProviderCredentials
     Write-Host "`n=== Querying Testnet On-Chain State and Generating Execution Quote ===" -ForegroundColor Cyan
-    $cli = Join-Path $ScriptDirectory 'supervised-launchpad-deployer-cli.mjs'
+    $cli = Get-DeployerCli
     $quoteRaw = & node $cli preflight
     if ($LASTEXITCODE -ne 0) {
         throw "preflight failed with exit code $LASTEXITCODE."
@@ -171,7 +183,7 @@ function Invoke-SignNextStep {
     $approval = "AUTHORIZE TESTNET STEP $targetStep $activeFp"
     $env:ANLGRAM_OWNER_APPROVAL = $approval
 
-    $cli = Join-Path $ScriptDirectory 'supervised-launchpad-deployer-cli.mjs'
+    $cli = Get-DeployerCli
     try {
         $signedRaw = & node $cli sign-step $targetStep $QuotePath $BackupGpgPath
         if ($LASTEXITCODE -ne 0) {
@@ -209,7 +221,7 @@ function Invoke-BroadcastNextStep {
     $approval = "CONFIRM BROADCAST STEP $targetStep $($parsed.messageHash)"
     $env:ANLGRAM_OWNER_APPROVAL = $approval
 
-    $cli = Join-Path $ScriptDirectory 'supervised-launchpad-deployer-cli.mjs'
+    $cli = Get-DeployerCli
     try {
         $broadcastRaw = & node $cli broadcast-step $targetStep $SignedPath
         if ($LASTEXITCODE -ne 0) {
@@ -231,7 +243,7 @@ function Invoke-BroadcastNextStep {
 function Invoke-InspectLaunchpad {
     Ensure-ProviderCredentials
     Write-Host "`n=== Querying Comprehensive On-Chain Launchpad State ===" -ForegroundColor Cyan
-    $cli = Join-Path $ScriptDirectory 'supervised-launchpad-deployer-cli.mjs'
+    $cli = Get-DeployerCli
     & node $cli inspect-launchpad
 }
 
