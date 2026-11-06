@@ -15,7 +15,7 @@
  * 4. Zero Secrets / Private Keys: Delegated external signing via TON Connect 2.0.
  * 5. Single-Message Isolation: Exactly 1 message per transaction (messages.length === 1).
  * 6. Fail-Closed On-Chain Gates: Blocks on rate limits (429), timeouts, bounces, or missing pre-requisites.
- * 7. Tokenomics Invariant: 1B total supply, 800M curve, 200M DEX escrow, 500 TON user graduation liquidity.
+ * 7. Tokenomics Invariant: 1B total supply, 800M curve, 200M DEX escrow, 300 TON user graduation liquidity.
  */
 
 const crypto = require('node:crypto');

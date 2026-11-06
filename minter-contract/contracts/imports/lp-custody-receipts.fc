@@ -20,7 +20,7 @@ int lp_operation_key(int id) inline { return cell_hash(begin_cell().store_uint(0
     throw_unless(408,equal_slices(c,curve) & equal_slices(locker,my_address()) & equal_slices(r,router));
     s = c2.begin_parse();slice m = s~load_msg_addr();slice p = s~load_msg_addr();int ton = s~load_coins();int tokens = s~load_coins();slice a = s~load_msg_addr();s.end_parse();
     throw_unless(408,equal_slices(m,master) & equal_slices(p,pton) & equal_slices(a,admin));
-    throw_unless(408,((ton == 0) | (ton == 300000000000)) & ((tokens == 0) | (tokens == 200000000000000000)));
+    throw_unless(408,((ton == 0) | (ton == 500000000000)) & ((tokens == 0) | (tokens == 200000000000000000)));
     s = c3.begin_parse();slice expected_lp = s~load_msg_addr();slice expected_pton = s~load_msg_addr();
     int pending_ton = s~load_coins();int pending_tokens = s~load_coins();cell wallet = s~load_ref();s.end_parse();
     throw_unless(408,(pending_ton == 0) & (pending_tokens == 0) & (cell_hash(wallet) == SETTLEMENT_WALLET_CODE_HASH));

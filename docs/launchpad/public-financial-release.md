@@ -2,6 +2,16 @@
 
 ## 300 TON integration checkpoint
 
+### Follow-up for PR #37
+
+The 300 TON calibration changed an include used exclusively by the legacy LP authorization Guard. Its source then compiled to a different code cell from its pinned historical artifact. This follow-up restores the include byte-for-byte from before the calibration. The legacy Guard again compiles to `113108a0c8e7a48729e3da01dd2e2a4067955561ad8bfc19f1fba90db084a967`. Its historical 500 TON predicate is isolated to that Guard. The VNext Guard, Curve and Migrator still use the approved 300 TON configuration. No compiled artifact or historical manifest was changed.
+
+The shared candidate verifier checks all six required roles, strict StateInit decoding, code and data hashes, derived workchain-zero addresses and Testnet tags. It is enforced for historical inputs used by Pages and before the offline generator can write a candidate. The separately pinned release inventory still reports its Guard mismatch and carries no execution authority. The fresh-project Sandbox test now verifies the 300 TON configuration after recompiling its dependencies and exercising mint custody and renouncement.
+
+Two runs of `npm.cmd --prefix testnet-interface run build:pages` reproduced identical metadata and Worker hashes. `node scripts/prepare-testnet-v5.js --check` now gets past source compilation but returns `Stale V5 candidate` for the pinned release inventory. Keep that fingerprint intact until the exact replacement deployment graph is reviewed. The draft inventory and the legacy ANLTEST candidate are separate from the VNext deployment graph.
+
+The integer reference test in `tests/settlement-runtime/graduation-reference.test.js` uses a monotone search over the normal floor-fee rule independently of the capped inversion. It identifies both the exact-threshold purchase and the first full-inventory purchase, and verifies the 510/610 TON refund delta. The existing TVM tests retain the exit 407 and action result 37 counterexamples. An Antigravity review of the exact revision is still needed before changing financial bytecode. Gate 414 still lacks operation-bound terminal evidence for both DEX deposit and return legs.
+
 The isolated hardening pass starts at `cebba06` on the local 300 TON integration. The new VNext Sandbox regression deploys and activates a project before testing its capped buy. An impossible minimum exits with code 404 and preserves the Curve balance and state. Purchases attaching 510 and 610 TON each deliver the full 800M Jetton inventory, book the same principal and fees, and return the full 100 TON difference to the buyer. The Curve retains only its prior balance plus booked principal and fees. The test observes the actual excess message reaching the buyer.
 
 The calibrated constant-product ceiling books 300,000,000,001 nanotons of principal. The current capped fee inversion books 3,030,303,031 nanotons. The minimum gross consistent with the normal floor-based 1% fee is 303,030,303,031 nanotons, one nanoton below the capped gross. This arithmetic discrepancy remains open. Changing it requires coordinated Curve bytecode and quote-model review. The Sandbox success case also does not establish recoverability after a failed native excess delivery or prove any live Testnet transfer.

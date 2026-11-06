@@ -2,7 +2,8 @@ import { cpSync, mkdirSync,readFileSync,writeFileSync } from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {build} from 'esbuild';
-import {Cell,contractAddress,loadStateInit} from '@ton/core';
+import * as core from '@ton/core';
+import candidateIdentity from '../lib/v5-candidate-state-init.js';
 import {patchSdk,PIN} from './sdk-patch.mjs';
 import assert from 'node:assert/strict';
 import {sourceSha256} from './build-source-integrity.mjs';
@@ -17,13 +18,10 @@ assert.equal(active.network,'-3');assert.equal(releaseCandidate.network,'-3');
 assert.equal(active.readyForSigning,false);assert.equal(active.priorTransactionApprovalsInvalid,true);
 assert.equal(releaseCandidate.readyForSigning,false);assert.equal(releaseCandidate.broadcastEnabled,false);
 // The release inventory is never signing input. Keep its artifact gaps visible.
-const releaseCandidateStateInitMismatches=Object.entries(releaseCandidate.dependentAccounts).flatMap(([role,account])=>{
- const init=loadStateInit(Cell.fromBase64(account.stateInit).beginParse());
- return init.code?.hash().toString('hex')===account.codeHash&&
-  init.data?.hash().toString('hex')===account.dataHash&&contractAddress(0,init).toRawString()===account.raw?[]:[role];
-});
+const releaseCandidateStateInitMismatches=candidateIdentity.stateInitMismatches(releaseCandidate,core);
 // Existing receipts and operation locks use the original candidate and intents.
 const historicalSha256=candidateDigest(candidate);
+candidateIdentity.assertCandidateStateInit(candidate,core);
 assert.equal(intent.candidateSha256,historicalSha256);assert.equal(intent.operator,candidate.wallet.raw);assert.equal(intent.walletId,2147483645);assert.equal(intent.network,'-3');assert.equal(intent.publicKey,candidate.wallet.publicKey);assert.equal(intent.walletStateInit,candidate.wallet.stateInit);assert.deepEqual(intent.message,candidate.smokePlan.steps[0].message);assert.equal(intent.message.amount,'100000000');
 const curveIntent=JSON.parse(readFileSync(new URL('curve-two-intent.json',import.meta.url)));assert.equal(curveIntent.candidateSha256,historicalSha256);assert.equal(curveIntent.operator,candidate.wallet.raw);assert.equal(curveIntent.expectedSeqno,1);assert.equal(curveIntent.walletId,2147483645);assert.equal(curveIntent.network,'-3');assert.deepEqual(curveIntent.message,candidate.smokePlan.steps[1].message);
 mkdirSync(new URL('./public/',import.meta.url),{recursive:true});

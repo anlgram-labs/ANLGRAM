@@ -5,6 +5,7 @@ const core=require('../minter-contract/node_modules/@ton/core');
 const {WalletContractV5R1}=require('../minter-contract/node_modules/@ton/ton');
 const {prepare}=require('./prepare-supervised-smoke');
 const {candidate}=require('./prepare-migration-v2-plan');
+const {assertCandidateStateInit}=require('../lib/v5-candidate-state-init');
 const PUBLIC_KEY='94a010bf130bfceefdcba69f1dc18260277e1a3d073b632dd578b9c38b421a09';
 const root=path.resolve(__dirname,'..');
 const boc=c=>c.toBoc().toString('base64');
@@ -46,6 +47,7 @@ async function prepareV5(){
 }
 async function main(){
  const value=await prepareV5(),data=JSON.stringify(value,null,2)+'\n';
+ assertCandidateStateInit(value,core);
  const file=path.join(root,'docs/launchpad/testnet-v5-release-candidate.json');
  const active={network:'-3',activeCandidate:'testnet-v5-release-candidate.json',candidateSha256:hash(value),version:'V5R1',readyForSigning:false,obsoleteForExecution:['supervised-smoke-candidate-2026-10-31.json','testnet-candidate-2026-10-30.json','financial-testnet-plan-2026-10-30.json','migration-v2-component-candidate-2026-10-30.json'],priorTransactionApprovalsInvalid:true};
  const files=[[file,data],[path.join(root,'docs/launchpad/active-testnet-candidate.json'),JSON.stringify(active,null,2)+'\n']];
