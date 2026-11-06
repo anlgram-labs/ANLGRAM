@@ -156,25 +156,18 @@ async function main() {
       } else if (states.migrationRouter.state !== 'active') {
         nextStepNumber = 4; // deploy router
       } else {
-        // Contracts deployed, check bootstrap stages
-        const lockerInitRes = await runGetMethod(predicted.lpLocker.rawAddress, 'is_router_initialized');
-        const isLockerInit = lockerInitRes?.exit_code === 0 && parseInt(lockerInitRes.stack[0][1], 16) === 1;
+        // Contracts deployed, check curve state directly
+        const curveStateRes = await runGetMethod(predicted.bondingCurve.rawAddress, 'get_curve_state');
+        const curveState = curveStateRes?.exit_code === 0 ? parseInt(curveStateRes.stack[0][1], 16) : -1;
 
-        if (!isLockerInit) {
-          nextStepNumber = 5; // bootstrap 1: init locker
-        } else {
-          const curveStateRes = await runGetMethod(predicted.bondingCurve.rawAddress, 'get_curve_state');
-          const curveState = curveStateRes?.exit_code === 0 ? parseInt(curveStateRes.stack[0][1], 16) : -1;
-
-          if (curveState === 0) {
-            nextStepNumber = 6; // bootstrap 2: init launchpad
-          } else if (curveState === 1) {
-            nextStepNumber = 7; // bootstrap 3: mint 1B
-          } else if (curveState === 2) {
-            nextStepNumber = 8; // bootstrap 4: renounce admin
-          } else if (curveState === 3) {
-            nextStepNumber = 9; // ALL COMPLETED - CURVE ACTIVE
-          }
+        if (curveState === 0) {
+          nextStepNumber = 6; // bootstrap: init launchpad
+        } else if (curveState === 1) {
+          nextStepNumber = 7; // bootstrap: mint 1B to curve
+        } else if (curveState === 2) {
+          nextStepNumber = 8; // bootstrap: renounce admin (auto-activates curve)
+        } else if (curveState === 3) {
+          nextStepNumber = 9; // ALL COMPLETED - CURVE ACTIVE
         }
       }
     }
