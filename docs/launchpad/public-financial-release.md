@@ -1,5 +1,17 @@
 # Public financial release candidate and execution criteria
 
+## 300 TON integration checkpoint
+
+The isolated hardening pass starts at `cebba06` on the local 300 TON integration. The new VNext Sandbox regression deploys and activates a project before testing its capped buy. An impossible minimum exits with code 404 and preserves the Curve balance and state. Purchases attaching 510 and 610 TON each deliver the full 800M Jetton inventory, book the same principal and fees, and return the full 100 TON difference to the buyer. The Curve retains only its prior balance plus booked principal and fees. The test observes the actual excess message reaching the buyer.
+
+The calibrated constant-product ceiling books 300,000,000,001 nanotons of principal. The current capped fee inversion books 3,030,303,031 nanotons. The minimum gross consistent with the normal floor-based 1% fee is 303,030,303,031 nanotons, one nanoton below the capped gross. This arithmetic discrepancy remains open. Changing it requires coordinated Curve bytecode and quote-model review. The Sandbox success case also does not establish recoverability after a failed native excess delivery or prove any live Testnet transfer.
+
+Telegram verification rejects literal line breaks in decoded fields before building the signed key-value string. The regression shows how two parameter sets could otherwise share the same HMAC input. This is a parsing integrity fix. Telegram identity still grants no financial authority.
+
+The complete Pages build currently fails the candidate fingerprint assertion in `testnet-interface/build.mjs`. The historical intent carries `b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634` and the active candidate carries `ce0a2d547a9fdc53cfa43d8fb521889e808f17fc35a2e611738ba50c2409a8bb`. The assertion was preserved. For local wizard verification, build `testnet-interface/wizard/build.mjs` directly and copy its generated MemeLabs HTML, bundle and wizard CSS to the ignored `public-pages` test output directory. This isolates the UI suites and carries no release authorization.
+
+Public financial execution remains blocked on both networks. Gate 414 still requires terminal proof for both STON.fi legs and their returns. Verified LP custody remains separately reportable. A valid live release also requires aligned manifests, independently reviewed signing and operation locks, and independently reconciled Testnet receipts.
+
 This candidate is stacked on PR #32 at `7983848268b18d6351baae184372c762f7d9da94`. It includes the PR #26 one-shot dispatch, PR #27 settlement counterexamples, PR #29 frontend integration, PR #30 private registration and PR #31 Standard V2 supervisor through that ancestry. The isolated wallet activation proposal in PR #34 is outside the public release.
 
 ## Implemented in this candidate

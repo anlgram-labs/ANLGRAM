@@ -6,7 +6,8 @@ export async function verifyTelegramInitData(raw,botToken,now=Math.floor(Date.no
  if(typeof raw!=='string'||!raw||raw.length>8192||typeof botToken!=='string'||!botToken)return null;
  const params=new Map();
  for(const [key,value] of new URLSearchParams(raw)){
-  if(!/^[a-z_]+$/.test(key)||params.has(key))return null;
+  // A decoded line break can make two different parameter sets share a signed string.
+  if(!/^[a-z_]+$/.test(key)||params.has(key)||/[\r\n]/.test(value))return null;
   params.set(key,value);
  }
  const hash=params.get('hash'),date=params.get('auth_date');

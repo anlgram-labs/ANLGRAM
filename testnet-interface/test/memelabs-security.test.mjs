@@ -18,6 +18,17 @@ test('Telegram HMAC rejects modified users, duplicate keys, expiry and wrong sec
  }
 });
 
+test('Telegram rejects a parameter set that aliases a valid signed string',async()=>{
+ const token='disposable-fixture',now=2000000000;
+ const fields=new URLSearchParams({auth_date:String(now),query_id:'abc',start_param:'draft',user:'{"id":321}'});
+ const secret=createHmac('sha256','WebAppData').update(token).digest();
+ fields.set('hash',createHmac('sha256',secret).update([...fields].map(([key,value])=>key+'='+value).sort().join('\n')).digest('hex'));
+ assert.equal((await verifyTelegramInitData(fields.toString(),token,now)).id,'321');
+ fields.set('query_id','abc\nstart_param=draft');
+ fields.delete('start_param');
+ assert.equal(await verifyTelegramInitData(fields.toString(),token,now),null);
+});
+
 test('graduation progress uses fresh reference-relative reserve units and falls back to unknown',()=>{
  const draft={mode:'launchpad'},now=Math.floor(Date.now()/1000);
  const curve={thresholdNano:'300000000000',reserveNano:'299990000000',inventoryUnits:'1',

@@ -1,10 +1,47 @@
 'use strict';
 // Complete real local message routing, no preloaded project financial state.
 const test=require('node:test'),assert=require('node:assert/strict'),core=require('@ton/core');
-const {ready,exit}=require('./one-shot-dispatch-support'),{beginCell}=core;
+const {fixture,ready,exit}=require('./one-shot-dispatch-support'),{beginCell}=core;
 const TON = 300000000001n;
 const op=m=>m?.body.bits.length>=32?m.body.beginParse().loadUint(32):0;
 const summary=txs=>txs.filter(t=>t.description.computePhase.type==='vm'&&![0,1].includes(t.description.computePhase.exitCode)).map(t=>({to:t.inMessage?.info.dest?.toRawString(),op:op(t.inMessage).toString(16),exit:t.description.computePhase.exitCode}));
+test('VNext caps an oversized purchase and returns the entire unspent principal',async()=>{
+ const f=await fixture();
+ await require('./vnext-package-support').bootstrap(f);
+ const curve=f.c.addresses.curve;
+ const curveBalance=async()=>(await f.chain.getContract(curve)).balance;
+ const state=async()=>(await f.chain.runGetMethod(curve,'get_curve_state')).stack.map(item=>item.value);
+ const before=await state(),balanceBefore=await curveBalance(),inventory=before[5];
+ const buy=(value,min)=>f.send(curve,beginCell().storeUint(0x5fcc3d14,32)
+   .storeUint(100,64).storeCoins(min).endCell(),value);
+ assert(exit(await buy(510000000000n,inventory+1n),curve,404));
+ assert.deepEqual(await state(),before);
+ assert.equal(await curveBalance(),balanceBefore);
+
+ const snapshot=f.chain.snapshot();
+ const refunds=[];
+ for(const attachment of [510000000000n,610000000000n]){
+  await f.chain.loadFrom(snapshot);
+  const result=await buy(attachment,inventory);
+  assert(exit(result,curve,0));
+  const after=await state(),principal=after[4]-before[4],fees=after[6]-before[6];
+  assert.equal(after[0],4n);
+  assert.equal(after[5],0n);
+  assert.equal(principal,TON);
+  assert.equal(fees,3030303031n,'current capped fee, including the known one-nanoton rounding difference');
+  assert.equal(await curveBalance(),balanceBefore+principal+fees);
+  const refund=attachment-40000000n-principal-fees;
+  assert(result.transactions.some(({inMessage:m})=>m?.info.type==='internal'
+    &&m.info.src.equals(curve)&&m.info.dest.equals(f.owner.address)
+    &&m.info.value.coins===refund&&op(m)===0xd53276db));
+  const buyerWallet=core.contractAddress(0,{code:f.c.wallet,data:beginCell().storeCoins(0)
+    .storeAddress(f.owner.address).storeAddress(f.c.addresses.minter).storeRef(f.c.wallet).endCell()});
+  const delivered=await f.chain.runGetMethod(buyerWallet,'get_wallet_data');
+  assert.equal(delivered.stackReader.readBigNumber(),inventory);
+  refunds.push(refund);
+ }
+ assert.equal(refunds[1]-refunds[0],100000000000n);
+});
 test('experimental generation2 routes actual Curve funding through STON.fi into authenticated permanent Locker custody; full settlement stays pending',async()=>{
  const f=await ready(),c=f.c;assert.equal((await f.chain.runGetMethod(c.addresses.curve,'get_dispatch_state_curve',[{type:'int',value:77n}])).stackReader.readBigNumber(),1n);const funding=await f.fund();assert.equal((await f.chain.runGetMethod(c.addresses.curve,'get_dispatch_state_curve',[{type:'int',value:77n}])).stackReader.readBigNumber(),2n);assert.equal((await f.stage())[0],3n);
  const p=await f.authorize(),before=f.transactions.length,r=await f.execute(p);console.log('ONE_SHOT_UNEXPECTED_FAILURES',JSON.stringify(summary(r.transactions)));assert(exit(r,c.addresses.migration,0));
