@@ -31,6 +31,7 @@ export function migrationEvidenceStatus(terms,evidence=[],checkpoints=[]){
   const ref=cp.proof.masterchainRootHash;if(reference&&reference!==ref)throw Error('Account reference mismatch');reference=ref;
   s.scope='REFERENCE_ANCHORED_ACCOUNT_RECORDS_NOT_VALIDATOR_FINALITY';s.dataStatus='PARTIAL';
   if(cp.role==='curve'){
+   if(cp.thresholdNano)s.graduation.targetNano=cp.thresholdNano;
    s.graduation.realReserveNano=cp.reserveNano;s.graduation.progressBps=cp.progressBps;
    s.graduation.localReserveEligible=cp.localReserveEligible;s.lifecycle={stage:cp.stage,authenticated:false,operationId:cp.operationId,scope:cp.scope};
   }else if(cp.lifecycle){const l=cp.lifecycle;

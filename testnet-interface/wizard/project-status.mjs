@@ -1,14 +1,14 @@
 // Existing /api/projects/prepare and /api/projects/status provide configuration
 // and reference-anchored records, never unverified finality or authorization.
-import {CURVE,units,format} from './model.mjs';
+import {CURVE,GRADUATION_TARGET_NANO,units,format} from './model.mjs';
 
 export const LIFECYCLE_STAGES=Object.freeze([
  {id:'DRAFT',label:'Draft',short:'Draft',description:'Saved locally on this browser/device. No contract deployed, no tokens minted.'},
  {id:'DEPLOYMENT_PENDING',label:'Deployment pending',short:'Deploy Pending',description:'Offline preparation generated or deployment awaiting finalized on-chain receipt.'},
  {id:'MINTER_DEPLOYED',label:'Minter deployed',short:'Minter Deployed',description:'Jetton Minter verified active on TON Testnet (-3) with matching code and content hashes.'},
  {id:'CURVE_INITIALIZATION_PENDING',label:'Curve initialization pending',short:'Curve Init Pending',description:'Minter deployed; Bonding Curve deployment, 800M Curve / 200M DEX minting or custody verification pending.'},
- {id:'TRADING_ACTIVE',label:'Trading active',short:'Trading Active',description:'Curve initialized, 800M Jetton custody verified and minter admin renounced; trading toward 500 TON graduation target.'},
- {id:'GRADUATION_REACHED',label:'Graduation reached',short:'Graduated (500 TON)',description:'Accumulated real TON reserve reached the verified 500 TON threshold; curve trading completed.'},
+ {id:'TRADING_ACTIVE',label:'Trading active',short:'Trading Active',description:'Curve initialized, 800M Jetton custody verified and minter admin renounced; trading toward the 300 TON target for the new release.'},
+ {id:'GRADUATION_REACHED',label:'Graduation reached',short:'Graduated',description:'Accumulated real TON reserve reached the verified project threshold. The new release targets 300 TON.'},
  {id:'MIGRATION_PENDING',label:'Migration pending',short:'Migration Pending',description:'Graduated; awaiting STON.fi v2.2 router liquidity deposit (200M tokens + graduated TON).'},
  {id:'LP_CUSTODY_PENDING',label:'LP custody pending',short:'LP Custody Pending',description:'Liquidity deposit submitted; awaiting finalized STON.fi LP token delivery receipt into LP Locker V2.'},
  {id:'LP_LOCKED',label:'LP locked',short:'LP Locked',description:'LP tokens verified in LP Locker V2 custody under immutable beneficiary, controller and unlock terms.'},
@@ -17,7 +17,7 @@ export const LIFECYCLE_STAGES=Object.freeze([
 
 export const MIGRATION_LIFECYCLE_STEPS=Object.freeze([
  {step:1,id:'TRADING_ON_CURVE',label:'Trading on Curve',description:'Active Curve V2 trading toward the 500 real TON graduation threshold (800M Curve supply, 1% fee).'},
- {step:2,id:'GRADUATION_THRESHOLD_REACHED',label:'Graduation threshold reached',description:'Accumulated real TON reserve verified at ≥ 500 TON (500,000,000,000 nanoTON); curve buys finish.'},
+ {step:2,id:'GRADUATION_THRESHOLD_REACHED',label:'Graduation threshold reached',description:'Verify the real TON reserve against the project threshold. The new release targets 300 TON (300,000,000,000 nanoTON).'},
  {step:3,id:'MIGRATION_AUTHORIZED',label:'Migration authorized',description:'Positive V2 Curve-to-Migrator authorization and security gates satisfied (currently gated/disabled).'},
  {step:4,id:'LIQUIDITY_DEPOSIT_SUBMITTED',label:'Liquidity deposit submitted',description:'200,000,000 DEX tokens and graduated TON dispatched to STON.fi v2.2 Router and pair wallets.'},
  {step:5,id:'EXTERNAL_SETTLEMENT_PENDING',label:'External settlement pending',description:'Multi-hop STON.fi v2.2 Router → Pool liquidity minting in progress across shard blocks.'},
@@ -110,6 +110,7 @@ export function normalizeMigrationStatusView(input){
   const hist=g.historicalLp||null;
   const lt=hist?.lt||null;
   const receipts=Array.isArray(g.evidence)?g.evidence:null;
+  const ton=g.principalAccounting?.tonNano, jettons=g.principalAccounting?.jettonUnits;
 
   return{
    scope:g.scope||'REFERENCE_RELATIVE_READ_ONLY',
@@ -130,24 +131,24 @@ export function normalizeMigrationStatusView(input){
    deposits:{
     ton:{
      status:dispatched?'DISPATCHED_TO_STONFI_ROUTER':'UNAVAILABLE',
-     principalNano:dispatched?'495000000000':null,
-     fundedNano:dispatched?'495000000000':null,
-     returnedNano:null,
-     inTransitNano:null
+     principalNano:ton?.original??null,
+     fundedNano:ton?.funded??null,
+     returnedNano:ton?.curveBooked??null,
+     inTransitNano:ton?.inTransit??null
     },
     jettons:{
      status:dispatched?'DISPATCHED_TO_STONFI_ROUTER':'UNAVAILABLE',
-     principalUnits:dispatched?'200000000000000000':null,
-     fundedUnits:dispatched?'200000000000000000':null,
-     returnedUnits:null,
-     inTransitUnits:null
+     principalUnits:jettons?.original??null,
+     fundedUnits:jettons?.funded??null,
+     returnedUnits:jettons?.curveBooked??null,
+     inTransitUnits:jettons?.inTransit??null
     }
    },
-   targetNano:'500000000000',
-   realReserveNano:dispatched?'500000000000':null,
-   progressBps:dispatched?10000:null,
+   targetNano:GRADUATION_TARGET_NANO.toString(),
+   realReserveNano:null,
+   progressBps:null,
    eligible:false,
-   localReserveEligible:dispatched,
+   localReserveEligible:null,
    routerVerification:'VERIFIED_VNEXT_DISPATCH',
    poolVerification:'VERIFIED_VNEXT_DISPATCH',
    transactionReceipts:receipts,
@@ -206,7 +207,8 @@ export function normalizeMigrationStatusView(input){
     inTransitUnits:jetDep&&typeof jetDep.inTransitUnits==='string'&&/^\d+$/.test(jetDep.inTransitUnits)?jetDep.inTransitUnits:null
    }
   },
-  targetNano:validScope&&sv.graduation?.targetNano?String(sv.graduation.targetNano):'500000000000',
+  targetNano:validScope&&sv.graduation?.realReserveNano!=null&&sv.graduation?.targetNano?
+   String(sv.graduation.targetNano):GRADUATION_TARGET_NANO.toString(),
   realReserveNano:validScope&&typeof sv.graduation?.realReserveNano==='string'&&/^\d+$/.test(sv.graduation.realReserveNano)?sv.graduation.realReserveNano:null,
   progressBps:validScope&&Number.isInteger(sv.graduation?.progressBps)?sv.graduation.progressBps:null,
   eligible:validScope&&typeof sv.graduation?.eligible==='boolean'?sv.graduation.eligible:null,
@@ -346,7 +348,8 @@ export function migrationSummary(draft,prepared=null,observation=null){
  const launch=draft?.mode==='launchpad';
  const mig=launch&&prepared?.migration?prepared.migration:null;
  const sv=normalizeMigrationStatusView(observation??mig);
- const thresholdNano=BigInt(sv.targetNano||'500000000000');
+ const thresholdNano=BigInt(sv.targetNano||GRADUATION_TARGET_NANO);
+ const thresholdTon=format(thresholdNano);
  const obsReserve=observation?.scope==='AUTHENTICATED_PROJECT_OBSERVATION'&&typeof observation.realTonReserveNano==='string'&&/^\d+$/.test(observation.realTonReserveNano)?observation.realTonReserveNano:sv.realReserveNano;
  const verifiedReserveNano=obsReserve!==null?BigInt(obsReserve):null;
  const progressPercent=verifiedReserveNano!==null?Number((verifiedReserveNano*10000n)/thresholdNano)/100:(sv.progressBps!==null?sv.progressBps/100:null);
@@ -355,7 +358,7 @@ export function migrationSummary(draft,prepared=null,observation=null){
  const depositSummary=!launch?'NOT_APPLICABLE':tonDep.principalNano!==null||jetDep.principalUnits!==null?`TON (${tonDep.status}): principal ${tonDep.principalNano??'UNKNOWN'} / funded ${tonDep.fundedNano??'UNKNOWN'} / returned ${tonDep.returnedNano??'UNKNOWN'} / in-transit ${tonDep.inTransitNano??'UNKNOWN'} nanoTON · Jettons (${jetDep.status}): principal ${jetDep.principalUnits??'UNKNOWN'} / funded ${jetDep.fundedUnits??'UNKNOWN'} / returned ${jetDep.returnedUnits??'UNKNOWN'} / in-transit ${jetDep.inTransitUnits??'UNKNOWN'} units`:`NOT_SUBMITTED · BLOCKED (TON deposit: ${tonDep.status} · Jetton deposit: ${jetDep.status}; 200,000,000 DEX tokens & graduated TON not deposited)`;
  return{
   applicable:launch,
-  thresholdTon:CURVE.thresholdTon,
+  thresholdTon,
   thresholdNano:thresholdNano.toString(),
   curveAllocationTokens:CURVE.curve,
   dexReserveTokens:CURVE.dex,
@@ -364,8 +367,8 @@ export function migrationSummary(draft,prepared=null,observation=null){
   observedRealTonReserveDisplay:verifiedReserveNano!==null?`${format(verifiedReserveNano,9)} TON (${sv.scope==='MIGRATION_CONFIGURATION_NOT_CHAIN_OBSERVATION'?'verified':'reference-anchored record · not validator finality'})`:'UNAVAILABLE (deployment UNKNOWN)',
   observedCurveInventoryDisplay:observation?.scope==='AUTHENTICATED_PROJECT_OBSERVATION'&&observation.curveInventoryUnits?`${format(observation.curveInventoryUnits,9)} tokens`:'UNAVAILABLE (configured 800,000,000; on-chain reserve UNKNOWN)',
   graduationProgressPercent:progressPercent,
-  graduationProgressDisplay:progressPercent!==null?`${Math.min(100,progressPercent).toFixed(2)}% (${format(verifiedReserveNano??0n,9)} / ${CURVE.thresholdTon} TON)`:`UNKNOWN (0% verified · target ${CURVE.thresholdTon} real TON)`,
-  migrationEligibility:!launch?'NOT_APPLICABLE (Standard Jetton mode)':graduated&&mig?.migrationAuthorized?'ELIGIBLE':`BLOCKED · NOT ELIGIBLE (financial eligibility: ${sv.eligible===null?'UNKNOWN':sv.eligible}${sv.localReserveEligible!==null?` · local reserve check: ${sv.localReserveEligible} [not authorization]`:''}; requires verified 500 TON graduation, V2 Curve/migrator handoff & external audit)`,
+  graduationProgressDisplay:progressPercent!==null?`${Math.min(100,progressPercent).toFixed(2)}% (${format(verifiedReserveNano??0n,9)} / ${thresholdTon} TON)`:`UNKNOWN (0% verified · target ${thresholdTon} real TON)`,
+  migrationEligibility:!launch?'NOT_APPLICABLE (Standard Jetton mode)':graduated&&mig?.migrationAuthorized?'ELIGIBLE':`BLOCKED · NOT ELIGIBLE (financial eligibility: ${sv.eligible===null?'UNKNOWN':sv.eligible}${sv.localReserveEligible!==null?` · local reserve check: ${sv.localReserveEligible} [not authorization]`:''}; requires verified ${thresholdTon} TON graduation, V2 Curve/migrator handoff & external audit)`,
   routerVerification:sv.routerVerification,
   poolVerification:sv.poolVerification,
   versionedPackageStatus:sv.versionedPackage.availableForLocalReview?`Local V2 package available for review · selected for legacy plan: ${sv.versionedPackage.selectedForThisLegacyPlan?'YES':'NO'} · financial authorization: NONE`:'Legacy offline plan · V2 execution package not authorized',

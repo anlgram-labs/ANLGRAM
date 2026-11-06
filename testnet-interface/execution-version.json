@@ -50,16 +50,16 @@
     "projects/project-registration.mjs": "33efe0d4269084fd4dc3295dc58c2f8f9f282ad8154d2ec5d0cdf8617d953b3d",
     "projects/project-lp-acquisition.mjs": "274d7ff30f72c3822b7701adfbbe8cbac2a88d3130d607651083a2ec7e9ca57b",
     "projects/lp-evidence.mjs": "1119daa09391db830239db61ca7cbea5478370ed9e47834098154b67f55accfa",
-    "projects/migration-account.mjs": "15086d770bc3b17ffe572f7c091b544168c352b5b7f795837db086165c661345",
-    "projects/migration-status.mjs": "9b8a414caa3b7a53f90ec537b1304cf05108d9e86a3cfc8f7c997e8bacb14641",
+    "projects/migration-account.mjs": "d2e2226a0b756506d4e969d1a397ba2043e7c4f595795dccfe1e7c3b70654e88",
+    "projects/migration-status.mjs": "bd6cad0965078d9c7f54f0922cb147bf3f37ad70e75368a28463d804163deef6",
     "projects/evidence-brand.mjs": "0384aa8632c250aecbfc085d150be71909e3e31f17df71c76dcfb188881b767d",
     "wizard/preparation-model.mjs": "702c03755d8428c1a77870fdf45ddd28ecafb366fdbc14b9a51b89175cc5acff",
-    "wizard/model.mjs": "0070c13a9a9932d56e0e76e21ddd50194adbfb4c7c72bd8e45608fcfb8264183",
+    "wizard/model.mjs": "5a1cdd6896610fbfcf89620cad8240ad9a3df867c1a696627b7822bfed650a98",
     "../minter-contract/scripts/migration-package-dispatch-v2.js": "a1c92dda7c78e3a905f6ea73435b152eb66421d4cbc5030a4505ef3435d4a4e4",
     "../minter-contract/build/standard-jetton-settlement-wallet.compiled.json": "bef6300e582da90ca51bf8132a99bab41acbb51ce0269597a4173e1a13c2b921",
     "../minter-contract/build/anlgram-vesting-wallet-standard-v2.compiled.json": "56d9cb9a04bc507256cf167d813cba28606e6d63b66752d95b47cbd5be8cd654",
     "projects/distribution-receipts.mjs": "1b0f1b74d682004f1cc7b30cd6f16e05b76b37b45d1dc4af07b049c07d2d156d",
     "projects/reviewed-standard-operator.mjs": "0e8d7579ff186d7b3777c286b320436e787428e7255b30687f2f6149a8735a91"
   },
-  "sha256": "0829d11816cb8aa0936660cae0834c53785ecc668a5cc56d35697a4fe8dad812"
+  "sha256": "bd046f26b9163940bb9d99bcdff493cb6a9aa285fcc9ef0b1912a93e470cfde4"
 }

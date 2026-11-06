@@ -1,13 +1,21 @@
 import {configurationFingerprint} from './preparation-model.mjs';
-import {format} from './model.mjs';
+import {CURVE,format} from './model.mjs';
 import {projectStatusText,LIFECYCLE_STAGES,deriveLifecycleStage,deriveMigrationLifecycle,migrationSummary,lpLockerSummary,validateProjectStatusResponse,isAuthenticTxHash,tonviewerTxUrl,tonviewerAccountUrl} from './project-status.mjs';
 
 // Cached configuration only: never a quote, authority, operation ledger or receipt.
 export function renderMigrationAndLpGrids(d,p=null,s=null){
  const $=id=>document.getElementById(id),mig=migrationSummary(d,p,s),lp=lpLockerSummary(d,p,s),migLife=deriveMigrationLifecycle(d,p,s);
+ const bar=$('curve-grad-bar'),fill=$('curve-grad-fill'),percent=mig.graduationProgressPercent;
+ if(bar&&fill&&mig.applicable){
+  bar.setAttribute('aria-label',`Graduation progress toward ${mig.thresholdTon} TON`);
+  bar.setAttribute('aria-valuemax',mig.thresholdTon);
+  if(percent===null)bar.removeAttribute('aria-valuenow');
+  else bar.setAttribute('aria-valuenow',String(Math.min(100,percent)*Number(mig.thresholdTon)/100));
+  fill.style.width=`${Math.min(100,percent??0)}%`;
+ }
  const rows=[
   ['Bonding Curve Trading Progress',mig.applicable?`Accumulated TON: ${mig.observedRealTonReserveDisplay} · Curve inventory: ${mig.observedCurveInventoryDisplay}`:'Not applicable (Standard Jetton mode)'],
-  ['Graduation Progress (500 TON Target)',mig.applicable?mig.graduationProgressDisplay:'Not applicable (no Bonding Curve)'],
+  [`Graduation Progress (${mig.applicable?mig.thresholdTon:CURVE.thresholdTon} TON Target)`,mig.applicable?mig.graduationProgressDisplay:'Not applicable (no Bonding Curve)'],
   ['Migration Eligibility',mig.migrationEligibility],
   ['STON.fi v2.2 Pool & Router Verification',mig.applicable?`Expected Pool: ${mig.stonfiPoolAddress} (Pool: ${mig.poolVerification} · Router: ${mig.routerVerification}) · Router Ref: ${mig.routerCodeReferenceHash.slice(0,16)}…`:'Not applicable'],
   ['Migration Binding & LP Locker V2',mig.applicable?`Binding V2: ${mig.migrationBindingAddress} · Vault V2: ${mig.lpLockerAddress} · Locker LP Wallet: ${mig.expectedLpWalletAddress} · ${mig.versionedPackageStatus}`:'Not applicable'],

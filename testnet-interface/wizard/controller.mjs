@@ -74,7 +74,7 @@ function render(){
  text('curve-mode-help',launch?'Existing constant-product model with virtual reserves. Model parameters below are immutable configuration, not live reserves or a trading authorization.':'Not applicable to Standard Jettons. You can inspect the Launchpad model, but this mode has no Curve.');
  text('curve-model',`Launchpad model: ${CURVE.supply} supply / ${CURVE.curve} Curve / ${CURVE.dex} DEX.\nProtocol fee: ${CURVE.feeBps} bps (1%). Graduation: ${CURVE.thresholdTon} real TON.\nCurrent project contract/activation/price/reserve: UNAVAILABLE; this is an undeployed draft.`);
  text('curve-grad-badge',launch?migInfo.graduationProgressDisplay:'Not applicable in Standard mode');
- text('curve-grad-ton',launch?`${migInfo.observedRealTonReserveDisplay} (Target: ${CURVE.thresholdTon} TON)`:'Not applicable');
+ text('curve-grad-ton',launch?`${migInfo.observedRealTonReserveDisplay} (Target: ${migInfo.thresholdTon} TON)`:'Not applicable');
  text('curve-grad-inventory',launch?migInfo.observedCurveInventoryDisplay:'Not applicable');
  text('curve-grad-dex',launch?'200,000,000 configured · custody NOT VERIFIED':'Not applicable');
  text('curve-migration-eligibility',migInfo.migrationEligibility);
