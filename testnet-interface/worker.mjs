@@ -1,4 +1,5 @@
 import execution from './execution-version.json' with {type:'json'};
+import {verifyTelegramInitData} from './telegram-init-data.mjs';
 import {prepareProject} from './projects/prepare.mjs';
 import {readRegisteredProjectStatus} from './projects/project-registry.mjs';
 import {verifyRuntimeAuthorization} from './curve-authorization.mjs';
@@ -192,4 +193,3 @@ export default {
     return new Response(result.body,{status:result.status,headers});
   }
 };
-import {verifyTelegramInitData} from './telegram-init-data.mjs';

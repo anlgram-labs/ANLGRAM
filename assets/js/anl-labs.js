@@ -1289,7 +1289,8 @@
           throw new Error('Cannot safely record this distribution locally. No wallet request was sent.');
         }
         try {
-          if (!['-3','0xfffffffd'].includes(String(tc.account?.chain ?? tc.wallet?.account?.chain).toLowerCase()) || String(tx.network) !== '-3') throw new Error('MemeLabs financial requests require TON Testnet.'); await tc.sendTransaction(tx);
+          if (!['-3','0xfffffffd'].includes(String(tc.account?.chain ?? tc.wallet?.account?.chain).toLowerCase()) || String(tx.network) !== '-3') throw new Error('MemeLabs financial requests require TON Testnet.');
+        await tc.sendTransaction(tx);
         } catch (signErr) {
           // Only the wallet's explicit rejection error establishes that the
           // user refused the request; other errors may occur after submission.
@@ -1901,7 +1902,8 @@
       }
       vestingRequestStarted = true;
       try {
-        if (!['-3','0xfffffffd'].includes(String(tc.account?.chain ?? tc.wallet?.account?.chain).toLowerCase()) || String(tx.network) !== '-3') throw new Error('MemeLabs financial requests require TON Testnet.'); await tc.sendTransaction(tx);
+        if (!['-3','0xfffffffd'].includes(String(tc.account?.chain ?? tc.wallet?.account?.chain).toLowerCase()) || String(tx.network) !== '-3') throw new Error('MemeLabs financial requests require TON Testnet.');
+        await tc.sendTransaction(tx);
       } catch (sendError) {
         // Wallet/bridge errors can occur after broadcast. Do not treat them as
         // proof that no transaction was sent or silently allow a retry.
@@ -2792,7 +2794,8 @@
       };
 
       // 3. Send transaction via TonConnect
-      if (!['-3','0xfffffffd'].includes(String(tc.account?.chain ?? tc.wallet?.account?.chain).toLowerCase()) || String(tx.network) !== '-3') throw new Error('MemeLabs financial requests require TON Testnet.'); await tc.sendTransaction(tx);
+      if (!['-3','0xfffffffd'].includes(String(tc.account?.chain ?? tc.wallet?.account?.chain).toLowerCase()) || String(tx.network) !== '-3') throw new Error('MemeLabs financial requests require TON Testnet.');
+        await tc.sendTransaction(tx);
 
       if (statusBanner) {
         statusBanner.style.background = 'rgba(255,107,0,0.1)';

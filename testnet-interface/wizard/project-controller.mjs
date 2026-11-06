@@ -112,8 +112,9 @@ export function attachPreparation(current){
  }
  async function queryStatus(){
   if(statusBusy)return;statusBusy=true;if($('wizard-status-refresh'))$('wizard-status-refresh').disabled=true;
+  const input=structuredClone(current());
   try{
-   const input=structuredClone(current()),hash=await configurationFingerprint(input);
+   const hash=await configurationFingerprint(input);
    if($('wizard-status-endpoint-output'))text('wizard-status-endpoint-output','Querying /api/projects/status · read-only, no wallet request...');
    const response=await fetch('/api/projects/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),signal:AbortSignal.timeout(30000)}),s=await response.json();
    if(!response.ok)throw Error(s.error||'Project status unavailable');
@@ -122,6 +123,8 @@ export function attachPreparation(current){
    statuses.set(input.id,s);await render();
    if($('wizard-status-endpoint-output'))text('wizard-status-endpoint-output',`Project status received (schema ${s.schema}${s.generation?`, gen ${s.generation}`:''}). Scope: ${s.scope}`);
   }catch(e){
+   statuses.delete(input.id);
+   await render();
    if($('wizard-status-endpoint-output'))text('wizard-status-endpoint-output','Project status unavailable: '+e.message);
   }finally{
    statusBusy=false;if($('wizard-status-refresh'))$('wizard-status-refresh').disabled=false;

@@ -110,7 +110,9 @@ export function normalizeMigrationStatusView(input){
   const hist=g.historicalLp||null;
   const lt=hist?.lt||null;
   const receipts=Array.isArray(g.evidence)?g.evidence:null;
-  const curve=validScope&&g.curve?.thresholdNano===GRADUATION_TARGET_NANO.toString()&&
+  const chainTime=g.curve?.proof?.chainTime;
+  const curve=validScope&&Number.isSafeInteger(chainTime)&&Math.abs(Date.now()/1000-chainTime)<=120&&
+   g.curve?.thresholdNano===GRADUATION_TARGET_NANO.toString()&&
    /^\d{1,37}$/.test(g.curve.reserveNano)&&/^\d{1,37}$/.test(g.curve.inventoryUnits)?g.curve:null;
   const ton=g.principalAccounting?.tonNano, jettons=g.principalAccounting?.jettonUnits;
 
