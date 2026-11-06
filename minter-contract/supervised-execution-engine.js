@@ -51,7 +51,7 @@ const SUPERVISED_BUDGET = {
   operationalReserveBuffer: 1.50, // Buffer for network fee fluctuations and storage across blocks
   minimumRequiredBalance: 2.71,   // Hard-stop floor: items sum (0.71) + reserve (1.50) + provision buffer (0.50)
   recommendedBalance: 3.50,      // Recommended operator wallet balance
-  graduationTargetTon: 500.0,    // 500 TON target liquidity provided solely by users during trading
+  graduationTargetTon: 300.0,    // 300 TON target liquidity provided solely by users during trading
 };
 
 // TON Connect 2.0 Protocol Specifications & Staging Manifest Requirements
@@ -160,9 +160,9 @@ function deriveDeterministicAddresses(deployerAddress, artifacts, dexConfig = AP
   const minterAddress = contractAddress(0, minterStateInit);
 
   // 2. Bonding Curve StateInit
-  const vTon = 166666666666n;
-  const vTok = 266666666665600000n;
-  const tGrad = 500000000000n; // 500 TON
+  const vTon = 100000000000n; // 100 TON
+  const vTok = 266666666666666666n; // 266.666666666M tokens
+  const tGrad = 300000000000n; // 300 TON
   const curveTokens = 800000000000000000n; // 800M
   const dexEscrow = 200000000000000000n; // 200M
 
@@ -353,7 +353,7 @@ function buildDeploymentOperations(deployerAddress, predictedAddresses, dexConfi
         description: 'Curve active on-chain in STATE_UNINITIALIZED (0).',
       },
       irreversibleEffects: [
-        'Permanently locks AMM parameters: virtual TON (166.666 TON), virtual Token (266.666M), graduation threshold (500 TON), 1% fee.',
+        'Permanently locks AMM parameters: virtual TON (100 TON), virtual Token (266.666M), graduation threshold (300 TON), 1% fee.',
       ],
     },
     {

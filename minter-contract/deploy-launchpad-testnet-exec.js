@@ -343,9 +343,9 @@ function deriveDeterministicAddresses(deployerAddress, artifacts) {
   const minterAddress = contractAddress(0, minterStateInit);
 
   // 2. Bonding Curve StateInit
-  const vTon = 166666666666n;
-  const vTok = 266666666665600000n;
-  const tGrad = 500000000000n; // 500 TON
+  const vTon = 100000000000n; // 100 TON
+  const vTok = 266666666666666666n; // 266.666666666M tokens
+  const tGrad = 300000000000n; // 300 TON
   const curveTokens = 800000000000000000n; // 800M
   const dexEscrow = 200000000000000000n; // 200M
 
@@ -864,7 +864,7 @@ function printPlan(predictedAddresses) {
   console.log('  ─────────────────────────────────────────────────────────────────────────');
   console.log(`  TOTAL REQUIRED MINIMUM BALANCE:                        ${DEPLOYMENT_BUDGET.minimumRequiredBalance.toFixed(2)} TON`);
   console.log(`  RECOMMENDED OPERATOR WALLET BALANCE:                   ${DEPLOYMENT_BUDGET.recommendedBalance.toFixed(2)} TON`);
-  console.log('\n  ⚠️  FINANCIAL INVARIANT: The 500 TON DEX graduation liquidity is provided');
+  console.log('\n  ⚠️  FINANCIAL INVARIANT: The 300 TON DEX graduation liquidity is provided');
   console.log('      by users during trading, NEVER subsidized from deployer gas reserves.');
 
   console.log('\n--- 5. Security & Safety State ---');

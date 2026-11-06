@@ -9,7 +9,7 @@ const dispatch = require('../../minter-contract/scripts/migration-package-dispat
 const wire = require('../../minter-contract/scripts/stonfi-lp-v2-wire');
 
 const ROOT = 77n;
-const TON = 500000000000n;
+const TON = 300000000001n;
 const JETTONS = 200000000000000000n;
 const body = (op, id = ROOT) => core.beginCell().storeUint(op, 32).storeUint(id, 64);
 const opcode = message => message?.body.bits.length >= 32 ? message.body.beginParse().loadUint(32) : 0;

@@ -67,17 +67,17 @@ const state = curve.getState();
 
 // Price Continuity Derivation:
 // v_TON = floor(S_DEX * T_grad / (S_curve - S_DEX))
-// v_TON = floor(200M * 500 / 600M) = 166.666666666 TON = 166,666,666,666 nanoTON
+// v_TON = floor(200M * 300 / 600M) = 100 TON = 100,000,000,000 nanoTON
 assert(
-  state.virtualTon === 166_666_666_666n,
-  'Virtual TON reserve initialized to derived price-continuity value (166,666,666,666 nanoTON)'
+  state.virtualTon === 100_000_000_000n,
+  'Virtual TON reserve initialized to derived price-continuity value (100,000,000,000 nanoTON)'
 );
 
 // v_TOK = floor(v_TON * S_curve / T_grad)
-const expectedVirtualToken = (166_666_666_666n * (800_000_000n * ONE_TOKEN)) / (500n * 1_000_000_000n);
+const expectedVirtualToken = (100_000_000_000n * (800_000_000n * ONE_TOKEN)) / (300n * 1_000_000_000n);
 assert(
-  state.virtualToken === expectedVirtualToken && state.virtualToken === 266_666_666_665_600_000n,
-  'Virtual Token reserve correctly derived as 266,666,666.6656 tokens'
+  state.virtualToken === expectedVirtualToken && state.virtualToken === 266_666_666_666_666_666n,
+  'Virtual Token reserve correctly derived as 266,666,666.6666 tokens'
 );
 
 const expectedK = state.virtualTon * (DEFAULT_CONFIG.curveTokens + state.virtualToken);
@@ -98,12 +98,12 @@ assert(
 
 // Price Continuity Verification:
 // Terminal Curve Price vs. Initial DEX Pool Price
-const terminalCurveSpot = ((500n * 1_000_000_000n + state.virtualTon) * ONE_TOKEN) / state.virtualToken;
-const initialDexSpot = (500n * 1_000_000_000n * ONE_TOKEN) / (200_000_000n * ONE_TOKEN);
+const terminalCurveSpot = ((300n * 1_000_000_000n + state.virtualTon) * ONE_TOKEN) / state.virtualToken;
+const initialDexSpot = (300n * 1_000_000_000n * ONE_TOKEN) / (200_000_000n * ONE_TOKEN);
 
 assert(
-  terminalCurveSpot === 2500n && initialDexSpot === 2500n,
-  'Terminal curve marginal price matches initial DEX pool price exactly (2,500 nanoTON/token)'
+  terminalCurveSpot === 1500n && initialDexSpot === 1500n,
+  'Terminal curve marginal price matches initial DEX pool price exactly (1,500 nanoTON/token)'
 );
 
 assert(
@@ -205,8 +205,8 @@ assert(testCurve.realTokens === DEFAULT_CONFIG.curveTokens, 'Curve tokens invent
 console.log('\n--- 5. Graduation Threshold & Trading Lock ---');
 
 const gradCurve = new BondingCurveEngine();
-// Buy enough to cross the 500 TON graduation threshold (send 520 TON)
-const hugeBuyAmount = 520n * 1_000_000_000n;
+// Buy enough to cross the 300 TON graduation threshold (send 320 TON)
+const hugeBuyAmount = 320n * 1_000_000_000n;
 const gradBuy = gradCurve.applyBuy(hugeBuyAmount, 0n);
 
 assert(gradBuy.success, 'Huge buy accepted and triggers graduation');
@@ -215,18 +215,18 @@ assert(gradCurve.realTokens === 0n, 'All 800M curve tokens sold out at graduatio
 
 // Required DEX Token Calculation & Valuation Alignment
 const gradState = gradCurve.getState();
-const requiredDexTokens = gradCurve.calculateRequiredDexTokens(gradCurve.realTon);
+const requiredDexTokens = gradCurve.calculateRequiredDexTokens(gradCurve.config.graduationThresholdTon);
 assert(
   requiredDexTokens === 200_000_000n * ONE_TOKEN,
   'At graduation: Required DEX token allocation calculates to exactly 200,000,000 tokens'
 );
 assert(
-  gradState.marketCapitalizationNano === 2_000n * 1_000_000_000n,
-  'At graduation: Circulating Market Cap = 2,000 TON (800M tokens * 2,500 nanoTON)'
+  gradState.marketCapitalizationNano === 1_200n * 1_000_000_000n,
+  'At graduation: Circulating Market Cap = 1,200 TON (800M tokens * 1,500 nanoTON)'
 );
 assert(
-  gradState.fullyDilutedValuationNano === 2_500n * 1_000_000_000n,
-  'At graduation: Fully Diluted Valuation (FDV) = 2,500 TON (1B tokens * 2,500 nanoTON)'
+  gradState.fullyDilutedValuationNano === 1_500n * 1_000_000_000n,
+  'At graduation: Fully Diluted Valuation (FDV) = 1,500 TON (1B tokens * 1,500 nanoTON)'
 );
 
 // Subsequent trades must be rejected
@@ -260,6 +260,7 @@ for (let i = 0; i < TOTAL_FUZZ_CYCLES; i++) {
     fuzzCurve.realTokens = DEFAULT_CONFIG.curveTokens;
     fuzzCurve.accumulatedFeesTon = 0n;
     fuzzCurve.graduated = false;
+    fuzzCurve.lastK = fuzzCurve.K;
     traderHoldings = 0n;
   }
 

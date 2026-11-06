@@ -2,7 +2,7 @@
 #include "lp-locker-v2-code.fc";
 int curve_v2_local_ready() inline {
     (int state,_,_,_,_,_,_,_,_,int ton,int tokens,_,int claims,_,_,int threshold,int escrow,_,_) = load_data();
-    return (state == STATE_GRADUATION_PENDING) & (threshold == 500000000000)
+    return (state == STATE_GRADUATION_PENDING) & (threshold == 300000000000)
       & (ton >= threshold) & (tokens == 0) & (claims == 0) & (escrow == 200000000000000000);
 }
 () curve_v2_validate_request(int op,int q,slice sender) impure inline {

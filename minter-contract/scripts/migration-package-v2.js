@@ -32,7 +32,7 @@ function prepareRegistration(core,c,{starts,deadline,minimumLpUnits,curveEpoch,f
  if(!Number.isInteger(starts)||!Number.isInteger(deadline)||starts<1||deadline<=starts||deadline>0xffffffff||deadline-starts>60)throw Error('Explicit at-most60s registration window required');
  const exact=x=>{if(typeof x!=='bigint'&&!(typeof x==='string'&&/^\d+$/.test(x)))throw Error('Exact registration integers required');const n=BigInt(x);if(n<=0n)throw Error('Positive registration values required');return n;};
  const min=exact(minimumLpUnits),ce=exact(curveEpoch),fe=exact(fundingEpoch),de=exact(dexEpoch),ton=exact(tonNano),tokens=exact(jettonUnits);
- if(min>=(1n<<120n)||ton>=(1n<<120n)||tokens!==200000000000000000n||ton<500000000000n||[ce,fe,de].some(x=>x>0xffffffffffffffffn))throw Error('Registration reserve/epoch bounds');
+ if(min>=(1n<<120n)||ton>=(1n<<120n)||tokens!==200000000000000000n||ton<300000000000n||[ce,fe,de].some(x=>x>0xffffffffffffffffn))throw Error('Registration reserve/epoch bounds');
  const epochs=core.beginCell().storeUint(ce,64).storeUint(fe,64).storeUint(de,64).storeCoins(ton).storeCoins(tokens).endCell();
  const context=core.beginCell().storeAddress(c.addresses.curve).storeAddress(c.addresses.migration).storeRef(core.beginCell().storeAddress(c.vault.address).storeBuffer(c.intent.hash()).endCell()).endCell();
  return{to:c.addresses.migration,authenticatedSource:c.addresses.guard,value:40000000n,body:core.beginCell().storeUint(0x414e5a03,32).storeUint(c.operationId,64).storeUint(starts,32).storeUint(deadline,32).storeCoins(min).storeRef(epochs).storeRef(context).endCell(),financialSigningEnabled:false,migrationAuthorized:false,guardCurrentlySupportsPositiveRegistration:false,requiresQualifiedIndependentReview:true};
