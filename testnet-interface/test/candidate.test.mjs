@@ -2,9 +2,27 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
+import {createHash} from 'node:crypto';
 import {OPERATOR,MINTER,PUBLIC_KEY} from '../config.mjs';
 const require=createRequire(import.meta.url),core=require('@ton/core');
 const p=require('../../docs/launchpad/testnet-v5-candidate.json');
+test('the Pages build records independent release and historical candidate identities',()=>{
+ const active=require('../../docs/launchpad/active-testnet-candidate.json');
+ const release=require('../../docs/launchpad/testnet-v5-release-candidate.json');
+ const sha=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
+ const historical=sha(p);
+ assert.equal(active.activeCandidate,'testnet-v5-release-candidate.json');
+ assert.equal(sha(release),active.candidateSha256);
+ assert.notEqual(historical,active.candidateSha256);
+ assert.equal(release.broadcastEnabled,false);
+ for(const name of ['minter-intent','curve-two-intent'])assert.equal(require('../'+name+'.json').candidateSha256,historical);
+ for(const name of ['execution-version','client-build']){
+  const built=require('../'+name+'.json');
+  assert.equal(built.candidateSha256,historical);
+  assert.equal(built.releaseCandidateSha256,active.candidateSha256);
+ }
+ assert.deepEqual(require('../execution-version.json').releaseCandidateStateInitMismatches,['guard']);
+});
 test('active V5 registry invalidates legacy plans and carries over no approval',()=>{
  const active=require('../../docs/launchpad/active-testnet-candidate.json');
  assert.equal(active.version,'V5R1');assert.equal(active.priorTransactionApprovalsInvalid,true);assert.equal(active.readyForSigning,false);

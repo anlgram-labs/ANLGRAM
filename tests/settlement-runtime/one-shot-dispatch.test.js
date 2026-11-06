@@ -19,6 +19,30 @@ test('VNext caps an oversized purchase and returns the entire unspent principal'
  assert.equal(await curveBalance(),balanceBefore);
 
  const snapshot=f.chain.snapshot();
+ const boundary=[
+  [303030303029n,299999999999n,666668n,3n],
+  [303030303030n,300000000000n,1n,4n],
+ ];
+ for(const [gross,principal,remainder,stage] of boundary){
+  await f.chain.loadFrom(snapshot);
+  assert(exit(await buy(gross+40000000n,inventory-remainder),curve,0));
+  const after=await state();
+  assert.equal(after[0],stage);
+  assert.equal(after[4],principal);
+  assert.equal(after[5],remainder);
+  assert.equal(after[6],gross/100n);
+ }
+ // A gross amount that is sufficient under the normal floor-fee rule
+ // enters the capped branch, where the fee inversion requires one more.
+ await f.chain.loadFrom(snapshot);
+ const minimalCapped=await buy(303030303031n+40000000n,inventory);
+ assert(exit(minimalCapped,curve,407));
+ assert.deepEqual(await state(),before);
+ await f.chain.loadFrom(snapshot);
+ assert(exit(await buy(303030303032n+40000000n,inventory),curve,0));
+ assert.equal((await state())[4],TON);
+ assert.equal((await state())[5],0n);
+
  const refunds=[];
  for(const attachment of [510000000000n,610000000000n]){
   await f.chain.loadFrom(snapshot);
@@ -41,6 +65,52 @@ test('VNext caps an oversized purchase and returns the entire unspent principal'
   refunds.push(refund);
  }
  assert.equal(refunds[1]-refunds[0],100000000000n);
+
+ // Reproduce the release blocker: the action-phase failure rolls back
+ // accounting, but the incoming principal remains in the Curve.
+ await f.chain.loadFrom(snapshot);
+ const config=core.Dictionary.loadDirect(core.Dictionary.Keys.Int(32),core.Dictionary.Values.Cell(),f.chain.config);
+ const prices=config.get(25).beginParse();
+ assert.equal(prices.loadUint(8),0xea);
+ prices.loadUintBig(64);
+ config.set(25,beginCell().storeUint(0xea,8).storeUint(100000000n,64).storeSlice(prices).endCell());
+ f.chain.setConfig(beginCell().storeDictDirect(config).endCell());
+ const failed=await buy(510000000000n,inventory);
+ const failedBuy=failed.transactions.find(t=>t.inMessage?.info.dest?.equals(curve)&&op(t.inMessage)===0x5fcc3d14);
+ assert.equal(failedBuy.description.computePhase.exitCode,0);
+ assert.equal(failedBuy.description.actionPhase.resultCode,37);
+ assert.equal(failedBuy.description.aborted,true);
+ assert.equal(await curveBalance(),balanceBefore+510000000000n-failedBuy.totalFees.coins);
+ assert.deepEqual(await state(),before);
+ assert.equal(failedBuy.outMessages.size,0);
+});
+
+test('non-bounceable native excess credits a frozen buyer account without recipient code execution',async()=>{
+ const f=await fixture();
+ await require('./vnext-package-support').bootstrap(f);
+ const {freeze}=require('./refund-receipts-support');
+ const {internal}=require('@ton/sandbox');
+ const curve=f.c.addresses.curve,buyer=f.owner.address;
+ const body=beginCell().storeUint(0x5fcc3d14,32).storeUint(302,64).storeCoins(1).endCell();
+ const attachment=510000000000n,refund=attachment-40000000n-TON-3030303031n;
+ let received=false,frozen=false,buyerBefore;
+ for await(const tx of await f.chain.sendMessageIter(internal({from:buyer,to:curve,value:attachment,body}))){
+  const m=tx.inMessage;
+  if(m?.info.dest?.equals(curve)&&op(m)===0x5fcc3d14){
+   await freeze(f,buyer);
+   buyerBefore=(await f.chain.getContract(buyer)).balance;
+   frozen=true;
+  }
+  if(m?.info.type==='internal'&&m.info.src.equals(curve)&&m.info.dest.equals(buyer)&&m.info.value.coins===refund){
+   assert.equal(m.info.bounce,false);
+   assert.equal(op(m),0xd53276db);
+   assert.equal(tx.description.computePhase.type,'skipped');
+   assert.equal((await f.chain.getContract(buyer)).balance,buyerBefore+refund-tx.totalFees.coins);
+   assert.equal(tx.outMessages.size,0);
+   received=true;
+  }
+ }
+ assert(frozen&&received);
 });
 test('experimental generation2 routes actual Curve funding through STON.fi into authenticated permanent Locker custody; full settlement stays pending',async()=>{
  const f=await ready(),c=f.c;assert.equal((await f.chain.runGetMethod(c.addresses.curve,'get_dispatch_state_curve',[{type:'int',value:77n}])).stackReader.readBigNumber(),1n);const funding=await f.fund();assert.equal((await f.chain.runGetMethod(c.addresses.curve,'get_dispatch_state_curve',[{type:'int',value:77n}])).stackReader.readBigNumber(),2n);assert.equal((await f.stage())[0],3n);

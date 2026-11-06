@@ -1,8 +1,12 @@
 {
   "schema": 1,
   "candidateSha256": "b5edda7666aae4b79c4218a2dd91b941724663adeb58523d5d4bc89b3668c634",
+  "releaseCandidateSha256": "ce0a2d547a9fdc53cfa43d8fb521889e808f17fc35a2e611738ba50c2409a8bb",
+  "releaseCandidateStateInitMismatches": [
+    "guard"
+  ],
   "sources": {
-    "build.mjs": "fa28dd9264214e5d3b54ddaed56ade00aaa2a2b263cc0851f274543cf53cfb20",
+    "build.mjs": "3bf81944be8d5a3e5da2153b4e0df6594bb85006e555de8c4e3bd17f8e89108a",
     "app.js": "f2214539064b7532925298b9bebbb26a79c3e52813aff27b08a696a7857a598b",
     "client-entry.mjs": "26afc78634cc85868ba390377893e1bd319f9962b0c6599482416ff07d33e40d",
     "single-attempt.mjs": "2a3cd10735dda1324a0d044be259498e5b6bef17620c8593878d5f3b9500839d",
@@ -18,7 +22,7 @@
     "prepare-minter-one.mjs": "bf87dbd1ce4d86a81af24b1911f5e13657bef020689124c0477c9631502a1743",
     "testnet-rpc.mjs": "4db055f696fbea6d7637dcffce2b93292a48ca70ca315326900df5e7985594dc",
     "curve-emulation.mjs": "23168fd662ba5f4ea84c0c43100adf2f3aef00c16de709b2001d435a7c10eaca",
-    "worker.mjs": "4c07ca92464f544b2bc2fe2d1e801ca0b6084397b7aa62e2abba1fb414297951",
+    "worker.mjs": "f77492a2ea88604fdacbafbfde7ee597b613107731ab9a8a03005255b7980d16",
     "config.mjs": "fc3dd5a9ee733d81678f124a39e6584ff4941cdd82ed4d6130169541ac3901cd",
     "package-lock.json": "d62b91018c9d98e77bdb37f24d2b6811425d596e603f730b93ae7c1064d3dd84",
     "recovery/runtime.mjs": "85fa9d7a7fb2134eebb29ece901f3faba7f16211dd71933a42a4b6e36969d518",
@@ -45,13 +49,13 @@
     "projects/project-providers.mjs": "fe8a7057c9b6abc894a2f381b7ff79187ac9506697b0da456f32b16dbeb82f62",
     "../lib/v5-minter-trace.js": "5f35035e8be2810dfcf7c23e30a71846af4e1576c57e20e80ffd876fe09de364",
     "../minter-contract/build/standard-jetton-v2.compiled.json": "9deb92ed55737d603151c8e31be7c3c9154b7249099fab28c90d873f6a113d59",
-    "project-registry-worker.mjs": "28461e95951ffe2aea033c18ce9afe203c18511dbe6252ca0dbfbcf0051ee141",
+    "project-registry-worker.mjs": "6d5e488358e4dfee826787ff8d932b7b0f68d13b8830297bab8bb8e1e259da04",
     "projects/project-registry.mjs": "c31ec5b4cfa7c92d86879f691ec12d78cbedbb32399290eb5733df92b8618249",
     "projects/project-registration.mjs": "33efe0d4269084fd4dc3295dc58c2f8f9f282ad8154d2ec5d0cdf8617d953b3d",
     "projects/project-lp-acquisition.mjs": "274d7ff30f72c3822b7701adfbbe8cbac2a88d3130d607651083a2ec7e9ca57b",
     "projects/lp-evidence.mjs": "1119daa09391db830239db61ca7cbea5478370ed9e47834098154b67f55accfa",
     "projects/migration-account.mjs": "d2e2226a0b756506d4e969d1a397ba2043e7c4f595795dccfe1e7c3b70654e88",
-    "projects/migration-status.mjs": "bd6cad0965078d9c7f54f0922cb147bf3f37ad70e75368a28463d804163deef6",
+    "projects/migration-status.mjs": "0c56ba8b98858840f8673d6149e6d35938b612f8ec521ccf34e7dcdf869afe93",
     "projects/evidence-brand.mjs": "0384aa8632c250aecbfc085d150be71909e3e31f17df71c76dcfb188881b767d",
     "wizard/preparation-model.mjs": "702c03755d8428c1a77870fdf45ddd28ecafb366fdbc14b9a51b89175cc5acff",
     "wizard/model.mjs": "5a1cdd6896610fbfcf89620cad8240ad9a3df867c1a696627b7822bfed650a98",
@@ -61,5 +65,5 @@
     "projects/distribution-receipts.mjs": "1b0f1b74d682004f1cc7b30cd6f16e05b76b37b45d1dc4af07b049c07d2d156d",
     "projects/reviewed-standard-operator.mjs": "0e8d7579ff186d7b3777c286b320436e787428e7255b30687f2f6149a8735a91"
   },
-  "sha256": "bd046f26b9163940bb9d99bcdff493cb6a9aa285fcc9ef0b1912a93e470cfde4"
+  "sha256": "fb22a6ef15f4b7224920e1f482a26140595a206225605e1573436bd65f43f4eb"
 }

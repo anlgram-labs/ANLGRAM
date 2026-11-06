@@ -29,6 +29,19 @@ test('Telegram rejects a parameter set that aliases a valid signed string',async
  assert.equal(await verifyTelegramInitData(fields.toString(),token,now),null);
 });
 
+test('Telegram preserves URL decoding and escaped JSON, with replay limited by auth_date',async()=>{
+ const token='disposable-fixture',now=2000000000;
+ const user={id:321,first_name:'A+B & café\nSecond line'};
+ const fields=new URLSearchParams({auth_date:String(now),user:JSON.stringify(user)});
+ const secret=createHmac('sha256','WebAppData').update(token).digest();
+ fields.set('hash',createHmac('sha256',secret).update([...fields].map(([key,value])=>key+'='+value).sort().join('\n')).digest('hex'));
+ const raw=fields.toString();
+ assert.equal((await verifyTelegramInitData(raw,token,now)).first_name,user.first_name);
+ // Telegram initData is a bearer credential within the read-only freshness window.
+ assert.equal((await verifyTelegramInitData(raw,token,now+300)).id,'321');
+ assert.equal(await verifyTelegramInitData(raw,token,now+301),null);
+});
+
 test('graduation progress uses fresh reference-relative reserve units and falls back to unknown',()=>{
  const draft={mode:'launchpad'},now=Math.floor(Date.now()/1000);
  const curve={thresholdNano:'300000000000',reserveNano:'299990000000',inventoryUnits:'1',
