@@ -12,6 +12,11 @@ export function renderMigrationAndLpGrids(d,p=null,s=null){
   if(percent===null)bar.removeAttribute('aria-valuenow');
   else bar.setAttribute('aria-valuenow',String(Math.min(100,percent)*Number(mig.thresholdTon)/100));
   fill.style.width=`${Math.min(100,percent??0)}%`;
+  const badge=$('curve-grad-badge'),reserve=$('curve-grad-ton'),inventory=$('curve-grad-inventory');
+  if(badge)badge.textContent=mig.curveGraduated?'Curva graduada · Migración a STON.fi pendiente':
+   percent===null?'Estado: Conectando a Testnet RPC...':mig.graduationProgressDisplay;
+  if(reserve)reserve.textContent=mig.observedRealTonReserveDisplay;
+  if(inventory)inventory.textContent=mig.observedCurveInventoryDisplay;
  }
  const rows=[
   ['Bonding Curve Trading Progress',mig.applicable?`Accumulated TON: ${mig.observedRealTonReserveDisplay} · Curve inventory: ${mig.observedCurveInventoryDisplay}`:'Not applicable (Standard Jetton mode)'],

@@ -21,7 +21,7 @@
 const crypto = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs');
-const { Cell, beginCell, contractAddress, Address } = require('@ton/core');
+const { Cell, beginCell, contractAddress, Address, storeStateInit } = require('@ton/core');
 
 const EXPECTED_TESTNET_GLOBAL_ID = '-3';
 const EXPECTED_TESTNET_CHAIN = -3;
@@ -260,28 +260,28 @@ function deriveDeterministicAddresses(deployerAddress, artifacts, dexConfig = AP
       rawAddress: minterAddress.toRawString(),
       codeHash: minterCode.hash().toString('hex'),
       stateInit: minterStateInit,
-      stateInitBocBase64: beginCell().storeBit(0).storeBit(0).storeBit(1).storeRef(minterCode).storeBit(1).storeRef(minterData).endCell().toBoc().toString('base64'),
+      stateInitBocBase64: beginCell().store(storeStateInit(minterStateInit)).endCell().toBoc().toString('base64'),
     },
     bondingCurve: {
       address: curveAddress.toString({ testOnly: true, bounceable: true }),
       rawAddress: curveAddress.toRawString(),
       codeHash: curveCode.hash().toString('hex'),
       stateInit: curveStateInit,
-      stateInitBocBase64: beginCell().storeBit(0).storeBit(0).storeBit(1).storeRef(curveCode).storeBit(1).storeRef(curveData).endCell().toBoc().toString('base64'),
+      stateInitBocBase64: beginCell().store(storeStateInit(curveStateInit)).endCell().toBoc().toString('base64'),
     },
     lpLocker: {
       address: lockerAddress.toString({ testOnly: true, bounceable: true }),
       rawAddress: lockerAddress.toRawString(),
       codeHash: lockerCode.hash().toString('hex'),
       stateInit: lockerStateInit,
-      stateInitBocBase64: beginCell().storeBit(0).storeBit(0).storeBit(1).storeRef(lockerCode).storeBit(1).storeRef(lockerData).endCell().toBoc().toString('base64'),
+      stateInitBocBase64: beginCell().store(storeStateInit(lockerStateInit)).endCell().toBoc().toString('base64'),
     },
     migrationRouter: {
       address: migratorAddress.toString({ testOnly: true, bounceable: true }),
       rawAddress: migratorAddress.toRawString(),
       codeHash: migratorCode.hash().toString('hex'),
       stateInit: migratorStateInit,
-      stateInitBocBase64: beginCell().storeBit(0).storeBit(0).storeBit(1).storeRef(migratorCode).storeBit(1).storeRef(migratorData).endCell().toBoc().toString('base64'),
+      stateInitBocBase64: beginCell().store(storeStateInit(migratorStateInit)).endCell().toBoc().toString('base64'),
     },
   };
 }

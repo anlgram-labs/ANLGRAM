@@ -170,10 +170,15 @@ export class ProjectRegistry {
           (acquired.reference.root_hash !== registeredAt.root_hash || acquired.reference.file_hash !== registeredAt.file_hash))) {
         throw Error('Checkpoint predates or conflicts with registration');
       }
+      let curveCheckpoint;
+      try {
+        const curve = await providers.account(candidate.addresses.curve.toRawString(), acquired.reference);
+        curveCheckpoint = verifyMigrationAccountCheckpoint(record.configuration,'curve',curve.raw,curve.reference,2);
+      } catch(error) { await this.backoff(error); }
       const {result, previous, previousReference} = await this.storage.transaction(async txn => {
         const latest = await txn.get('checkpoint');
         const previous = checkpoint(record, latest);
-        const result = status({checkpoint: current, previous}, 'REFERENCE_VERIFIED');
+        const result = status({checkpoint: current, previous, curveCheckpoint}, 'REFERENCE_VERIFIED');
         if (!previous || current.proof.masterchainSeqno > previous.proof.masterchainSeqno) {
           await txn.put('checkpoint', {raw: acquired.raw, reference: acquired.reference});
         }
@@ -187,7 +192,7 @@ export class ProjectRegistry {
           if (observation.status === 'rejected') await this.backoff(observation.reason);
           else if (observation.value) evidence.push(observation.value);
         }
-        return evidence.length ? status({checkpoint: current, previous, evidence}, 'REFERENCE_VERIFIED') : result;
+        return evidence.length ? status({checkpoint: current, previous, curveCheckpoint, evidence}, 'REFERENCE_VERIFIED') : result;
       } catch (error) {
         await this.backoff(error);
         return result;

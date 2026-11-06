@@ -110,6 +110,8 @@ export function normalizeMigrationStatusView(input){
   const hist=g.historicalLp||null;
   const lt=hist?.lt||null;
   const receipts=Array.isArray(g.evidence)?g.evidence:null;
+  const curve=validScope&&g.curve?.thresholdNano===GRADUATION_TARGET_NANO.toString()&&
+   /^\d{1,37}$/.test(g.curve.reserveNano)&&/^\d{1,37}$/.test(g.curve.inventoryUnits)?g.curve:null;
   const ton=g.principalAccounting?.tonNano, jettons=g.principalAccounting?.jettonUnits;
 
   return{
@@ -145,7 +147,9 @@ export function normalizeMigrationStatusView(input){
     }
    },
    targetNano:GRADUATION_TARGET_NANO.toString(),
-   realReserveNano:null,
+   realReserveNano:curve?.reserveNano??null,
+   curveInventoryUnits:curve?.inventoryUnits??null,
+   curveGraduated:curve?.graduated===true,
    progressBps:null,
    eligible:false,
    localReserveEligible:null,
@@ -350,10 +354,10 @@ export function migrationSummary(draft,prepared=null,observation=null){
  const sv=normalizeMigrationStatusView(observation??mig);
  const thresholdNano=BigInt(sv.targetNano||GRADUATION_TARGET_NANO);
  const thresholdTon=format(thresholdNano);
- const obsReserve=observation?.scope==='AUTHENTICATED_PROJECT_OBSERVATION'&&typeof observation.realTonReserveNano==='string'&&/^\d+$/.test(observation.realTonReserveNano)?observation.realTonReserveNano:sv.realReserveNano;
+ const obsReserve=sv.realReserveNano;
  const verifiedReserveNano=obsReserve!==null?BigInt(obsReserve):null;
  const progressPercent=verifiedReserveNano!==null?Number((verifiedReserveNano*10000n)/thresholdNano)/100:(sv.progressBps!==null?sv.progressBps/100:null);
- const graduated=verifiedReserveNano!==null&&verifiedReserveNano>=thresholdNano;
+ const graduated=sv.curveGraduated===true||(verifiedReserveNano!==null&&verifiedReserveNano>=thresholdNano);
  const tonDep=sv.deposits.ton,jetDep=sv.deposits.jettons;
  const depositSummary=!launch?'NOT_APPLICABLE':tonDep.principalNano!==null||jetDep.principalUnits!==null?`TON (${tonDep.status}): principal ${tonDep.principalNano??'UNKNOWN'} / funded ${tonDep.fundedNano??'UNKNOWN'} / returned ${tonDep.returnedNano??'UNKNOWN'} / in-transit ${tonDep.inTransitNano??'UNKNOWN'} nanoTON · Jettons (${jetDep.status}): principal ${jetDep.principalUnits??'UNKNOWN'} / funded ${jetDep.fundedUnits??'UNKNOWN'} / returned ${jetDep.returnedUnits??'UNKNOWN'} / in-transit ${jetDep.inTransitUnits??'UNKNOWN'} units`:`NOT_SUBMITTED · BLOCKED (TON deposit: ${tonDep.status} · Jetton deposit: ${jetDep.status}; 200,000,000 DEX tokens & graduated TON not deposited)`;
  return{
@@ -365,7 +369,8 @@ export function migrationSummary(draft,prepared=null,observation=null){
   protocolFeeBps:CURVE.feeBps,
   observedRealTonReserveNano:verifiedReserveNano!==null?verifiedReserveNano.toString():null,
   observedRealTonReserveDisplay:verifiedReserveNano!==null?`${format(verifiedReserveNano,9)} TON (${sv.scope==='MIGRATION_CONFIGURATION_NOT_CHAIN_OBSERVATION'?'verified':'reference-anchored record · not validator finality'})`:'UNAVAILABLE (deployment UNKNOWN)',
-  observedCurveInventoryDisplay:observation?.scope==='AUTHENTICATED_PROJECT_OBSERVATION'&&observation.curveInventoryUnits?`${format(observation.curveInventoryUnits,9)} tokens`:'UNAVAILABLE (configured 800,000,000; on-chain reserve UNKNOWN)',
+  observedCurveInventoryDisplay:sv.curveInventoryUnits!=null?`${format(sv.curveInventoryUnits,9)} tokens`:'UNAVAILABLE (configured 800,000,000; on-chain reserve UNKNOWN)',
+  curveGraduated:graduated,
   graduationProgressPercent:progressPercent,
   graduationProgressDisplay:progressPercent!==null?`${Math.min(100,progressPercent).toFixed(2)}% (${format(verifiedReserveNano??0n,9)} / ${thresholdTon} TON)`:`UNKNOWN (0% verified · target ${thresholdTon} real TON)`,
   migrationEligibility:!launch?'NOT_APPLICABLE (Standard Jetton mode)':graduated&&mig?.migrationAuthorized?'ELIGIBLE':`BLOCKED · NOT ELIGIBLE (financial eligibility: ${sv.eligible===null?'UNKNOWN':sv.eligible}${sv.localReserveEligible!==null?` · local reserve check: ${sv.localReserveEligible} [not authorization]`:''}; requires verified ${thresholdTon} TON graduation, V2 Curve/migrator handoff & external audit)`,

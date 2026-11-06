@@ -467,7 +467,20 @@ window.isWalletReadyForTransaction = function() {
 
         const getChainNetwork = (wallet) => {
           const chain = wallet?.account?.chain;
-          return (chain === '-3' || chain === -3) ? 'testnet' : 'mainnet';
+          return ['-3','0xfffffffd'].includes(String(chain).toLowerCase()) ? 'testnet' : 'mainnet';
+        };
+        const displayMemeLabsNetwork = (wallet) => {
+          if (!/\/(?:memecoin-platform\.html|memelabs)\/?$/.test(window.location.pathname)) return;
+          const root=document.querySelector('main')||document.body;
+          let notice=document.getElementById('memelabs-network-warning');
+          if(!notice){notice=document.createElement('p');notice.id='memelabs-network-warning';
+            notice.setAttribute('role','status');notice.style.color='#ef4444';root.prepend(notice);}
+          const wrong=wallet?.account&&getChainNetwork(wallet)!=='testnet';
+          notice.hidden=!wrong;
+          notice.textContent=wrong?'Red incorrecta: Tu billetera está conectada a TON Mainnet. Cambia a TON Testnet para operar en MemeLabs.':'';
+          if(wrong)for(const id of ['wizard-step2-deploy-btn','deploy-confirm-submit','curve-buy','curve-sell']){
+            const button=document.getElementById(id);if(button)button.disabled=true;
+          }
         };
 
         let hasRestoredAttempted = false;
@@ -490,6 +503,7 @@ window.isWalletReadyForTransaction = function() {
         }
 
         tonConnectUI.onStatusChange(wallet => {
+          displayMemeLabsNetwork(wallet);
           if (wallet && wallet.account) {
             const addr = wallet.account.address || wallet.account.friendlyAddress;
             const net = getChainNetwork(wallet);
@@ -504,6 +518,7 @@ window.isWalletReadyForTransaction = function() {
 
         // Restore session if wallet was synchronously available
         if (tonConnectUI.wallet && tonConnectUI.wallet.account) {
+          displayMemeLabsNetwork(tonConnectUI.wallet);
           const addr = tonConnectUI.wallet.account.address || tonConnectUI.wallet.account.friendlyAddress;
           const net = getChainNetwork(tonConnectUI.wallet);
           window.setConnectedWallet(addr, tonConnectUI.wallet.device?.appName || 'TON Connect', net, true);

@@ -53,7 +53,7 @@ function returnLeg(original, funded, fundingBounced, inTransit, curveBooked) {
 
 // Internal status projection. Identity and the previous checkpoint come from
 // the server's project context. Clients cannot submit evidence to this path.
-export function generation2Status(identity, {checkpoint, previous, evidence = []} = {}) {
+export function generation2Status(identity, {checkpoint, previous, curveCheckpoint, evidence = []} = {}) {
  const matches = cp => isMigrationCheckpoint(cp) && cp.generation === 2 && cp.role === 'migration'
   && cp.project === identity.project && cp.address === identity.migrator
   && cp.operationId === String(identity.operationId);
@@ -62,7 +62,7 @@ export function generation2Status(identity, {checkpoint, previous, evidence = []
   operationId: String(identity.operationId), scope: 'REFERENCE_RELATIVE_READ_ONLY',
   dispatch: 'UNKNOWN', mint: 'NOT_VERIFIED', custody: 'UNKNOWN', lock: 'UNKNOWN',
   settlement: 'UNKNOWN', historicalLp: null, currentWalletUnits: null,
-  unresolvedReturns: 'UNKNOWN', evidence: [], withdrawalEvidence: [], checkpoint: null, principalAccounting: null,
+  unresolvedReturns: 'UNKNOWN', evidence: [], withdrawalEvidence: [], checkpoint: null, principalAccounting: null, curve: null,
   financialSigningEnabled: false, broadcastingEnabled: false, tradingEnabled: false,
   migrationAuthorized: false, withdrawalsEnabled: false, recoveryEnabled: false,
  };
@@ -89,6 +89,14 @@ export function generation2Status(identity, {checkpoint, previous, evidence = []
   }
  }
  result.checkpoint = proof;
+ if(curveCheckpoint){
+  const c=curveCheckpoint,p=c.proof;
+  if(!isMigrationCheckpoint(c)||c.role!=='curve'||c.generation!==2||c.project!==identity.project||
+    c.operationId!==result.operationId||p.masterchainSeqno!==proof.masterchainSeqno||
+    p.masterchainRootHash!==proof.masterchainRootHash||p.masterchainFileHash!==proof.masterchainFileHash)throw Error('Wrong curve checkpoint');
+  result.curve={address:c.address,thresholdNano:c.thresholdNano,reserveNano:c.reserveNano,inventoryUnits:c.curveTokenUnits,
+   graduated:(c.stage>=4&&c.stage<=7)||BigInt(c.reserveNano)>=BigInt(c.thresholdNano),proof:p};
+ }
  const life = checkpoint.lifecycle;
  if (checkpoint.activeOperationId === result.operationId && life) {
   const old = previous?.activeOperationId === result.operationId ? previous.lifecycle : null;
