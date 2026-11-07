@@ -30,10 +30,15 @@
     // large nanoTON/token amounts can already be rounded by JSON.parse.
     const isTuple = Array.isArray(entry);
     const kind = isTuple ? entry[0] : entry?.type;
-    if (kind !== undefined && kind !== 'num' && kind !== 'int')
+    // Require an explicit numeric TVM type for both tuple and object encodings.
+    // An untyped object with a value field is not authenticated stack data.
+    if (kind !== 'num' && kind !== 'int')
       throw Error('Unexpected TVM stack type');
     if (isTuple && entry.length !== 2) throw Error('Malformed TVM stack');
-    const raw = isTuple ? entry[1] : entry && (entry.num ?? entry.value);
+    if (!isTuple && (entry === null || typeof entry !== 'object' ||
+        (entry.num !== undefined && entry.value !== undefined && entry.num !== entry.value)))
+      throw Error('Malformed TVM stack');
+    const raw = isTuple ? entry[1] : (entry.num ?? entry.value);
     if (typeof raw !== 'string') throw Error('TVM integer must be an exact string');
     if (!/^-?(?:0x[0-9a-fA-F]+|[0-9]+)$/.test(raw))
       throw Error('Invalid TVM numeric value');
