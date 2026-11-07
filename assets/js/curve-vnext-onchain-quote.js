@@ -30,7 +30,7 @@
     if (typeof raw!=='string' && typeof raw!=='number') throw Error('Malformed TVM stack');
     const value=String(raw);
     if (!/^-?(?:0x[0-9a-fA-F]+|[0-9]+)$/.test(value)) throw Error('Invalid TVM numeric value');
-    return BigInt(value);
+    return value.startsWith('-0x') ? -BigInt(value.slice(1)) : BigInt(value);
   }
   function parseQuote(result,gross) {
     if (!result||result.success===false||Number(result.exit_code??result.exitCode)!==0) throw Error('Getter did not complete successfully');
