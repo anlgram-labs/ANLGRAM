@@ -2885,35 +2885,57 @@
 <script src="assets/js/launchpad.js?v=2026.54"></script>
 <script src="assets/js/curve-vnext-onchain-quote.js?v=2026.11"></script>
 <script>
-window.fetchVNextOnchainQuote = async function() {
+(function () {
+  // Every input mutation or newer request invalidates older observations.
+  // These values are never authority to execute a financial transaction.
+  const ids = ['curve-vnext-address', 'curve-vnext-network', 'curve-vnext-gross'];
   const output = document.getElementById('curve-vnext-live-result');
-  if (!output) return;
-  output.textContent = 'Reading current blockchain state and verified code hash…';
-  try {
-    const api = window.ANLGRAM_CURVE_LIVE_QUOTE;
-    if (!api) throw Error('On-chain quote reader unavailable');
-    const item = await api.quote({
-      address: document.getElementById('curve-vnext-address').value,
-      network: document.getElementById('curve-vnext-network').value,
-      grossTon: document.getElementById('curve-vnext-gross').value,
-      tonCore: window.TON_CORE
-    });
-    output.textContent = [
-      'ON-CHAIN GETTER OBSERVATION · '+item.network.toUpperCase(),
-      'Jettons quoted: '+api.formatUnits(item.tokensAtomic),
-      'Protocol fee: '+api.formatUnits(item.feeNano)+' TON',
-      'Gross consumed: '+api.formatUnits(item.consumedNano)+' TON',
-      'Refund: '+api.formatUnits(item.refundNano)+' TON',
-      'Graduation: '+(item.willGraduate?'Yes':'No'),
-      'Code hash verified: '+item.codeHash,
-      'Observed: '+item.observedAt,
-      'Read-only observation; NOT a transaction approval or guaranteed execution price.'
-    ].join('\n');
-  } catch (e) {
-    output.textContent = 'On-chain quote unavailable: '+String(e?.message||'unknown error')+
-      '. No token amount, fee or progress has been estimated.';
-  }
-};
+  const inputs = ids.map(id => document.getElementById(id));
+  let generation = 0;
+  const snapshot = () => inputs.map(el => el ? el.value : '');
+  const isCurrent = (id, values) =>
+    id === generation && snapshot().every((v, i) => v === values[i]);
+  const invalidate = () => {
+    generation++;
+    if (output) output.textContent = 'Inputs changed. Request a new on-chain quote.';
+  };
+  inputs.forEach(el => {
+    if (el) {
+      el.addEventListener('input', invalidate);
+      el.addEventListener('change', invalidate);
+    }
+  });
+  window.fetchVNextOnchainQuote = async function () {
+    if (!output || inputs.some(el => !el)) return;
+    const requestId = ++generation;
+    const [address, network, grossTon] = snapshot();
+    const values = [address, network, grossTon];
+    output.textContent = 'Reading current blockchain state and verified code hash…';
+    try {
+      const api = window.ANLGRAM_CURVE_LIVE_QUOTE;
+      if (!api) throw Error('On-chain quote reader unavailable');
+      const item = await api.quote({address, network, grossTon, tonCore: window.TON_CORE});
+      if (!isCurrent(requestId, values)) return;
+      output.textContent = [
+        'ON-CHAIN GETTER OBSERVATION · '+item.network.toUpperCase(),
+        'Contract: '+item.contractAddress,
+        'Requested gross: '+grossTon+' TON',
+        'Jettons quoted: '+api.formatUnits(item.tokensAtomic),
+        'Protocol fee: '+api.formatUnits(item.feeNano)+' TON',
+        'Gross consumed: '+api.formatUnits(item.consumedNano)+' TON',
+        'Refund: '+api.formatUnits(item.refundNano)+' TON',
+        'Graduation: '+(item.willGraduate?'Yes':'No'),
+        'Code hash verified: '+item.codeHash,
+        'Observed: '+item.observedAt,
+        'Read-only observation; NOT a transaction approval or guaranteed execution price.'
+      ].join('\\n');
+    } catch (e) {
+      if (!isCurrent(requestId, values)) return;
+      output.textContent = 'On-chain quote unavailable: '+String(e?.message||'unknown error')+
+        '. No token amount, fee or progress has been estimated.';
+    }
+  };
+})();
 </script>
 <script src="assets/js/transaction-receipt.js?v=2026.54"></script>
 <script src="assets/js/anl-labs.js?v=2026.54"></script>
