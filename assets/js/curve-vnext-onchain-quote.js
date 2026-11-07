@@ -33,11 +33,17 @@
     return value.startsWith('-0x') ? -BigInt(value.slice(1)) : BigInt(value);
   }
   function parseQuote(result,gross) {
+    if (typeof gross!=='bigint'||gross<=0n) throw Error('Invalid gross quote amount');
     if (!result||result.success===false||Number(result.exit_code??result.exitCode)!==0) throw Error('Getter did not complete successfully');
     const stack=result.stack??result.result?.stack;
     if (!Array.isArray(stack)||stack.length!==5) throw Error('Unexpected VNext getter result');
     const [tokens,fee,consumed,refund,graduation]=stack.map(parseNumber);
-    if(tokens<=0n||fee<0n||consumed<=0n||consumed<fee||refund<0n||consumed+refund!==gross||(graduation!==0n&&graduation!==-1n)) {
+    // VNext charges a floor-rounded 1% protocol fee on the GROSS TON
+    // actually consumed, not on the submitted maximum when capped.
+    // A positive principal must remain after that fee.
+    if(tokens<=0n||fee<0n||consumed<=0n||fee!==consumed/100n||
+       consumed-fee<=0n||refund<0n||consumed+refund!==gross||
+       (graduation!==0n&&graduation!==-1n)) {
       throw Error('Getter returned inconsistent financial accounting');
     }
     return {tokensAtomic:tokens,feeNano:fee,consumedNano:consumed,refundNano:refund,willGraduate:graduation===-1n};
