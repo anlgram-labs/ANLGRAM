@@ -5,6 +5,7 @@ import {Address} from '@ton/core';
 import {verifyTelegramInitData} from '../telegram-init-data.mjs';
 import {buildCurveTradePayload} from '../projects/curve-trade-payload.mjs';
 import {migrationSummary} from '../wizard/project-status.mjs';
+import {isCurveGraduatedAtCheckpoint} from '../projects/migration-status.mjs';
 
 test('Telegram HMAC rejects modified users, duplicate keys, expiry and wrong secrets',async()=>{
  const token='disposable-fixture',now=2000000000;
@@ -75,4 +76,32 @@ test('Testnet buy and TEP-74 sell encode an exact minimum with at most one perce
  assert.equal(sell.loadRef().beginParse().loadCoins(),100n);
  assert.throws(()=>buildCurveTradePayload({...input,network:'-239',side:'buy'}),/Testnet/);
  assert.throws(()=>buildCurveTradePayload({...input,side:'sell',curve:address.toString(),seller:testOnly,tokenUnits:9n}),/Testnet/);
+});
+
+test('graduation survives authenticated principal dispatch when the Curve reserve is zero',()=>{
+ const curve={stage:5,curveTokenUnits:'0',thresholdNano:'300000000000',
+  reserveNano:'0',operationId:'migration-77'};
+ const lifecycle={dexDispatched:'1',originalTonNano:'300000000000',
+  originalJettonUnits:'200000000000000000'};
+ const migration={activeOperationId:'migration-77',lifecycle};
+ assert.equal(isCurveGraduatedAtCheckpoint(curve,migration),true);
+ // DEX custody, final settlement and refunds remain unrelated unknowns.
+ assert.equal(isCurveGraduatedAtCheckpoint({...curve,stage:7},migration),true);
+ assert.equal(isCurveGraduatedAtCheckpoint({...curve,stage:4},migration),false);
+ assert.equal(isCurveGraduatedAtCheckpoint({...curve,stage:4,reserveNano:'300000000000'},migration),true);
+});
+
+test('graduation projection rejects missing or mismatched migrated principal',()=>{
+ const curve={stage:5,curveTokenUnits:'0',thresholdNano:'300000000000',
+  reserveNano:'0',operationId:'migration-77'};
+ const life={dexDispatched:'1',originalTonNano:'300000000000',
+  originalJettonUnits:'200000000000000000'};
+ const good={activeOperationId:'migration-77',lifecycle:life};
+ assert.equal(isCurveGraduatedAtCheckpoint(curve,{...good,activeOperationId:'other'}),false);
+ assert.equal(isCurveGraduatedAtCheckpoint(curve,{...good,lifecycle:{...life,dexDispatched:'0'}}),false);
+ assert.equal(isCurveGraduatedAtCheckpoint(curve,{...good,lifecycle:{...life,originalTonNano:'299999999999'}}),false);
+ assert.equal(isCurveGraduatedAtCheckpoint(curve,{...good,lifecycle:{...life,originalJettonUnits:'0'}}),false);
+ assert.equal(isCurveGraduatedAtCheckpoint({...curve,curveTokenUnits:'1'},good),false);
+ assert.equal(isCurveGraduatedAtCheckpoint({...curve,stage:3},good),false);
+ assert.equal(isCurveGraduatedAtCheckpoint({...curve,thresholdNano:'broken'},good),false);
 });
