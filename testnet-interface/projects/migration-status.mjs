@@ -56,20 +56,20 @@ function returnLeg(original, funded, fundingBounced, inTransit, curveBooked) {
 // settlement. Curve's spendable reserve is zero after principal handoff.
 export function isCurveGraduatedAtCheckpoint(curve, migration) {
  if (!curve || !Number.isInteger(curve.stage) || curve.stage < 4 || curve.stage > 7 ||
-     curve.curveTokenUnits !== '0' || !/^\\d+$/.test(String(curve.thresholdNano)) ||
+     curve.curveTokenUnits !== '0' || !/^\d+$/.test(String(curve.thresholdNano)) ||
      BigInt(curve.thresholdNano) === 0n) return false;
  if (curve.stage === 4) {
-  return /^\\d+$/.test(String(curve.reserveNano)) &&
+  return /^\d+$/.test(String(curve.reserveNano)) &&
     BigInt(curve.reserveNano) >= BigInt(curve.thresholdNano);
  }
  const l = migration?.lifecycle;
  return migration?.activeOperationId === curve.operationId &&
    l?.dexDispatched === '1' &&
-   /^\\d+$/.test(String(l.originalTonNano)) &&
+   /^\d+$/.test(String(l.originalTonNano)) &&
    BigInt(l.originalTonNano) >= BigInt(curve.thresholdNano) &&
-   /^\\d+$/.test(String(l.originalJettonUnits)) &&
+   /^\d+$/.test(String(l.originalJettonUnits)) &&
    BigInt(l.originalJettonUnits) > 0n &&
-   /^\\d+$/.test(String(curve.reserveNano));
+   /^\d+$/.test(String(curve.reserveNano));
 }
 
 // Internal status projection. Identity and the previous checkpoint come from
