@@ -2655,62 +2655,26 @@
       console.warn("Could not fetch main account:", err);
     }
     
-    if(poolsList) {
-      // Truthful on-chain liquidity pool state (No unverified mock data masquerading as genuine)
-      const isDemoPreview = localStorage.getItem('anlgram_demo_pools_preview') === 'true';
-      if (isDemoPreview) {
-        poolsList.innerHTML = `
-          <div style="background: rgba(255,170,0,0.08); border: 1px dashed rgba(255,170,0,0.3); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 14px;">⚠️</span>
-              <span style="font-size: 12px; font-weight: 700; color: #ffaa00; letter-spacing: 0.5px;">DEMO PREVIEW (TESTNET SIMULATION ONLY)</span>
-            </div>
-            <button class="btn-ent" style="padding: 4px 10px; font-size: 11px;" onclick="localStorage.removeItem('anlgram_demo_pools_preview'); window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: '${address}' } }));">Hide Demo</button>
+    if (poolsList) {
+      // Positions MUST come from authenticated on-chain LP/DEX observations.
+      // This screen currently has no LP position discovery. Do not display
+      // fabricated pool balances or infer "no pools" from missing evidence.
+      poolsList.innerHTML = `
+        <div style="padding: 40px 20px; text-align: center; color: var(--text-muted);">
+          <div style="font-size: 32px; margin-bottom: 12px;">🌊</div>
+          <div style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px;">Liquidity Positions Not Verified</div>
+          <div style="font-size: 13px; max-width: 480px; margin: 0 auto 16px; line-height: 1.5;">
+            ANLGRAM has not verified this wallet's liquidity positions on STON.fi or DeDust.
+            No pool balance, LP custody, or lock status is claimed here. Check your
+            positions directly with the DEX until authenticated on-chain discovery
+            is available in MemeLabs.
           </div>
-          <div style="padding: 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div style="position:relative; width:40px; height:40px;">
-                 <div style="width:28px; height:28px; background:var(--accent-cyan); border-radius:50%; position:absolute; top:0; left:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:bold; color:#000;">TON</div>
-                 <div style="width:28px; height:28px; background:#444; border-radius:50%; position:absolute; bottom:0; right:0; border: 2px solid var(--enterprise-bg); display:flex; align-items:center; justify-content:center; font-size:10px; overflow:hidden;">
-                   <span style="font-size:10px; font-weight:bold;">TKN</span>
-                 </div>
-              </div>
-              <div>
-                <div style="color:#fff; font-weight:700; font-size:16px;">TON-SampleToken (Simulated)</div>
-                <div style="color:var(--text-muted); font-size:11px; font-family:monospace;">kQCa...XyZ1 (Testnet)</div>
-              </div>
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <button class="btn-ent" style="padding: 8px 12px; font-size: 12px; border-radius: 8px;">View Contract</button>
-            </div>
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 20px; background: rgba(0,0,0,0.2);">
-            <div style="background: var(--glass-bg); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-              <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Pooled TON</div>
-              <div style="color:#fff; font-weight:700; font-size:16px;">145.20 TON</div>
-            </div>
-            <div style="background: var(--glass-bg); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-              <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Pooled Token</div>
-              <div style="color:#fff; font-weight:700; font-size:16px;">1,500,000 TKN</div>
-            </div>
-            <div style="background: var(--glass-bg); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-              <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Pool Status</div>
-              <div style="color:#ffaa00; font-weight:700; font-size:16px;">Simulated Pool</div>
-            </div>
-          </div>
-        `;
-      } else {
-        poolsList.innerHTML = `
-          <div style="padding: 40px 20px; text-align: center; color: var(--text-muted);">
-            <div style="font-size: 32px; margin-bottom: 12px;">🌊</div>
-            <div style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px;">No Active Liquidity Pools Detected</div>
-            <div style="font-size: 13px; max-width: 440px; margin: 0 auto 16px; line-height: 1.5;">This connected wallet does not have active on-chain liquidity pools on STON.fi or DeDust. Initialize liquidity for a deployed token to manage positions here.</div>
-            <button class="btn-ent" style="padding: 6px 14px; font-size: 12px;" onclick="localStorage.setItem('anlgram_demo_pools_preview', 'true'); window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: '${address}' } }));">
-              👁️ View Sample Pool Layout (Demo)
-            </button>
-          </div>
-        `;
-      }
+          <a href="https://app.ston.fi/" target="_blank" rel="noopener noreferrer"
+             class="btn-ent" style="display:inline-block;padding:8px 16px;font-size:12px;text-decoration:none;">
+            Open STON.fi
+          </a>
+        </div>
+      `;
     }
 
     // ══════════════════════════════════════════════════════════
