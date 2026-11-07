@@ -1634,10 +1634,25 @@
             must come from the deployed Curve getter and be checked against
             the latest authenticated on-chain state before wallet confirmation.
           </p>
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:0;">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
             Graduation target: 300 TON real principal, with the final atomic
             Jetton inventory unit exhausted. Protocol fee: 1% on gross
             actually consumed. Network fees are separate.
+          </p>
+          <div style="display:grid;gap:10px;">
+            <label for="curve-vnext-network" style="font-size:12px;color:var(--text-muted);">Blockchain network</label>
+            <select id="curve-vnext-network" class="token-search-input"><option value="testnet">TON Testnet</option><option value="mainnet">TON Mainnet</option></select>
+            <label for="curve-vnext-address" style="font-size:12px;color:var(--text-muted);">Deployed VNext Curve address (read-only inspection)</label>
+            <input id="curve-vnext-address" class="token-search-input" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="0:... or verified friendly address"/>
+            <label for="curve-vnext-gross" style="font-size:12px;color:var(--text-muted);">Gross buy quote (TON, excluding network gas)</label>
+            <input id="curve-vnext-gross" class="token-search-input" type="text" inputmode="decimal" value="1" maxlength="18"/>
+            <button type="button" class="btn-ent" onclick="window.fetchVNextOnchainQuote()" style="padding:10px 16px;">Read real on-chain buy quote</button>
+            <pre id="curve-vnext-live-result" role="status" aria-live="polite" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:var(--text-muted);margin:4px 0 0;">No blockchain quote requested.</pre>
+          </div>
+          <p style="font-size:11px;color:var(--text-muted);margin:12px 0 0;">
+            This inspection reads live contract code and its getter. Matching the code
+            hash does not establish the official project identity, wallet ownership,
+            execution price at signing, or finality. It never submits transactions.
           </p>
         </section>
 
@@ -2868,6 +2883,38 @@
 <script src="assets/js/donation-config.js?v=2026.54"></script>
 <script src="assets/js/wallet-connect.js?v=2026.51"></script>
 <script src="assets/js/launchpad.js?v=2026.54"></script>
+<script src="assets/js/curve-vnext-onchain-quote.js?v=2026.11"></script>
+<script>
+window.fetchVNextOnchainQuote = async function() {
+  const output = document.getElementById('curve-vnext-live-result');
+  if (!output) return;
+  output.textContent = 'Reading current blockchain state and verified code hash…';
+  try {
+    const api = window.ANLGRAM_CURVE_LIVE_QUOTE;
+    if (!api) throw Error('On-chain quote reader unavailable');
+    const item = await api.quote({
+      address: document.getElementById('curve-vnext-address').value,
+      network: document.getElementById('curve-vnext-network').value,
+      grossTon: document.getElementById('curve-vnext-gross').value,
+      tonCore: window.TON_CORE
+    });
+    output.textContent = [
+      'ON-CHAIN GETTER OBSERVATION · '+item.network.toUpperCase(),
+      'Jettons quoted: '+api.formatUnits(item.tokensAtomic),
+      'Protocol fee: '+api.formatUnits(item.feeNano)+' TON',
+      'Gross consumed: '+api.formatUnits(item.consumedNano)+' TON',
+      'Refund: '+api.formatUnits(item.refundNano)+' TON',
+      'Graduation: '+(item.willGraduate?'Yes':'No'),
+      'Code hash verified: '+item.codeHash,
+      'Observed: '+item.observedAt,
+      'Read-only observation; NOT a transaction approval or guaranteed execution price.'
+    ].join('\n');
+  } catch (e) {
+    output.textContent = 'On-chain quote unavailable: '+String(e?.message||'unknown error')+
+      '. No token amount, fee or progress has been estimated.';
+  }
+};
+</script>
 <script src="assets/js/transaction-receipt.js?v=2026.54"></script>
 <script src="assets/js/anl-labs.js?v=2026.54"></script>
 </body>
