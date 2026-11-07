@@ -74,6 +74,10 @@ const int op::sweep_fees                    = 0x414e4c05;
 
 ;; Gas & Financial Constants
 const int BPS_DENOMINATOR       = 10000;
+;; Buy actions are funded only from the existing operational attachment.
+int buy_forward_fee(int cells,int bits,int masterchain) asm "GETFORWARDFEE";
+int buy_compute_fee(int gas,int masterchain) asm "GETGASFEE";
+int buy_gas_consumed() impure asm "GASCONSUMED";
 const int GAS_OVERHEAD_TRADE    = 40000000; ;; 0.04 TON
 const int COMPUTE_GAS_RESERVE   = 10000000; ;; 0.01 TON
 const int MIN_REFUND_GAS        = 35000000; ;; 0.035 TON
@@ -231,7 +235,7 @@ int settlement_enabled() inline {
 #include "imports/curve-lifecycle-dispatch-v2.fc";
 
 ;; Helper: Outbound Jetton Transfer funded strictly by attached_ton
-() send_jettons_with_id(slice jetton_wallet, slice to_address, int token_amount, slice response_address, int forward_ton_amount, int attached_gas, int operation_id) impure inline {
+() send_jettons_with_id(slice jetton_wallet, slice to_address, int token_amount, slice response_address, int forward_ton_amount, int attached_gas, int operation_id, int send_mode) impure inline {
     var msg_body = begin_cell()
         .store_uint(settlement_enabled() ? sop::transfer : op::transfer(), 32)
         .store_uint(operation_id, 64)
@@ -250,11 +254,11 @@ int settlement_enabled() inline {
         .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
         .store_ref(msg_body);
 
-    send_raw_message(msg.end_cell(), 1);
+    send_raw_message(msg.end_cell(), send_mode);
 }
 
 () send_jettons_funded(slice wallet, slice recipient, int amount, slice response, int forward, int gas) impure inline {
-    send_jettons_with_id(wallet,recipient,amount,response,forward,gas,cur_lt());
+    send_jettons_with_id(wallet,recipient,amount,response,forward,gas,cur_lt(),1);
 }
 
 ;; ----------------------------------------------------------------------------
@@ -453,7 +457,7 @@ int settlement_enabled() inline {
         int amount = delivery~load_coins(); slice beneficiary = delivery~load_msg_addr();
         ;; Reuse owner operation id, not cur_lt: wallet deduplication remains
         ;; authoritative even if the original request arrives after this retry.
-        send_jettons_with_id(curve_jetton_wallet,beneficiary,amount,my_address(),1,35000000,query_id);
+        send_jettons_with_id(curve_jetton_wallet,beneficiary,amount,my_address(),1,35000000,query_id,1);
         raw_reserve(my_balance - msg_value,0);
         return_unreserved_gas(beneficiary,query_id);
         return ();
@@ -916,19 +920,30 @@ int settlement_enabled() inline {
                 if (reqX > X) {
                     actual_net_ton = reqX - X;
                     int netMultiplier = BPS_DENOMINATOR - 100;
-                    int actualGross = (actual_net_ton * BPS_DENOMINATOR + netMultiplier - 1) / netMultiplier;
+                    int actualGross = ((actual_net_ton - 1) * BPS_DENOMINATOR) / netMultiplier + 1;
                     actual_fee_ton = actualGross - actual_net_ton;
                 }
             }
         }
 
-        ;; Threshold Check
-        if (real_ton_reserve + actual_net_ton >= graduation_threshold_ton) {
-            will_graduate = 1;
-        }
+        ;; Graduation requires the approved minimum principal and zero Curve inventory.
+        ;; A one-unit remainder at the exact threshold must remain purchasable.
+        will_graduate = (tokens_out == real_token_reserve);
+        throw_unless(ERROR_INVALID_STATE, (~ will_graduate) |
+            (real_ton_reserve + actual_net_ton >= graduation_threshold_ton));
 
         throw_unless(ERROR_SLIPPAGE_EXCEEDED, tokens_out >= min_tokens_out);
 
+        ;; Reject non-bounceable buy requests before accepting a trade.
+        throw_unless(ERROR_INVALID_STATE, flags & 2);
+        (int buyer_wc,_) = parse_std_addr(sender_address);
+        throw_unless(ERROR_INVALID_STATE,buyer_wc == 0);
+        ;; Three basechain messages at most: Jetton transfer (one body ref),
+        ;; principal excess and gas excess (inline). Charge the full bound
+        ;; for each, including any root rewrite. Extra gas is still returned.
+        int forward_bound = buy_forward_fee(2,2046,0);
+        throw_unless(ERROR_INSUFFICIENT_GAS,
+            35000000 + 3 * forward_bound + buy_compute_fee(buy_gas_consumed(),0) < GAS_OVERHEAD_TRADE);
         real_ton_reserve += actual_net_ton;
         real_token_reserve -= tokens_out;
         accrued_protocol_fees += actual_fee_ton;
@@ -956,8 +971,8 @@ int settlement_enabled() inline {
         ;; notification preserves TEP-74 notification without a 0.01 TON gift.
         ;; Protect all pre-message balance as well as newly booked principal
         ;; and fees: insufficient operational funding must fail atomically.
-        raw_reserve(my_balance - msg_value + actual_net_ton + actual_fee_ton, 0);
-        send_jettons_funded(curve_jetton_wallet, sender_address, tokens_out, my_address(), 1, 35000000);
+        raw_reserve(my_balance - msg_value + actual_net_ton + actual_fee_ton, 16);
+        send_jettons_with_id(curve_jetton_wallet, sender_address, tokens_out, my_address(), 1, 35000000,cur_lt(),17);
         int excess_ton = gross_ton_in - actual_net_ton - actual_fee_ton;
         throw_unless(ERROR_INVALID_STATE, excess_ton >= 0);
         if (excess_ton > 0) {
@@ -969,11 +984,17 @@ int settlement_enabled() inline {
                 .store_slice(sender_address).store_coins(excess_ton)
                 .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
                 .store_uint(op::excesses(), 32).store_uint(query_id, 64).end_cell();
-            send_raw_message(refund, 1);
+            send_raw_message(refund, 17);
         }
         ;; Return the unused portion of the existing overhead, after execution
         ;; and forwarding fees, instead of accumulating unbooked user funds.
-        return_unreserved_gas(sender_address, query_id);
+        cell gas_excess = begin_cell().store_uint(0x10,6).store_slice(sender_address).store_coins(0)
+            .store_uint(0,1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(op::excesses(),32).store_uint(query_id,64).end_cell();
+        send_raw_message(gas_excess,144);
+        ;; All state and actions are staged. Bound the fixed check/return tail too.
+        throw_unless(ERROR_INSUFFICIENT_GAS,
+            35000000 + 3 * forward_bound + buy_compute_fee(buy_gas_consumed() + 1000,0) < GAS_OVERHEAD_TRADE);
         return ();
     }
 

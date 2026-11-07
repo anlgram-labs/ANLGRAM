@@ -21,7 +21,7 @@ test('VNext caps an oversized purchase and returns the entire unspent principal'
  const snapshot=f.chain.snapshot();
  const boundary=[
   [303030303029n,299999999999n,666668n,3n],
-  [303030303030n,300000000000n,1n,4n],
+  [303030303030n,300000000000n,1n,3n],
  ];
  for(const [gross,principal,remainder,stage] of boundary){
   await f.chain.loadFrom(snapshot);
@@ -32,14 +32,14 @@ test('VNext caps an oversized purchase and returns the entire unspent principal'
   assert.equal(after[5],remainder);
   assert.equal(after[6],gross/100n);
  }
- // A gross amount that is sufficient under the normal floor-fee rule
- // enters the capped branch, where the fee inversion requires one more.
+ assert(exit(await buy(51000000n,1n),curve,0));
+ assert.equal((await state())[0],4n);
+ assert.equal((await state())[4],TON);
+ assert.equal((await state())[5],0n);
+ // The first gross sufficient under the normal floor-fee rule must clear.
  await f.chain.loadFrom(snapshot);
  const minimalCapped=await buy(303030303031n+40000000n,inventory);
- assert(exit(minimalCapped,curve,407));
- assert.deepEqual(await state(),before);
- await f.chain.loadFrom(snapshot);
- assert(exit(await buy(303030303032n+40000000n,inventory),curve,0));
+ assert(exit(minimalCapped,curve,0));
  assert.equal((await state())[4],TON);
  assert.equal((await state())[5],0n);
 
@@ -52,7 +52,7 @@ test('VNext caps an oversized purchase and returns the entire unspent principal'
   assert.equal(after[0],4n);
   assert.equal(after[5],0n);
   assert.equal(principal,TON);
-  assert.equal(fees,3030303031n,'current capped fee, including the known one-nanoton rounding difference');
+  assert.equal(fees,3030303030n);
   assert.equal(await curveBalance(),balanceBefore+principal+fees);
   const refund=attachment-40000000n-principal-fees;
   assert(result.transactions.some(({inMessage:m})=>m?.info.type==='internal'
@@ -66,8 +66,7 @@ test('VNext caps an oversized purchase and returns the entire unspent principal'
  }
  assert.equal(refunds[1]-refunds[0],100000000000n);
 
- // Reproduce the release blocker: the action-phase failure rolls back
- // accounting, but the incoming principal remains in the Curve.
+ // Same fee schedule that stranded the attachment on the previous code.
  await f.chain.loadFrom(snapshot);
  const config=core.Dictionary.loadDirect(core.Dictionary.Keys.Int(32),core.Dictionary.Values.Cell(),f.chain.config);
  const prices=config.get(25).beginParse();
@@ -75,14 +74,35 @@ test('VNext caps an oversized purchase and returns the entire unspent principal'
  prices.loadUintBig(64);
  config.set(25,beginCell().storeUint(0xea,8).storeUint(100000000n,64).storeSlice(prices).endCell());
  f.chain.setConfig(beginCell().storeDictDirect(config).endCell());
+ const expensive=f.chain.snapshot();
+ // Only the counterexample swaps code in Sandbox. The funded fixture and
+ // transaction are identical, and the historical BOC is pinned by its hash.
+ const old=JSON.parse(require('node:child_process').execFileSync('git',[
+  'show','d4c168f:minter-contract/build/anlgram-bonding-curve-dispatch-v2.compiled.json'
+ ],{cwd:__dirname,encoding:'utf8'}));
+ const historicalCode=core.Cell.fromBase64(old.codeBocBase64);
+ assert.equal(historicalCode.hash().toString('hex'),'61b2246e82633c684fb9a9a8e7b5063cbbd752ca90217733bef684314d7df06d');
+ const contract=await f.chain.getContract(curve),account=contract.account;
+ contract.account={...account,account:{...account.account,storage:{...account.account.storage,
+  state:{type:'active',state:{...contract.accountState.state,code:historicalCode}}}}};
+ const oldResult=await buy(510000000000n,inventory);
+ const oldBuy=oldResult.transactions.find(t=>t.inMessage?.info.dest?.equals(curve)&&op(t.inMessage)===0x5fcc3d14);
+ assert.equal(oldBuy.description.actionPhase.resultCode,37);
+ assert.equal(oldBuy.outMessages.size,0);
+ assert.equal(await curveBalance(),balanceBefore+510000000000n-oldBuy.totalFees.coins);
+ await f.chain.loadFrom(expensive);
  const failed=await buy(510000000000n,inventory);
  const failedBuy=failed.transactions.find(t=>t.inMessage?.info.dest?.equals(curve)&&op(t.inMessage)===0x5fcc3d14);
- assert.equal(failedBuy.description.computePhase.exitCode,0);
- assert.equal(failedBuy.description.actionPhase.resultCode,37);
+ assert.equal(failedBuy.description.computePhase.exitCode,405);
+ assert.equal(failedBuy.description.actionPhase,undefined);
  assert.equal(failedBuy.description.aborted,true);
- assert.equal(await curveBalance(),balanceBefore+510000000000n-failedBuy.totalFees.coins);
+ assert.equal(await curveBalance(),balanceBefore);
  assert.deepEqual(await state(),before);
- assert.equal(failedBuy.outMessages.size,0);
+ const returned=[...failedBuy.outMessages.values()];
+ assert.equal(returned.length,1);
+ assert.equal(returned[0].info.bounced,true);
+ assert(returned[0].info.dest.equals(f.owner.address));
+ assert.equal(returned[0].info.value.coins+returned[0].info.forwardFee+failedBuy.totalFees.coins,510000000000n);
 });
 
 test('non-bounceable native excess credits a frozen buyer account without recipient code execution',async()=>{
@@ -92,9 +112,9 @@ test('non-bounceable native excess credits a frozen buyer account without recipi
  const {internal}=require('@ton/sandbox');
  const curve=f.c.addresses.curve,buyer=f.owner.address;
  const body=beginCell().storeUint(0x5fcc3d14,32).storeUint(302,64).storeCoins(1).endCell();
- const attachment=510000000000n,refund=attachment-40000000n-TON-3030303031n;
+ const attachment=510000000000n,refund=attachment-40000000n-TON-3030303030n;
  let received=false,frozen=false,buyerBefore;
- for await(const tx of await f.chain.sendMessageIter(internal({from:buyer,to:curve,value:attachment,body}))){
+ for await(const tx of await f.chain.sendMessageIter(internal({from:buyer,to:curve,value:attachment,body,bounce:true}))){
   const m=tx.inMessage;
   if(m?.info.dest?.equals(curve)&&op(m)===0x5fcc3d14){
    await freeze(f,buyer);

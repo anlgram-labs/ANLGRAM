@@ -359,7 +359,7 @@ export function migrationSummary(draft,prepared=null,observation=null){
  const obsReserve=sv.realReserveNano;
  const verifiedReserveNano=obsReserve!==null?BigInt(obsReserve):null;
  const progressPercent=verifiedReserveNano!==null?Number((verifiedReserveNano*10000n)/thresholdNano)/100:(sv.progressBps!==null?sv.progressBps/100:null);
- const graduated=sv.curveGraduated===true||(verifiedReserveNano!==null&&verifiedReserveNano>=thresholdNano);
+ const graduated=sv.curveGraduated===true;
  const tonDep=sv.deposits.ton,jetDep=sv.deposits.jettons;
  const depositSummary=!launch?'NOT_APPLICABLE':tonDep.principalNano!==null||jetDep.principalUnits!==null?`TON (${tonDep.status}): principal ${tonDep.principalNano??'UNKNOWN'} / funded ${tonDep.fundedNano??'UNKNOWN'} / returned ${tonDep.returnedNano??'UNKNOWN'} / in-transit ${tonDep.inTransitNano??'UNKNOWN'} nanoTON · Jettons (${jetDep.status}): principal ${jetDep.principalUnits??'UNKNOWN'} / funded ${jetDep.fundedUnits??'UNKNOWN'} / returned ${jetDep.returnedUnits??'UNKNOWN'} / in-transit ${jetDep.inTransitUnits??'UNKNOWN'} units`:`NOT_SUBMITTED · BLOCKED (TON deposit: ${tonDep.status} · Jetton deposit: ${jetDep.status}; 200,000,000 DEX tokens & graduated TON not deposited)`;
  return{

@@ -23,7 +23,7 @@
     "imports/migration-vnext-recovery.fc": "5a61920dd3c04ed06909bc2f62526da71a235e683382f90e23544ac903848652"
   },
   "compilerPackageVersion": "0.11.0",
-  "generatorSha256Lf": "efde1e01792b2de95665812fbe9d74ae0dfe00bad4cd9fad9500d7570c54fd62",
+  "generatorSha256Lf": "ab7626fa246c520369461a6d39e557f07376b81779cfa205a140c604149a56c6",
   "baseline": "59f5a931ef488508c20140d7dbd467caefadc77d",
   "generation": 2,
   "sandboxExecutionPathImplemented": true,

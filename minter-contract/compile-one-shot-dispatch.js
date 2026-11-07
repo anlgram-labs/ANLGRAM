@@ -61,6 +61,48 @@ async function main(){
    write('imports/migration-router-dispatch-v2-code.fc','const int MIGRATION_ROUTER_V2_CODE_HASH = 0x'+artifacts[0].codeCellHash+';\n');
    write('imports/curve-dispatch-router-v2.fc',read('imports/curve-vnext-router.fc').replace('migration-router-vnext-code.fc','migration-router-dispatch-v2-code.fc'));
    let c=read('anlgram-bonding-curve-vnext.fc').replace(';; GENERATED VNext: exact signed migration permits; all execution gates closed.\n','').replace('imports/curve-vnext-router.fc','imports/curve-dispatch-router-v2.fc').replace('imports/curve-lifecycle-vnext.fc','imports/curve-lifecycle-dispatch-v2.fc').replace('get_protocol_vnext() method_id { return(1,1,0); }','get_protocol_vnext() method_id { return(2,1,0); }');
+   c=once(c,'const int GAS_OVERHEAD_TRADE',`;; Buy actions are funded only from the existing operational attachment.
+int buy_forward_fee(int cells,int bits,int masterchain) asm "GETFORWARDFEE";
+int buy_compute_fee(int gas,int masterchain) asm "GETGASFEE";
+int buy_gas_consumed() impure asm "GASCONSUMED";
+const int GAS_OVERHEAD_TRADE`);
+   c=once(c,'int attached_gas, int operation_id) impure inline','int attached_gas, int operation_id, int send_mode) impure inline');
+   c=once(c,'\n    send_raw_message(msg.end_cell(), 1);\n}', '\n    send_raw_message(msg.end_cell(), send_mode);\n}');
+   c=once(c,'forward,gas,cur_lt());','forward,gas,cur_lt(),1);');
+   c=once(c,'1,35000000,query_id);','1,35000000,query_id,1);');
+   c=once(c,'int actualGross = (actual_net_ton * BPS_DENOMINATOR + netMultiplier - 1) / netMultiplier;',
+     'int actualGross = ((actual_net_ton - 1) * BPS_DENOMINATOR) / netMultiplier + 1;');
+   c=once(c,`        ;; Threshold Check
+        if (real_ton_reserve + actual_net_ton >= graduation_threshold_ton) {
+            will_graduate = 1;
+        }`,`        ;; Graduation requires the approved minimum principal and zero Curve inventory.
+        ;; A one-unit remainder at the exact threshold must remain purchasable.
+        will_graduate = (tokens_out == real_token_reserve);
+        throw_unless(ERROR_INVALID_STATE, (~ will_graduate) |
+            (real_ton_reserve + actual_net_ton >= graduation_threshold_ton));`);
+   c=once(c,'        real_ton_reserve += actual_net_ton;',`        ;; Reject non-bounceable buy requests before accepting a trade.
+        throw_unless(ERROR_INVALID_STATE, flags & 2);
+        (int buyer_wc,_) = parse_std_addr(sender_address);
+        throw_unless(ERROR_INVALID_STATE,buyer_wc == 0);
+        ;; Three basechain messages at most: Jetton transfer (one body ref),
+        ;; principal excess and gas excess (inline). Charge the full bound
+        ;; for each, including any root rewrite. Extra gas is still returned.
+        int forward_bound = buy_forward_fee(2,2046,0);
+        throw_unless(ERROR_INSUFFICIENT_GAS,
+            35000000 + 3 * forward_bound + buy_compute_fee(buy_gas_consumed(),0) < GAS_OVERHEAD_TRADE);
+        real_ton_reserve += actual_net_ton;`);
+   c=once(c,'raw_reserve(my_balance - msg_value + actual_net_ton + actual_fee_ton, 0);','raw_reserve(my_balance - msg_value + actual_net_ton + actual_fee_ton, 16);');
+   c=once(c,'send_jettons_funded(curve_jetton_wallet, sender_address, tokens_out, my_address(), 1, 35000000);',
+     'send_jettons_with_id(curve_jetton_wallet, sender_address, tokens_out, my_address(), 1, 35000000,cur_lt(),17);');
+   c=once(c,'            send_raw_message(refund, 1);','            send_raw_message(refund, 17);');
+   c=once(c,'        ;; and forwarding fees, instead of accumulating unbooked user funds.\n        return_unreserved_gas(sender_address, query_id);',`        ;; and forwarding fees, instead of accumulating unbooked user funds.
+        cell gas_excess = begin_cell().store_uint(0x10,6).store_slice(sender_address).store_coins(0)
+            .store_uint(0,1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(op::excesses(),32).store_uint(query_id,64).end_cell();
+        send_raw_message(gas_excess,144);
+        ;; All state and actions are staged. Bound the fixed check/return tail too.
+        throw_unless(ERROR_INSUFFICIENT_GAS,
+            35000000 + 3 * forward_bound + buy_compute_fee(buy_gas_consumed() + 1000,0) < GAS_OVERHEAD_TRADE);`);
    write(name+'.fc',';; EXPERIMENTAL GENERATION2: new identities; deployment NOT authorized.\n'+c);
   }
   const sources={};const r=await compileFunc({targets:[name+'.fc'],sources:f=>{const s=read(f);sources[f]=sha(s);return s;}});if(r.status!=='ok')throw Error(r.message);

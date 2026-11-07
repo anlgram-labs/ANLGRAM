@@ -49,7 +49,8 @@ test('graduation progress uses fresh reference-relative reserve units and falls 
  const status={generation:2,scope:'REFERENCE_RELATIVE_READ_ONLY',financialSigningEnabled:false,
   migrationAuthorized:false,withdrawalsEnabled:false,curve};
  assert.equal(migrationSummary(draft,null,status).graduationProgressPercent,99.99);
- assert.equal(migrationSummary(draft,null,{...status,curve:{...curve,reserveNano:'300000000000'}}).curveGraduated,true);
+ assert.equal(migrationSummary(draft,null,{...status,curve:{...curve,reserveNano:'300000000000'}}).curveGraduated,false);
+ assert.equal(migrationSummary(draft,null,{...status,curve:{...curve,reserveNano:'300000000001',inventoryUnits:'0',graduated:true}}).curveGraduated,true);
  assert.equal(migrationSummary(draft,null,{...status,curve:{...curve,proof:{chainTime:now-121}}}).graduationProgressPercent,null);
  assert.equal(migrationSummary(draft,null,{scope:'AUTHENTICATED_PROJECT_OBSERVATION',realTonReserveNano:'300000000000'}).graduationProgressPercent,null);
 });

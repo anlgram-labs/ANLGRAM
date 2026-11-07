@@ -183,10 +183,10 @@
           if (requiredX > X) {
             actualNetTon = requiredX - X;
             // Recompute gross with fee
-            // actualNetTon = actualGrossIn * (10000 - fee) / 10000
-            // actualGrossIn = ceil(actualNetTon * 10000 / (10000 - fee))
+            // gross - floor(gross * fee / 10000) rounds net up.
+            // Find the first gross whose rounded net reaches actualNetTon.
             const netMultiplier = BPS_DENOMINATOR - this.config.protocolFeeBps;
-            actualGrossIn = (actualNetTon * BPS_DENOMINATOR + netMultiplier - 1n) / netMultiplier;
+            actualGrossIn = ((actualNetTon - 1n) * BPS_DENOMINATOR) / netMultiplier + 1n;
             actualFeeTon = actualGrossIn - actualNetTon;
           }
         }
@@ -210,9 +210,9 @@
         priceImpactBps = (diff * BPS_DENOMINATOR) / spotBefore;
       }
 
-      // 6. Check Graduation Threshold Condition
-      if (this.realTon + actualNetTon >= this.config.graduationThresholdTon) {
-        willGraduate = true;
+      // Exhaustion closes trading only once the approved principal is funded.
+      if (willGraduate && this.realTon + actualNetTon < this.config.graduationThresholdTon) {
+        return { success: false, error: 'GRADUATION_UNDERFUNDED', message: 'Full inventory purchase does not reach the graduation reserve' };
       }
 
       return {
@@ -260,7 +260,7 @@
       this.accumulatedFeesTon += quote.feeTon;
       this.tradeCount++;
 
-      if (quote.willGraduate || this.realTokens === 0n || this.realTon >= this.config.graduationThresholdTon) {
+      if (quote.willGraduate) {
         this.graduated = true;
       }
 
