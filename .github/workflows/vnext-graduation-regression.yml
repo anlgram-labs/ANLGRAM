@@ -29,5 +29,8 @@ jobs:
           cache-dependency-path: testnet-interface/package-lock.json
       - name: Install locked dependencies
         run: npm ci
+      - name: Install Curve dependency tree for shared receipt module
+        run: npm ci --ignore-scripts
+        working-directory: minter-contract
       - name: Run graduation and security regression tests
         run: node --test test/memelabs-security.test.mjs
