@@ -37,17 +37,24 @@ test('integer reference separates graduation from the first full-inventory purch
 
  const engine=new BondingCurveEngine();
  const atThreshold=engine.quoteBuy(exactTargetGross);
- assert.equal(atThreshold.willGraduate,true);
+ assert.equal(atThreshold.willGraduate,false);
  assert.equal(atThreshold.tokensOut,inventory-1n);
  const refunds=[510000000000n,610000000000n].map(attachment=>{
   const quote=engine.quoteBuy(attachment-overhead);
   assert.equal(quote.tokensOut,inventory);
   assert.equal(quote.netTonApplied,target+1n);
-  assert.equal(quote.grossTonIn,fullInventoryGross+1n,'known cap inversion discrepancy');
-  assert.equal(quote.feeTon,fullInventoryGross/100n+1n);
+  assert.equal(quote.grossTonIn,fullInventoryGross);
+  assert.equal(quote.feeTon,fullInventoryGross/100n);
   const refund=attachment-overhead-quote.grossTonIn;
   assert.equal(overhead+quote.netTonApplied+quote.feeTon+refund,attachment);
   return refund;
  });
  assert.equal(refunds[1]-refunds[0],100000000000n);
+ assert.equal(engine.applyBuy(exactTargetGross).success,true);
+ assert.equal(engine.graduated,false);
+ const finalAtom=engine.applyBuy(11000000n,1n);
+ assert.equal(finalAtom.success,true);
+ assert.equal(engine.realTokens,0n);
+ assert.equal(engine.realTon,target+1n);
+ assert.equal(engine.graduated,true);
 });

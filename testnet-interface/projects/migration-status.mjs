@@ -95,7 +95,7 @@ export function generation2Status(identity, {checkpoint, previous, curveCheckpoi
     c.operationId!==result.operationId||p.masterchainSeqno!==proof.masterchainSeqno||
     p.masterchainRootHash!==proof.masterchainRootHash||p.masterchainFileHash!==proof.masterchainFileHash)throw Error('Wrong curve checkpoint');
   result.curve={address:c.address,thresholdNano:c.thresholdNano,reserveNano:c.reserveNano,inventoryUnits:c.curveTokenUnits,
-   graduated:(c.stage>=4&&c.stage<=7)||BigInt(c.reserveNano)>=BigInt(c.thresholdNano),proof:p};
+   graduated:c.stage>=4&&c.stage<=7&&c.curveTokenUnits==='0'&&BigInt(c.reserveNano)>=BigInt(c.thresholdNano),proof:p};
  }
  const life = checkpoint.lifecycle;
  if (checkpoint.activeOperationId === result.operationId && life) {

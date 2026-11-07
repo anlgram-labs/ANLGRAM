@@ -61,6 +61,100 @@ async function main(){
    write('imports/migration-router-dispatch-v2-code.fc','const int MIGRATION_ROUTER_V2_CODE_HASH = 0x'+artifacts[0].codeCellHash+';\n');
    write('imports/curve-dispatch-router-v2.fc',read('imports/curve-vnext-router.fc').replace('migration-router-vnext-code.fc','migration-router-dispatch-v2-code.fc'));
    let c=read('anlgram-bonding-curve-vnext.fc').replace(';; GENERATED VNext: exact signed migration permits; all execution gates closed.\n','').replace('imports/curve-vnext-router.fc','imports/curve-dispatch-router-v2.fc').replace('imports/curve-lifecycle-vnext.fc','imports/curve-lifecycle-dispatch-v2.fc').replace('get_protocol_vnext() method_id { return(1,1,0); }','get_protocol_vnext() method_id { return(2,1,0); }');
+   c=once(c,'const int GAS_OVERHEAD_TRADE',`;; Buy actions are funded only from the existing operational attachment.
+int buy_forward_fee(int cells,int bits,int masterchain) asm "GETFORWARDFEE";
+int buy_compute_fee(int gas,int masterchain) asm "GETGASFEE";
+int buy_gas_consumed() impure asm "GASCONSUMED";
+const int GAS_OVERHEAD_TRADE`);
+   c=once(c,'int attached_gas, int operation_id) impure inline','int attached_gas, int operation_id, int send_mode) impure inline');
+   c=once(c,'\n    send_raw_message(msg.end_cell(), 1);\n}', '\n    send_raw_message(msg.end_cell(), send_mode);\n}');
+   c=once(c,'forward,gas,cur_lt());','forward,gas,cur_lt(),1);');
+   c=once(c,'1,35000000,query_id);','1,35000000,query_id,1);');
+   const start=c.indexOf('        int fee_ton = (gross_ton_in * 100)');
+   const end=c.indexOf('        throw_unless(ERROR_SLIPPAGE_EXCEEDED, tokens_out >= min_tokens_out);',start);
+   if(start<0||end<0)throw Error('Buy calculation anchors');
+   c=c.slice(0,start)+`        (int tokens_out,int actual_fee_ton,int consumed,int excess_ton,int will_graduate) =
+            calculate_buy(gross_ton_in,real_ton_reserve,real_token_reserve,
+                virtual_ton_reserve,virtual_token_reserve,graduation_threshold_ton);
+        int actual_net_ton = consumed - actual_fee_ton;
+
+`+c.slice(end);
+   c=once(c,`        int excess_ton = gross_ton_in - actual_net_ton - actual_fee_ton;
+        throw_unless(ERROR_INVALID_STATE, excess_ton >= 0);
+`,'');
+   c=once(c,'() recv_internal(int my_balance',`;; Gross excludes the operating allowance. Both the getter and buy use this exact split.
+(int,int,int,int,int) calculate_buy(int gross,int real_ton,int inventory,int virtual_ton,int virtual_tokens,int threshold) inline {
+    throw_unless(ERROR_ZERO_INPUT,gross >= 0);
+    if (gross == 0) { return (0,0,0,0,0); }
+    int fee = (gross * 100) / BPS_DENOMINATOR;
+    int net = gross - fee;
+    int x = real_ton + virtual_ton;
+    int out = ((inventory + virtual_tokens) * net) / (x + net);
+    if (out >= inventory) {
+        out = inventory;
+        if (virtual_tokens > 0) {
+            int k = virtual_ton * (800000000000000000 + virtual_tokens);
+            int required_x = (k + virtual_tokens - 1) / virtual_tokens;
+            if (required_x > x) {
+                net = required_x - x;
+                ;; Invert gross - floor(gross * 100 / 10000) at its first exact value.
+                int consumed = ((net - 1) * BPS_DENOMINATOR) / (BPS_DENOMINATOR - 100) + 1;
+                fee = consumed - net;
+            }
+        }
+    }
+    int graduated = (out == inventory);
+    int consumed = net + fee;
+    throw_unless(ERROR_INVALID_STATE, consumed <= gross);
+    throw_unless(ERROR_INVALID_STATE, (~ graduated) | (real_ton + net >= threshold));
+    return (out,fee,consumed,gross - consumed,graduated);
+}
+
+() recv_internal(int my_balance`);
+   const quoteStart=c.indexOf('(int, int) get_buy_quote(');
+   const quoteEnd=c.indexOf('\n}',quoteStart);
+   if(quoteStart<0||quoteEnd<0)throw Error('Buy getter anchors');
+   c=c.slice(0,quoteStart)+`(int,int,int,int,int) quote_current_buy(int gross_ton_amount,int require_active) inline {
+    (int state,_,_,_,_,_,_,_,_,int real_ton,int inventory,_,_,
+        int virtual_ton,int virtual_tokens,int threshold,_,_,_) = load_data();
+    if (require_active) {
+        throw_unless(ERROR_CURVE_NOT_ACTIVE,state == STATE_ACTIVE);
+        throw_unless(ERROR_INSUFFICIENT_GAS,gross_ton_amount > 10000000);
+    }
+    return calculate_buy(gross_ton_amount,real_ton,inventory,virtual_ton,virtual_tokens,threshold);
+}
+
+(int,int,int,int,int) get_buy_quote_v2(int gross_ton_amount) method_id {
+    return quote_current_buy(gross_ton_amount,-1);
+}
+
+(int, int) get_buy_quote(int gross_ton_amount) method_id {
+    (int tokens,int fee,_,_,_) = quote_current_buy(gross_ton_amount,0);
+    return (tokens,fee);
+`+c.slice(quoteEnd);
+   c=once(c,'        real_ton_reserve += actual_net_ton;',`        ;; Reject non-bounceable buy requests before accepting a trade.
+        throw_unless(ERROR_INVALID_STATE, flags & 2);
+        (int buyer_wc,_) = parse_std_addr(sender_address);
+        throw_unless(ERROR_INVALID_STATE,buyer_wc == 0);
+        ;; Three basechain messages at most: Jetton transfer (one body ref),
+        ;; principal excess and gas excess (inline). Charge the full bound
+        ;; for each, including any root rewrite. Extra gas is still returned.
+        int forward_bound = buy_forward_fee(2,2046,0);
+        throw_unless(ERROR_INSUFFICIENT_GAS,
+            35000000 + 3 * forward_bound + buy_compute_fee(buy_gas_consumed(),0) < GAS_OVERHEAD_TRADE);
+        real_ton_reserve += actual_net_ton;`);
+   c=once(c,'raw_reserve(my_balance - msg_value + actual_net_ton + actual_fee_ton, 0);','raw_reserve(my_balance - msg_value + actual_net_ton + actual_fee_ton, 16);');
+   c=once(c,'send_jettons_funded(curve_jetton_wallet, sender_address, tokens_out, my_address(), 1, 35000000);',
+     'send_jettons_with_id(curve_jetton_wallet, sender_address, tokens_out, my_address(), 1, 35000000,cur_lt(),17);');
+   c=once(c,'            send_raw_message(refund, 1);','            send_raw_message(refund, 17);');
+   c=once(c,'        ;; and forwarding fees, instead of accumulating unbooked user funds.\n        return_unreserved_gas(sender_address, query_id);',`        ;; and forwarding fees, instead of accumulating unbooked user funds.
+        cell gas_excess = begin_cell().store_uint(0x10,6).store_slice(sender_address).store_coins(0)
+            .store_uint(0,1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(op::excesses(),32).store_uint(query_id,64).end_cell();
+        send_raw_message(gas_excess,144);
+        ;; All state and actions are staged. Bound the fixed check/return tail too.
+        throw_unless(ERROR_INSUFFICIENT_GAS,
+            35000000 + 3 * forward_bound + buy_compute_fee(buy_gas_consumed() + 1000,0) < GAS_OVERHEAD_TRADE);`);
    write(name+'.fc',';; EXPERIMENTAL GENERATION2: new identities; deployment NOT authorized.\n'+c);
   }
   const sources={};const r=await compileFunc({targets:[name+'.fc'],sources:f=>{const s=read(f);sources[f]=sha(s);return s;}});if(r.status!=='ok')throw Error(r.message);
