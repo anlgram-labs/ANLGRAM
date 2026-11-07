@@ -83,3 +83,22 @@ test('TVM true encoded as negative hexadecimal is parsed safely',()=>{
   const got=live.parseQuote({success:true,exit_code:0,stack:[['num','0x1'],['num','0x0'],['num','0x1'],['num','0x0'],['num','-0x1']]},1n);
   assert.equal(got.willGraduate,true);
 });
+
+test('Reject lossy JSON numbers rather than inventing large on-chain balances',()=>{
+  const balance=9007199254740993n;
+  const stack=[['num',Number(balance)],['num','100'],['num','10000'],['num','0'],['num','0']];
+  assert.throws(()=>live.parseQuote({success:true,exit_code:0,stack},10000n),/exact string/);
+});
+
+test('Reject nonnumeric TVM stack types even when their payload resembles a number',()=>{
+  const stack=[['cell','123'],['num','100'],['num','10000'],['num','0'],['num','0']];
+  assert.throws(()=>live.parseQuote({success:true,exit_code:0,stack},10000n),/stack type/);
+});
+
+test('Reject malformed tuples and floats while accepting exact provider numeric objects',()=>{
+  const valid=[{type:'num',value:'100'},{type:'num',value:'100'},{type:'num',value:'10000'},{type:'num',value:'0'},{type:'num',value:'0'}];
+  const quote=live.parseQuote({success:true,exit_code:0,stack:valid},10000n);
+  assert.equal(quote.tokensAtomic,100n);
+  assert.throws(()=>live.parseQuote({success:true,exit_code:0,stack:[['num','100','unexpected'],...valid.slice(1)]},10000n),/Malformed TVM stack/);
+  assert.throws(()=>live.parseQuote({success:true,exit_code:0,stack:[['num','1.5'],...valid.slice(1)]},10000n),/Invalid TVM numeric/);
+});
