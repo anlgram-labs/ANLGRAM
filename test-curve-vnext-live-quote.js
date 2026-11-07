@@ -48,6 +48,30 @@ test('Forged getter fee or refund is rejected',async()=>{
   const fixture=onchainRequest({stack:[['num','100'],['num','10'],['num','100'],['num','0'],['num','0']]});
   await assert.rejects(live.quote({address:raw,network:'mainnet',grossTon:'510',tonCore:fixture.core,request:fixture.request}),/inconsistent/);
 });
+test('Reject 100 percent fee even if gross accounting balances',()=>{
+  assert.throws(()=>live.parseQuote({
+    success:true,exit_code:0,
+    stack:[['num','100'],['num','1000000000'],['num','1000000000'],['num','0'],['num','0']]
+  },1000000000n),/inconsistent/);
+});
+test('Reject wrong 1 percent rounding, including capped buys',()=>{
+  assert.throws(()=>live.parseQuote({
+    success:true,exit_code:0,
+    stack:[['num','100'],['num','3030303031'],['num','303030303031'],['num','206969696969'],['num','-1']]
+  },510000000000n),/inconsistent/);
+});
+test('Accept floor rounded fee on consumed gross, not original input',()=>{
+  const result=live.parseQuote({
+    success:true,exit_code:0,
+    stack:[['num','100'],['num','3030303030'],['num','303030303031'],['num','206969696969'],['num','-1']]
+  },510000000000n);
+  assert.equal(result.consumedNano-result.feeNano,300000000001n);
+});
+test('Reject zero principal and zero gross',()=>{
+  assert.throws(()=>live.parseQuote({success:true,exit_code:0,stack:[
+    ['num','1'],['num','0'],['num','1'],['num','0'],['num','0']
+  ]},0n),/Invalid gross/);
+});
 test('Exact nanos, network gate and malformed amounts',()=>{
   assert.equal(live.tonToNano('303.030303031'),303030303031n);
   assert.equal(live.formatUnits(303030303031n),'303.030303031');
