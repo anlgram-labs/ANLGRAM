@@ -26,11 +26,18 @@
     return (n/divisor).toString()+(fraction?'.'+fraction:'');
   }
   function parseNumber(entry) {
-    const raw=Array.isArray(entry)?entry[1]:(entry&& (entry.num??entry.value));
-    if (typeof raw!=='string' && typeof raw!=='number') throw Error('Malformed TVM stack');
-    const value=String(raw);
-    if (!/^-?(?:0x[0-9a-fA-F]+|[0-9]+)$/.test(value)) throw Error('Invalid TVM numeric value');
-    return value.startsWith('-0x') ? -BigInt(value.slice(1)) : BigInt(value);
+    // TON integer values are arbitrary precision. Never accept JSON numbers:
+    // large nanoTON/token amounts can already be rounded by JSON.parse.
+    const isTuple = Array.isArray(entry);
+    const kind = isTuple ? entry[0] : entry?.type;
+    if (kind !== undefined && kind !== 'num' && kind !== 'int')
+      throw Error('Unexpected TVM stack type');
+    if (isTuple && entry.length !== 2) throw Error('Malformed TVM stack');
+    const raw = isTuple ? entry[1] : entry && (entry.num ?? entry.value);
+    if (typeof raw !== 'string') throw Error('TVM integer must be an exact string');
+    if (!/^-?(?:0x[0-9a-fA-F]+|[0-9]+)$/.test(raw))
+      throw Error('Invalid TVM numeric value');
+    return raw.startsWith('-0x') ? -BigInt(raw.slice(1)) : BigInt(raw);
   }
   function parseQuote(result,gross) {
     if (typeof gross!=='bigint'||gross<=0n) throw Error('Invalid gross quote amount');
