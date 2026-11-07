@@ -1,0 +1,30 @@
+name: MemeLabs on-chain quote integrity
+
+on:
+  pull_request:
+    paths:
+      - 'assets/js/curve-vnext-onchain-quote.js'
+      - 'cloudflare-worker/worker.js'
+      - 'memecoin-platform.html'
+      - 'test-curve-vnext-live-quote.js'
+      - 'test-worker-deep-audit.js'
+      - '.github/workflows/memelabs-quote-integrity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quote-safety:
+    name: Read-only quote and proxy checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify on-chain quote adapter and accounting
+        run: node --test test-curve-vnext-live-quote.js
+      - name: Verify TonAPI proxy route and parameter restrictions
+        run: node test-worker-deep-audit.js
