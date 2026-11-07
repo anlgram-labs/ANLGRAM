@@ -51,6 +51,8 @@ export const ALLOWED_ROUTES = [
 export const ALLOWED_TVM_METHODS = new Set([
   'get_jetton_data',
   'get_wallet_address',
+  // Read-only VNext contract quotation (never permits transactions).
+  'get_buy_quote_v2',
   'get_vesting_data',
   'get_claimable_at',
   'get_staking_data',
@@ -360,6 +362,17 @@ const workerHandler = {
       filteredParams.set(key, val);
     }
 
+    // The new Curve getter accepts one nonnegative integer amount, expressed
+    // as a bounded hex TVM argument. Do not forward arbitrary method args,
+    // other filters, or duplicate query keys to this finance-sensitive path.
+    const isVnextBuyQuote = Boolean(methodMatch && methodMatch[2] === 'get_buy_quote_v2');
+    if (isVnextBuyQuote) {
+      const args = url.searchParams.getAll('args');
+      if (url.searchParams.size !== 1 || args.length !== 1 || !/^0x[0-9a-fA-F]{1,18}$/.test(args[0]) || BigInt(args[0]) === 0n) {
+        return jsonResponse({ error: 'Bad Request', message: 'VNext quote requires one positive bounded hex args value' }, 400, corsHeaders);
+      }
+    }
+
     const queryString = filteredParams.toString() ? `?${filteredParams.toString()}` : '';
     const targetUrl = `https://tonapi.io/v2${subPath}${queryString}`;
 
@@ -369,7 +382,10 @@ const workerHandler = {
     else if (subPath.includes('/events') || subPath.includes('/transactions')) ttl = 10;
 
     const cacheKey = new Request(targetUrl, { method: 'GET' });
-    const cache = (typeof caches !== 'undefined' && caches && caches.default) ? caches.default : null;
+    // Curve getters are snapshots of a changing contract state; never serve
+    // an edge-cached quotation that could mislead a buyer.
+    if (isVnextBuyQuote) ttl = 0;
+    const cache = !isVnextBuyQuote && typeof caches !== 'undefined' && caches && caches.default ? caches.default : null;
 
     // Check Cloudflare Cache if available
     if (cache) {
