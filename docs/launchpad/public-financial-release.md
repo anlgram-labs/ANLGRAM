@@ -2,6 +2,16 @@
 
 ## 300 TON integration checkpoint
 
+### PR #38 post-audit getter
+
+The audited Curve code hash was `594b37ee0dab3065b8d8a91c83f65451c7087d7ad1909d1c26d92220a6040014`. The follow-up compiles to `5247d2d6e5a0e5705e6d2d6e4b3177fe6bd6df8160e10bc1ac924ed4c3169028`. The Migrator still compiles to `8bffcb5b658b0a5e9a7aad16dab88fbb461bcc54c0533bfe18371a680f8405ab`. Its artifact provenance changes with the generator. Legacy contracts and the original Curve #2 records are unchanged.
+
+The Dispatch Curve now shares one calculation between execution and both getters. `get_buy_quote(gross)` retains its two results, tokens and actual protocol fee. `get_buy_quote_v2(gross)` returns atomic Jetton units, protocol fee in nanotons, gross consumed in nanotons, native principal refund in nanotons, and the graduation flag (TVM true is -1). Gross excludes the existing 40,000,000-nanoton operating allowance. V2 rejects an inactive Curve and input below the buy minimum. It models the current state and does not guarantee gas funding, slippage protection, message delivery or a future execution price.
+
+Sandbox compares the tuples to the executed Curve's inventory and reserve deltas and to delivered native refunds. Cases include gross 300 TON, exactly 300 TON of principal with one unit still available, a subsequent purchase of that unit, gross 303.030303031 TON, and gross 510 and 610 TON. The test also covers total attachments of 510 and 610 TON. It rejects a replay after graduation and a forged refund claim. A tiny, directly injected bounceable message under the adversarial fee schedule reproduces a no-funds bounce with unchanged booked state and no refund emitted. There is no authenticated recovery entitlement for that case.
+
+GitHub's PR #38 base is the head branch of PR #37, `codex/memelabs-hardening-20261105`. PR #38's head is `codex/vnext-audit-buy-fixes`. The previous audit applies to the old hash. Review the new hash before freezing or deriving any candidate. The stale inventory remains non-executable, and Gate 414 remains closed.
+
 ### Dispatch Curve audit-fix candidate
 
 The VNext Dispatch Curve candidate moves from code hash `61b2246e82633c684fb9a9a8e7b5063cbbd752ca90217733bef684314d7df06d` to `594b37ee0dab3065b8d8a91c83f65451c7087d7ad1909d1c26d92220a6040014`. The Migrator retains code hash `8bffcb5b658b0a5e9a7aad16dab88fbb461bcc54c0533bfe18371a680f8405ab`. Its artifact changes only in generator provenance. The legacy Curve and Guard, the VNext Guard, Locker, ANLTEST manifests and original Curve #2 intent are unchanged. Dependent VNext addresses and operation scopes must be derived again from an approved configuration.

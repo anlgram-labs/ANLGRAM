@@ -14,40 +14,69 @@ test('VNext caps an oversized purchase and returns the entire unspent principal'
  const before=await state(),balanceBefore=await curveBalance(),inventory=before[5];
  const buy=(value,min)=>f.send(curve,beginCell().storeUint(0x5fcc3d14,32)
    .storeUint(100,64).storeCoins(min).endCell(),value);
+ const allowance=40000000n;
+ const quoteV2=gross=>f.chain.runGetMethod(curve,'get_buy_quote_v2',[{type:'int',value:gross}]);
+ const buyerWallet=core.contractAddress(0,{code:f.c.wallet,data:beginCell().storeCoins(0)
+  .storeAddress(f.owner.address).storeAddress(f.c.addresses.minter).storeRef(f.c.wallet).endCell()});
+ const buyerTokens=async()=>((await f.chain.getContract(buyerWallet)).accountState?.type==='active'
+  ?(await f.chain.runGetMethod(buyerWallet,'get_wallet_data')).stackReader.readBigNumber():0n);
+ await assert.rejects(quoteV2(10000000n),/405/);
+ const buyAndCheckQuote=async(gross,min)=>{
+  const initial=await state();
+  const stack=[{type:'int',value:gross}];
+  const read=async getter=>(await f.chain.runGetMethod(curve,getter,stack)).stack.map(item=>item.value);
+  const [tokens,fee,consumed,refund,graduated]=await read('get_buy_quote_v2');
+  assert.deepEqual(await read('get_buy_quote'),[tokens,fee]);
+  const held=await buyerTokens();
+  const result=await buy(gross+allowance,min);
+  assert(exit(result,curve,0));
+  const after=await state();
+  assert.equal(tokens,initial[5]-after[5]);
+  assert.equal((await buyerTokens())-held,tokens);
+  assert.equal(fee,after[6]-initial[6]);
+  assert.equal(consumed,after[4]-initial[4]+fee);
+  assert.equal(consumed+refund,gross);
+  assert.equal(graduated,after[0]===4n?-1n:0n);
+  if(refund>0n){
+   assert.equal(result.transactions.filter(({inMessage:m})=>m?.info.type==='internal'
+    &&m.info.src.equals(curve)&&m.info.dest.equals(f.owner.address)
+    &&m.info.value.coins===refund&&op(m)===0xd53276db).length,1);
+  }
+  return result;
+ };
  assert(exit(await buy(510000000000n,inventory+1n),curve,404));
  assert.deepEqual(await state(),before);
  assert.equal(await curveBalance(),balanceBefore);
 
  const snapshot=f.chain.snapshot();
+ await buyAndCheckQuote(300000000000n,1n);
  const boundary=[
   [303030303029n,299999999999n,666668n,3n],
   [303030303030n,300000000000n,1n,3n],
  ];
  for(const [gross,principal,remainder,stage] of boundary){
   await f.chain.loadFrom(snapshot);
-  assert(exit(await buy(gross+40000000n,inventory-remainder),curve,0));
+  await buyAndCheckQuote(gross,inventory-remainder);
   const after=await state();
   assert.equal(after[0],stage);
   assert.equal(after[4],principal);
   assert.equal(after[5],remainder);
   assert.equal(after[6],gross/100n);
  }
- assert(exit(await buy(51000000n,1n),curve,0));
+ await buyAndCheckQuote(11000000n,1n);
  assert.equal((await state())[0],4n);
  assert.equal((await state())[4],TON);
  assert.equal((await state())[5],0n);
  // The first gross sufficient under the normal floor-fee rule must clear.
  await f.chain.loadFrom(snapshot);
- const minimalCapped=await buy(303030303031n+40000000n,inventory);
- assert(exit(minimalCapped,curve,0));
+ await buyAndCheckQuote(303030303031n,inventory);
  assert.equal((await state())[4],TON);
  assert.equal((await state())[5],0n);
 
  const refunds=[];
- for(const attachment of [510000000000n,610000000000n]){
+ for(const attachment of [510000000000n,610000000000n,510040000000n,610040000000n]){
   await f.chain.loadFrom(snapshot);
-  const result=await buy(attachment,inventory);
-  assert(exit(result,curve,0));
+  const result=await buyAndCheckQuote(attachment-allowance,inventory);
   const after=await state(),principal=after[4]-before[4],fees=after[6]-before[6];
   assert.equal(after[0],4n);
   assert.equal(after[5],0n);
@@ -58,13 +87,20 @@ test('VNext caps an oversized purchase and returns the entire unspent principal'
   assert(result.transactions.some(({inMessage:m})=>m?.info.type==='internal'
     &&m.info.src.equals(curve)&&m.info.dest.equals(f.owner.address)
     &&m.info.value.coins===refund&&op(m)===0xd53276db));
-  const buyerWallet=core.contractAddress(0,{code:f.c.wallet,data:beginCell().storeCoins(0)
-    .storeAddress(f.owner.address).storeAddress(f.c.addresses.minter).storeRef(f.c.wallet).endCell()});
-  const delivered=await f.chain.runGetMethod(buyerWallet,'get_wallet_data');
-  assert.equal(delivered.stackReader.readBigNumber(),inventory);
+  assert.equal(await buyerTokens(),inventory);
   refunds.push(refund);
  }
  assert.equal(refunds[1]-refunds[0],100000000000n);
+ assert.equal(refunds[3]-refunds[2],100000000000n);
+ const settled=await state(),settledBalance=await curveBalance();
+ await assert.rejects(quoteV2(610000000000n),/402/);
+ assert(exit(await buy(610000000000n,1n),curve,402));
+ const forgedClaim=await f.send(curve,beginCell().storeUint(0x414e4c34,32).storeUint(100,64).endCell(),50000000n,f.other);
+ const forgedRoot=forgedClaim.transactions.find(tx=>tx.inMessage?.info.dest?.equals(curve));
+ assert.equal(forgedRoot.description.aborted,true);
+ assert([...forgedRoot.outMessages.values()].every(m=>m.info.type==='internal'&&m.info.bounced&&m.info.dest.equals(f.other.address)));
+ assert.deepEqual(await state(),settled);
+ assert.equal(await curveBalance(),settledBalance);
 
  // Same fee schedule that stranded the attachment on the previous code.
  await f.chain.loadFrom(snapshot);
@@ -103,6 +139,16 @@ test('VNext caps an oversized purchase and returns the entire unspent principal'
  assert.equal(returned[0].info.bounced,true);
  assert(returned[0].info.dest.equals(f.owner.address));
  assert.equal(returned[0].info.value.coins+returned[0].info.forwardFee+failedBuy.totalFees.coins,510000000000n);
+ // Inject a tiny, bounceable inbound directly so the sender's forwarding
+ // action does not mask the recipient's no-funds bounce under this fee schedule.
+ const {internal}=require('@ton/sandbox');
+ const tiny=await f.chain.sendMessage(internal({from:f.owner.address,to:curve,value:1000000n,bounce:true,
+  body:beginCell().storeUint(0x5fcc3d14,32).storeUint(101,64).storeCoins(1).endCell()}));
+ const tinyBuy=tiny.transactions.find(tx=>tx.inMessage?.info.dest?.equals(curve));
+ assert.equal(tinyBuy.description.aborted,true);
+ assert.equal(tinyBuy.description.bouncePhase.type,'no-funds');
+ assert.equal(tinyBuy.outMessages.size,0);
+ assert.deepEqual(await state(),before);
 });
 
 test('non-bounceable native excess credits a frozen buyer account without recipient code execution',async()=>{

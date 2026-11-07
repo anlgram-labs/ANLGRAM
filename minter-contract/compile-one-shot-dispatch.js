@@ -70,16 +70,68 @@ const int GAS_OVERHEAD_TRADE`);
    c=once(c,'\n    send_raw_message(msg.end_cell(), 1);\n}', '\n    send_raw_message(msg.end_cell(), send_mode);\n}');
    c=once(c,'forward,gas,cur_lt());','forward,gas,cur_lt(),1);');
    c=once(c,'1,35000000,query_id);','1,35000000,query_id,1);');
-   c=once(c,'int actualGross = (actual_net_ton * BPS_DENOMINATOR + netMultiplier - 1) / netMultiplier;',
-     'int actualGross = ((actual_net_ton - 1) * BPS_DENOMINATOR) / netMultiplier + 1;');
-   c=once(c,`        ;; Threshold Check
-        if (real_ton_reserve + actual_net_ton >= graduation_threshold_ton) {
-            will_graduate = 1;
-        }`,`        ;; Graduation requires the approved minimum principal and zero Curve inventory.
-        ;; A one-unit remainder at the exact threshold must remain purchasable.
-        will_graduate = (tokens_out == real_token_reserve);
-        throw_unless(ERROR_INVALID_STATE, (~ will_graduate) |
-            (real_ton_reserve + actual_net_ton >= graduation_threshold_ton));`);
+   const start=c.indexOf('        int fee_ton = (gross_ton_in * 100)');
+   const end=c.indexOf('        throw_unless(ERROR_SLIPPAGE_EXCEEDED, tokens_out >= min_tokens_out);',start);
+   if(start<0||end<0)throw Error('Buy calculation anchors');
+   c=c.slice(0,start)+`        (int tokens_out,int actual_fee_ton,int consumed,int excess_ton,int will_graduate) =
+            calculate_buy(gross_ton_in,real_ton_reserve,real_token_reserve,
+                virtual_ton_reserve,virtual_token_reserve,graduation_threshold_ton);
+        int actual_net_ton = consumed - actual_fee_ton;
+
+`+c.slice(end);
+   c=once(c,`        int excess_ton = gross_ton_in - actual_net_ton - actual_fee_ton;
+        throw_unless(ERROR_INVALID_STATE, excess_ton >= 0);
+`,'');
+   c=once(c,'() recv_internal(int my_balance',`;; Gross excludes the operating allowance. Both the getter and buy use this exact split.
+(int,int,int,int,int) calculate_buy(int gross,int real_ton,int inventory,int virtual_ton,int virtual_tokens,int threshold) inline {
+    throw_unless(ERROR_ZERO_INPUT,gross >= 0);
+    if (gross == 0) { return (0,0,0,0,0); }
+    int fee = (gross * 100) / BPS_DENOMINATOR;
+    int net = gross - fee;
+    int x = real_ton + virtual_ton;
+    int out = ((inventory + virtual_tokens) * net) / (x + net);
+    if (out >= inventory) {
+        out = inventory;
+        if (virtual_tokens > 0) {
+            int k = virtual_ton * (800000000000000000 + virtual_tokens);
+            int required_x = (k + virtual_tokens - 1) / virtual_tokens;
+            if (required_x > x) {
+                net = required_x - x;
+                ;; Invert gross - floor(gross * 100 / 10000) at its first exact value.
+                int consumed = ((net - 1) * BPS_DENOMINATOR) / (BPS_DENOMINATOR - 100) + 1;
+                fee = consumed - net;
+            }
+        }
+    }
+    int graduated = (out == inventory);
+    int consumed = net + fee;
+    throw_unless(ERROR_INVALID_STATE, consumed <= gross);
+    throw_unless(ERROR_INVALID_STATE, (~ graduated) | (real_ton + net >= threshold));
+    return (out,fee,consumed,gross - consumed,graduated);
+}
+
+() recv_internal(int my_balance`);
+   const quoteStart=c.indexOf('(int, int) get_buy_quote(');
+   const quoteEnd=c.indexOf('\n}',quoteStart);
+   if(quoteStart<0||quoteEnd<0)throw Error('Buy getter anchors');
+   c=c.slice(0,quoteStart)+`(int,int,int,int,int) quote_current_buy(int gross_ton_amount,int require_active) inline {
+    (int state,_,_,_,_,_,_,_,_,int real_ton,int inventory,_,_,
+        int virtual_ton,int virtual_tokens,int threshold,_,_,_) = load_data();
+    if (require_active) {
+        throw_unless(ERROR_CURVE_NOT_ACTIVE,state == STATE_ACTIVE);
+        throw_unless(ERROR_INSUFFICIENT_GAS,gross_ton_amount > 10000000);
+    }
+    return calculate_buy(gross_ton_amount,real_ton,inventory,virtual_ton,virtual_tokens,threshold);
+}
+
+(int,int,int,int,int) get_buy_quote_v2(int gross_ton_amount) method_id {
+    return quote_current_buy(gross_ton_amount,-1);
+}
+
+(int, int) get_buy_quote(int gross_ton_amount) method_id {
+    (int tokens,int fee,_,_,_) = quote_current_buy(gross_ton_amount,0);
+    return (tokens,fee);
+`+c.slice(quoteEnd);
    c=once(c,'        real_ton_reserve += actual_net_ton;',`        ;; Reject non-bounceable buy requests before accepting a trade.
         throw_unless(ERROR_INVALID_STATE, flags & 2);
         (int buyer_wc,_) = parse_std_addr(sender_address);
