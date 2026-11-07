@@ -141,6 +141,26 @@ async function runWorkerAudit() {
       assert.strictEqual(lastUpstreamUrl, `https://tonapi.io/v2/blockchain/accounts/${rawAddr}/methods/get_jetton_data`);
     });
 
+    await test('VNext quote: verified method route forwards one bounded hexadecimal amount without writes', async () => {
+      const addr = '0:fe3d356840b2d0a299b28ad217878bc657f03b911f5ca7f8fd40b3dfd2371831';
+      const req = new Request(`https://anlgram.com/api/ton/blockchain/accounts/${addr}/methods/get_buy_quote_v2?args=0x46bcd9000`, { method: 'GET' });
+      const res = await worker.fetch(req, env, ctx);
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(lastUpstreamUrl, `https://tonapi.io/v2/blockchain/accounts/${addr}/methods/get_buy_quote_v2?args=0x46bcd9000`);
+      assert.strictEqual(res.headers.get('Cache-Control'), 'public, max-age=0');
+    });
+
+    await test('VNext quote: zero, missing, duplicate or malformed args are blocked before upstream', async () => {
+      const addr = '0:fe3d356840b2d0a299b28ad217878bc657f03b911f5ca7f8fd40b3dfd2371831';
+      for (const suffix of ['', '?args=0x0', '?args=1', '?args=0x10&args=0x20', '?args=0x10&limit=1', '?args=0x1234567890abcdef0123']) {
+        lastUpstreamUrl = null;
+        const req = new Request(`https://anlgram.com/api/ton/blockchain/accounts/${addr}/methods/get_buy_quote_v2${suffix}`, { method: 'GET' });
+        const res = await worker.fetch(req, env, ctx);
+        assert.strictEqual(res.status, 400);
+        assert.strictEqual(lastUpstreamUrl, null);
+      }
+    });
+
     await test('ALTO-03: worker.fetch permits /accounts/:wallet/jettons/:minter with both friendly and encoded raw addresses -> HTTP 200', async () => {
       const walletRaw = '0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d';
       const minterFriendly = 'EQD-PTVoQLLQopmyitIXh4vGV_A7kR9cp_j9QLPf0jcYMaOe';
