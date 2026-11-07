@@ -37,7 +37,7 @@ test('Exact 510 TON live quote: verifies bytecode, getter, fee and refund',async
   assert.equal(got.refundNano,206969696969n);
   assert.equal(got.willGraduate,true);
   assert.equal(seen.length,2);
-  assert(seen[1].endsWith('/methods/get_buy_quote_v2?args=0x76bd3b8e00'));
+  assert(seen[1].endsWith('/methods/get_buy_quote_v2?args=0x76be5e6c00'));
 });
 test('Unreviewed bytecode is rejected before reading any getter',async()=>{
   const seen=[],fixture=onchainRequest({hash:'00'.repeat(32),seen});
