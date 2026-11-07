@@ -51,6 +51,27 @@ function returnLeg(original, funded, fundingBounced, inTransit, curveBooked) {
   notBookedByCurve: remaining.toString(), dexTerminalOutcome: 'UNKNOWN'};
 }
 
+// Projection only: source checkpoints must be independently verified and matched
+// to the same operation before this function is called. Graduation is not DEX
+// settlement. Curve's spendable reserve is zero after principal handoff.
+export function isCurveGraduatedAtCheckpoint(curve, migration) {
+ if (!curve || !Number.isInteger(curve.stage) || curve.stage < 4 || curve.stage > 7 ||
+     curve.curveTokenUnits !== '0' || !/^\\d+$/.test(String(curve.thresholdNano)) ||
+     BigInt(curve.thresholdNano) === 0n) return false;
+ if (curve.stage === 4) {
+  return /^\\d+$/.test(String(curve.reserveNano)) &&
+    BigInt(curve.reserveNano) >= BigInt(curve.thresholdNano);
+ }
+ const l = migration?.lifecycle;
+ return migration?.activeOperationId === curve.operationId &&
+   l?.dexDispatched === '1' &&
+   /^\\d+$/.test(String(l.originalTonNano)) &&
+   BigInt(l.originalTonNano) >= BigInt(curve.thresholdNano) &&
+   /^\\d+$/.test(String(l.originalJettonUnits)) &&
+   BigInt(l.originalJettonUnits) > 0n &&
+   /^\\d+$/.test(String(curve.reserveNano));
+}
+
 // Internal status projection. Identity and the previous checkpoint come from
 // the server's project context. Clients cannot submit evidence to this path.
 export function generation2Status(identity, {checkpoint, previous, curveCheckpoint, evidence = []} = {}) {
@@ -95,7 +116,7 @@ export function generation2Status(identity, {checkpoint, previous, curveCheckpoi
     c.operationId!==result.operationId||p.masterchainSeqno!==proof.masterchainSeqno||
     p.masterchainRootHash!==proof.masterchainRootHash||p.masterchainFileHash!==proof.masterchainFileHash)throw Error('Wrong curve checkpoint');
   result.curve={address:c.address,thresholdNano:c.thresholdNano,reserveNano:c.reserveNano,inventoryUnits:c.curveTokenUnits,
-   graduated:c.stage>=4&&c.stage<=7&&c.curveTokenUnits==='0'&&BigInt(c.reserveNano)>=BigInt(c.thresholdNano),proof:p};
+   graduated:isCurveGraduatedAtCheckpoint(c,checkpoint),proof:p};
  }
  const life = checkpoint.lifecycle;
  if (checkpoint.activeOperationId === result.operationId && life) {
