@@ -2928,7 +2928,7 @@
         'Code hash verified: '+item.codeHash,
         'Observed: '+item.observedAt,
         'Read-only observation; NOT a transaction approval or guaranteed execution price.'
-      ].join('\\n');
+      ].join('\n');
     } catch (e) {
       if (!isCurrent(requestId, values)) return;
       output.textContent = 'On-chain quote unavailable: '+String(e?.message||'unknown error')+
