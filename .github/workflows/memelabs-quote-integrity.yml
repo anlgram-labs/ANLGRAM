@@ -26,5 +26,7 @@ jobs:
           node-version: '22'
       - name: Verify on-chain quote adapter and accounting
         run: node --test test-curve-vnext-live-quote.js
+      - name: Verify stale quote cancellation and input binding
+        run: node --test test-curve-vnext-quote-ui.js
       - name: Verify TonAPI proxy route and parameter restrictions
         run: node test-worker-deep-audit.js
