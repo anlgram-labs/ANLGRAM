@@ -1,0 +1,103 @@
+;; ANLGRAM LP withdrawal escrow (F-04 candidate). NOT deployed, NOT wired.
+;; One escrow per Locker withdrawal request q. The immutable StateInit commits
+;; locker, recipient, pool, q, exact amount and LP wallet code. The Locker debits its
+;; accounting once and sends the LP principal here exactly once. From then on the LP
+;; wallet itself enforces balance conservation, so redelivery is retry-safe and can
+;; never draw on the Locker's remaining principal. Excess or other callbacks are never
+;; delivery evidence; this contract never asserts final delivery on-chain.
+#include "imports/stdlib.fc";
+#include "imports/params.fc";
+#include "imports/jetton-utils.fc";
+#pragma version >=0.2.0;
+
+const int OP_ARM = 0x414c563c;
+const int OP_ESCROWED = 0x414c563a;
+const int OP_DELIVER = 0x414c563d;
+const int OP_TRANSFER_NOTIFICATION = 0x7362d09c;
+const int ACK_VALUE = 20000000;
+const int DELIVER_MIN_VALUE = 120000000;
+
+;; data: funded:Coins acked:uint1 ^params ^lp_code
+;; params: locker recipient pool q:uint64 amount:Coins
+(int,int,slice,slice,slice,int,int,cell) load_escrow() inline {
+    slice s = get_data().begin_parse();
+    int funded = s~load_coins();
+    int acked = s~load_uint(1);
+    slice p = s~load_ref().begin_parse();
+    cell lp_code = s~load_ref();
+    s.end_parse();
+    slice locker = p~load_msg_addr();
+    slice recipient = p~load_msg_addr();
+    slice pool = p~load_msg_addr();
+    int q = p~load_uint(64);
+    int amount = p~load_coins();
+    p.end_parse();
+    return (funded, acked, locker, recipient, pool, q, amount, lp_code);
+}
+() save_escrow(int funded, int acked) impure inline {
+    slice s = get_data().begin_parse();
+    s~load_coins(); s~load_uint(1);
+    set_data(begin_cell().store_coins(funded).store_uint(acked, 1).store_slice(s).end_cell());
+}
+() send_lp(slice wallet, int q, int amount, slice to, int value, int mode) impure inline {
+    cell transfer = begin_cell().store_uint(0x0f8a7ea5, 32).store_uint(q, 64).store_coins(amount)
+        .store_slice(to).store_slice(to).store_uint(0, 1).store_coins(0).store_uint(0, 1).end_cell();
+    send_raw_message(begin_cell().store_uint(0x18, 6).store_slice(wallet).store_coins(value)
+        .store_uint(1, 107).store_ref(transfer).end_cell(), mode);
+}
+
+() recv_internal(int balance, int value, cell message, slice body) impure {
+    if (body.slice_empty?()) { return (); }
+    slice h = message.begin_parse();
+    int flags = h~load_uint(4);
+    if (flags & 1) { return (); } ;; bounces are never evidence, never state
+    slice sender = h~load_msg_addr();
+    int op = body~load_uint(32);
+    int query = body~load_uint(64);
+    (int funded, int acked, slice locker, slice recipient, slice pool, int q, int amount, cell lp_code) = load_escrow();
+    slice wallet = calculate_user_jetton_wallet_address(my_address(), pool, lp_code);
+
+    if (op == OP_ARM) {
+        throw_unless(401, equal_slices(sender, locker));
+        throw_unless(409, query == q);
+        return ();
+    }
+    if (op == OP_TRANSFER_NOTIFICATION) {
+        ;; Only this escrow's own LP wallet emits this, and only after crediting it.
+        throw_unless(401, equal_slices(sender, wallet));
+        throw_unless(409, query == q);
+        int received = body~load_coins();
+        throw_unless(401, equal_slices(body~load_msg_addr(), locker));
+        funded += received;
+        if ((acked == 0) & (funded >= amount)) {
+            acked = 1;
+            save_escrow(funded, acked);
+            ;; Informational acknowledgement; the Locker applies it only for the exact escrow address.
+            cell ack = begin_cell().store_uint(OP_ESCROWED, 32).store_uint(q, 64).store_coins(amount).end_cell();
+            send_raw_message(begin_cell().store_uint(0x10, 6).store_slice(locker).store_coins(ACK_VALUE)
+                .store_uint(1, 107).store_ref(ack).end_cell(), 1);
+            send_lp(wallet, q, amount, recipient, 0, 64 + 2);
+            return ();
+        }
+        save_escrow(funded, acked);
+        return ();
+    }
+    if (op == OP_DELIVER) {
+        ;; Recipient-only retry. The LP wallet rejects a transfer larger than its actual balance.
+        throw_unless(401, equal_slices(sender, recipient));
+        throw_unless(409, query == q);
+        throw_unless(407, value >= DELIVER_MIN_VALUE);
+        body.end_parse();
+        send_lp(wallet, q, amount, recipient, 0, 64);
+        return ();
+    }
+    throw(404);
+}
+
+;; funded, acked, amount, q, locker, recipient, pool, lp wallet
+(int,int,int,int,slice,slice,slice,slice) get_escrow_v1() method_id {
+    (int funded, int acked, slice locker, slice recipient, slice pool, int q, int amount, cell lp_code) = load_escrow();
+    return (funded, acked, amount, q, locker, recipient, pool,
+        calculate_user_jetton_wallet_address(my_address(), pool, lp_code));
+}
+
