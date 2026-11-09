@@ -30,7 +30,8 @@
 #include "imports/jetton-utils.fc";
 #pragma version >=0.2.0;
 #include "imports/settlement-protocol.fc";
-#include "imports/settlement-wallet-code.fc";
+#include "imports/dispatch-sell-wallet-code.fc";
+#include "imports/dispatch-sell-custody.fc";
 
 ;; State Machine Constants
 const int STATE_UNINITIALIZED           = 0;
@@ -577,6 +578,7 @@ int settlement_enabled() inline {
         cell migration_init = in_msg_body~load_ref();cell guard_init = in_msg_body~load_ref();in_msg_body.end_parse();
         validate_v2_migrator(migration_init,new_migration_router,my_address(),new_locker,new_router,new_master,admin_address);
         cell next_cfg = validate_guard_vnext(guard_init,migration_init,my_address(),new_migration_router,new_locker,new_master);pending_refunds_dict~udict_set_ref(256,vn_config_key(),next_cfg);
+        throw_unless(ERROR_INVALID_RENOUNCE, cell_hash(new_wallet_code) == SETTLEMENT_WALLET_CODE_HASH);
         ;; Protocol selection is immutable genesis configuration, not an admin downgrade.
         throw_unless(ERROR_INVALID_RENOUNCE,cell_hash(new_wallet_code) == cell_hash(jetton_wallet_code));
 
@@ -614,6 +616,8 @@ int settlement_enabled() inline {
         ;; SUB-FLOW A: Initial 1B Token Custody Receipt
         if (state == STATE_INITIALIZING) {
             throw_if(408, migration_router_address.preload_uint(2) == 0);
+            throw_unless(ERROR_INVALID_STATE, sell_custody_marker?(in_msg_body));
+            throw_unless(ERROR_INVALID_STATE, from_address.preload_uint(2) == 0);
             int total_expected = real_token_reserve + dex_tokens_escrow;
             throw_unless(ERROR_TOTAL_SUPPLY_MISMATCH, token_amount == total_expected);
 
@@ -674,7 +678,18 @@ int settlement_enabled() inline {
 
         ;; SUB-FLOW B: Token Sell Order
         ;; If curve is NOT active or graduated -> Trigger Safe Refund!
-        if (state != STATE_ACTIVE) {
+        if (token_amount == 0) { return (); }
+        ;; The Curve wallet funds even tiny notifications from the seller's
+        ;; attachment. Before staging any sell actions, check that compute
+        ;; and forwarding fees fit and that booked TON is physically backed.
+        int pre_message_balance = my_balance - msg_value;
+        int payout_fee_bound = buy_forward_fee(1, 1023, 0);
+        int compute_budget = max(COMPUTE_GAS_RESERVE, sell_notification_floor());
+        int can_pay = (msg_value >= compute_budget + payout_fee_bound)
+            & (pre_message_balance >= real_ton_reserve + accrued_protocol_fees);
+        available_gas = msg_value - compute_budget - 3 * payout_fee_bound;
+        can_immediate_refund = can_pay & (available_gas >= MIN_REFUND_GAS);
+        if ((state != STATE_ACTIVE) | (~ can_pay)) {
             if (can_immediate_refund) {
                 ;; Correlate refund delivery and fund it from this notification only.
                 ;; A 0.01 TON notification can exceed the sender wallet gas budget.
@@ -728,7 +743,7 @@ int settlement_enabled() inline {
         int gross_ton_out = (X * token_amount) / (Y + token_amount);
 
         ;; Solvency Guard: Payout cannot exceed real TON reserve
-        if (gross_ton_out > real_ton_reserve) {
+        if ((gross_ton_out == 0) | (gross_ton_out > real_ton_reserve)) {
             if (can_immediate_refund) {
                 ;; Correlate refund delivery and fund it from this notification only.
                 ;; A 0.01 TON notification can exceed the sender wallet gas budget.
@@ -815,6 +830,9 @@ int settlement_enabled() inline {
             .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
             .store_uint(op::excesses(), 32)
             .store_uint(query_id, 64);
+        ;; Keep the remaining principal, protocol fees and all old surplus
+        ;; reserved. The exact net payout is the only spend from old balance.
+        raw_reserve(pre_message_balance - net_ton_out, 0);
         send_raw_message(p_msg.end_cell(), 1);
         return ();
     }

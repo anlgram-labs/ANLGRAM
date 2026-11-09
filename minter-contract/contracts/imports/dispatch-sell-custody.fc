@@ -1,0 +1,16 @@
+;; Dispatch genesis opts only the Curve's wallet into funded notifications.
+const int SELL_CUSTODY_MARKER = 0x414e5343;
+;; Allow for the Curve's storage writes, including a deep refund dictionary.
+const int SELL_COMPUTE_GAS_UNITS = 40000;
+int sell_compute_budget(int gas, int masterchain) asm "GETGASFEE";
+
+int sell_notification_floor() inline {
+    return sell_compute_budget(SELL_COMPUTE_GAS_UNITS, 0);
+}
+
+int sell_custody_marker?(slice payload) inline {
+    if ((payload.slice_bits() == 33) & (payload.slice_refs() == 0)) {
+        return payload.preload_uint(33) == SELL_CUSTODY_MARKER;
+    }
+    return 0;
+}

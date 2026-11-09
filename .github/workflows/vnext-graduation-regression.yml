@@ -10,12 +10,15 @@ on:
       - 'testnet-interface/projects/project-registry.mjs'
       - 'testnet-interface/project-registry-worker.mjs'
       - 'testnet-interface/testnet-release-plan.mjs'
+      - 'testnet-interface/build.mjs'
       - 'testnet-interface/test/memelabs-security.test.mjs'
       - 'testnet-interface/package.json'
       - 'testnet-interface/package-lock.json'
       - 'minter-contract/compile-one-shot-dispatch.js'
+      - 'minter-contract/compile-vesting-v2.js'
       - 'minter-contract/contracts/**'
       - 'minter-contract/build/anlgram-*-dispatch-v2.compiled.json'
+      - 'minter-contract/build/anlgram-dispatch-sell-wallet.compiled.json'
       - 'tests/settlement-runtime/**'
       - '.github/workflows/vnext-graduation-regression.yml'
   workflow_dispatch:
@@ -55,6 +58,7 @@ jobs:
         working-directory: .
         run: |
           node minter-contract/compile-one-shot-dispatch.js --check
-          node --test --test-concurrency=1 tests/settlement-runtime/sell-action-phase-safety.test.js tests/settlement-runtime/graduation-reference.test.js tests/settlement-runtime/one-shot-dispatch.test.js tests/settlement-runtime/mvp-v5-lifecycle.test.js tests/settlement-runtime/lpaccount-settlement-evidence.test.js testnet-interface/test/generation2-status.test.mjs testnet-interface/test/testnet-release-plan.test.mjs testnet-interface/test/trusted-project-registration.test.mjs
+          node minter-contract/compile-vesting-v2.js --dispatch --check
+          node --test --test-concurrency=1 tests/settlement-runtime/sell-action-phase-safety.test.js tests/settlement-runtime/graduation-reference.test.js tests/settlement-runtime/one-shot-dispatch.test.js tests/settlement-runtime/mvp-v5-lifecycle.test.js tests/settlement-runtime/lpaccount-settlement-evidence.test.js testnet-interface/test/generation2-status.test.mjs testnet-interface/test/testnet-release-plan.test.mjs testnet-interface/test/trusted-project-registration.test.mjs testnet-interface/test/vesting-v2-lifecycle.test.mjs
       - name: Build the Pages candidate without deploying
         run: npm run build:pages

@@ -5,7 +5,11 @@ import artifact from '../../minter-contract/build/anlgram-bonding-curve-dispatch
 
 const need=(ok,message)=>{if(!ok)throw Error(message);};
 const hash=cell=>cell.hash().toString('hex');
-const curveCode=Cell.fromBase64(artifact.codeBocBase64);
+const curveCodeHashes=new Set([
+ // PR #49 verified historical account cells against this exact Curve code.
+ '5247d2d6e5a0e5705e6d2d6e4b3177fe6bd6df8160e10bc1ac924ed4c3169028',
+ hash(Cell.fromBase64(artifact.codeBocBase64))
+]);
 
 function root(boc) {
  need(typeof boc==='string'&&boc.length>0&&boc.length<524288,'Bounded BOC required');
@@ -23,7 +27,7 @@ function curveData(boc,expectedHash,curve) {
  slice.endParse();
  const state=account.storage.state;
  need(account.addr.equals(curve)&&state.type==='active'&&state.state.data&&
-  state.state.code?.equals(curveCode),'Pinned active Dispatch Curve required');
+  state.state.code&&curveCodeHashes.has(hash(state.state.code)),'Pinned active Dispatch Curve required');
  return state.state.data;
 }
 

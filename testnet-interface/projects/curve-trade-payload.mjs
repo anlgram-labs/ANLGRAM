@@ -66,7 +66,7 @@ export function prepareCurveTrade({record,checkpoint:cp,owner,side,amount,slippa
   if(gross>reserve)throw Error('Sell exceeds available Curve principal');
   fee=gross/100n;
   expectedOut=gross-fee;
-  const walletCode=code('anlgram-settlement-wallet');
+  const walletCode=code('anlgram-dispatch-sell-wallet');
   const data=beginCell().storeCoins(0).storeAddress(wallet.address).storeAddress(Address.parseRaw(cp.project))
    .storeRef(walletCode).endCell();
   destination=contractAddress(0,{code:walletCode,data});
