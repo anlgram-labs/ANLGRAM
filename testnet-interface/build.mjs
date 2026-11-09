@@ -34,6 +34,7 @@ versionSources.push('projects/standard-testnet-release.mjs','projects/prepare.mj
 versionSources.push('../minter-contract/build/standard-jetton-settlement-wallet.compiled.json','../minter-contract/build/anlgram-vesting-wallet-standard-v2.compiled.json','projects/distribution-receipts.mjs','projects/reviewed-standard-operator.mjs',
  'projects/curve-trade-payload.mjs','projects/launchpad-gen2-operations.mjs','testnet-release-plan.mjs',
  '../minter-contract/build/anlgram-dispatch-sell-wallet.compiled.json',
+ '../minter-contract/build/anlgram-vesting-wallet-dispatch-v2.compiled.json',
  '../minter-contract/build/anlgram-bonding-curve-dispatch-v2.compiled.json',
  '../minter-contract/build/anlgram-migration-router-dispatch-v2.compiled.json');
 const execution={schema:1,candidateSha256:historicalSha256,releaseCandidateSha256:active.candidateSha256,releaseCandidateStateInitMismatches,sources:Object.fromEntries(versionSources.map(file=>[file,sourceSha256(readFileSync(new URL(file,import.meta.url)))]))};

@@ -19,10 +19,11 @@ The tests verify both actual Jetton balances, the seller and bystander dictionar
 | Dispatch Curve | `5247d2d6e5a0e5705e6d2d6e4b3177fe6bd6df8160e10bc1ac924ed4c3169028` | `5746848a31ec5b3ed8e52e250ff9d7ef9b2c3e3f73f643363b4c8e32dea26d41` |
 | Dispatch migration router | `8bffcb5b658b0a5e9a7aad16dab88fbb461bcc54c0533bfe18371a680f8405ab` | `eb07be3d274c6c256cfa3a98c182510b19f5572db50e5665567efe7ad0160ed4` |
 | Dispatch wallet | Uses the shared wallet below | `a0bdb67d08f7e62d9c3632d3d44de69b0267900de9754987b5f0574c27d0ea59` |
+| Dispatch Vesting V2 | Uses the shared Vesting V2 profile | `58dbb5c5f6518d97acf5ac2a98c566eeb35c956726b0fba0f9c8da2c6b2d1be4` |
 | Shared settlement wallet | `e21136c0ea3074a48addec49215af2d8d20125b4cc61a564a1a37d37667b58a2` | Same |
 | VNext Guard | `81edd2ba7ac98f61ea5da6097d8e79b648efaf2cbb2c1f5d9876d8146b053320` | Same |
 
-The migration-router bytecode change pins the Dispatch wallet identity. The package and unsigned sell preparation derive the seller wallet with the new code. The existing verifier still accepts the exact historical PR #49 Curve code for native buy failure evidence. The price formula, 1% trade fee, 300 TON graduation, 80/20 split and approved allocation terms are preserved.
+The migration-router bytecode change pins the Dispatch wallet identity. The package and unsigned sell preparation derive the seller wallet with the new code. The Dispatch Vesting V2 artifact uses the same authenticated wallet protocol with the new wallet pin. The shared Vesting V2 code stays at `942578b7bf6585f16be69b531b0bc4266bfdda5085c87a63a89a7183d6d87953` and Standard Vesting V2 stays at `d436ede674ef3c17781dbf8c4a850e57b114342559dabb8a2405dc050bc2cda9`. The existing verifier still accepts the exact historical PR #49 Curve code for native buy failure evidence. The price formula, 1% trade fee, 300 TON graduation, 80/20 split and approved allocation terms are preserved.
 
 The evidence covers fresh Dispatch StateInit and source-compiled Sandbox. A previously lost deposit does not acquire a retroactive claim. A frozen or otherwise unavailable Curve account and live fee schedules require separate review before release. Gate 414, Testnet financial execution and Mainnet financial execution remain closed.
 
@@ -32,8 +33,10 @@ Install lockfile dependencies in `testnet-interface`, `minter-contract` and `tes
 
 ```sh
 node minter-contract/compile-one-shot-dispatch.js --check
+node minter-contract/compile-vesting-v2.js --dispatch --check
 node --test --test-concurrency=1 tests/settlement-runtime/sell-action-phase-safety.test.js
 node --test --test-concurrency=1 tests/settlement-runtime/*.test.js
+node --test --test-concurrency=1 testnet-interface/test/vesting-v2-lifecycle.test.mjs
 ```
 
 To reproduce the original red comparison, copy only the current `sell-action-phase-safety.test.js` into a checkout of the exact PR #52 head with the same locked dependencies. Run the two named tests below against that checkout's original sources and artifacts. The test diagnostics print the failed transaction phases and the unchanged zero claim.
@@ -43,3 +46,5 @@ node --test --test-concurrency=1 --test-name-pattern 'never debit|unfunded payou
 ```
 
 The workflow `vnext-graduation-regression.yml` also runs the release-gate, graduation, native refund, registration and real STON.fi Sandbox regression tests and builds the Pages candidate in dry-run mode.
+
+The broader Sandbox command recorded 229 passes and six failures, with zero skips. All six failures reproduced separately at the PR #52 base. They cover legacy allocation and StateInit expectations, legacy 500 TON graduation assertions, and legacy post-funding grant revocation. The branch preserves those assertions and the approved 300 TON Dispatch economics.
