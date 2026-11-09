@@ -55,7 +55,7 @@
     "projects/project-lp-acquisition.mjs": "274d7ff30f72c3822b7701adfbbe8cbac2a88d3130d607651083a2ec7e9ca57b",
     "projects/lp-evidence.mjs": "1119daa09391db830239db61ca7cbea5478370ed9e47834098154b67f55accfa",
     "projects/migration-account.mjs": "d2e2226a0b756506d4e969d1a397ba2043e7c4f595795dccfe1e7c3b70654e88",
-    "projects/migration-status.mjs": "03d98f49749570ab2363745437e724cf3e63b08d369747601228bd3ddfcbbaab",
+    "projects/migration-status.mjs": "807ace6e9dfb23b1780deef2b8c50c607a27cdb9ce75489f5cb5266226608075",
     "projects/evidence-brand.mjs": "0384aa8632c250aecbfc085d150be71909e3e31f17df71c76dcfb188881b767d",
     "wizard/preparation-model.mjs": "702c03755d8428c1a77870fdf45ddd28ecafb366fdbc14b9a51b89175cc5acff",
     "wizard/model.mjs": "5a1cdd6896610fbfcf89620cad8240ad9a3df867c1a696627b7822bfed650a98",
@@ -65,5 +65,5 @@
     "projects/distribution-receipts.mjs": "1b0f1b74d682004f1cc7b30cd6f16e05b76b37b45d1dc4af07b049c07d2d156d",
     "projects/reviewed-standard-operator.mjs": "0e8d7579ff186d7b3777c286b320436e787428e7255b30687f2f6149a8735a91"
   },
-  "sha256": "a307bc0a4f3903a4fe7f1157e4e60bdc2ef518fa9e4177e9d29872bec256cbe1"
+  "sha256": "2e64eb734f9b83516d3093fd65949d04a45fbf80b3ab94a2d281e4feecce9104"
 }

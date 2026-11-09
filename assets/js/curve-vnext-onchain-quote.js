@@ -46,7 +46,7 @@
   }
   function parseQuote(result,gross) {
     if (typeof gross!=='bigint'||gross<=0n) throw Error('Invalid gross quote amount');
-    if (!result||result.success===false||Number(result.exit_code??result.exitCode)!==0) throw Error('Getter did not complete successfully');
+    if (!result||result.success!==true||result.exit_code!==0) throw Error('Getter did not complete successfully');
     const stack=result.stack??result.result?.stack;
     if (!Array.isArray(stack)||stack.length!==5) throw Error('Unexpected VNext getter result');
     const [tokens,fee,consumed,refund,graduation]=stack.map(parseNumber);

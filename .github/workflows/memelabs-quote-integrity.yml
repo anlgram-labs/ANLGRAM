@@ -5,8 +5,11 @@ on:
     paths:
       - 'assets/js/curve-vnext-onchain-quote.js'
       - 'cloudflare-worker/worker.js'
+      - 'server.js'
       - 'memecoin-platform.html'
       - 'test-curve-vnext-live-quote.js'
+      - 'test-curve-vnext-quote-ui.js'
+      - 'minter-contract/build/anlgram-bonding-curve-dispatch-v2.compiled.json'
       - 'test-worker-deep-audit.js'
       - '.github/workflows/memelabs-quote-integrity.yml'
   workflow_dispatch:

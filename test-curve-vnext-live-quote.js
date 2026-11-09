@@ -102,3 +102,20 @@ test('Reject malformed tuples and floats while accepting exact provider numeric 
   assert.throws(()=>live.parseQuote({success:true,exit_code:0,stack:[['num','100','unexpected'],...valid.slice(1)]},10000n),/Malformed TVM stack/);
   assert.throws(()=>live.parseQuote({success:true,exit_code:0,stack:[['num','1.5'],...valid.slice(1)]},10000n),/Invalid TVM numeric/);
 });
+
+test('Reject ambiguous stack objects and unsuccessful or mistyped TonAPI results',()=>{
+  const stack=[['num','100'],['num','100'],['num','10000'],['num','0'],['num','0']];
+  for(const entry of [{num:'100'},{type:'num',num:'100',value:'101'}]){
+    assert.throws(()=>live.parseQuote({success:true,exit_code:0,stack:[entry,...stack.slice(1)]},10000n),/stack/i);
+  }
+  for(const flags of [{success:false,exit_code:0},{exit_code:0},{success:true,exit_code:'0'},
+    {success:true,exit_code:false},{success:true,exit_code:null},{success:true,exit_code:405}]){
+    assert.throws(()=>live.parseQuote({...flags,stack},10000n),/did not complete/);
+  }
+});
+
+test('Public quote hash pins the exact source-verified Dispatch Curve artifact',()=>{
+  const artifact=require('./minter-contract/build/anlgram-bonding-curve-dispatch-v2.compiled.json');
+  assert.equal(live.CURVE_CODE_HASH,artifact.codeCellHash);
+  assert.equal(artifact.financialDeploymentAuthorized,false);
+});

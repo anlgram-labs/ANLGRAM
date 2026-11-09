@@ -250,6 +250,37 @@ async function runWorkerAudit() {
     assert.strictEqual(res.status, 400);
   });
 
+  await test('Node and Cloudflare quote proxies reject oversized and duplicate inputs and never reuse a quote', async () => {
+    const {server}=require('./server.js');
+    const route='/api/ton/blockchain/accounts/0:'+'11'.repeat(32)+'/methods/get_buy_quote_v2';
+    const upstream=[];
+    await new Promise((resolve,reject)=>server.once('error',reject).listen(0,'127.0.0.1',resolve));
+    global.fetch=async(url,options)=>{
+      assert.equal(options.method,'GET');
+      upstream.push(String(url));
+      return Response.json({success:true});
+    };
+    try {
+      const local='http://127.0.0.1:'+server.address().port;
+      for(const query of ['?args=0x'+(1000000000000001n).toString(16),'?args=0x1&args=0x2']){
+        assert.equal((await origFetch(local+route+query)).status,400);
+        assert.equal((await worker.fetch(new Request('https://anlgram.com'+route+query),env,ctx)).status,400);
+      }
+      assert.equal(upstream.length,0);
+      for(let i=0;i<2;i++){
+        const res=await origFetch(local+route+'?args=0x1000000');
+        assert.equal(res.status,200);
+        assert.equal(res.headers.get('cache-control'),'no-store');
+        await res.json();
+      }
+      assert.equal(upstream.length,2);
+      assert.equal(upstream[0],upstream[1]);
+    } finally {
+      global.fetch=origFetch;
+      await new Promise(resolve=>server.close(resolve));
+    }
+  });
+
   await test('Permits whitelisted query parameters args and supported_extensions in both Worker and server.js', async () => {
     const srv = require('./server.js');
     assert.strictEqual(worker.ALLOWED_QUERY_PARAMS.has('args'), true);

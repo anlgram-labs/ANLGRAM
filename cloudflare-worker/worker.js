@@ -368,7 +368,8 @@ const workerHandler = {
     const isVnextBuyQuote = Boolean(methodMatch && methodMatch[2] === 'get_buy_quote_v2');
     if (isVnextBuyQuote) {
       const args = url.searchParams.getAll('args');
-      if (url.searchParams.size !== 1 || args.length !== 1 || !/^0x[0-9a-fA-F]{1,18}$/.test(args[0]) || BigInt(args[0]) === 0n) {
+      if (url.searchParams.size !== 1 || args.length !== 1 || !/^0x[0-9a-fA-F]{1,18}$/.test(args[0]) ||
+          BigInt(args[0]) === 0n || BigInt(args[0]) > 1000000000000000n) {
         return jsonResponse({ error: 'Bad Request', message: 'VNext quote requires one positive bounded hex args value' }, 400, corsHeaders);
       }
     }
