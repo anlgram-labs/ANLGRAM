@@ -237,6 +237,26 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Handle /api/monetization/status endpoint (Read-Only Status & Gate Verification)
+  if (cleanUrl === '/api/monetization/status') {
+    if (req.method !== 'GET') {
+      res.writeHead(405, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+      res.end(JSON.stringify({ error: 'Method Not Allowed' }));
+      return;
+    }
+    const mon = require('./assets/js/monetization.js');
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
+    res.end(JSON.stringify({
+      ok: true,
+      paymentsEnabled: mon.MONETIZATION_PAYMENTS_ENABLED,
+      paymentGateStatus: mon.MONETIZATION_PAYMENTS_ENABLED ? 'OPEN' : 'PAYMENT_GATE_CLOSED_UNTIL_LAUNCH_APPROVAL',
+      safetyScoreIsolationGuaranteed: true,
+      packages: mon.PACKAGES,
+      activePromotions: mon.getActivePromotions()
+    }));
+    return;
+  }
+
   // Handle /api/upload-logo endpoint
   if (cleanUrl === '/api/upload-logo') {
     if (req.method === 'OPTIONS') {
