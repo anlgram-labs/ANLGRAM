@@ -21,15 +21,15 @@
   <script src="assets/js/security.js"></script>
   <script>
     window.ANLGRAM_TON_PROXY_URL = 'https://anlgram-ton-proxy.anlgram.workers.dev';
-    window.anlgramFetchTonApi = async function(endpoint) {
+    window.anlgramFetchTonApi = async function(endpoint, options) {
       const proxyBase = (window.ANLGRAM_TON_PROXY_URL || '').replace(/\/+$/, '');
       if (proxyBase) {
         try {
-          const r = await fetch(proxyBase + endpoint);
+          const r = await fetch(proxyBase + endpoint, options);
           if (r.ok || r.status === 404) return r;
         } catch (e) {}
       }
-      return fetch('https://tonapi.io/v2' + endpoint);
+      return fetch('https://tonapi.io/v2' + endpoint, options);
     };
   </script>
   <script src="assets/js/token-verification-engine.js"></script>
@@ -1608,7 +1608,7 @@
           <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:14px;">
             <div style="font-size:11px; text-transform:uppercase; color:var(--accent-cyan); font-weight:700; margin-bottom:4px;">2. Bonding Curve</div>
             <div style="font-size:14px; font-weight:600; color:#fff;">AMM Liquidity Curve</div>
-            <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">800M initial tokens, 166.67 TON virtual reserve (exact DEX price continuity)</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">800M initial Curve tokens; 300 TON graduated principal target</div>
           </div>
           <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:14px;">
             <div style="font-size:11px; text-transform:uppercase; color:var(--accent-cyan); font-weight:700; margin-bottom:4px;">3. LP Locker</div>
@@ -1618,54 +1618,43 @@
           <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:14px;">
             <div style="font-size:11px; text-transform:uppercase; color:var(--accent-cyan); font-weight:700; margin-bottom:4px;">4. DEX Migration</div>
             <div style="font-size:14px; font-weight:600; color:#fff;">STON.fi Router v2.2</div>
-            <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">200M tokens + 500 TON target graduation pool</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">200M DEX allocation + verified graduated TON principal (300 TON target)</div>
           </div>
         </div>
 
-        <!-- Interactive Mathematical Bonding Curve Quote Simulator -->
-        <div style="margin-top:24px; padding:20px; background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(0,210,255,0.15);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
-            <strong style="color:#fff; font-size:14px;">📊 Mathematical AMM Bonding Curve Quote Simulator (Off-Chain Model)</strong>
-            <span style="font-size:11px; color:var(--text-muted);">Formula: Constant Product AMM (K = 1.778×10¹¹, 1% Protocol Fee)</span>
+        <!-- Read-only financial quote placeholder: no fabricated reserves or trades. -->
+        <section id="curve-vnext-onchain-quote" aria-labelledby="curve-vnext-quote-title"
+          style="margin-top:24px;padding:20px;background:rgba(0,0,0,0.3);border-radius:12px;border:1px solid rgba(0,210,255,0.15);">
+          <h4 id="curve-vnext-quote-title" style="margin:0 0 12px;color:#fff;font-size:14px;">Live Bonding Curve Quotes · 300 TON graduation</h4>
+          <p id="curve-vnext-quote-status" role="status"
+             style="font-size:13px;color:var(--text-muted);line-height:1.6;">
+            Live quotes unavailable: no verified, deployed VNext Curve is selected.
+            ANLGRAM will not display token output, fees, refunds, balances, or
+            graduation progress from invented reserves. An executable quote
+            must come from the deployed Curve getter and be checked against
+            the latest authenticated on-chain state before wallet confirmation.
+          </p>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+            Graduation target: 300 TON real principal, with the final atomic
+            Jetton inventory unit exhausted. Protocol fee: 1% on gross
+            actually consumed. Network fees are separate.
+          </p>
+          <div style="display:grid;gap:10px;">
+            <label for="curve-vnext-network" style="font-size:12px;color:var(--text-muted);">Blockchain network</label>
+            <select id="curve-vnext-network" class="token-search-input"><option value="testnet">TON Testnet</option><option value="mainnet">TON Mainnet</option></select>
+            <label for="curve-vnext-address" style="font-size:12px;color:var(--text-muted);">Deployed VNext Curve address (read-only inspection)</label>
+            <input id="curve-vnext-address" class="token-search-input" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="0:... or verified friendly address"/>
+            <label for="curve-vnext-gross" style="font-size:12px;color:var(--text-muted);">Gross buy quote (TON, excluding network gas)</label>
+            <input id="curve-vnext-gross" class="token-search-input" type="text" inputmode="decimal" value="1" maxlength="18"/>
+            <button type="button" class="btn-ent" onclick="window.fetchVNextOnchainQuote()" style="padding:10px 16px;">Read real on-chain buy quote</button>
+            <pre id="curve-vnext-live-result" role="status" aria-live="polite" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:var(--text-muted);margin:4px 0 0;">No blockchain quote requested.</pre>
           </div>
-
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-            <div>
-              <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:6px;">BUY ESTIMATE (Enter TON)</label>
-              <div style="display:flex; gap:8px;">
-                <input type="number" id="calc-buy-ton-input" value="1.0" step="0.1" min="0.1" max="500" class="token-search-input" style="padding:10px; font-family:var(--font-mono);" oninput="updateCurveQuotes()"/>
-                <span style="padding:10px; font-size:12px; color:var(--text-muted); display:flex; align-items:center;">TON</span>
-              </div>
-              <div style="margin-top:8px; font-size:12px; color:var(--text-sub);">
-                You receive: <strong id="calc-buy-tokens-output" style="color:var(--accent-cyan);">~6,298,568</strong> TKN
-                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Net applied: <span id="calc-buy-net-ton">0.99</span> TON (0.01 TON fee)</div>
-              </div>
-            </div>
-
-            <div>
-              <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:6px;">SELL ESTIMATE (Enter Tokens)</label>
-              <div style="display:flex; gap:8px;">
-                <input type="number" id="calc-sell-token-input" value="10000000" step="1000000" min="1000" class="token-search-input" style="padding:10px; font-family:var(--font-mono);" oninput="updateCurveQuotes()"/>
-                <span style="padding:10px; font-size:12px; color:var(--text-muted); display:flex; align-items:center;">TKN</span>
-              </div>
-              <div style="margin-top:8px; font-size:12px; color:var(--text-sub);">
-                You receive: <strong id="calc-sell-ton-output" style="color:#00ff66;">~1.55</strong> TON
-                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Net payout after 1.00% protocol fee</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Graduation Progress Bar Indicator -->
-          <div style="margin-top:18px;">
-            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;">
-              <span style="color:var(--text-muted);">Bonding Curve Graduation Target (0.00 / 500.00 TON)</span>
-              <span id="calc-grad-pct" style="color:var(--accent-cyan); font-family:var(--font-mono);">0.00%</span>
-            </div>
-            <div style="width:100%; height:8px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden;">
-              <div id="calc-grad-bar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-cyan), #00ff88); border-radius:4px; transition:width 0.3s ease;"></div>
-            </div>
-          </div>
-        </div>
+          <p style="font-size:11px;color:var(--text-muted);margin:12px 0 0;">
+            This inspection reads live contract code and its getter. Matching the code
+            hash does not establish the official project identity, wallet ownership,
+            execution price at signing, or finality. It never submits transactions.
+          </p>
+        </section>
 
         <div style="margin-top:16px; padding:12px 16px; background:rgba(0,210,255,0.04); border-radius:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div style="font-size:12px; color:var(--text-muted);">
@@ -1677,57 +1666,7 @@
         </div>
       </div>
 
-      <script>
-      function updateCurveQuotes() {
-        const V_TON = 166.666666666; // 166.67 TON virtual reserve (exact price continuity)
-        const V_TKN = 266666666.6656; // 266.67M virtual tokens
-        const TOTAL_CURVE = 800000000.0; // 800M tokens
-        const K = V_TON * (V_TKN + TOTAL_CURVE); // Invariant K = 1.77777777777e11
 
-        // Buy calculation
-        const buyTonInput = parseFloat(document.getElementById('calc-buy-ton-input')?.value || '0');
-        if (buyTonInput > 0) {
-          const fee = buyTonInput * 0.01;
-          const netTon = buyTonInput - fee;
-          const newTonReserve = V_TON + netTon;
-          const newTokenReserve = K / newTonReserve;
-          const tokensOut = Math.max(0, (V_TKN + TOTAL_CURVE) - newTokenReserve);
-
-          const outEl = document.getElementById('calc-buy-tokens-output');
-          const netEl = document.getElementById('calc-buy-net-ton');
-          if (outEl) outEl.textContent = '~' + Math.floor(tokensOut).toLocaleString();
-          if (netEl) netEl.textContent = netTon.toFixed(2);
-
-          const gradPct = Math.min(100, (netTon / 500.0) * 100);
-          const gradPctEl = document.getElementById('calc-grad-pct');
-          const gradBarEl = document.getElementById('calc-grad-bar');
-          if (gradPctEl) gradPctEl.textContent = gradPct.toFixed(2) + '%';
-          if (gradBarEl) gradBarEl.style.width = gradPct.toFixed(2) + '%';
-        }
-
-        // Sell calculation
-        const sellTknInput = parseFloat(document.getElementById('calc-sell-token-input')?.value || '0');
-        if (sellTknInput > 0) {
-          const currentTonPool = 10.0;
-          const currentTknPool = (V_TKN + TOTAL_CURVE) - 50000000.0;
-          const newTknReserve = currentTknPool + sellTknInput;
-          const newTonReserve = K / newTknReserve;
-          const grossTonOut = Math.max(0, (V_TON + currentTonPool) - newTonReserve);
-          const netTonOut = grossTonOut * 0.99;
-
-          const sellOutEl = document.getElementById('calc-sell-ton-output');
-          if (sellOutEl) sellOutEl.textContent = '~' + netTonOut.toFixed(2);
-        }
-      }
-      if (typeof window !== 'undefined') {
-        window.updateCurveQuotes = updateCurveQuotes;
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', updateCurveQuotes);
-        } else {
-          updateCurveQuotes();
-        }
-      }
-      </script>
 
       <!-- Standard Jetton Creator Form (Preserved & Fully Functional) -->
       <div class="glass-card" style="max-width:600px; margin:0 auto;">
@@ -2655,62 +2594,26 @@
       console.warn("Could not fetch main account:", err);
     }
     
-    if(poolsList) {
-      // Truthful on-chain liquidity pool state (No unverified mock data masquerading as genuine)
-      const isDemoPreview = localStorage.getItem('anlgram_demo_pools_preview') === 'true';
-      if (isDemoPreview) {
-        poolsList.innerHTML = `
-          <div style="background: rgba(255,170,0,0.08); border: 1px dashed rgba(255,170,0,0.3); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 14px;">⚠️</span>
-              <span style="font-size: 12px; font-weight: 700; color: #ffaa00; letter-spacing: 0.5px;">DEMO PREVIEW (TESTNET SIMULATION ONLY)</span>
-            </div>
-            <button class="btn-ent" style="padding: 4px 10px; font-size: 11px;" onclick="localStorage.removeItem('anlgram_demo_pools_preview'); window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: '${address}' } }));">Hide Demo</button>
+    if (poolsList) {
+      // Positions MUST come from authenticated on-chain LP/DEX observations.
+      // This screen currently has no LP position discovery. Do not display
+      // fabricated pool balances or infer "no pools" from missing evidence.
+      poolsList.innerHTML = `
+        <div style="padding: 40px 20px; text-align: center; color: var(--text-muted);">
+          <div style="font-size: 32px; margin-bottom: 12px;">🌊</div>
+          <div style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px;">Liquidity Positions Not Verified</div>
+          <div style="font-size: 13px; max-width: 480px; margin: 0 auto 16px; line-height: 1.5;">
+            ANLGRAM has not verified this wallet's liquidity positions on STON.fi or DeDust.
+            No pool balance, LP custody, or lock status is claimed here. Check your
+            positions directly with the DEX until authenticated on-chain discovery
+            is available in MemeLabs.
           </div>
-          <div style="padding: 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div style="position:relative; width:40px; height:40px;">
-                 <div style="width:28px; height:28px; background:var(--accent-cyan); border-radius:50%; position:absolute; top:0; left:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:bold; color:#000;">TON</div>
-                 <div style="width:28px; height:28px; background:#444; border-radius:50%; position:absolute; bottom:0; right:0; border: 2px solid var(--enterprise-bg); display:flex; align-items:center; justify-content:center; font-size:10px; overflow:hidden;">
-                   <span style="font-size:10px; font-weight:bold;">TKN</span>
-                 </div>
-              </div>
-              <div>
-                <div style="color:#fff; font-weight:700; font-size:16px;">TON-SampleToken (Simulated)</div>
-                <div style="color:var(--text-muted); font-size:11px; font-family:monospace;">kQCa...XyZ1 (Testnet)</div>
-              </div>
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <button class="btn-ent" style="padding: 8px 12px; font-size: 12px; border-radius: 8px;">View Contract</button>
-            </div>
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 20px; background: rgba(0,0,0,0.2);">
-            <div style="background: var(--glass-bg); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-              <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Pooled TON</div>
-              <div style="color:#fff; font-weight:700; font-size:16px;">145.20 TON</div>
-            </div>
-            <div style="background: var(--glass-bg); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-              <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Pooled Token</div>
-              <div style="color:#fff; font-weight:700; font-size:16px;">1,500,000 TKN</div>
-            </div>
-            <div style="background: var(--glass-bg); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-              <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Pool Status</div>
-              <div style="color:#ffaa00; font-weight:700; font-size:16px;">Simulated Pool</div>
-            </div>
-          </div>
-        `;
-      } else {
-        poolsList.innerHTML = `
-          <div style="padding: 40px 20px; text-align: center; color: var(--text-muted);">
-            <div style="font-size: 32px; margin-bottom: 12px;">🌊</div>
-            <div style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px;">No Active Liquidity Pools Detected</div>
-            <div style="font-size: 13px; max-width: 440px; margin: 0 auto 16px; line-height: 1.5;">This connected wallet does not have active on-chain liquidity pools on STON.fi or DeDust. Initialize liquidity for a deployed token to manage positions here.</div>
-            <button class="btn-ent" style="padding: 6px 14px; font-size: 12px;" onclick="localStorage.setItem('anlgram_demo_pools_preview', 'true'); window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: '${address}' } }));">
-              👁️ View Sample Pool Layout (Demo)
-            </button>
-          </div>
-        `;
-      }
+          <a href="https://app.ston.fi/" target="_blank" rel="noopener noreferrer"
+             class="btn-ent" style="display:inline-block;padding:8px 16px;font-size:12px;text-decoration:none;">
+            Open STON.fi
+          </a>
+        </div>
+      `;
     }
 
     // ══════════════════════════════════════════════════════════
@@ -2980,6 +2883,60 @@
 <script src="assets/js/donation-config.js?v=2026.54"></script>
 <script src="assets/js/wallet-connect.js?v=2026.51"></script>
 <script src="assets/js/launchpad.js?v=2026.54"></script>
+<script src="assets/js/curve-vnext-onchain-quote.js?v=2026.12"></script>
+<script>
+(function () {
+  // Every input mutation or newer request invalidates older observations.
+  // These values are never authority to execute a financial transaction.
+  const ids = ['curve-vnext-address', 'curve-vnext-network', 'curve-vnext-gross'];
+  const output = document.getElementById('curve-vnext-live-result');
+  const inputs = ids.map(id => document.getElementById(id));
+  let generation = 0;
+  const snapshot = () => inputs.map(el => el ? el.value : '');
+  const isCurrent = (id, values) =>
+    id === generation && snapshot().every((v, i) => v === values[i]);
+  const invalidate = () => {
+    generation++;
+    if (output) output.textContent = 'Inputs changed. Request a new on-chain quote.';
+  };
+  inputs.forEach(el => {
+    if (el) {
+      el.addEventListener('input', invalidate);
+      el.addEventListener('change', invalidate);
+    }
+  });
+  window.fetchVNextOnchainQuote = async function () {
+    if (!output || inputs.some(el => !el)) return;
+    const requestId = ++generation;
+    const [address, network, grossTon] = snapshot();
+    const values = [address, network, grossTon];
+    output.textContent = 'Reading current blockchain state and verified code hash…';
+    try {
+      const api = window.ANLGRAM_CURVE_LIVE_QUOTE;
+      if (!api) throw Error('On-chain quote reader unavailable');
+      const item = await api.quote({address, network, grossTon, tonCore: window.TON_CORE});
+      if (!isCurrent(requestId, values)) return;
+      output.textContent = [
+        'ON-CHAIN GETTER OBSERVATION · '+item.network.toUpperCase(),
+        'Contract: '+item.contractAddress,
+        'Requested gross: '+grossTon+' TON',
+        'Jettons quoted: '+api.formatUnits(item.tokensAtomic),
+        'Protocol fee: '+api.formatUnits(item.feeNano)+' TON',
+        'Gross consumed: '+api.formatUnits(item.consumedNano)+' TON',
+        'Refund: '+api.formatUnits(item.refundNano)+' TON',
+        'Graduation: '+(item.willGraduate?'Yes':'No'),
+        'Code hash verified: '+item.codeHash,
+        'Observed: '+item.observedAt,
+        'Read-only observation; NOT a transaction approval or guaranteed execution price.'
+      ].join('\n');
+    } catch (e) {
+      if (!isCurrent(requestId, values)) return;
+      output.textContent = 'On-chain quote unavailable: '+String(e?.message||'unknown error')+
+        '. No token amount, fee or progress has been estimated.';
+    }
+  };
+})();
+</script>
 <script src="assets/js/transaction-receipt.js?v=2026.54"></script>
 <script src="assets/js/anl-labs.js?v=2026.54"></script>
 </body>

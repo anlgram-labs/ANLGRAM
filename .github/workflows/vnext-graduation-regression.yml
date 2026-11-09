@@ -1,0 +1,54 @@
+name: VNext post-dispatch graduation regression
+
+on:
+  pull_request:
+    paths:
+      - 'testnet-interface/projects/migration-status.mjs'
+      - 'testnet-interface/test/memelabs-security.test.mjs'
+      - 'testnet-interface/package.json'
+      - 'testnet-interface/package-lock.json'
+      - 'minter-contract/compile-one-shot-dispatch.js'
+      - 'minter-contract/contracts/**'
+      - 'minter-contract/build/anlgram-*-dispatch-v2.compiled.json'
+      - 'tests/settlement-runtime/**'
+      - '.github/workflows/vnext-graduation-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  graduation-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: testnet-interface
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            testnet-interface/package-lock.json
+            tests/settlement-runtime/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install Curve dependency tree for shared receipt module
+        run: npm ci --ignore-scripts
+        working-directory: minter-contract
+      - name: Run graduation and security regression tests
+        run: node --test test/memelabs-security.test.mjs
+      - name: Install locked Sandbox dependencies
+        run: npm ci
+        working-directory: tests/settlement-runtime
+      - name: Verify deterministic artifacts, getter parity and migration evidence
+        working-directory: .
+        run: |
+          node minter-contract/compile-one-shot-dispatch.js --check
+          node --test --test-concurrency=1 tests/settlement-runtime/graduation-reference.test.js tests/settlement-runtime/one-shot-dispatch.test.js tests/settlement-runtime/lpaccount-settlement-evidence.test.js testnet-interface/test/generation2-status.test.mjs
+      - name: Build the Pages candidate without deploying
+        run: npm run build:pages
