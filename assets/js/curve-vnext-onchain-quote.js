@@ -86,7 +86,10 @@
     const getterPath='/blockchain/accounts/'+encodeURIComponent(account)+'/methods/get_buy_quote_v2?args=0x'+amount.toString(16);
     const statePath='/blockchain/accounts/'+encodeURIComponent(account);
     const load=request|| (async path=>{
-      if(network==='mainnet'&&typeof globalThis.anlgramFetchTonApi==='function') return globalThis.anlgramFetchTonApi(path);
+      // The shared proxy may cache account metadata. Read the code directly
+      // for this inspection, and use the uncached proxy route only for the getter.
+      if(path===getterPath&&network==='mainnet'&&typeof globalThis.anlgramFetchTonApi==='function')
+        return globalThis.anlgramFetchTonApi(path,{cache:'no-store'});
       return fetch(ENDPOINTS[network]+path,{cache:'no-store'});
     });
     const accountResponse=await load(statePath);

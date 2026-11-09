@@ -21,15 +21,15 @@
   <script src="assets/js/security.js"></script>
   <script>
     window.ANLGRAM_TON_PROXY_URL = 'https://anlgram-ton-proxy.anlgram.workers.dev';
-    window.anlgramFetchTonApi = async function(endpoint) {
+    window.anlgramFetchTonApi = async function(endpoint, options) {
       const proxyBase = (window.ANLGRAM_TON_PROXY_URL || '').replace(/\/+$/, '');
       if (proxyBase) {
         try {
-          const r = await fetch(proxyBase + endpoint);
+          const r = await fetch(proxyBase + endpoint, options);
           if (r.ok || r.status === 404) return r;
         } catch (e) {}
       }
-      return fetch('https://tonapi.io/v2' + endpoint);
+      return fetch('https://tonapi.io/v2' + endpoint, options);
     };
   </script>
   <script src="assets/js/token-verification-engine.js"></script>
@@ -2883,7 +2883,7 @@
 <script src="assets/js/donation-config.js?v=2026.54"></script>
 <script src="assets/js/wallet-connect.js?v=2026.51"></script>
 <script src="assets/js/launchpad.js?v=2026.54"></script>
-<script src="assets/js/curve-vnext-onchain-quote.js?v=2026.11"></script>
+<script src="assets/js/curve-vnext-onchain-quote.js?v=2026.12"></script>
 <script>
 (function () {
   // Every input mutation or newer request invalidates older observations.

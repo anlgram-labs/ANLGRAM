@@ -119,3 +119,29 @@ test('Public quote hash pins the exact source-verified Dispatch Curve artifact',
   assert.equal(live.CURVE_CODE_HASH,artifact.codeCellHash);
   assert.equal(artifact.financialDeploymentAuthorized,false);
 });
+
+test('Mainnet inspection bypasses cached proxy metadata and requests an uncached getter',async()=>{
+  const fixture=onchainRequest();
+  const fetch=global.fetch,proxy=global.anlgramFetchTonApi;
+  const calls=[];
+  global.fetch=async(url,options)=>{
+    calls.push(['direct',options.cache]);
+    assert.match(url,/^https:\/\/tonapi\.io\/v2\/blockchain\/accounts\//);
+    assert.doesNotMatch(url,/\/methods\//);
+    return fixture.request(url);
+  };
+  global.anlgramFetchTonApi=async(path,options)=>{
+    calls.push(['proxy',options.cache]);
+    assert.match(path,/\/methods\/get_buy_quote_v2\?/);
+    return fixture.request(path);
+  };
+  try {
+    const result=await live.quote({address:raw,network:'mainnet',grossTon:'510',tonCore:fixture.core});
+    assert.equal(result.consumedNano,consumed);
+    assert.deepEqual(calls,[['direct','no-store'],['proxy','no-store']]);
+  } finally {
+    global.fetch=fetch;
+    if(proxy===undefined)delete global.anlgramFetchTonApi;
+    else global.anlgramFetchTonApi=proxy;
+  }
+});
