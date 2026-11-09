@@ -194,29 +194,19 @@ slice calculate_jetton_master_address(cell state_init) inline {
         ;; exact initial mint capability committed in its StateInit.
         raw_reserve(my_balance - msg_value, 0);
         cell mint_payload = begin_cell().store_uint(op::factory_bootstrap, 32)
-            .store_uint(query_id, 64).end_cell();
+            .store_uint(query_id, 64).store_slice(treasury).store_coins(platform_fee).end_cell();
         var deploy_msg = begin_cell()
             .store_uint(0x18, 6)          ;; bounce=1, ihr_disabled=1
             .store_slice(jetton_master_addr)
-            .store_coins(blockchain_budget)
+            .store_coins(blockchain_budget + platform_fee)
             .store_uint(7, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
             .store_ref(state_init)
             .store_ref(mint_payload)
             .end_cell();
         send_raw_message(deploy_msg, 1);
 
-        ;; 11. Send platform service fee to treasury
-        ;; Mode 1 = pay from msg_value remainder. nobounce (treasury always accepts)
-        var treasury_msg = begin_cell()
-            .store_uint(0x10, 6)          ;; no bounce (treasury always ready)
-            .store_slice(treasury)
-            .store_coins(platform_fee)
-            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-            ;; comment: "ANLGRAM Platform Service"
-            .store_uint(0, 32)
-            .store_slice("ANLGRAM Service")
-            .end_cell();
-        send_raw_message(treasury_msg, 1);
+        ;; The service fee travels with the bootstrap and is paid to the treasury only
+        ;; by the child after the one-use mint succeeds. A rejected repeat is refunded.
 
         ;; 12. Refund excess TON to creator
         ;; Mode 128 = send remaining balance, mode 2 = ignore errors on this msg

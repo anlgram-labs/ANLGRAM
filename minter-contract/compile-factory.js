@@ -23,7 +23,7 @@ async function factoryArtifacts() {
   const childSource = standard
     .replace(receiver, '#include "imports/factory-minter-bootstrap.fc";\n\n' + receiver)
     .replace(mint, `    if (bootstrap_factory_mint(op, query_id, sender_address, in_msg_body,
-        total_supply, admin_address, content, jetton_wallet_code)) { return (); }
+        total_supply, admin_address, content, jetton_wallet_code, msg_value)) { return (); }
 
 ${mint}`);
   const childMinter = await compile('anlgram-factory-minter.fc', {'anlgram-factory-minter.fc': childSource});
