@@ -1,0 +1,40 @@
+#include "factory-bootstrap-op.fc";
+
+;; Only the factory-specific minter compiler inserts this entry point.
+int bootstrap_factory_mint(int op, int query, slice sender, slice body,
+    int supply, slice creator, cell content, cell wallet_code) impure {
+    slice data = get_data().begin_parse();
+    data~load_coins();
+    data~load_msg_addr();
+    data~load_ref();
+    data~load_ref();
+    if (data.slice_refs() == 0) {
+        throw_if(73, op == op::factory_bootstrap);
+        return 0;
+    }
+
+    slice bootstrap = data~load_ref().begin_parse();
+    data.end_parse();
+    slice factory = bootstrap~load_msg_addr();
+    int expected_query = bootstrap~load_uint(64);
+    int amount = bootstrap~load_coins();
+    bootstrap.end_parse();
+    throw_unless(73, (op == op::factory_bootstrap) & equal_slices(sender, factory));
+    throw_unless(73, (query == expected_query) & (supply == 0) & (amount > 0));
+    body.end_parse();
+
+    cell mint = begin_cell()
+        .store_uint(op::internal_transfer(), 32)
+        .store_uint(query, 64)
+        .store_coins(amount)
+        .store_uint(0, 2)
+        .store_slice(creator)
+        .store_coins(20000000)
+        .store_uint(1, 1)
+        .store_ref(begin_cell().store_uint(0, 32).store_slice("ANLGRAM Launchpad").end_cell())
+        .end_cell();
+    mint_tokens(creator, wallet_code, FACTORY_WALLET_ATTACHMENT, mint);
+    ;; Save the standard minter state without the one-use Factory capability.
+    save_data(amount, creator, content, wallet_code);
+    return -1;
+}

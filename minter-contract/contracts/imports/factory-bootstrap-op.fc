@@ -1,0 +1,2 @@
+const int op::factory_bootstrap = 0x414e4642;
+const int FACTORY_WALLET_ATTACHMENT = 80000000;
