@@ -1,0 +1,26 @@
+name: Factory mint authority
+
+on:
+  pull_request:
+    paths:
+      - 'minter-contract/compile-factory.js'
+      - 'minter-contract/contracts/**'
+      - 'minter-contract/build/anlgram-factory.compiled.json'
+      - 'tests/settlement-runtime/factory-mint-authority.test.js tests/settlement-runtime/factory-repeat-charge.test.js'
+      - 'tests/settlement-runtime/package-lock.json'
+      - '.github/workflows/factory-mint-authority.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  factory-authority:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix tests/settlement-runtime
+      - run: node minter-contract/compile-factory.js --check
+      - run: node --test tests/settlement-runtime/factory-mint-authority.test.js tests/settlement-runtime/factory-repeat-charge.test.js
