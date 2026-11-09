@@ -32,6 +32,17 @@ test('Testnet inventory reproduces both deployment branches and all included Sta
  assert.equal(a.standard.deployment.attachmentNano,'50000000');
  assert.equal(a.standard.deployment.stateInitHash,a.standard.minter.stateInitHash);
  assert.equal(a.launchpad.operator.walletId,2147483645);
+ assert.equal(a.launchpad.genesisOperations.length,8);
+ assert.equal(new Set(a.launchpad.genesisOperations.map(operation=>operation.operationId)).size,8);
+ for(const operation of a.launchpad.genesisOperations){
+  assert.equal(operation.executionEligible,false);
+  assert.equal(operation.source,a.launchpad.operator.address);
+  assert.equal(Cell.fromBase64(operation.message.payload).hash().toString('hex'),operation.payloadHash);
+  if(operation.stateInitHash)assert.equal(Address.parse(operation.message.address).hash.toString('hex'),operation.stateInitHash);
+ }
+ assert.equal(a.launchpad.genesisOperations[5].payloadHash,a.launchpad.initializeCurveBodyHash);
+ assert.equal(a.launchpad.creationCharge.donationNano,'20000000');
+ assert.equal(a.launchpad.graduationPrincipalNano,'300000000000');
  assert.equal(a.launchpad.stonfi.scope,'CAPTURED_TESTNET_IDENTITIES_NO_LIVE_PROOF');
  for(const item of [a.standard.minter,a.standard.vesting,...Object.values(a.launchpad.accounts),a.launchpad.stonfi.pool,a.launchpad.stonfi.lpWallet]){
   const address=Address.parseFriendly(item.address);

@@ -39,7 +39,7 @@ const environment=Object.fromEntries(Object.entries(process.env).filter(([key])=
 const node=(args)=>execFileSync(process.execPath,args,{cwd:root,env:environment,encoding:'utf8',timeout:300000,maxBuffer:4*1024*1024,stdio:['ignore','pipe','pipe']});
 function runSuite(files) {
  let output,success=true;
- try {output=node(['--test','--test-concurrency=2','--test-reporter=tap',...files]);}
+ try {output=node(['--test','--test-concurrency=1','--test-reporter=tap',...files]);}
  catch(error){output=error.stdout??'';success=false;}
  const counts=Object.fromEntries(['tests','pass','fail','skipped'].map(k=>[k,
   Number(output.match(new RegExp('^# '+k+' (\\d+)\\s*$','m'))?.[1]??-1)]));
