@@ -29,6 +29,11 @@ new_sqlite_classes = ["TestnetReads"]
 name = "CURVE_OPERATIONS"
 class_name = "CurveFinancialOperation"
 
+[[durable_objects.bindings]]
+name = "PROJECT_REGISTRY"
+class_name = "ProjectRegistry"
+script_name = "anlgram-testnet-project-registry"
+
 [[migrations]]
 tag = "v4"
 new_sqlite_classes = ["CurveFinancialOperation"]

@@ -248,26 +248,11 @@
     return result;
   }
   // ══════════════════════════════════════════════════════════
-  // TX MONITORING  (best-effort, no backend)
+  // TX MONITORING  (fail-closed; requires AnlgramTransactionReceipt)
   // ══════════════════════════════════════════════════════════
 
-  async function waitForConfirmation(sender, factory, timeoutMs) {
-    const base = ANLGRAM_CONFIG.NETWORK === 'mainnet'
-      ? 'https://tonapi.io' : 'https://testnet.tonapi.io';
-    const end = Date.now() + timeoutMs;
-    while (Date.now() < end) {
-      await sleep(3000);
-      try {
-        const url  = `${base}/v2/blockchain/accounts/${factory}/transactions?limit=5`;
-        const data = await (await fetch(url)).json();
-        const hit  = (data.transactions||[]).find(tx =>
-          (Date.now()/1000 - tx.utime) < 120 &&
-          tx.in_msg?.source?.address === sender
-        );
-        if (hit) return hit.hash || 'confirmed';
-      } catch { /* keep polling */ }
-    }
-    return 'pending';
+  async function waitForConfirmation() {
+    throw new Error('Unverified polling is disabled. Use AnlgramTransactionReceipt for verified on-chain confirmation.');
   }
 
   // ══════════════════════════════════════════════════════════
@@ -286,60 +271,14 @@
         ${done?'✓':active?'⟳':'○'} ${s}</span>`;
     }).join('');
     btn.innerHTML = `<div style="text-align:center;">
-      <div style="font-size:12px;color:#fff;margin-bottom:4px;">${message}</div>
+      <div style="font-size:12px;color:#fff;margin-bottom:4px;">${String(message || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</div>
       <div style="display:flex;justify-content:center;flex-wrap:wrap;">${dots}</div>
     </div>`;
     btn.style.pointerEvents = 'none';
   }
 
-  function showSuccessScreen(quote, formData, txHash) {
-    const panel = document.getElementById('tab-launchpad');
-    if (!panel) return;
-    const txBase = quote.network === 'mainnet'
-      ? 'https://tonscan.org/tx/' : 'https://testnet.tonscan.org/tx/';
-
-    panel.innerHTML = `
-<div class="glass-card" style="max-width:640px;margin:40px auto;text-align:center;padding:40px 32px;">
-  <div style="font-size:56px;margin-bottom:12px;">🚀</div>
-  <h2 style="color:#fff;font-size:26px;font-weight:700;margin-bottom:6px;">Token Created Successfully!</h2>
-  <div style="color:var(--accent-cyan);font-size:20px;font-weight:600;margin-bottom:28px;">$${formData.symbol}</div>
-
-  <div class="glass-card" style="text-align:left;margin-bottom:20px;">
-    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Creation Cost Breakdown</div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-      <span style="color:#94a3b8;">Blockchain execution base</span>
-      <span style="font-family:var(--font-mono);color:#fff;">~${quote.blockchainCostTON} TON</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-      <span style="color:#94a3b8;">Mandatory Donation (10%)</span>
-      <span style="font-family:var(--font-mono);color:#fff;">~${quote.platformFeeTON} TON</span>
-    </div>
-    <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;">
-      <strong style="color:#fff;">Estimated total</strong>
-      <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:700;">~${quote.estimatedTotalTON} TON</span>
-    </div>
-  </div>
-
-  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
-    <div style="display:flex;align-items:center;gap:10px;background:rgba(0,255,100,0.07);border:1px solid rgba(0,255,100,0.2);padding:10px 14px;border-radius:10px;">
-      <span style="color:#00ff66;font-size:16px;">✓</span>
-      <span style="color:#94a3b8;font-size:12px;">Platform service — Processed via ANLGRAM Factory</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;background:rgba(0,255,100,0.07);border:1px solid rgba(0,255,100,0.2);padding:10px 14px;border-radius:10px;">
-      <span style="color:#00ff66;font-size:16px;">✓</span>
-      <span style="color:#94a3b8;font-size:12px;">Blockchain transaction — Submitted</span>
-    </div>
-  </div>
-
-  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-    <a href="${txBase}${txHash}" target="_blank" class="btn-ent" style="text-decoration:none;padding:10px 18px;">View Transaction ↗</a>
-    <button class="btn-solid" onclick="switchTab('liquidity')" style="padding:10px 18px;">Manage Token</button>
-    <button class="btn-solid" onclick="location.reload()" style="padding:10px 18px;background:rgba(255,255,255,0.08);color:#fff;">Create Another</button>
-  </div>
-  <div style="margin-top:16px;font-size:10px;color:var(--text-muted);">
-    Quote ID: ${quote.quoteId} · ${quote.network.toUpperCase()}
-  </div>
-</div>`;
+  function showSuccessScreen() {
+    throw new Error('Unverified success screen is disabled. Confirmations require verified blockchain inclusion.');
   }
 
   // ══════════════════════════════════════════════════════════

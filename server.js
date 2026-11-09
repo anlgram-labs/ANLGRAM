@@ -252,34 +252,82 @@ const server = http.createServer((req, res) => {
     }
 
     if (req.method === 'POST') {
+      const clientIp = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim();
+      const rateCheck = checkClientRateLimit(clientIp);
+      if (rateCheck.limited) {
+        res.writeHead(429, {
+          'Content-Type': 'application/json',
+          'Retry-After': String(rateCheck.retryAfterSec),
+          ...SECURITY_HEADERS
+        });
+        res.end(JSON.stringify({ error: 'Too Many Requests', retryAfter: rateCheck.retryAfterSec }));
+        return;
+      }
+
       let body = '';
+      let aborted = false;
       req.on('data', chunk => {
         body += chunk;
         if (body.length > 10 * 1024 * 1024) {
+          aborted = true;
           res.writeHead(413, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
           res.end(JSON.stringify({ error: 'Payload too large' }));
           req.destroy();
         }
       });
       req.on('end', async () => {
+        if (aborted) return;
         try {
-          let base64 = '';
+          let rawInput = '';
           if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
             const parsed = JSON.parse(body);
-            base64 = (parsed.image || parsed.data || '').replace(/^data:image\/[a-zA-Z0-9\+\-\.]+;base64,/, '');
+            rawInput = String(parsed.image || parsed.data || '').trim();
           } else {
-            base64 = body.replace(/^data:image\/[a-zA-Z0-9\+\-\.]+;base64,/, '');
+            rawInput = String(body || '').trim();
           }
 
-          if (!base64) {
+          if (!rawInput) {
             res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
             res.end(JSON.stringify({ error: 'No image data provided' }));
             return;
           }
 
+          const prefixMatch = rawInput.match(/^data:image\/(png|jpeg|jpg|gif|webp);base64,([A-Za-z0-9+/=\s]+)$/i);
+          if (!prefixMatch) {
+            res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+            res.end(JSON.stringify({ error: 'Invalid image data URL. Only PNG, JPEG, GIF, and WebP base64 data URLs are permitted.' }));
+            return;
+          }
+
+          const base64 = prefixMatch[2].replace(/\s+/g, '');
+          const buffer = Buffer.from(base64, 'base64');
+          if (!buffer.length || buffer.length > 5 * 1024 * 1024) {
+            res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+            res.end(JSON.stringify({ error: 'Decoded image size must be between 1 byte and 5 MB' }));
+            return;
+          }
+
+          const isPng = buffer.length >= 8 &&
+            buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47 &&
+            buffer[4] === 0x0D && buffer[5] === 0x0A && buffer[6] === 0x1A && buffer[7] === 0x0A;
+          const isJpeg = buffer.length >= 3 &&
+            buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+          const isGif = buffer.length >= 6 &&
+            buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38 &&
+            (buffer[4] === 0x37 || buffer[4] === 0x39) && buffer[5] === 0x61;
+          const isWebp = buffer.length >= 12 &&
+            buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+            buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50;
+
+          if (!isPng && !isJpeg && !isGif && !isWebp) {
+            res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+            res.end(JSON.stringify({ error: 'Invalid image binary header (magic bytes verification failed)' }));
+            return;
+          }
+          const safeExt = isPng ? 'png' : isJpeg ? 'jpg' : isGif ? 'gif' : 'webp';
+
           let publicCdnUrl = null;
           // SEC-06: Configurable Imgur Client-IDs via environment variable.
-          // Note: Imgur Client-IDs are public anonymous upload identifiers, not OAuth client secrets.
           const configuredImgurIds = process.env.IMGUR_CLIENT_IDS
             ? process.env.IMGUR_CLIENT_IDS.split(',').map(s => s.trim()).filter(Boolean)
             : [];
@@ -308,12 +356,11 @@ const server = http.createServer((req, res) => {
             }
           }
 
-          const buffer = Buffer.from(base64, 'base64');
           const uploadsDir = path.join(__dirname, 'assets', 'uploads');
           if (!fs.existsSync(uploadsDir)) {
             fs.mkdirSync(uploadsDir, { recursive: true });
           }
-          const filename = `token-logo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}.png`;
+          const filename = `token-logo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${safeExt}`;
           const filePath = path.join(uploadsDir, filename);
           fs.writeFileSync(filePath, buffer);
 

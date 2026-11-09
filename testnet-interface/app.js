@@ -26,8 +26,11 @@
       text('Verificando prueba de propiedad…');
       try{
         const response=await fetch('/api/proof/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account:wallet.account,proof:item.proof})});
-        const result=await response.json();
-        if(!response.ok||result.verified!==true||result.address!==config.operator||result.network!=='-3')throw Error();
+        const result=await response.json().catch(()=>({}));
+        if(!response.ok||result.verified!==true||result.address!==config.operator||result.network!=='-3'){
+          if(current===version)text(`Prueba rechazada o expirada (HTTP ${response.status}${result?.error?': '+String(result.error).slice(0,80):''}). Desconecta y vuelve a conectar.`);
+          return;
+        }
         if(current===version){
           transactionOne.authenticate(wallet,result);transactionTwo?.authenticate(wallet,result);
           const feature=wallet.device?.features?.find(f=>f==='SendTransaction'||f?.name==='SendTransaction');
@@ -42,12 +45,36 @@
       try{
         if(ui.connected)await ui.disconnect();
         ui.setConnectRequestParameters({state:'loading'});
-        const r=await fetch('/api/proof/challenge',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
-        if(!r.ok)throw Error();
-        const challenge=await r.json();
+        let r;
+        try{
+          r=await fetch('/api/proof/challenge',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+        }catch{
+          try{ui.setConnectRequestParameters(null);}catch{}
+          text('No se pudo preparar la prueba (red no disponible). No firmes transacciones.');
+          return;
+        }
+        if(!r.ok){
+          const errBody=await r.json().catch(()=>({}));
+          const detail=errBody?.error?`: ${String(errBody.error).slice(0,80)}`:'';
+          try{ui.setConnectRequestParameters(null);}catch{}
+          text(`No se pudo preparar la prueba (HTTP ${r.status}${detail}). No firmes transacciones.`);
+          return;
+        }
+        let challenge;
+        try{
+          challenge=await r.json();
+          if(!challenge?.payload||!/^[a-f0-9]{64}$/.test(challenge.payload))throw Error();
+        }catch{
+          try{ui.setConnectRequestParameters(null);}catch{}
+          text('No se pudo preparar la prueba (desafío inválido). No firmes transacciones.');
+          return;
+        }
         ui.setConnectRequestParameters({state:'ready',value:{tonProof:challenge.payload}});
         await ui.openModal();
-      }catch{text('No se pudo preparar la prueba. No firmes transacciones.');}finally{start.disabled=false;}
+      }catch{
+        try{ui.setConnectRequestParameters(null);}catch{}
+        text('No se pudo preparar la prueba. No firmes transacciones.');
+      }finally{start.disabled=false;}
     };
     disconnect.onclick=async()=>{try{await ui.disconnect();}catch{text('Desconexión no confirmada.');}};
     document.getElementById('curve-report-button').onclick=async()=>{

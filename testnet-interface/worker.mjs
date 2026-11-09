@@ -64,7 +64,8 @@ export class ProofAttempt {
 }
 
 async function route(request,env) {
-  try { approvedOrigin(env.APP_ORIGIN); } catch { return json({error:'Origin not approved'},503); }
+  const configuredOrigin = env && 'APP_ORIGIN' in env ? env.APP_ORIGIN : 'https://testnet.anlgram.com';
+  try { approvedOrigin(configuredOrigin); } catch { return json({error:'Origin not approved'},503); }
   const u=new URL(request.url);
   let origin; try { origin=approvedOrigin(u.origin); } catch { return json({error:'Wrong Testnet origin'},403); }
   if (u.search) return json({error:'Query overrides are forbidden'},400);
@@ -104,7 +105,7 @@ async function route(request,env) {
       let body;try{body=JSON.parse(await boundedBody(request));}catch{return json({error:'Invalid preparation'},400);}
       if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length)return json({error:'Caller transaction/authorization parameters forbidden'},400);
       const id=attemptId(request);let proof={verified:false};
-      if(/^[a-f0-9]{64}$/.test(id||''))proof=await(await env.PROOFS.get(env.PROOFS.idFromName(id)).fetch(new Request('https://proof.internal/',{method:'POST',body:JSON.stringify({action:'status',domain:origin.hostname})}))).json();
+      if(env?.PROOFS&&/^[a-f0-9]{64}$/.test(id||''))proof=await(await env.PROOFS.get(env.PROOFS.idFromName(id)).fetch(new Request('https://proof.internal/',{method:'POST',body:JSON.stringify({action:'status',domain:origin.hostname})}))).json();
       if(!proof.verified||proof.network!=='-3'||proof.address!==OPERATOR||proof.domain!==origin.hostname||proof.expiresAt<=Math.floor(Date.now()/1000))return json({error:'Fresh domain-bound V5 operator proof required; no transaction requested'},403);
     }
     if(!env.CURVE_OPERATIONS)return json({error:'Persistent operation service unavailable'},503);
@@ -124,7 +125,7 @@ async function route(request,env) {
     if(path.endsWith('/claim')&&!await currentCurveAuthorization(env))return json({error:'Curve owner authorization absent; signing disabled'},403);
     if(path.endsWith('/record'))return curveOperationRoute(path,input,env,{verified:false});
     const id=attemptId(request);let proof={verified:false};
-    if(/^[a-f0-9]{64}$/.test(id||''))proof=await(await env.PROOFS.get(env.PROOFS.idFromName(id)).fetch(new Request('https://proof.internal/',{method:'POST',body:JSON.stringify({action:'status',domain:origin.hostname})}))).json();
+    if(env?.PROOFS&&/^[a-f0-9]{64}$/.test(id||''))proof=await(await env.PROOFS.get(env.PROOFS.idFromName(id)).fetch(new Request('https://proof.internal/',{method:'POST',body:JSON.stringify({action:'status',domain:origin.hostname})}))).json();
     return curveOperationRoute(path,input,env,proof);
   }
   if(request.method==='POST'&&['/api/operation/prepare','/api/operation/claim','/api/operation/record','/api/operation/status','/api/operation/reconcile'].includes(path)){
@@ -133,7 +134,7 @@ async function route(request,env) {
     // Fail before touching any storage/provider when no exact approval exists.
     if((path.endsWith('/claim')||path.endsWith('/prepare'))&&!env.MINTER_TX1_APPROVAL&&!preparationEnabled(env,u.origin))return json({error:'Financial authorization absent; signing disabled'},403);
     const id=attemptId(request);let proofState={verified:false};
-    if(/^[a-f0-9]{64}$/.test(id||''))proofState=await(await env.PROOFS.get(env.PROOFS.idFromName(id)).fetch(new Request('https://proof.internal/',{method:'POST',body:JSON.stringify({action:'status',domain:origin.hostname})}))).json();
+    if(env?.PROOFS&&/^[a-f0-9]{64}$/.test(id||''))proofState=await(await env.PROOFS.get(env.PROOFS.idFromName(id)).fetch(new Request('https://proof.internal/',{method:'POST',body:JSON.stringify({action:'status',domain:origin.hostname})}))).json();
     if(path.endsWith('/prepare'))return prepareMinterOne(input,env,proofState);
     if(!env.MINTER_TX1_APPROVAL&&path.endsWith('/claim')&&!preparationEnabled(env,u.origin))return json({error:'Wrong signing origin'},403);
     return operationRoute(path,input,env,proofState);
@@ -144,8 +145,14 @@ async function route(request,env) {
     let input; try { input=JSON.parse(raw); } catch { return json({error:'Invalid JSON'},400); }
     const creating=path.endsWith('/challenge'), id=creating?random():attemptId(request);
     if (!/^[a-f0-9]{64}$/.test(id||'')) return json({error:'Missing login attempt'},401);
-    const stub=env.PROOFS.get(env.PROOFS.idFromName(id));
-    const result=await stub.fetch(new Request('https://proof.internal/',{method:'POST',body:JSON.stringify(creating?{action:'create'}:{action:'verify',proofBody:input,domain:origin.hostname})}));
+    if (!env?.PROOFS) return json({error:'Proof storage service unavailable'},503);
+    let result;
+    try {
+      const stub=env.PROOFS.get(env.PROOFS.idFromName(id));
+      result=await stub.fetch(new Request('https://proof.internal/',{method:'POST',body:JSON.stringify(creating?{action:'create'}:{action:'verify',proofBody:input,domain:origin.hostname})}));
+    } catch {
+      return json({error:'Proof storage backend unreachable'},503);
+    }
     const response=new Response(result.body,result);
     if (creating) response.headers.set('Set-Cookie',cookie(id));
     return response;

@@ -2254,6 +2254,15 @@
         const minterAddress = Address.parse(minterRawAddr);
         const MINT_AMOUNT = toNano(mintAmount.toString());
 
+        let preSupply = null;
+        try {
+          const preRes = await window.anlgramFetchTonApi(`/jettons/${encodeURIComponent(minterRawAddr)}`);
+          if (preRes.ok) {
+            const preJson = await preRes.json();
+            if (preJson && preJson.total_supply != null) preSupply = BigInt(String(preJson.total_supply));
+          }
+        } catch (_) {}
+
         const forwardPayload = beginCell().storeUint(0, 32).storeStringTail("Mint via ANLGRAM").endCell();
         const internalTransfer = beginCell()
             .storeUint(0x178d4519, 32) // internal_transfer op
@@ -2284,12 +2293,37 @@
         };
 
         await tc.sendTransaction(transaction);
-        btn.innerHTML = '✅ ¡Tokens Minteados!';
-        btn.style.background = 'rgba(0,255,100,0.2)';
+        btn.innerHTML = '<span class="status-dot"></span> Solicitud enviada — Verificando minteo en blockchain...';
+        btn.style.background = 'rgba(0,210,255,0.15)';
+
+        let verifiedMintOnChain = false;
+        if (preSupply !== null) {
+          for (let attempt = 0; attempt < 8; attempt++) {
+            await new Promise(r => setTimeout(r, 2500));
+            try {
+              const postRes = await window.anlgramFetchTonApi(`/jettons/${encodeURIComponent(minterRawAddr)}`);
+              if (postRes.ok) {
+                const postJson = await postRes.json();
+                if (postJson && postJson.total_supply != null && BigInt(String(postJson.total_supply)) >= preSupply + MINT_AMOUNT) {
+                  verifiedMintOnChain = true;
+                  break;
+                }
+              }
+            } catch (_) {}
+          }
+        }
+
+        if (verifiedMintOnChain) {
+          btn.innerHTML = '✅ Mint Verificado On-Chain';
+          btn.style.background = 'rgba(0,255,100,0.2)';
+        } else {
+          btn.innerHTML = '⚠️ Mint Enviado (Verificación On-Chain Pendiente)';
+          btn.style.background = 'rgba(255,165,0,0.18)';
+        }
         setTimeout(() => {
           btn.innerHTML = origHTML;
           btn.removeAttribute('style');
-        }, 5000);
+        }, 6000);
       } catch(e) {
         console.error("Mint Error:", e);
         alert("❌ Error al mintear:\n\n" + (e.message || e));

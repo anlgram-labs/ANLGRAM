@@ -260,6 +260,9 @@
         break;
       case 'projects':
         window.labsOpenModal('my-projects-modal');
+        if (typeof window.labsRefreshMyProjects === 'function') {
+          window.labsRefreshMyProjects();
+        }
         break;
       default:
         if (flowSection) flowSection.style.display = 'block';
@@ -3037,11 +3040,182 @@
   window.labsOpenModal = function (modalId) {
     const el = document.getElementById(modalId);
     if (el) el.classList.add('active');
+    if (modalId === 'my-projects-modal' && typeof window.labsRefreshMyProjects === 'function') {
+      window.labsRefreshMyProjects();
+    }
   };
 
   window.labsCloseModal = function (modalId) {
     const el = document.getElementById(modalId);
     if (el) el.classList.remove('active');
+  };
+
+  window.labsInspectVerifiedProjectRegistry = async function (input = {}) {
+    const fingerprint = typeof input === 'string' ? input.trim() : String(input.fingerprint || '').trim();
+    try {
+      if (fingerprint) {
+        const res = await fetch('/api/projects/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          credentials: 'same-origin',
+          cache: 'no-store',
+          body: JSON.stringify({ fingerprint })
+        });
+        if (!res.ok) {
+          let detail = '';
+          try { const errJson = await res.json(); detail = errJson?.error || ''; } catch (_) {}
+          return {
+            ok: false,
+            state: 'UNKNOWN',
+            httpStatus: res.status,
+            error: detail || `Registry status endpoint returned HTTP ${res.status}`,
+            refundState: 'UNKNOWN',
+            migrationStage: 'UNKNOWN',
+            lpLockState: 'CUSTODY_UNVERIFIED'
+          };
+        }
+        const data = await res.json();
+        return {
+          ok: true,
+          state: data?.status || 'REGISTERED_PROJECT_CHAIN_EVIDENCE',
+          fingerprint: data?.fingerprint || fingerprint,
+          minterDeployed: Boolean(data?.minter?.deployed),
+          curveDeployed: Boolean(data?.curve?.deployed),
+          migrationStage: data?.migration?.stageName || (data?.migration?.stage != null ? `STAGE_${data.migration.stage}` : 'UNKNOWN'),
+          graduated: data?.migration?.graduated === true ? 'GRADUATED' : (data?.migration?.graduated === false ? 'IN_PROGRESS' : 'UNKNOWN'),
+          refundState: data?.migration?.refundAvailable === true ? 'REFUND_PENDING' : 'NO_REFUND_EVIDENCE',
+          lpLockState: data?.lpLocker?.locked === true ? 'LOCKED_ONCHAIN' : 'CUSTODY_UNVERIFIED',
+          raw: data
+        };
+      }
+      return {
+        ok: false,
+        state: 'PENDING_FINGERPRINT',
+        error: 'Provide a 64-hex project fingerprint to query /api/projects/status.',
+        refundState: 'UNKNOWN',
+        migrationStage: 'UNKNOWN',
+        lpLockState: 'CUSTODY_UNVERIFIED'
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        state: 'OFFLINE_OR_UNAVAILABLE',
+        error: err?.message || 'Project registry service unreachable',
+        refundState: 'UNKNOWN',
+        migrationStage: 'UNKNOWN',
+        lpLockState: 'CUSTODY_UNVERIFIED'
+      };
+    }
+  };
+
+  window.labsRefreshMyProjects = async function () {
+    const container = document.getElementById('labs-my-projects-list');
+    if (!container) return;
+
+    const walletAddr = getConnectedWallet();
+    let netCtx = null;
+    try { netCtx = getNetworkContext(); } catch (_) { netCtx = null; }
+
+    // Collect any locally recorded pending receipts (never treated as confirmed without chain verification)
+    const pendingItems = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (k.startsWith('anlgram_jetton_deploy_pending_v1:') || k.startsWith('anl_labs_pending_deploy_v1') || k.startsWith('anl_labs_pending_vesting_v1')) {
+          try {
+            const parsed = JSON.parse(localStorage.getItem(k) || '{}');
+            pendingItems.push({ key: k, data: parsed });
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+
+    if (!walletAddr) {
+      container.innerHTML = `
+        <div style="padding:18px; text-align:center; color:var(--labs-text-muted); font-size:13px;">
+          Connect a verified TON wallet to inspect your on-chain Jetton contracts and Project Registry status.
+        </div>
+      `;
+      return;
+    }
+
+    if (!netCtx) {
+      container.innerHTML = `
+        <div style="padding:16px; border:1px solid rgba(255,92,122,0.4); border-radius:10px; background:rgba(255,92,122,0.08); color:#ffb8c6; font-size:12px;">
+          <strong>Network Unverified (FAIL-CLOSED):</strong> Connected wallet chain ID could not be verified as TON Mainnet (-239) or TON Testnet (-3). Reconnect a supported wallet.
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div style="padding:16px; text-align:center; color:var(--labs-cyan); font-size:13px;">
+        ⏳ Querying TON ${escapeHtml(netCtx.network.toUpperCase())} (${escapeHtml(netCtx.chainId)}) &amp; Verified Project Registry...
+      </div>
+    `;
+
+    const tokens = Array.isArray(wizardState.userTokens) ? wizardState.userTokens : [];
+    const rowsHtml = [];
+
+    for (const t of tokens) {
+      const friendly = toFriendly(t.address);
+      rowsHtml.push(`
+        <div style="padding:12px; border:1px solid rgba(0,210,255,0.22); border-radius:10px; background:rgba(0,0,0,0.28); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:700; color:#fff; font-size:13px;">${escapeHtml(t.name)} (${escapeHtml(t.symbol)})</div>
+            <div style="font-family:monospace; font-size:11px; color:var(--labs-text-muted);">${escapeHtml(shortAddr(friendly))}</div>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <span style="padding:3px 8px; border-radius:999px; font-size:10px; background:rgba(0,255,157,0.12); color:#6bffb8; border:1px solid rgba(0,255,157,0.3);">ON-CHAIN JETTON (${escapeHtml(netCtx.network.toUpperCase())})</span>
+            <button type="button" class="labs-btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="window.labsSelectLifecycleToken('${escapeHtml(t.address)}'); window.labsCloseModal('my-projects-modal');">Inspect</button>
+          </div>
+        </div>
+      `);
+    }
+
+    for (const item of pendingItems) {
+      const targetAddr = item.data?.address || item.data?.minterAddress || item.data?.targetAddress || 'Unknown address';
+      rowsHtml.push(`
+        <div style="padding:12px; border:1px solid rgba(255,190,92,0.35); border-radius:10px; background:rgba(255,190,92,0.08); margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <strong style="color:#ffd48a; font-size:12px;">⏳ PENDING / UNVERIFIED SUBMISSION</strong>
+            <span style="font-size:10px; font-family:monospace; color:#ffd48a;">State: PENDING_CHAIN_INCLUSION</span>
+          </div>
+          <div style="font-size:11px; color:var(--labs-text-sub); margin-top:4px; font-family:monospace; word-break:break-all;">
+            Target: ${escapeHtml(String(targetAddr))}
+          </div>
+          <div style="font-size:11px; color:var(--labs-text-muted); margin-top:4px;">
+            Wallet request was recorded locally. Do not assume execution succeeded until verified on-chain.
+          </div>
+        </div>
+      `);
+    }
+
+    const registryBoxHtml = `
+      <div style="margin-top:12px; padding:12px; border:1px solid rgba(0,210,255,0.2); border-radius:10px; background:rgba(0,140,255,0.05);">
+        <div style="font-weight:700; color:#fff; font-size:12px; margin-bottom:6px;">🔐 Verified Project Registry Lookup (Testnet DO)</div>
+        <div style="font-size:11px; color:var(--labs-text-sub); margin-bottom:8px;">
+          Inspect deterministic 4-contract deployment status, graduation stage (0–7), LP lock custody, and refund-pending evidence by 64-hex project fingerprint:
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <input id="labs-project-fingerprint-input" type="text" maxlength="64" placeholder="64-hex project fingerprint..." style="flex:1; min-width:180px; padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.14); background:rgba(0,0,0,0.4); color:#fff; font-family:monospace; font-size:11px;" />
+          <button type="button" class="labs-btn-secondary" style="padding:8px 12px; font-size:11px;" onclick="(async()=>{const inp=document.getElementById('labs-project-fingerprint-input');const out=document.getElementById('labs-project-registry-output');if(!out)return;out.textContent='Loading registry status...';const res=await window.labsInspectVerifiedProjectRegistry(inp?inp.value:'');out.textContent=JSON.stringify(res,null,2);})()">Verify Status</button>
+        </div>
+        <pre id="labs-project-registry-output" style="margin:8px 0 0; font-size:11px; color:var(--labs-text-muted); white-space:pre-wrap; overflow-wrap:anywhere;">No project fingerprint queried yet. Status: UNKNOWN.</pre>
+      </div>
+    `;
+
+    if (rowsHtml.length === 0) {
+      container.innerHTML = `
+        <div style="padding:14px; text-align:center; color:var(--labs-text-muted); font-size:12px; border:1px dashed rgba(255,255,255,0.12); border-radius:10px;">
+          No verified Jettons or pending submissions found for ${escapeHtml(shortAddr(toFriendly(walletAddr)))} on ${escapeHtml(netCtx.network.toUpperCase())}.
+        </div>
+        ${registryBoxHtml}
+      `;
+    } else {
+      container.innerHTML = rowsHtml.join('') + registryBoxHtml;
+    }
   };
 
   document.addEventListener('click', (e) => {

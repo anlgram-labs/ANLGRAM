@@ -467,7 +467,7 @@ const workerHandler = {
           status: upstreamRes.status,
           headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': `public, max-age=${ttl}`,
+            'Cache-Control': ttl === 0 ? 'no-store' : `public, max-age=${ttl}`,
             'X-Proxy-Cache': 'MISS',
             'X-Content-Type-Options': 'nosniff',
             ...corsHeaders
