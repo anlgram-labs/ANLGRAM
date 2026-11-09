@@ -155,7 +155,7 @@ export function generation2Status(identity, {checkpoint, previous, curveCheckpoi
  const reference = JSON.stringify([proof.masterchainSeqno, proof.masterchainRootHash, proof.masterchainFileHash]);
  const seen = new Set();
  for (const receipt of evidence) {
-  if (!isIncludedLpEvidence(receipt) || !['LP_ISSUANCE','LP_WITHDRAWAL_IMMEDIATE_BOUNCE','LP_WITHDRAWAL_DELIVERY'].includes(receipt.kind) ||
+  if (!isIncludedLpEvidence(receipt) || !['LP_ISSUANCE','LP_WITHDRAWAL_IMMEDIATE_BOUNCE','LP_WITHDRAWAL_DELIVERY','LP_WITHDRAWAL_DOWNSTREAM_RETURN'].includes(receipt.kind) ||
    receipt.operationId !== result.operationId || receipt.reference !== reference ||
    receipt.locker !== checkpoint.locker || receipt.pool !== checkpoint.pool || receipt.lpWallet !== checkpoint.lpWallet) {
    throw Error('Wrong project mint evidence');
@@ -169,6 +169,9 @@ export function generation2Status(identity, {checkpoint, previous, curveCheckpoi
    if(!observation||receipt.newAttemptAuthorized!==false||receipt.operationCompleted!==false||
       (receipt.kind==='LP_WITHDRAWAL_IMMEDIATE_BOUNCE'&&
        (receipt.contractPrincipalRestoredFields!==true||receipt.deliveryVerified!==false))||
+      (receipt.kind==='LP_WITHDRAWAL_DOWNSTREAM_RETURN'&&
+       (receipt.sourceWalletRestoredFields!==true||receipt.contractPrincipalRestoredFields!==false||
+        receipt.contractPendingMustRemain!==true||receipt.deliveryVerified!==false))||
       (receipt.kind==='LP_WITHDRAWAL_DELIVERY'&&receipt.contractPendingMustRemain!==true))throw Error('Invalid withdrawal recovery evidence');
    result.withdrawalEvidence.push(receipt);
   }

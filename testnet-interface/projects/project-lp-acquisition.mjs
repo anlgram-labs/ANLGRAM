@@ -130,7 +130,7 @@ async function acquireLpWithdrawalBounce(candidate, providers, reference, previo
   },{locker:l,wallet:w});
 }
 
-async function acquireLpWithdrawalDelivery(candidate, providers, reference, previousReference, walletHistory, lockerHistory) {
+async function acquireLpWithdrawalOutcome(candidate, providers, reference, previousReference, walletHistory, lockerHistory) {
   const policy=lpEvidencePolicy(b64(stateInit(candidate.vault.init)));
   const [l,w]=await Promise.all([lockerHistory,walletHistory]);
   const selected=selectLpWithdrawalDelivery(policy,l.rows,w.rows);
@@ -139,13 +139,28 @@ async function acquireLpWithdrawalDelivery(candidate, providers, reference, prev
   const r=await history(providers,recipient.toRawString(),reference);
   const child=matchingChild(r.rows,delivery);
   if(!child)return null;
-  const snapshots=await accountSnapshots([[policy.locker.toRawString(),l,claim],
-    [policy.lpWallet.toRawString(),w,sender],[recipient.toRawString(),r,child]],providers,reference,previousReference,[2]);
+  const roles=[[policy.locker.toRawString(),l,claim],[policy.lpWallet.toRawString(),w,sender],[recipient.toRawString(),r,child]];
+  let restoration;
+  if(child.tx.description.aborted){
+    if(child.tx.description.bouncePhase?.type!=='ok')return null;
+    const bounces=[...child.tx.outMessages.values()].filter(message=>message.info.type==='internal'&&
+      message.info.bounced&&message.info.src.equals(recipient)&&message.info.dest.equals(policy.lpWallet));
+    if(bounces.length!==1)return null;
+    restoration=matchingChild(w.rows,bounces[0]);
+    if(!restoration)return null;
+    roles.push([policy.lpWallet.toRawString(),w,restoration]);
+  }
+  const snapshots=await accountSnapshots(roles,providers,reference,previousReference,[2]);
   if(!snapshots)return null;
-  return verifyProvenLpEvidence(policy,'withdrawal',{
+  const raw={
     locker:snapshots[0],wallet:snapshots[1],recipient:snapshots[2],lockerTransaction:b64(claim.cell),
     walletTransaction:b64(sender.cell),recipientTransaction:b64(child.cell)
-  },{locker:l,wallet:w,recipient:r});
+  };
+  if(restoration){
+    raw.walletRestore=snapshots[3];
+    raw.walletRestoreTransaction=b64(restoration.cell);
+  }
+  return verifyProvenLpEvidence(policy,restoration?'withdrawalReturn':'withdrawal',raw,{locker:l,wallet:w,recipient:r});
 }
 
 export function acquireLpObservations(candidate, providers, reference, previousReference, includeWithdrawal) {
@@ -154,7 +169,7 @@ export function acquireLpObservations(candidate, providers, reference, previousR
   if(includeWithdrawal){
     const lockerHistory=history(providers,candidate.vault.address.toRawString(),reference);
     reads.push(acquireLpWithdrawalBounce(candidate,providers,reference,previousReference,walletHistory,lockerHistory),
-      acquireLpWithdrawalDelivery(candidate,providers,reference,previousReference,walletHistory,lockerHistory));
+      acquireLpWithdrawalOutcome(candidate,providers,reference,previousReference,walletHistory,lockerHistory));
   }
   return Promise.allSettled(reads);
 }

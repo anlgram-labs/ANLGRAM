@@ -18,7 +18,8 @@ function transaction(boc,address){const c=cell(boc),s=c.beginParse(),t=core.load
 function success(t){const d=t.description;need(d.type==='generic'&&!d.aborted&&d.computePhase.type==='vm'&&d.computePhase.success&&d.computePhase.exitCode===0&&(!d.actionPhase||(d.actionPhase.success&&d.actionPhase.resultCode===0&&d.actionPhase.skippedActions===0)),'Successful execution required');}
 function account(boc,address){const c=cell(boc),s=c.beginParse();if(!s.loadBit()){s.endParse();return{cell:c,absent:true};}const a=core.loadAccount(s);s.endParse();need(equal(a.addr,address),'Wrong Account address');return{cell:c,account:a,absent:false};}
 function active(a,expectedCode){need(!a.absent&&a.account.storage.state.type==='active','Active Account required');const state=a.account.storage.state.state;need(state.code&&state.data&&hash(state.code)===hash(expectedCode),'Pinned execution code mismatch');return state.data;}
-function states(raw,address,tx,expectedCode){const before=account(raw.before,address),after=account(raw.after,address);need(hash(before.cell)===tx.stateUpdate.oldHash.toString('hex')&&hash(after.cell)===tx.stateUpdate.newHash.toString('hex'),'Account states not bound to transaction');if(!before.absent&&before.account.storage.state.type==='active')active(before,expectedCode);active(after,expectedCode);return{before,after};}
+function boundStates(raw,address,tx){const before=account(raw.before,address),after=account(raw.after,address);need(hash(before.cell)===tx.stateUpdate.oldHash.toString('hex')&&hash(after.cell)===tx.stateUpdate.newHash.toString('hex'),'Account states not bound to transaction');return{before,after};}
+function states(raw,address,tx,expectedCode){const {before,after}=boundStates(raw,address,tx);if(!before.absent&&before.account.storage.state.type==='active')active(before,expectedCode);active(after,expectedCode);return{before,after};}
 function wallet(a,owner,master,expectedCode){if(a.absent||a.account.storage.state.type==='uninit')return 0n;if(a.account.storage.state.type==='frozen'){const initial={code:expectedCode,data:core.beginCell().storeCoins(0).storeAddress(owner).storeAddress(master).storeRef(expectedCode).endCell()},expected=core.beginCell().store(core.storeStateInit(initial)).endCell().hash().toString('hex');need(a.account.storage.state.stateHash.toString(16).padStart(64,'0')===expected,'Frozen wallet is not canonical zero-balance StateInit');return 0n;}const s=active(a,expectedCode).beginParse(),n=s.loadCoins();need(equal(s.loadAddress(),owner)&&equal(s.loadAddress(),master)&&equal(s.loadRef(),expectedCode),'Wrong Jetton master/owner/code');s.endParse();return n;}
 function internal(m,source,destination){need(m?.info.type==='internal'&&!m.info.bounced&&equal(m.info.src,source)&&equal(m.info.dest,destination),'Wrong internal sender/destination or bounce');return m.body.beginParse();}
 function edge(parent,child){need(child.inMessage?.info.type==='internal','Internal child required');const h=hash(core.beginCell().store(core.storeMessage(child.inMessage)).endCell());need(Array.from(parent.outMessages.values()).filter(m=>hash(core.beginCell().store(core.storeMessage(m)).endCell())===h).length===1,'Missing exact parent-to-child message');need(child.lt>parent.lt,'Invalid message logical-time order');}
@@ -53,7 +54,7 @@ export function verifyLpIssuanceFields(policy,raw){
 }
 
 function vaultAccount(a,policy){const d=active(a,code('anlgram-lp-locker-v2')).beginParse();need(d.loadUint(8)===2&&d.loadRef().equals(policy.config),'Locker immutable configuration changed');const s=d.loadRef().beginParse(),fields={received:s.loadCoins(),locked:s.loadCoins(),free:s.loadCoins(),pending:s.loadCoins(),kind:s.loadBit(),pq:s.loadUintBig(64),next:s.loadUintBig(64),unlock:s.loadUintBig(64)};s.endParse();d.loadMaybeRef();fields.requests=d.loadDict(core.Dictionary.Keys.BigUint(64),{parse:s=>s.asCell(),serialize(){throw Error('Read only');}});d.endParse();return fields;}
-export function verifyLpWithdrawalFields(policy,raw){
+function withdrawalRoute(policy,raw){
  const claim=transaction(raw.lockerTransaction,policy.locker),sender=transaction(raw.walletTransaction,policy.lpWallet);success(claim.tx);success(sender.tx);edge(claim.tx,sender.tx);
  const v=states(raw.locker,policy.locker,claim.tx,code('anlgram-lp-locker-v2')),before=vaultAccount(v.before,policy),after=vaultAccount(v.after,policy);
  const msg=claim.tx.inMessage;need(msg?.info.type==='internal'&&!msg.info.bounced&&equal(msg.info.dest,policy.locker),'Authenticated claim required');const s=msg.body.beginParse();need(s.loadUint(32)===0x414c5633,'Not an LP claim');const q=s.loadUintBig(64),locked=s.loadBit(),amount=s.loadCoins();s.endParse();
@@ -62,12 +63,48 @@ export function verifyLpWithdrawalFields(policy,raw){
  need(!locked||(policy.duration!==0&&before.unlock>0n&&BigInt(claim.tx.now)>=before.unlock),'Permanent/premature withdrawal');
  need(before.received===after.received&&after.locked===before.locked-(locked?amount:0n)&&after.free===before.free-(locked?0n:amount)&&after.pending===before.pending+amount&&after.next===q+1n&&after.pq===q&&after.kind===locked&&after.unlock===before.unlock,'Locker withdrawal accounting mismatch');
  const ws=internal(sender.tx.inMessage,policy.locker,policy.lpWallet);need(transfer(ws,0x0f8a7ea5,q)===amount&&equal(ws.loadAddress(),recipient),'Wrong wallet transfer');
- const recipientInit={code:policy.lpInit.code,data:core.beginCell().storeCoins(0).storeAddress(recipient).storeAddress(policy.pool).storeRef(policy.lpInit.code).endCell()},destination=core.contractAddress(0,recipientInit),received=transaction(raw.recipientTransaction,destination);success(received.tx);edge(sender.tx,received.tx);
+ const recipientInit={code:policy.lpInit.code,data:core.beginCell().storeCoins(0).storeAddress(recipient).storeAddress(policy.pool).storeRef(policy.lpInit.code).endCell()},destination=core.contractAddress(0,recipientInit),received=transaction(raw.recipientTransaction,destination);edge(sender.tx,received.tx);
  const rs=internal(received.tx.inMessage,policy.lpWallet,destination);need(transfer(rs,0x178d4519,q)===amount&&equal(rs.loadAddress(),policy.locker),'Wrong final delivery');
- const own=states(raw.wallet,policy.lpWallet,sender.tx,policy.lpInit.code),dest=states(raw.recipient,destination,received.tx,policy.lpInit.code);
+ const own=states(raw.wallet,policy.lpWallet,sender.tx,policy.lpInit.code);
  need(wallet(own.before,policy.locker,policy.pool,policy.lpInit.code)-wallet(own.after,policy.locker,policy.pool,policy.lpInit.code)===amount,'Sender LP debit mismatch');
+ const fields={operationId:policy.q.toString(),withdrawalQueryId:q.toString(),amountUnits:amount.toString(),
+  recipient:recipient.toRawString(),recipientWallet:destination.toRawString(),lockedPrincipal:locked,
+  locker:policy.locker.toRawString(),pool:policy.pool.toRawString(),lpWallet:policy.lpWallet.toRawString(),
+  lockerTransactionHash:hash(claim.cell),lockerTransactionLt:String(claim.tx.lt),walletTransactionHash:hash(sender.cell),
+  walletTransactionLt:String(sender.tx.lt),recipientTransactionHash:hash(received.cell),recipientTransactionLt:String(received.tx.lt),
+  persistentRequestMatched:true,contractPendingMustRemain:true,newAttemptAuthorized:false};
+ return {fields,received,recipient,destination,amount,q};
+}
+
+export function verifyLpWithdrawalFields(policy,raw){
+ const {fields,received,recipient,destination,amount}=withdrawalRoute(policy,raw);
+ success(received.tx);
+ const dest=states(raw.recipient,destination,received.tx,policy.lpInit.code);
  need(wallet(dest.after,recipient,policy.pool,policy.lpInit.code)-wallet(dest.before,recipient,policy.pool,policy.lpInit.code)===amount,'Recipient LP credit mismatch');
- return result({kind:'LP_WITHDRAWAL_DELIVERY',operationId:policy.q.toString(),withdrawalQueryId:q.toString(),amountUnits:amount.toString(),recipient:recipient.toRawString(),recipientWallet:destination.toRawString(),lockedPrincipal:locked,locker:policy.locker.toRawString(),pool:policy.pool.toRawString(),lpWallet:policy.lpWallet.toRawString(),lockerTransactionHash:hash(claim.cell),lockerTransactionLt:String(claim.tx.lt),walletTransactionHash:hash(sender.cell),walletTransactionLt:String(sender.tx.lt),recipientTransactionHash:hash(received.cell),recipientTransactionLt:String(received.tx.lt),persistentRequestMatched:true,contractPendingMustRemain:true,newAttemptAuthorized:false});
+ return result({kind:'LP_WITHDRAWAL_DELIVERY',...fields});
+}
+
+// A downstream bounce restores the foreign source wallet. It does not send a
+// Locker receipt and therefore does not restore contract-level availability.
+export function verifyLpWithdrawalReturnFields(policy,raw){
+ const {fields,received,destination,amount,q}=withdrawalRoute(policy,raw);
+ const failure=received.tx.description;
+ need(failure.type==='generic'&&failure.aborted&&failure.bouncePhase?.type==='ok','Recipient failure/bounce required');
+ boundStates(raw.recipient,destination,received.tx);
+ const restored=transaction(raw.walletRestoreTransaction,policy.lpWallet);
+ success(restored.tx);
+ edge(received.tx,restored.tx);
+ const bounce=restored.tx.inMessage;
+ need(bounce.info.bounced&&equal(bounce.info.src,destination)&&equal(bounce.info.dest,policy.lpWallet),'Wrong downstream bounce route');
+ const s=bounce.body.beginParse();
+ need(s.loadUint(32)===0xffffffff&&transfer(s,0x178d4519,q)===amount,'Wrong downstream bounced transfer');
+ const own=states(raw.walletRestore,policy.lpWallet,restored.tx,policy.lpInit.code);
+ const before=wallet(own.before,policy.locker,policy.pool,policy.lpInit.code);
+ const after=wallet(own.after,policy.locker,policy.pool,policy.lpInit.code);
+ need(after-before===amount,'Source LP restoration delta mismatch');
+ return result({kind:'LP_WITHDRAWAL_DOWNSTREAM_RETURN',...fields,
+  walletRestoreTransactionHash:hash(restored.cell),walletRestoreTransactionLt:String(restored.tx.lt),
+  sourceWalletRestoredFields:true,contractPrincipalRestoredFields:false,deliveryVerified:false});
 }
 
 // Only an immediate authenticated bounce of the original LP-wallet request can
@@ -88,14 +125,19 @@ export function verifyLpWithdrawalBounceFields(policy,raw){
 // history matching; no flags supplied by an indexer are accepted as proof.
 // Even this proof is relative to provider reference hashes, NOT validator quorum.
 export function verifyProvenLpEvidence(policy,kind,raw,checkpoints){
- need(['issuance','withdrawal','withdrawalBounce'].includes(kind),'Unsupported evidence kind');
- const roles=kind==='issuance'?['pool','wallet']:kind==='withdrawal'?['locker','wallet','recipient']:['locker','wallet'];
- const fields=kind==='issuance'?verifyLpIssuanceFields(policy,raw):kind==='withdrawal'?verifyLpWithdrawalFields(policy,raw):verifyLpWithdrawalBounceFields(policy,raw);
+ const verifiers={issuance:verifyLpIssuanceFields,withdrawal:verifyLpWithdrawalFields,
+  withdrawalBounce:verifyLpWithdrawalBounceFields,withdrawalReturn:verifyLpWithdrawalReturnFields};
+ need(Object.hasOwn(verifiers,kind),'Unsupported evidence kind');
+ const fields=verifiers[kind](policy,raw);
+ const roles=kind==='issuance'?['pool','wallet']:fields.recipientWallet?['locker','wallet','recipient']:['locker','wallet'];
  const addresses={pool:policy.pool,locker:policy.locker,wallet:policy.lpWallet,recipient:fields.recipientWallet?core.Address.parse(fields.recipientWallet):null};let reference;
  for(const role of roles){const cp=checkpoints?.[role];need(cp,'Missing authenticated checkpoint');const proof=verifyAccountInclusion(cp.raw,cp.reference,addresses[role].toRawString());
   const ref=JSON.stringify([proof.masterchainSeqno,proof.masterchainRootHash,proof.masterchainFileHash]);need(!reference||reference===ref,'Mixed masterchain references');reference=ref;
   const rows=matchHistory(cp.primary,cp.secondary,proof,addresses[role].toRawString()),txHash=fields[role==='locker'?'lockerTransactionHash':role==='recipient'?'recipientTransactionHash':role==='wallet'?'walletTransactionHash':'poolTransactionHash'];
   need(rows.some(r=>r.hash===txHash),'Receipt absent from included account history');
+  if(role==='wallet'&&kind==='withdrawalReturn'){
+   need(rows.some(r=>r.hash===fields.walletRestoreTransactionHash),'Wallet restoration absent from included account history');
+  }
  }
  const verified=Object.freeze({...fields,scope:'ACCOUNT_INCLUSION_RELATIVE_TO_REFERENCE_NOT_PROVIDER_PROVENANCE_OR_VALIDATOR_FINALITY',referenceInclusionVerified:true,providerProvenanceVerified:false,reference});included.add(verified);return verified;
 }

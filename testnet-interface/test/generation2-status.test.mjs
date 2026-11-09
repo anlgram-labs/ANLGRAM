@@ -66,13 +66,18 @@ test('generation 2 projection reads source-compiled state and separates historic
   contractPrincipalRestoredFields:true,deliveryVerified:false,newAttemptAuthorized:false,operationCompleted:false});
  const delivery=rememberLpEvidence({...bounce,kind:'LP_WITHDRAWAL_DELIVERY',
   walletTransactionHash:'bb'.repeat(32),contractPendingMustRemain:true});
- const receipts=generation2Status(identity,{checkpoint:after,evidence:[bounce,bounce,delivery]});
- assert.deepEqual(receipts.withdrawalEvidence,[bounce,delivery]);
+ const downstreamReturn=rememberLpEvidence({...bounce,kind:'LP_WITHDRAWAL_DOWNSTREAM_RETURN',
+  walletTransactionHash:'cc'.repeat(32),sourceWalletRestoredFields:true,
+  contractPrincipalRestoredFields:false,contractPendingMustRemain:true});
+ const receipts=generation2Status(identity,{checkpoint:after,evidence:[bounce,bounce,delivery,downstreamReturn,downstreamReturn]});
+ assert.deepEqual(receipts.withdrawalEvidence,[bounce,delivery,downstreamReturn]);
  assert.equal(receipts.mint,'NOT_VERIFIED');
  assert.equal(receipts.settlement,'SETTLEMENT_PENDING');
  assert.equal(receipts.withdrawalsEnabled,false);
  assert.throws(()=>generation2Status(identity,{checkpoint:after,
   evidence:[rememberLpEvidence({...delivery,lpWallet:after.locker})]}),/Wrong project/);
+ assert.throws(()=>generation2Status(identity,{checkpoint:after,
+  evidence:[rememberLpEvidence({...downstreamReturn,newAttemptAuthorized:true})]}),/Invalid withdrawal/);
  const legs=status.principalAccounting;
  assert(BigInt(legs.tonNano.original)>0n&&BigInt(legs.jettonUnits.original)>0n);
  for(const leg of [legs.tonNano,legs.jettonUnits]){
