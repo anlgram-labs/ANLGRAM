@@ -147,7 +147,7 @@ export class ProjectRegistry {
     const {record, candidate} = intent;
     const status = (options, state) => projectStatusResponse(record, options, {
       status: state, ...provenance, registration: stored.provenance
-    });
+    }, candidate);
     const refresh = await this.storage.transaction(async txn => {
       const now = Date.now();
       if ((await txn.get('nextReadAt')) > now) return false;

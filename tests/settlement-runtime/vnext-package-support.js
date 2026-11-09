@@ -13,10 +13,11 @@ async function fixture(){
  return{chain,owner,other,c,options,send,submit,request};
 }
 async function bootstrap(f){
- assert(exit(await f.send(f.c.addresses.curve,f.c.initCurve),f.c.addresses.curve,0));
- const mint=beginCell().storeUint(0x178d4519,32).storeUint(2,64).storeCoins(1000000000000000000n).storeAddress(null).storeAddress(f.owner.address).storeCoins(60000000n).storeBit(false).endCell();
- await f.send(f.c.addresses.minter,beginCell().storeUint(21,32).storeUint(2,64).storeAddress(f.c.addresses.curve).storeCoins(100000000n).storeRef(mint).endCell(),200000000n);
- await f.send(f.c.addresses.minter,beginCell().storeUint(3,32).storeUint(0x414e4c4752454e4fn,64).storeAddress(null).storeAddress(f.c.addresses.curve).endCell(),50000000n);
+ const {launchpadGenesisOperations}=await import('../../testnet-interface/projects/launchpad-gen2-operations.mjs');
+ for(const {message} of launchpadGenesisOperations(f.c,core).slice(-3)){
+  const to=core.Address.parse(message.address);
+  assert(exit(await f.send(to,core.Cell.fromBase64(message.payload),BigInt(message.amount)),to,0));
+ }
  assert.equal((await f.chain.runGetMethod(f.c.addresses.curve,'get_curve_state')).stackReader.readBigNumber(),3n);
 }
 async function graduate(f){await bootstrap(f);await f.send(f.c.addresses.curve,beginCell().storeUint(0x5fcc3d14,32).storeUint(11,64).storeCoins(1).endCell(),510000000000n);const state=(await f.chain.runGetMethod(f.c.addresses.curve,'get_curve_state')).stack.map(x=>x.value);assert.equal(state[0],4n);assert(state[4]>=300000000000n);

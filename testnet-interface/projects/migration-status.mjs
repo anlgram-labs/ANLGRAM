@@ -45,10 +45,18 @@ export function migrationEvidenceStatus(terms,evidence=[],checkpoints=[]){
 }
 
 function returnLeg(original, funded, fundingBounced, inTransit, curveBooked) {
- const remaining = BigInt(original) - BigInt(curveBooked);
- if (remaining < 0n || BigInt(inTransit) > remaining) throw Error('Invalid principal accounting');
+ const [obligation,received,bounced,returning,booked]=[original,funded,fundingBounced,inTransit,curveBooked].map(value=>{
+  if(typeof value!=='string'||!/^\d{1,78}$/.test(value))throw Error('Invalid principal accounting');
+  return BigInt(value);
+ });
+ const remaining = obligation - booked;
+ if (received+bounced>obligation || remaining<0n || returning>remaining) throw Error('Invalid principal accounting');
+ const fundingStatus=obligation===0n?'UNKNOWN':received===obligation?'VERIFIED':
+  bounced===obligation?'FAILED':received+bounced>0n?'PARTIAL':'PENDING';
+ const curveReturnStatus=obligation===0n?'UNKNOWN':booked===obligation?'REFUNDED':
+  returning>0n?'RETURN_PENDING':booked>0n?'PARTIAL':'UNKNOWN';
  return {original, funded, fundingBounced, inTransit, curveBooked,
-  notBookedByCurve: remaining.toString(), dexTerminalOutcome: 'UNKNOWN'};
+  notBookedByCurve: remaining.toString(), fundingStatus, curveReturnStatus, dexTerminalOutcome: 'UNKNOWN'};
 }
 
 // Projection only: source checkpoints must be independently verified and matched
@@ -67,8 +75,7 @@ export function isCurveGraduatedAtCheckpoint(curve, migration) {
    l?.dexDispatched === '1' &&
    /^\d+$/.test(String(l.originalTonNano)) &&
    BigInt(l.originalTonNano) >= BigInt(curve.thresholdNano) &&
-   /^\d+$/.test(String(l.originalJettonUnits)) &&
-   BigInt(l.originalJettonUnits) > 0n &&
+   l.originalJettonUnits === '200000000000000000' &&
    /^\d+$/.test(String(curve.reserveNano));
 }
 

@@ -8,7 +8,12 @@ async function fixture(settings={}){
  const owner=await chain.treasury('vnext-project-owner'),other=await chain.treasury('vnext-project-other'),keys=crypto.generateKeyPairSync('ed25519'),publicKey=keys.publicKey.export({type:'spki',format:'der'}).subarray(-32).toString('hex');
  const options={creator:owner.address.toRawString(),projectId:settings.projectId??'one-shot-local-no-deployment',metadata:{name:'VNext local',symbol:'VNX'},operationId:77n,percent:settings.percent??100,duration:settings.duration??'permanent',beneficiary:owner.address,unlockedController:other.address,migrationAuthorityPublicKey:publicKey},c=pkg.build(core,options);
  const dir=path.resolve(__dirname,'../../minter-contract/contracts');compiled??=Promise.all(['anlgram-bonding-curve-dispatch-v2','anlgram-guard-vnext','anlgram-migration-router-dispatch-v2'].map(async n=>{const r=await compileFunc({targets:[n+'.fc'],sources:f=>fs.readFileSync(path.join(dir,f),'utf8').replace(/\r\n/g,'\n')});assert.equal(r.status,'ok',r.message);return core.Cell.fromBase64(r.codeBoc);}));const codes=await compiled;for(const [i,n]of ['curve','guard','migration'].entries())assert(codes[i].equals(c.states[n].code));
- for(const [n,init]of Object.entries(c.states))await owner.send({to:c.addresses[n],init,value:100000000n,body:beginCell().endCell()});await owner.send({to:c.vault.address,init:c.vault.init,value:100000000n,body:beginCell().endCell()});
+ const {launchpadGenesisOperations}=await import('../../testnet-interface/projects/launchpad-gen2-operations.mjs');
+ for(const {message} of launchpadGenesisOperations(c,core).slice(0,5)){
+  const to=core.Address.parse(message.address),init=core.loadStateInit(core.Cell.fromBase64(message.stateInit).beginParse());
+  const deployed=await owner.send({to,init,value:BigInt(message.amount),body:core.Cell.fromBase64(message.payload),bounce:true});
+  assert(exit(deployed,to,0));
+ }
  const transactions=[],send=async(to,body,value=100000000n,actor=owner)=>{const r=await actor.send({to,body,value,bounce:true});transactions.push(...r.transactions);return r;},sign=p=>crypto.sign(null,p.digest,keys.privateKey),submit=p=>send(c.addresses.guard,permits.submission(core,c.guard,p,sign(p)),50000000n),request=(p,phase,revoke=false)=>{const m=pkg.request(core,c,p,phase,revoke);return send(m.to,m.body,m.value);};
  return{chain,owner,other,c,options,send,submit,request,transactions};
 }

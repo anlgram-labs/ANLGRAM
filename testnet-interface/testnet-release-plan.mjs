@@ -13,6 +13,8 @@ import {deploymentIntent,hash,stateInit,hexHash} from './projects/project-regist
 import {pinned} from './recovery/policy.mjs';
 import {code,standardV2Code} from './projects/artifacts.mjs';
 import {assertReviewedStandardOperator,reviewedStandardOperator,reviewedStandardPublicKey} from './projects/reviewed-standard-operator.mjs';
+import {launchpadGenesisOperations} from './projects/launchpad-gen2-operations.mjs';
+import charges from '../assets/js/donation-config.js';
 const dispatchArtifacts={'anlgram-bonding-curve-dispatch-v2':curveArtifact,
  'anlgram-guard-vnext':guardArtifact,'anlgram-migration-router-dispatch-v2':migrationArtifact};
 
@@ -156,7 +158,12 @@ export async function buildReleasePlan(input) {
   launchpad:{operator:{address:launchAddress,walletId,publicKey,codeHash:hash(launchWallet.init.code)},
    operatorGenesis:identity(launchWallet.init,launchAddress),
    fingerprint:record.configurationFingerprint,operationId:record.operationId,
-   accounts,walletCodeHash:hash(c.wallet),initializeCurveBodyHash:hash(c.initCurve),lockerBindBodyHash:hash(c.bind),
+   accounts,genesisOperations:launchpadGenesisOperations(c,core),
+   configuredSupplyUnits:'1000000000000000000',curveAllocationUnits:'800000000000000000',
+   dexAllocationUnits:'200000000000000000',graduationPrincipalNano:'300000000000',
+   creationCharge:{baseNano:String(charges.BASE_EXECUTION_NANO),donationNano:String(charges.DONATION_AMOUNT_NANO),
+    paymentVerified:false,reconciliationRequired:true},
+   walletCodeHash:hash(c.wallet),initializeCurveBodyHash:hash(c.initCurve),lockerBindBodyHash:hash(c.bind),
    migrationWalletBindBodyHash:hash(c.walletBinding),lockTerms:c.terms,
    stonfi:{scope:'CAPTURED_TESTNET_IDENTITIES_NO_LIVE_PROOF',...contracts,pool,lpWallet,lpAccountCodeHash:profile.codes.lpAccount.hash,
     routerJettonWallet:c.routerTokenWallet.toString({testOnly:true})}},

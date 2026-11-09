@@ -4,6 +4,11 @@ on:
   pull_request:
     paths:
       - 'testnet-interface/projects/migration-status.mjs'
+      - 'testnet-interface/projects/curve-trade-payload.mjs'
+      - 'testnet-interface/projects/launchpad-gen2-operations.mjs'
+      - 'testnet-interface/projects/project-registry.mjs'
+      - 'testnet-interface/project-registry-worker.mjs'
+      - 'testnet-interface/testnet-release-plan.mjs'
       - 'testnet-interface/test/memelabs-security.test.mjs'
       - 'testnet-interface/package.json'
       - 'testnet-interface/package-lock.json'
@@ -49,6 +54,6 @@ jobs:
         working-directory: .
         run: |
           node minter-contract/compile-one-shot-dispatch.js --check
-          node --test --test-concurrency=1 tests/settlement-runtime/graduation-reference.test.js tests/settlement-runtime/one-shot-dispatch.test.js tests/settlement-runtime/lpaccount-settlement-evidence.test.js testnet-interface/test/generation2-status.test.mjs
+          node --test --test-concurrency=1 tests/settlement-runtime/graduation-reference.test.js tests/settlement-runtime/one-shot-dispatch.test.js tests/settlement-runtime/lpaccount-settlement-evidence.test.js testnet-interface/test/generation2-status.test.mjs testnet-interface/test/testnet-release-plan.test.mjs testnet-interface/test/trusted-project-registration.test.mjs
       - name: Build the Pages candidate without deploying
         run: npm run build:pages

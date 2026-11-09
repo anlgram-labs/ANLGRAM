@@ -5,6 +5,86 @@ const {fixture,ready,exit}=require('./one-shot-dispatch-support'),{beginCell}=co
 const TON = 300000000001n;
 const op=m=>m?.body.bits.length>=32?m.body.beginParse().loadUint(32):0;
 const summary=txs=>txs.filter(t=>t.description.computePhase.type==='vm'&&![0,1].includes(t.description.computePhase.exitCode)).map(t=>({to:t.inMessage?.info.dest?.toRawString(),op:op(t.inMessage).toString(16),exit:t.description.computePhase.exitCode}));
+test('unsigned registered trade messages agree with both TVM getters and actual balance changes',async()=>{
+ const f=await fixture();
+ await require('./vnext-package-support').bootstrap(f);
+ const {prepareCurveTrade,prepareCurveJettonRefund}=await import('../../testnet-interface/projects/curve-trade-payload.mjs');
+ const {migrationAccountFields}=await import('../../testnet-interface/projects/migration-account.mjs');
+ const {rememberMigrationCheckpoint}=await import('../../testnet-interface/projects/evidence-brand.mjs');
+ const curve=f.c.addresses.curve, now=f.chain.now;
+ const master=(await f.chain.runGetMethod(f.c.addresses.minter,'get_jetton_data')).stackReader;
+ assert.equal(master.readBigNumber(),1000000000000000000n);
+ master.readBigNumber();
+ assert.equal(master.readAddressOpt(),null);
+ const minted=(await f.chain.runGetMethod(f.c.curveWallet,'get_wallet_data')).stackReader;
+ assert.equal(minted.readBigNumber(),1000000000000000000n);
+ assert(minted.readAddress().equals(curve));
+ assert(minted.readAddress().equals(f.c.addresses.minter));
+ const configuration={...f.options,beneficiary:f.options.beneficiary.toRawString(),
+  unlockedController:f.options.unlockedController.toRawString()};
+ const readAccount=async()=>{
+  const account=(await f.chain.getContract(curve)).account.account;
+  return beginCell().storeBit(true).store(core.storeAccount(account)).endCell().toBoc().toString('base64');
+ };
+ const makeCheckpoint=async(accountBoc=undefined)=>{
+  return rememberMigrationCheckpoint({...migrationAccountFields(configuration,'curve',accountBoc??await readAccount(),2),
+   scope:'ACCOUNT_INCLUSION_RELATIVE_TO_REFERENCE_NOT_VALIDATOR_FINALITY',proof:{chainTime:now}});
+ };
+ const checkpoint=await makeCheckpoint();
+ const record={network:'-3',operationId:checkpoint.operationId,jettonMaster:checkpoint.project,
+  accounts:{curve:{address:checkpoint.address,codeHash:checkpoint.codeHash}}};
+ const owner=f.owner.address.toString({testOnly:true});
+ const input={record,checkpoint,owner,now,side:'buy',amount:1000000000n,slippageBps:50};
+ assert.throws(()=>prepareCurveTrade({...input,checkpoint:{...checkpoint}}),/checkpoint/);
+ assert.throws(()=>prepareCurveTrade({...input,record:{...record,operationId:'78'}}),/checkpoint/);
+ assert.throws(()=>prepareCurveTrade({...input,record:{...record,accounts:{curve:{
+  ...record.accounts.curve,codeHash:'00'.repeat(32)}}}}),/checkpoint/);
+ assert.throws(()=>prepareCurveTrade({...input,now:now+30}),/checkpoint/);
+ assert.throws(()=>prepareCurveTrade({...input,slippageBps:101}),/slippage/);
+ assert.throws(()=>prepareCurveTrade({...input,side:'sell'}),/principal/);
+ const buy=prepareCurveTrade(input);
+ assert.notEqual(buy.queryId,prepareCurveTrade(input).queryId);
+ assert.equal(buy.message.amount,'1040000000');
+ const q=(await f.chain.runGetMethod(curve,'get_buy_quote_v2',[{type:'int',value:input.amount}])).stack;
+ assert.equal(buy.expectedOut,String(q[0].value));
+ assert.equal(buy.feeNano,String(q[1].value));
+ assert(exit(await f.send(curve,core.Cell.fromBase64(buy.message.payload),BigInt(buy.message.amount)),curve,0));
+ const funded=await makeCheckpoint();
+ assert.equal(BigInt(funded.reserveNano)-BigInt(checkpoint.reserveNano),BigInt(buy.grossNano)-BigInt(buy.feeNano));
+ const sellAmount=BigInt(buy.expectedOut)/2n;
+ const sell=prepareCurveTrade({...input,checkpoint:funded,side:'sell',amount:sellAmount});
+ const sellQuote=(await f.chain.runGetMethod(curve,'get_sell_quote',[{type:'int',value:sellAmount}])).stack;
+ assert.equal(sell.expectedOut,String(sellQuote[0].value));
+ assert.equal(sell.feeNano,String(sellQuote[1].value));
+ const sellerWallet=core.Address.parse(sell.message.address);
+ const held=async()=>(await f.chain.runGetMethod(sellerWallet,'get_wallet_data')).stackReader.readBigNumber();
+ const before=await held();
+ const result=await f.send(sellerWallet,core.Cell.fromBase64(sell.message.payload),BigInt(sell.message.amount));
+ assert(exit(result,curve,0));
+ assert.equal(await held(),before-sellAmount);
+ assert.equal(BigInt(funded.reserveNano)-BigInt((await makeCheckpoint()).reserveNano),BigInt(sell.grossNano));
+ assert.equal(sell.executionEligible,false);
+
+ const failedUnits=1000n, heldBeforeFailure=await held();
+ const badSell=beginCell().storeUint(0x0f8a7ea5,32).storeUint(501,64).storeCoins(failedUnits)
+  .storeAddress(curve).storeAddress(f.owner.address).storeBit(false).storeCoins(20000000n)
+  .storeBit(true).storeRef(beginCell().storeUint(15,4).endCell()).endCell();
+ await f.send(sellerWallet,badSell,150000000n);
+ const accountBoc=await readAccount(),escrow=await makeCheckpoint(accountBoc);
+ assert.equal(escrow.pendingRefundUnits,String(failedUnits));
+ const claimInput={record,checkpoint:escrow,accountBoc,owner,now};
+ assert.throws(()=>prepareCurveJettonRefund({...claimInput,owner:f.other.address.toString({testOnly:true})}),/No authenticated/);
+ const claim=prepareCurveJettonRefund(claimInput);
+ assert.equal(claim.claimableJettonUnits,String(failedUnits));
+ const claimBody=core.Cell.fromBase64(claim.message.payload);
+ assert(exit(await f.send(curve,claimBody,BigInt(claim.message.amount)),curve,0));
+ assert.equal(await held(),heldBeforeFailure);
+ assert.equal((await makeCheckpoint()).pendingRefundUnits,'0');
+ assert.throws(()=>prepareCurveJettonRefund({...claimInput,accountBoc:'x'}));
+ const duplicate=await f.send(curve,claimBody,BigInt(claim.message.amount));
+ assert.equal(duplicate.transactions.find(tx=>tx.inMessage?.info.dest?.equals(curve)).description.aborted,true);
+ assert.equal(await held(),heldBeforeFailure);
+});
 test('VNext caps an oversized purchase and returns the entire unspent principal',async()=>{
  const f=await fixture();
  await require('./vnext-package-support').bootstrap(f);
