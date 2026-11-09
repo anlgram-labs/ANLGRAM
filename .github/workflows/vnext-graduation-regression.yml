@@ -1,0 +1,36 @@
+name: VNext post-dispatch graduation regression
+
+on:
+  pull_request:
+    paths:
+      - 'testnet-interface/projects/migration-status.mjs'
+      - 'testnet-interface/test/memelabs-security.test.mjs'
+      - 'testnet-interface/package.json'
+      - 'testnet-interface/package-lock.json'
+      - '.github/workflows/vnext-graduation-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  graduation-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: testnet-interface
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: testnet-interface/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install Curve dependency tree for shared receipt module
+        run: npm ci --ignore-scripts
+        working-directory: minter-contract
+      - name: Run graduation and security regression tests
+        run: node --test test/memelabs-security.test.mjs
