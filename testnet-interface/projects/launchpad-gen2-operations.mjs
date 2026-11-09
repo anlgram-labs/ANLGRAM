@@ -6,9 +6,11 @@ const hash=cell=>cell.hash().toString('hex');
 // lifecycle and must be re-emulated and reviewed before any wallet request.
 export function launchpadGenesisOperations(candidate, {beginCell,Cell,storeStateInit}) {
  const c=candidate,query=c.operationId;
- const internalMint=beginCell().storeUint(0x178d4519,32).storeUint(query,64)
+ const mintBody=beginCell().storeUint(0x178d4519,32).storeUint(query,64)
   .storeCoins(supply).storeAddress(null).storeAddress(c.operator)
-  .storeCoins(60000000n).storeBit(false).endCell();
+  .storeCoins(60000000n).storeBit(false);
+ if(c.sellCustodyVersion===1) mintBody.storeUint(0x414e5343,32);
+ const internalMint=mintBody.endCell();
  const mint=beginCell().storeUint(21,32).storeUint(query,64).storeAddress(c.addresses.curve)
   .storeCoins(100000000n).storeRef(internalMint).endCell();
  const renounce=beginCell().storeUint(3,32).storeUint(0x414e4c4752454e4fn,64)
