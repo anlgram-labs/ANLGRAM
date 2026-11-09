@@ -222,12 +222,36 @@ test('VNext caps an oversized purchase and returns the entire unspent principal'
  // Inject a tiny, bounceable inbound directly so the sender's forwarding
  // action does not mask the recipient's no-funds bounce under this fee schedule.
  const {internal}=require('@ton/sandbox');
- const tiny=await f.chain.sendMessage(internal({from:f.owner.address,to:curve,value:1000000n,bounce:true,
-  body:beginCell().storeUint(0x5fcc3d14,32).storeUint(101,64).storeCoins(1).endCell()}));
+ const body=beginCell().storeUint(0x5fcc3d14,32).storeUint(101,64).storeCoins(1).endCell();
+ // Sandbox keeps the exact emulator ShardAccount BOC. Read its Account ref
+ // directly so reserialization cannot change fields committed by the TVM.
+ const accountBoc=async()=>core.Cell.fromBase64((await f.chain.getContract(curve))._account)
+  .refs[0].toBoc().toString('base64');
+ const beforeAccount=await accountBoc();
+ const tiny=await f.chain.sendMessage(internal({from:f.owner.address,to:curve,value:1000000n,bounce:true,body}));
  const tinyBuy=tiny.transactions.find(tx=>tx.inMessage?.info.dest?.equals(curve));
  assert.equal(tinyBuy.description.aborted,true);
  assert.equal(tinyBuy.description.bouncePhase.type,'no-funds');
  assert.equal(tinyBuy.outMessages.size,0);
+ const {verifyNativeNoFundsBounceFields,verifyProvenNativeNoFundsBounce}=await import('../../testnet-interface/projects/native-refund-evidence.mjs');
+ const intent={network:'-3',curve:curve.toRawString(),owner:f.owner.address.toRawString(),
+  attachmentNano:'1000000',payload:body.toBoc().toString('base64')};
+ const encode=tx=>tx.raw.toBoc().toString('base64');
+ const raw={transaction:encode(tinyBuy),beforeAccount,afterAccount:await accountBoc()};
+ const evidence=verifyNativeNoFundsBounceFields(intent,raw);
+ assert.equal(evidence.queryId,'101');
+ assert.equal(evidence.scope,'RAW_TRANSACTION_FIELDS_ONLY');
+ assert.equal(evidence.curveDataUnchanged,true);
+ assert.equal(evidence.refundEntitlementVerified,false);
+ assert.equal(evidence.retryAuthorized,false);
+ assert.throws(()=>verifyNativeNoFundsBounceFields({...intent,network:'-239'},raw),/Testnet/);
+ assert.throws(()=>verifyNativeNoFundsBounceFields({...intent,owner:curve.toRawString()},raw),/owner buy/);
+ assert.throws(()=>verifyNativeNoFundsBounceFields({...intent,attachmentNano:'1000001'},raw),/owner buy/);
+ assert.throws(()=>verifyNativeNoFundsBounceFields({...intent,payload:returned[0].body.toBoc().toString('base64')},raw),/owner buy/);
+ assert.throws(()=>verifyNativeNoFundsBounceFields({...intent,attachmentNano:'510000000000',
+  payload:failedBuy.inMessage.body.toBoc().toString('base64')},{...raw,transaction:encode(failedBuy)}),/No-funds bounce/);
+ assert.throws(()=>verifyNativeNoFundsBounceFields(intent,{...raw,afterAccount:body.toBoc().toString('base64')}),/state hash/);
+ assert.throws(()=>verifyProvenNativeNoFundsBounce(intent,raw,{raw:{},reference:{},proofInclusionVerified:true}),/reference/);
  assert.deepEqual(await state(),before);
 });
 
