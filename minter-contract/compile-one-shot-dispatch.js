@@ -5,7 +5,73 @@ const dir=path.join(__dirname,'contracts'),check=process.argv.includes('--check'
 function save(file,text){if(check){if(fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n')!==text)throw Error('Dispatch generation mismatch: '+file);}else fs.writeFileSync(file,text);}
 const write=(f,s)=>save(path.join(dir,f),s);
 function once(s,a,b){if(s.split(a).length!==2)throw Error('Dispatch derivation anchor: '+a.slice(0,100));return s.replace(a,b);}
+async function compile(name) {
+ const sources = {};
+ const result = await compileFunc({targets:[name+'.fc'],sources:file=>{
+  const source = read(file);
+  sources[file] = sha(source);
+  return source;
+ }});
+ if(result.status !== 'ok') throw Error(result.message);
+ const code = Cell.fromBase64(result.codeBoc);
+ return {
+  contract:name+'.fc',codeCellHash:code.hash().toString('hex'),codeBocBase64:result.codeBoc,
+  bocFileSha256:sha(code.toBoc()),sourceFilesSha256:sources,compilerPackageVersion:'0.11.0',
+  generatorSha256Lf:sha(fs.readFileSync(__filename,'utf8').replace(/\r\n/g,'\n')),
+  baseline:'59f5a931ef488508c20140d7dbd467caefadc77d',generation:2,
+  sandboxExecutionPathImplemented:true,financialDeploymentAuthorized:false,fullSettlementImplemented:false
+ };
+}
+
+async function dispatchWallet() {
+ const name = 'anlgram-dispatch-sell-wallet';
+ let source = read('anlgram-settlement-wallet.fc');
+ source = once(source, '() settled_receive(', `#include "imports/dispatch-sell-custody.fc";
+
+int sell_custody_enabled(cell records) inline {
+    (_, int enabled) = records.udict_get?(256, record_key(SELL_CUSTODY_MARKER, 0));
+    return enabled;
+}
+
+int fund_sell_notification(int forward, slice seller) inline {
+    throw_unless(709, forward > 0);
+    force_chain(seller);
+    return max(forward, sell_notification_floor());
+}
+
+() settled_receive(`);
+ source = once(source, '  throw_unless(709,value > forward', `  cell records = settlement_records();
+  int sell_custody = sell_custody_enabled(records);
+  if (sell_custody) { forward = fund_sell_notification(forward, from); }
+  throw_unless(709,value > forward`);
+ source = once(source, '  cell records = settlement_records(); int key = incoming_key(sender,wire_id);',
+   '  int key = incoming_key(sender,wire_id);');
+ source = once(source, '.store_ref(notification).end_cell(),1 + 2);',
+   '.store_ref(notification).end_cell(), sell_custody ? 17 : 3);');
+ source = once(source, '  int forward_ton_amount = in_msg_body~load_coins();\n\n  int ton_balance_before_msg', `  int forward_ton_amount = in_msg_body~load_coins();
+  int sell_custody = sell_custody_enabled(records);
+  if (equal_slices(sender_address, jetton_master_address)) {
+    if ((from_address.preload_uint(2) == 0) & sell_custody_marker?(in_msg_body)) {
+      records~udict_set_builder(256, record_key(SELL_CUSTODY_MARKER, 0), begin_cell().store_uint(1, 1));
+      sell_custody = -1;
+    }
+  } elseif (sell_custody) {
+    forward_ton_amount = fund_sell_notification(forward_ton_amount, from_address);
+  }
+
+  int ton_balance_before_msg`);
+ source = once(source, '1 + 2); ;; credit/ledger survive retryable notification action failure',
+   'sell_custody ? 17 : 3); ;; Curve credit requires the funded notification to be emitted');
+ write(name+'.fc', source);
+ const artifact = await compile(name);
+ save(path.join(__dirname,'build',name+'.compiled.json'), JSON.stringify(artifact,null,2)+'\n');
+ write('imports/dispatch-sell-wallet-code.fc',
+   'const int SETTLEMENT_WALLET_CODE_HASH = 0x'+artifact.codeCellHash+';\n');
+ return artifact;
+}
+
 async function main(){
+ const wallet = await dispatchWallet();
  let auth=read('imports/curve-vnext-auth.fc');
  auth=once(auth,'.store_uint(1,32).end_cell()).end_cell()))','.store_uint(2,32).end_cell()).end_cell()))');
  auth=once(auth,'    throw(414); ;; No release authorization or external settlement proof path.',`    cell network = config_param(19);throw_if(408,cell_null?(network));slice actual_network = network.begin_parse();throw_unless(408,actual_network~load_int(32) == -3);
@@ -54,6 +120,7 @@ async function main(){
  m=once(m,'    if(handle_vnext_recovery(my_balance,msg_value,in_msg_full,in_msg_body))','    if(handle_dispatch_control(my_balance,msg_value,in_msg_full,in_msg_body)) { return (); }\n    if(handle_vnext_recovery(my_balance,msg_value,in_msg_full,in_msg_body))');
  m=once(m,'        ;; V2 LP wallet/configuration is immutable and authenticated at bind.','        int protected_before = my_balance - msg_value - ton_liquidity;throw_unless(409,protected_before >= 10000000);raw_reserve(protected_before,0);\n        ;; V2 LP wallet/configuration is immutable and authenticated at bind.');
  m=once(m,'        mark_life_deposit(query_id);\n        return ();','        mark_life_deposit(query_id);vd_consume_migration();vd_dispatch_excess(admin_address,query_id);\n        return ();');
+ m=once(m,'imports/settlement-wallet-code.fc','imports/dispatch-sell-wallet-code.fc');
  write('anlgram-migration-router-dispatch-v2.fc',';; EXPERIMENTAL GENERATION2: isolated Sandbox development; deployment NOT authorized.\n'+m);
  const artifacts=[];
  for(const name of ['anlgram-migration-router-dispatch-v2','anlgram-bonding-curve-dispatch-v2']){
@@ -61,6 +128,31 @@ async function main(){
    write('imports/migration-router-dispatch-v2-code.fc','const int MIGRATION_ROUTER_V2_CODE_HASH = 0x'+artifacts[0].codeCellHash+';\n');
    write('imports/curve-dispatch-router-v2.fc',read('imports/curve-vnext-router.fc').replace('migration-router-vnext-code.fc','migration-router-dispatch-v2-code.fc'));
    let c=read('anlgram-bonding-curve-vnext.fc').replace(';; GENERATED VNext: exact signed migration permits; all execution gates closed.\n','').replace('imports/curve-vnext-router.fc','imports/curve-dispatch-router-v2.fc').replace('imports/curve-lifecycle-vnext.fc','imports/curve-lifecycle-dispatch-v2.fc').replace('get_protocol_vnext() method_id { return(1,1,0); }','get_protocol_vnext() method_id { return(2,1,0); }');
+   c=once(c,'#include "imports/settlement-wallet-code.fc";',`#include "imports/dispatch-sell-wallet-code.fc";
+#include "imports/dispatch-sell-custody.fc";`);
+   c=once(c,'        ;; Protocol selection is immutable genesis configuration, not an admin downgrade.',`        throw_unless(ERROR_INVALID_RENOUNCE, cell_hash(new_wallet_code) == SETTLEMENT_WALLET_CODE_HASH);
+        ;; Protocol selection is immutable genesis configuration, not an admin downgrade.`);
+   c=once(c,'            int total_expected = real_token_reserve + dex_tokens_escrow;',`            throw_unless(ERROR_INVALID_STATE, sell_custody_marker?(in_msg_body));
+            throw_unless(ERROR_INVALID_STATE, from_address.preload_uint(2) == 0);
+            int total_expected = real_token_reserve + dex_tokens_escrow;`);
+   c=once(c,'        if (state != STATE_ACTIVE) {',`        if (token_amount == 0) { return (); }
+        ;; The Curve wallet funds even tiny notifications from the seller's
+        ;; attachment. Before staging any sell actions, check that compute
+        ;; and forwarding fees fit and that booked TON is physically backed.
+        int pre_message_balance = my_balance - msg_value;
+        int payout_fee_bound = buy_forward_fee(1, 1023, 0);
+        int compute_budget = max(COMPUTE_GAS_RESERVE, sell_notification_floor());
+        int can_pay = (msg_value >= compute_budget + payout_fee_bound)
+            & (pre_message_balance >= real_ton_reserve + accrued_protocol_fees);
+        available_gas = msg_value - compute_budget - 3 * payout_fee_bound;
+        can_immediate_refund = can_pay & (available_gas >= MIN_REFUND_GAS);
+        if ((state != STATE_ACTIVE) | (~ can_pay)) {`);
+   c=once(c,'        if (gross_ton_out > real_ton_reserve) {',
+     '        if ((gross_ton_out == 0) | (gross_ton_out > real_ton_reserve)) {');
+   c=once(c,'        send_raw_message(p_msg.end_cell(), 1);',`        ;; Keep the remaining principal, protocol fees and all old surplus
+        ;; reserved. The exact net payout is the only spend from old balance.
+        raw_reserve(pre_message_balance - net_ton_out, 0);
+        send_raw_message(p_msg.end_cell(), 1);`);
    c=once(c,'const int GAS_OVERHEAD_TRADE',`;; Buy actions are funded only from the existing operational attachment.
 int buy_forward_fee(int cells,int bits,int masterchain) asm "GETFORWARDFEE";
 int buy_compute_fee(int gas,int masterchain) asm "GETGASFEE";
@@ -157,18 +249,20 @@ const int GAS_OVERHEAD_TRADE`);
             35000000 + 3 * forward_bound + buy_compute_fee(buy_gas_consumed() + 1000,0) < GAS_OVERHEAD_TRADE);`);
    write(name+'.fc',';; EXPERIMENTAL GENERATION2: new identities; deployment NOT authorized.\n'+c);
   }
-  const sources={};const r=await compileFunc({targets:[name+'.fc'],sources:f=>{const s=read(f);sources[f]=sha(s);return s;}});if(r.status!=='ok')throw Error(r.message);
-  const code=Cell.fromBase64(r.codeBoc),a={contract:name+'.fc',codeCellHash:code.hash().toString('hex'),codeBocBase64:r.codeBoc,bocFileSha256:sha(code.toBoc()),sourceFilesSha256:sources,compilerPackageVersion:'0.11.0',generatorSha256Lf:sha(fs.readFileSync(__filename,'utf8').replace(/\r\n/g,'\n')),baseline:'59f5a931ef488508c20140d7dbd467caefadc77d',generation:2,sandboxExecutionPathImplemented:true,financialDeploymentAuthorized:false,fullSettlementImplemented:false};
+  const a=await compile(name);
   save(path.join(__dirname,'build',name+'.compiled.json'),JSON.stringify(a,null,2)+'\n');artifacts.push(a);
  }
  let factory=fs.readFileSync(path.join(__dirname,'scripts/migration-package-vnext.js'),'utf8').replace(/\r\n/g,'\n');factory=once(factory,"'anlgram-bonding-curve-vnext'","'anlgram-bonding-curve-dispatch-v2'");factory=once(factory,"'anlgram-migration-router-vnext'","'anlgram-migration-router-dispatch-v2'");factory=once(factory,"anlgram_protocol:'vnext-migration-permission-only'","anlgram_protocol:'experimental-one-shot-dispatch-v2'");factory=once(factory,'storeBuffer(c.wallet.hash()).storeUint(1,32)','storeBuffer(c.wallet.hash()).storeUint(2,32)');factory=once(factory,'lockerCodeVersion:2','lockerCodeVersion:2,generation:2,sandboxExecutionPathImplemented:true');
- const bundled=['anlgram-settlement-wallet', 'anlgram-launchpad-jetton-minter', 'anlgram-bonding-curve', 'anlgram-lp-auth-guard', 'anlgram-migration-router', 'anlgram-bonding-curve-dispatch-v2', 'anlgram-guard-vnext', 'anlgram-migration-router-dispatch-v2', 'anlgram-lp-locker-v2'];
+ const bundled=['anlgram-dispatch-sell-wallet', 'anlgram-launchpad-jetton-minter', 'anlgram-bonding-curve', 'anlgram-lp-auth-guard', 'anlgram-migration-router', 'anlgram-bonding-curve-dispatch-v2', 'anlgram-guard-vnext', 'anlgram-migration-router-dispatch-v2', 'anlgram-lp-locker-v2'];
+ factory=once(factory,"get(next);","get(next);\n artifacts['anlgram-settlement-wallet']=get('anlgram-dispatch-sell-wallet');");
+ factory=once(factory,"['anlgram-settlement-wallet','anlgram-launchpad-jetton-minter'", "['anlgram-launchpad-jetton-minter'");
+ factory=once(factory,'generation:2,sandboxExecutionPathImplemented:true','generation:2,sellCustodyVersion:1,sandboxExecutionPathImplemented:true');
  factory=once(factory,"const fs=require('node:fs'),path=require('node:path'),","const ");
  factory=once(factory,'function build(core,o){','const bundled={'+bundled.map(n=>JSON.stringify(n)+":require('../build/"+n+".compiled.json')").join(',')+'};\nfunction build(core,o){');
  factory=once(factory,"JSON.parse(fs.readFileSync(path.join(__dirname,'../build',n+'.compiled.json'),'utf8'))","bundled[n]");
  factory=once(factory,"const options={creator:","const lockerCode=core.Cell.fromBase64(get('anlgram-lp-locker-v2').codeBocBase64);\n const options={code:lockerCode,creator:");
  factory=once(factory,"const lockerCode=core.Cell.fromBase64(get('anlgram-lp-locker-v2').codeBocBase64),versions=","const versions=");
  save(path.join(__dirname,'scripts/migration-package-dispatch-v2.js'),factory);
- console.log(JSON.stringify({check,artifacts:artifacts.map(a=>({name:a.contract,hash:a.codeCellHash})),financialDeploymentAuthorized:false}));
+ console.log(JSON.stringify({check,artifacts:[wallet,...artifacts].map(a=>({name:a.contract,hash:a.codeCellHash})),financialDeploymentAuthorized:false}));
 }
 main().catch(e=>{console.error(e.message);process.exitCode=1;});

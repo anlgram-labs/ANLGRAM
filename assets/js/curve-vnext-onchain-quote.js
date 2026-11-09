@@ -7,7 +7,7 @@
   else root.ANLGRAM_CURVE_LIVE_QUOTE = factory();
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
-  const CURVE_CODE_HASH = '5247d2d6e5a0e5705e6d2d6e4b3177fe6bd6df8160e10bc1ac924ed4c3169028';
+  const CURVE_CODE_HASH = '5746848a31ec5b3ed8e52e250ff9d7ef9b2c3e3f73f643363b4c8e32dea26d41';
   const NANO = 1000000000n;
   const ENDPOINTS = Object.freeze({mainnet:'https://tonapi.io/v2',testnet:'https://testnet.tonapi.io/v2'});
 

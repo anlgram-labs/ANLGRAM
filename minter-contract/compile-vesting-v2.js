@@ -105,10 +105,15 @@ cell vesting_transfer(int q,int amount,slice beneficiary) inline {
 }
 async function main() {
   const standard = process.argv.includes('--standard');
-  const wallet = JSON.parse(read(standard?'build/standard-jetton-settlement-wallet.compiled.json':'build/anlgram-settlement-wallet.compiled.json'));
+  const dispatch = process.argv.includes('--dispatch');
+  if (standard && dispatch) throw Error('Select only one Vesting wallet profile');
+  const walletName = standard ? 'standard-jetton-settlement-wallet'
+    : dispatch ? 'anlgram-dispatch-sell-wallet' : 'anlgram-settlement-wallet';
+  const wallet = JSON.parse(read('build/'+walletName+'.compiled.json'));
   const walletHash = Cell.fromBase64(wallet.codeBocBase64).hash().toString('hex');
   if (walletHash!==wallet.codeCellHash) throw Error('Settlement wallet pin mismatch');
-  const name=standard?'anlgram-vesting-wallet-standard-v2':'anlgram-vesting-wallet-v2';
+  const name=standard?'anlgram-vesting-wallet-standard-v2'
+    : dispatch?'anlgram-vesting-wallet-dispatch-v2':'anlgram-vesting-wallet-v2';
   const target=name+'.fc', generated=versionedSource(walletHash), sourceHashes={};
   const compiled=await compileFunc({targets:[target],sources:file=>{
     const source=file===target?generated:read('contracts/'+file);
