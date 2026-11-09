@@ -17,10 +17,21 @@ export async function readRegisteredProjectStatus(fingerprint, env = {}) {
   return response.json();
 }
 
-export function projectStatusResponse(record, options, acquisition) {
+export function projectStatusResponse(record, options, acquisition, candidate) {
   const projection = generation2Status(record, options);
+  // The record is accepted only after receipt validation. Re-derive the
+  // identities without changing the persisted record or its historical key.
+  const registrationIdentity = candidate ? {
+    network: record.network, operationId: record.operationId,
+    creator: candidate.operator.toRawString(), jettonMaster: record.project,
+    accounts: Object.fromEntries(['minter','curve','migration'].map(role=>[role,{
+      address: candidate.addresses[role].toRawString(),
+      codeHash: candidate.states[role].code.hash().toString('hex'),
+      stateInitHash: acquisition.registration.receipts[role].stateInitHash
+    }]))
+  } : null;
   return {
     ...projection, network: '-3', configurationFingerprint: record.configurationFingerprint,
-    creationEnabled: false, status: projection, acquisition
+    creationEnabled: false, status: projection, acquisition, registrationIdentity
   };
 }

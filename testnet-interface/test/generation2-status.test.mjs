@@ -79,6 +79,8 @@ test('generation 2 projection reads source-compiled state and separates historic
   assert.equal(leg.funded,leg.original);
   assert.equal(leg.notBookedByCurve,leg.original);
   assert.equal(leg.dexTerminalOutcome,'UNKNOWN');
+  assert.equal(leg.fundingStatus,'VERIFIED');
+  assert.equal(leg.curveReturnStatus,'UNKNOWN');
  }
  const getter = (await f.chain.runGetMethod(f.c.addresses.migration,'get_lp_v2_state')).stack;
  assert.equal(status.historicalLp.receivedUnits,String((await f.stage())[1]));
@@ -107,8 +109,21 @@ test('generation 2 projection reads source-compiled state and separates historic
  const monitoring=generation2Status(identity,{checkpoint:returned,previous:after});
  assert.equal(monitoring.principalAccounting.tonNano.inTransit,'1');
  assert.equal(monitoring.principalAccounting.tonNano.curveBooked,'2');
+ assert.equal(monitoring.principalAccounting.tonNano.curveReturnStatus,'RETURN_PENDING');
+ assert.equal(monitoring.principalAccounting.jettonUnits.curveReturnStatus,'UNKNOWN');
  assert.equal(monitoring.principalAccounting.tonNano.notBookedByCurve,String(BigInt(legs.tonNano.original)-2n));
  assert.equal(monitoring.settlement,'SETTLEMENT_PENDING');
+ const partial=checkpoint({...before,lifecycle:{...after.lifecycle,dexDispatched:'0',
+  fundedTonNano:'1',fundedJettonUnits:'0',fundingBouncedJettonUnits:legs.jettonUnits.original}});
+ const partialStatus=generation2Status(identity,{checkpoint:partial});
+ assert.equal(partialStatus.principalAccounting.tonNano.fundingStatus,'PARTIAL');
+ assert.equal(partialStatus.principalAccounting.jettonUnits.fundingStatus,'FAILED');
+ assert.equal(partialStatus.principalAccounting.jettonUnits.dexTerminalOutcome,'UNKNOWN');
+ const booked=checkpoint({...returned,lifecycle:{...returned.lifecycle,returnTransitTonNano:'0',
+  curveBookedTonNano:legs.tonNano.original}});
+ const bookedStatus=generation2Status(identity,{checkpoint:booked});
+ assert.equal(bookedStatus.principalAccounting.tonNano.curveReturnStatus,'REFUNDED');
+ assert.equal(bookedStatus.settlement,'SETTLEMENT_PENDING');
  assert.deepEqual(generation2Status(identity,{checkpoint:returned,previous:returned}),monitoring);
  const rollback=checkpoint({...returned,lifecycle:{...returned.lifecycle,curveBookedTonNano:'1'}});
  assert.throws(()=>generation2Status(identity,{checkpoint:rollback,previous:returned}),/Regressed/);

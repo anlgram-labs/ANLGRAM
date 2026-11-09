@@ -174,6 +174,14 @@ export class Fixture extends Registry {
     assert.equal(status.configurationFingerprint, fingerprint);
     assert.equal(status.acquisition.status, 'PROVIDER_OR_PROOF_UNAVAILABLE_HISTORICAL_ONLY');
     assert.deepEqual(status.acquisition.registration, seeded.provenance);
+    assert.equal(status.registrationIdentity.creator,candidate.operator.toRawString());
+    assert.equal(status.registrationIdentity.jettonMaster,record.project);
+    assert.equal(status.registrationIdentity.operationId,record.operationId);
+    for(const [role,value] of Object.entries(status.registrationIdentity.accounts)){
+      assert.equal(value.address,seeded.provenance.receipts[role].address);
+      assert.equal(value.codeHash,seeded.provenance.receipts[role].codeHash);
+      assert.equal(value.stateInitHash,seeded.provenance.receipts[role].stateInitHash);
+    }
     assert.equal(status.settlement, 'UNKNOWN');
     assert.equal(status.currentWalletUnits, null);
     assert.equal(status.financialSigningEnabled, false);
