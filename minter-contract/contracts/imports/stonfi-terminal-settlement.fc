@@ -1,0 +1,56 @@
+;; STON.fi v2.2 Terminal Settlement Authentication Specification & Guards (F-02)
+;; Evaluates authentic DEX state transitions without assuming LP custody equals settlement.
+;; Gate 414 remains SEALED.
+
+;; Discrete terminal outcomes:
+const int SETTLEMENT_UNKNOWN                  = 0;
+const int SETTLEMENT_PARTIAL_DEPOSIT          = 1;
+const int SETTLEMENT_BOTH_LEGS_DEPOSITED      = 2;
+const int SETTLEMENT_LP_MINTED_AND_DELIVERED  = 3;
+const int SETTLEMENT_TON_RETURNED             = 4;
+const int SETTLEMENT_JETTONS_RETURNED         = 5;
+const int SETTLEMENT_PARTIAL_REFUND           = 6;
+const int SETTLEMENT_LP_ACCOUNT_RESET         = 7;
+
+;; STON.fi v2.2 Opcodes
+const int op::stonfi_provide_lp               = 0x37c096df;
+const int op::stonfi_deposit_ref              = 0x414c5003;
+const int op::stonfi_refund_me                = 0x132b9a2c;
+const int op::stonfi_lp_mint_notification     = 0x7362d09c;
+
+;; Derive expected LPAccount address for depositor (my_address) on given pool
+slice calculate_lp_account_address(slice pool, slice depositor, cell lp_account_code) inline {
+    cell data = begin_cell()
+        .store_slice(pool)
+        .store_slice(depositor)
+        .store_coins(0) ;; amount0
+        .store_coins(0) ;; amount1
+        .end_cell();
+    cell init = begin_cell()
+        .store_uint(0, 2)
+        .store_dict(lp_account_code)
+        .store_dict(data)
+        .store_uint(0, 1)
+        .end_cell();
+    return calculate_jetton_wallet_address(init);
+}
+
+;; Validate LPAccount observation authenticity
+int authenticate_lp_account_state(slice account_address, slice expected_pool, slice depositor,
+    cell profile, int amount0, int amount1) inline {
+    (_, _, cell account_code) = stonfi_profile_codes(profile);
+    slice expected_address = calculate_lp_account_address(expected_pool, depositor, account_code);
+    ifnot(equal_slices(account_address, expected_address)) {
+        return SETTLEMENT_UNKNOWN;
+    }
+    if ((amount0 == 0) & (amount1 == 0)) {
+        return SETTLEMENT_LP_ACCOUNT_RESET;
+    }
+    if ((amount0 > 0) & (amount1 > 0)) {
+        return SETTLEMENT_BOTH_LEGS_DEPOSITED;
+    }
+    if ((amount0 > 0) | (amount1 > 0)) {
+        return SETTLEMENT_PARTIAL_DEPOSIT;
+    }
+    return SETTLEMENT_UNKNOWN;
+}
