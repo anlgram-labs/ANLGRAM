@@ -52,10 +52,10 @@
     "project-registry-worker.mjs": "7af22026147efddde713d219a8063cf85be85aeb10c5cb95091def1c28e4b141",
     "projects/project-registry.mjs": "63f69cff93c964053ad1fc15176b2465bc16adb6d42623f17082cc86539ac0b7",
     "projects/project-registration.mjs": "33efe0d4269084fd4dc3295dc58c2f8f9f282ad8154d2ec5d0cdf8617d953b3d",
-    "projects/project-lp-acquisition.mjs": "274d7ff30f72c3822b7701adfbbe8cbac2a88d3130d607651083a2ec7e9ca57b",
-    "projects/lp-evidence.mjs": "1119daa09391db830239db61ca7cbea5478370ed9e47834098154b67f55accfa",
+    "projects/project-lp-acquisition.mjs": "400890df614d962c661eda2de9cc1db31c6e143f0f87f512424f08607bd6975e",
+    "projects/lp-evidence.mjs": "b7848ef604a98d095d97f443eccfa859ff864e86aa3c72c57ed3d4861de3945a",
     "projects/migration-account.mjs": "5b20fd5c301b7dee06b38bd23aae5f4677fbb782eeacc269c1f121b8a750cb38",
-    "projects/migration-status.mjs": "68ed7497dc8b5d919422b4c58ab3395e3b7a4768bbbae27734ec9f087d55b3ae",
+    "projects/migration-status.mjs": "bbfc92fe9d382014d4606fae62465a0a1ca8ef9f0acc4c777a2ca3bddbec3a4b",
     "projects/evidence-brand.mjs": "0384aa8632c250aecbfc085d150be71909e3e31f17df71c76dcfb188881b767d",
     "wizard/preparation-model.mjs": "702c03755d8428c1a77870fdf45ddd28ecafb366fdbc14b9a51b89175cc5acff",
     "wizard/model.mjs": "5a1cdd6896610fbfcf89620cad8240ad9a3df867c1a696627b7822bfed650a98",
@@ -72,5 +72,5 @@
     "../minter-contract/build/anlgram-bonding-curve-dispatch-v2.compiled.json": "de1f5bf4181a95534fd069bffc09f319b80e6cfcdb888fec6d694b9b968bb26f",
     "../minter-contract/build/anlgram-migration-router-dispatch-v2.compiled.json": "52f55bea49b9cb4c3e8e63fa331ae49da21c9236163be5a53037fcd7ba2073d9"
   },
-  "sha256": "6aacf546c2a1b7659e0629ce0aa807a79f501edb6b9635aaf17a193fd3da634d"
+  "sha256": "5791befce6178dd63900982ab024220e3fa946acd986f1e7390a3fc4c6546f8a"
 }
