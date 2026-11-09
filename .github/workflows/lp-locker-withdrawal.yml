@@ -1,0 +1,26 @@
+name: LP Locker withdrawal evidence
+
+on:
+  pull_request:
+    paths:
+      - 'testnet-interface/projects/lp-evidence.mjs'
+      - 'testnet-interface/projects/project-lp-acquisition.mjs'
+      - 'testnet-interface/projects/migration-status.mjs'
+      - 'tests/settlement-runtime/stonfi-locker-v2-real.test.js'
+      - '.github/workflows/lp-locker-withdrawal.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  lp-withdrawal-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix tests/settlement-runtime
+      - run: npm ci --prefix testnet-interface
+      - run: npm ci --prefix minter-contract --ignore-scripts
+      - run: node --test --test-concurrency=1 tests/settlement-runtime/stonfi-locker-v2-real.test.js testnet-interface/test/generation2-status.test.mjs
