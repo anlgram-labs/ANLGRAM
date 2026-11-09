@@ -38,10 +38,16 @@
   function calculateFees() {
     const d = window.ANLGRAM_DONATION_CONFIG;
     if (!d || d.DONATION_AMOUNT_NANO !== 20000000n || d.BASE_EXECUTION_NANO !== 200000000n) throw new Error('Mandatory donation configuration unavailable.');
-    return { blockchainCostNano: d.BASE_EXECUTION_NANO, platformFeeNano: d.DONATION_AMOUNT_NANO,
-      estimatedTotalNano: d.TOTAL_TRANSACTION_NANO, sendAmountNano: d.TOTAL_TRANSACTION_NANO,
-      blockchainCostTON: d.BASE_EXECUTION_TON, platformFeeTON: d.DONATION_AMOUNT_TON,
-      estimatedTotalTON: d.TOTAL_TRANSACTION_TON, sendAmountTON: d.TOTAL_TRANSACTION_TON };
+    return {
+      blockchainCostNano: d.BASE_EXECUTION_NANO,
+      platformFeeNano:    d.DONATION_AMOUNT_NANO,
+      estimatedTotalNano: d.TOTAL_TRANSACTION_NANO,
+      sendAmountNano:     d.TOTAL_TRANSACTION_NANO,
+      blockchainCostTON:  nanoToTON(d.BASE_EXECUTION_NANO),
+      platformFeeTON:     nanoToTON(d.DONATION_AMOUNT_NANO),
+      estimatedTotalTON:  nanoToTON(d.TOTAL_TRANSACTION_NANO),
+      sendAmountTON:      nanoToTON(d.TOTAL_TRANSACTION_NANO),
+    };
   }
   function nanoToTON(nano) {
     const whole = nano / 1_000_000_000n;
@@ -646,8 +652,8 @@
   </div>
   <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;align-items:center;">
     <span style="color:#94a3b8;display:flex;align-items:center;gap:5px;">
-      Mandatory Donation (10%)
-      <span title="Mandatory 0.02 TON donation on the 0.20 TON creation execution base."
+      10% Token Creation Donation
+      <span title="A mandatory 0.02 TON donation on the 0.20 TON execution base. Recipients remain public and are disclosed in wallet confirmation."
         style="width:15px;height:15px;border-radius:50%;background:rgba(0,240,255,0.15);border:1px solid rgba(0,240,255,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:var(--accent-cyan);cursor:help;">ℹ</span>
     </span>
     <span style="font-family:var(--font-mono);color:#4ade80;">+${fees.platformFeeTON} TON</span>
@@ -655,6 +661,9 @@
   <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;">
     <strong style="font-size:13px;">Estimated total</strong>
     <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:700;font-size:15px;">~${fees.estimatedTotalTON} TON</span>
+  </div>
+  <div style="margin-top:8px;font-size:11px;color:#94a3b8;word-break:break-all;">
+    Recipient: <span style="font-family:var(--font-mono);color:#e2e8f0;">Shown in your wallet confirmation</span>
   </div>
 </div>`;
     btn.parentNode.insertBefore(card, btn);

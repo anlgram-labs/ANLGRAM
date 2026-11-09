@@ -1,5 +1,9 @@
 /* web3-integration.js - Real TON Blockchain Integrations */
 (function() {
+  // The review release has one owner for wallet/token tables. The old Mainnet
+  // scanners otherwise race the shared network-aware renderer and survive a
+  // disconnect. Keep this legacy implementation for other releases only.
+  if (window.ANLGRAM_READONLY) return;
   console.log("[Web3 Integration] Initializing Enterprise Web3 Modules...");
 
   // 1. Token Explorer (Live Data from STON.fi)

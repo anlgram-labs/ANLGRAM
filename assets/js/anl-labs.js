@@ -114,6 +114,7 @@
 
   // Helper: Convert raw address to friendly bounceable format
   function getNetworkContext() {
+    if (window.ANLGRAM_READONLY) return window.ANLGRAM_READONLY.getContext();
     const tc = window.tonConnectUI || window.TonConnectUIInstance;
     let chainId = tc?.wallet?.account?.chain || tc?.account?.chain;
     
@@ -156,6 +157,7 @@
    * (window.ANLGRAM_TON_PROXY_URL) with automatic fallback to direct TonAPI v2.
    */
   async function labsFetchTonApi(endpoint) {
+    if (window.ANLGRAM_READONLY) return window.ANLGRAM_READONLY.fetchTonApi(endpoint);
     const net = getNetworkContext();
     const primaryUrl = `${net.tonApiBase}${endpoint}`;
     try {
@@ -532,8 +534,8 @@
     if (rSymbol) rSymbol.textContent = draft.symbol ? `$${draft.symbol}` : '---';
     if (rSupply) rSupply.textContent = formatNumber(draft.supply);
     if (rDecimals) rDecimals.textContent = draft.decimals || '9';
-    const reviewChain = tc?.account?.chain == null ? '' : String(tc.account.chain);
-    if (rNetwork) rNetwork.textContent = reviewChain === '-239' ? 'TON Mainnet' : reviewChain === '-3' ? 'TON Testnet' : 'Network not verified';
+    const reviewChain = tc?.account?.chain == null ? (window.ANLGRAM_READONLY ? (getNetworkContext().isTestnet ? '-3' : '-239') : '') : String(tc.account.chain);
+    if (rNetwork) rNetwork.textContent = (reviewChain === '-239' || reviewChain === '0xffffff11') ? 'TON Mainnet' : (reviewChain === '-3' || reviewChain === '0xfffffffd') ? 'TON Testnet' : 'Network not verified';
 
     if (rWallet) {
       if (tc && tc.account && tc.account.address) {
@@ -1972,6 +1974,23 @@
   // 7. STEP 5: TOKEN MANAGEMENT & LIQUIDITY
   // ═══════════════════════════════════════════════════════════════════
 
+  function labsSetManagementAvatar(container, source) {
+    if (!container) return;
+    const fallback = 'assets/img/anlgram-icon.svg';
+    const image = document.createElement('img');
+    image.alt = 'Logo';
+    image.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+    let url = fallback;
+    try {
+      const parsed = new URL(source, window.location.href);
+      if (parsed.protocol === 'https:' || parsed.origin === window.location.origin || /^data:image\/(png|jpeg|gif|webp);base64,/i.test(source)) url = parsed.href;
+    } catch (_) {}
+    image.onerror = () => { image.onerror = null; image.src = fallback; };
+    image.src = url;
+    // Remote metadata is never parsed as HTML or inline event attributes.
+    container.replaceChildren(image);
+  }
+
   function labsUpdateManagementScreen() {
     const token = wizardState.activeToken;
     if (!token) return;
@@ -1989,7 +2008,7 @@
     if (renAddr) renAddr.value = friendlyAddr;
 
     // Render Token Avatar in Step 5 Header
-    const defaultLogo = 'https://anlgram.com/assets/images/icon-192.png';
+    const defaultLogo = 'assets/img/anlgram-icon.svg';
     let tokenImage = token.image || wizardState.tokenDraft?.logoUrl || wizardState.tokenDraft?.logoDataUrl || '';
     if (!tokenImage || tokenImage.includes('anlgram.io')) {
       try {
@@ -2002,7 +2021,7 @@
     }
 
     if (tmAvatar) {
-      tmAvatar.innerHTML = `<img src="${tokenImage}" onerror="this.onerror=null; this.src='${defaultLogo}';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+      labsSetManagementAvatar(tmAvatar, tokenImage);
     }
 
     // Query on-chain Jetton metadata from TonAPI to reflect live status
@@ -2010,14 +2029,14 @@
       labsFetchTonApi(`/jettons/${encodeURIComponent(token.address)}`)
         .then(r => r.ok ? r.json() : null)
         .then(data => {
-          if (data && data.metadata && data.metadata.image) {
+          if (wizardState.activeToken === token && data && data.metadata && data.metadata.image) {
             let fetchedImg = data.metadata.image;
             if (fetchedImg.includes('anlgram.io')) {
               fetchedImg = defaultLogo;
             }
             token.image = fetchedImg;
             if (tmAvatar) {
-              tmAvatar.innerHTML = `<img src="${fetchedImg}" onerror="this.onerror=null; this.src='${defaultLogo}';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+              labsSetManagementAvatar(tmAvatar, fetchedImg);
             }
           }
         })
@@ -2112,12 +2131,12 @@
       // Update avatar element in Step 5
       if (tmAvatar) {
         tmAvatar.style.opacity = '1';
-        tmAvatar.innerHTML = `<img src="${finalUrl}" onerror="this.onerror=null; this.src='https://anlgram.com/assets/images/icon-192.png';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+        labsSetManagementAvatar(tmAvatar, finalUrl);
       }
 
       // Also update any other avatar containers across the wizard
       document.querySelectorAll('.labs-avatar-preview, #labs-avatar-preview-box, #labs-review-avatar, .wizard-dex-preview-avatar, #logo-preview-container').forEach((el) => {
-        el.innerHTML = `<img src="${finalUrl}" onerror="this.onerror=null; this.src='https://anlgram.com/assets/images/icon-192.png';" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Logo"/>`;
+        labsSetManagementAvatar(el, finalUrl);
       });
 
       console.log('Step 5 Token Logo updated successfully:', finalUrl.substring(0, 60) + '...');
@@ -2885,8 +2904,15 @@
   // 8. STEP 6: REAL-TIME ANALYTICS (ZERO FABRICATED METRICS)
   // ═══════════════════════════════════════════════════════════════════
 
+  let tokenAnalyticsRequest = 0;
   window.labsLoadTokenAnalytics = async function (minterAddress) {
     if (!minterAddress) return;
+    const request = ++tokenAnalyticsRequest;
+    const network = getNetworkContext().chainId;
+    const current = () => {
+      try { return request === tokenAnalyticsRequest && network === getNetworkContext().chainId; }
+      catch (_) { return false; }
+    };
     wizardState.selectedTokenAddress = minterAddress;
 
     const anaHolders = document.getElementById('labs-ana-holders');
@@ -2895,6 +2921,12 @@
     const anaPool = document.getElementById('labs-ana-pool-status');
     const listContainer = document.getElementById('labs-ana-holders-list');
     const tonscanLink = document.getElementById('labs-ana-tonscan-link');
+    for (const id of ['labs-ana-holders','labs-ana-total-supply','labs-ana-circ-supply','labs-tm-total-supply','labs-tm-circ-supply','labs-tm-holders-count']) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = 'Unavailable';
+    }
+    if (listContainer) listContainer.textContent = 'Holder data unavailable.';
+    if (anaPool) anaPool.textContent = 'DEX pool status unverified.';
 
     const friendlyAddr = rawToFriendly(minterAddress);
     if (tonscanLink) {
@@ -2902,50 +2934,56 @@
     }
 
     try {
+      let totalSuppRaw = null;
       // 1. Fetch live Jetton info
       const res = await labsFetchTonApi(`/jettons/${encodeURIComponent(minterAddress)}`);
       if (res.ok) {
         const jData = await res.json();
+        if (!current()) return;
         const meta = jData.metadata || {};
-        const totalRaw = jData.total_supply || '0';
-        const decimals = parseInt(meta.decimals || '9', 10);
-        const totalSupply = Number(BigInt(totalRaw) / BigInt(10 ** decimals));
+        const totalRaw = jData.total_supply;
+        if (typeof totalRaw === 'string' && /^\d{1,130}$/.test(totalRaw)) totalSuppRaw = BigInt(totalRaw);
+        const totalSupply = window.ANLGRAM_READONLY_UTILS
+          ? window.ANLGRAM_READONLY_UTILS.formatUnits(totalRaw, meta.decimals)
+          : 'Unavailable';
+        const holders = Number.isSafeInteger(jData.holders_count) && jData.holders_count >= 0 ? formatNumber(jData.holders_count) : 'Unavailable';
 
-        if (anaSupply) anaSupply.textContent = formatNumber(totalSupply);
-        if (anaCirc) anaCirc.textContent = formatNumber(totalSupply);
-        if (anaHolders) anaHolders.textContent = formatNumber(jData.holders_count || 1);
+        if (anaSupply) anaSupply.textContent = totalSupply;
+        if (anaCirc) anaCirc.textContent = 'Unavailable';
+        if (anaHolders) anaHolders.textContent = holders;
 
         // Update Card 4 elements as well
         const tmSupply = document.getElementById('labs-tm-total-supply');
         const tmCirc = document.getElementById('labs-tm-circ-supply');
         const tmHolders = document.getElementById('labs-tm-holders-count');
-        if (tmSupply) tmSupply.textContent = formatNumber(totalSupply);
-        if (tmCirc) tmCirc.textContent = formatNumber(totalSupply);
-        if (tmHolders) tmHolders.textContent = formatNumber(jData.holders_count || 1);
+        if (tmSupply) tmSupply.textContent = totalSupply;
+        if (tmCirc) tmCirc.textContent = 'Unavailable';
+        if (tmHolders) tmHolders.textContent = holders;
       }
 
       // 2. Fetch live Top Holders
       const hRes = await labsFetchTonApi(`/jettons/${encodeURIComponent(minterAddress)}/holders?limit=5`);
       if (hRes.ok) {
         const hData = await hRes.json();
+        if (!current()) return;
         const addresses = hData.addresses || [];
-        const totalSuppRaw = addresses.reduce((acc, h) => acc + BigInt(h.balance || '0'), 0n);
 
         if (listContainer) {
           if (addresses.length === 0) {
             listContainer.innerHTML = '<div style="padding:12px;color:var(--labs-text-muted);font-size:12px;">No holder records found on-chain.</div>';
           } else {
             listContainer.innerHTML = addresses.slice(0, 5).map((h, i) => {
-              const bal = BigInt(h.balance || '0');
-              const pct = totalSuppRaw > 0n ? ((Number(bal * 1000n / totalSuppRaw)) / 10).toFixed(1) : '0';
-              const friendly = shortAddr(rawToFriendly(h.address));
+              const valid = typeof h.balance === 'string' && /^\d{1,130}$/.test(h.balance);
+              const bal = valid ? BigInt(h.balance) : null;
+              const pct = totalSuppRaw > 0n && bal !== null && bal <= totalSuppRaw ? ((Number(bal * 1000n / totalSuppRaw)) / 10).toFixed(1) : null;
+              const friendly = escapeHtml(shortAddr(rawToFriendly(h.address)));
               return `
                 <div class="labs-holder-row" style="margin-bottom:8px;">
                   <span class="labs-holder-name" style="font-family:var(--font-mono); font-size:11px;">${i + 1}. ${friendly}</span>
                   <div class="labs-holder-bar-bg" style="flex:1; height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; margin:0 10px;">
-                    <div class="labs-holder-bar-fill" style="width: ${Math.min(pct, 100)}%; height:100%; background:var(--labs-cyan);"></div>
+                    <div class="labs-holder-bar-fill" style="width: ${pct === null ? 0 : pct}%; height:100%; background:var(--labs-cyan);"></div>
                   </div>
-                  <span class="labs-holder-pct" style="font-family:var(--font-mono); font-size:11px; color:#fff;">${pct}%</span>
+                  <span class="labs-holder-pct" style="font-family:var(--font-mono); font-size:11px; color:#fff;">${pct === null ? 'Unavailable' : pct + '%'}</span>
                 </div>
               `;
             }).join('');
@@ -2953,12 +2991,12 @@
         }
       }
 
-      // 3. Pool status (honest unlisted check)
+      if (!current()) return;
+      // This route has no authenticated DEX-pool discovery evidence.
       if (anaPool) {
         anaPool.innerHTML = `
           <div style="font-size:12px; color:var(--labs-text-muted); line-height:1.5;">
-            ℹ️ <strong>DEX Pool Status:</strong> No verified public pool with continuous volume detected yet on STON.fi or DeDust.
-            Provide initial liquidity in Step 5 to activate automated price discovery and trading volume.
+            ℹ️ <strong>DEX Pool Status:</strong> Unverified. No authenticated pool or liquidity custody evidence is available in this view.
           </div>
         `;
       }
@@ -3012,9 +3050,22 @@
     }
   });
 
+  let walletTokenRequest = 0;
   // Watch for connected wallet changes
   window.addEventListener('anlgramWalletChanged', async (e) => {
+    const request = ++walletTokenRequest;
     const address = e.detail.address;
+    wizardState.userTokens = [];
+    ++tokenAnalyticsRequest;
+    wizardState.selectedTokenAddress = null;
+    if (wizardState.activeToken) window.labsSelectLifecycleToken('new');
+    for (const id of ['labs-ana-holders','labs-ana-total-supply','labs-ana-circ-supply','labs-tm-total-supply','labs-tm-circ-supply','labs-tm-holders-count']) {
+      const el = document.getElementById(id); if (el) el.textContent = 'Unavailable';
+    }
+    const holdersList = document.getElementById('labs-ana-holders-list');
+    if (holdersList) holdersList.textContent = 'Select a token to load holder data.';
+    let context;
+    try { context = getNetworkContext().chainId; } catch (_) { context = null; }
     const walletBtn = document.getElementById('labsTopbarWalletBtn');
     const lifecycleSelect = document.getElementById('labs-lifecycle-select');
 
@@ -3028,22 +3079,21 @@
       }
     }
 
-    if (!address) {
-      wizardState.userTokens = [];
-      return;
-    }
+    if (lifecycleSelect) lifecycleSelect.innerHTML = '<option value="new">+ Create New Jetton (Wizard)</option>';
+    if (!address || !context) return;
 
     // Populate Lifecycle Selector with user's on-chain tokens
     try {
       const res = await labsFetchTonApi(`/accounts/${encodeURIComponent(address)}/jettons`);
       if (res.ok) {
         const data = await res.json();
-        const balances = data.balances || [];
+        if (request !== walletTokenRequest || context !== getNetworkContext().chainId) return;
+        const balances = (data.balances || []).filter(b => !window.BlockchainProvider || window.BlockchainProvider.validateTonAddress(b?.jetton?.address).valid);
         wizardState.userTokens = balances.map((b) => ({
           address: b.jetton.address,
           name: b.jetton.name || 'Token',
           symbol: b.jetton.symbol || 'TKN',
-          decimals: b.jetton.decimals || 9,
+          decimals: b.jetton.decimals ?? 9,
           image: b.jetton.image || '',
           balance: b.balance
         }));
@@ -3054,7 +3104,7 @@
           if (wizardState.userTokens.length > 0) {
             optHtml += `<optgroup label="Tokens in Connected Wallet">`;
             wizardState.userTokens.forEach((t) => {
-              optHtml += `<option value="${t.address}">${t.name} (${t.symbol})</option>`;
+              optHtml += `<option value="${escapeHtml(t.address)}">${escapeHtml(t.name)} (${escapeHtml(t.symbol)})</option>`;
             });
             optHtml += `</optgroup>`;
           }

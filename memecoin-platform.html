@@ -19,9 +19,13 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="assets/js/telegram-mini-app.js"></script>
   <script src="assets/js/security.js"></script>
+  <script src="assets/js/blockchain-provider.js"></script>
+  <script src="assets/js/memelabs-readonly.js?v=2026.57"></script>
+  <script src="assets/js/memelabs-inspector.js?v=2026.57"></script>
   <script>
     window.ANLGRAM_TON_PROXY_URL = 'https://anlgram-ton-proxy.anlgram.workers.dev';
     window.anlgramFetchTonApi = async function(endpoint, options) {
+      if (window.ANLGRAM_READONLY && (!options || !options.cache)) return window.ANLGRAM_READONLY.fetchTonApi(endpoint);
       const proxyBase = (window.ANLGRAM_TON_PROXY_URL || '').replace(/\/+$/, '');
       if (proxyBase) {
         try {
@@ -35,7 +39,7 @@
   <script src="assets/js/token-verification-engine.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="assets/js/web3-integration.js?v=2"></script>
+  <script src="assets/js/web3-integration.js?v=2026.56"></script>
 
   <style>
     /* Enterprise Platform Specific Styles */
@@ -331,7 +335,7 @@
       <section id="labs-flow-section">
         <div class="labs-flow-hero">
           <h2 class="labs-flow-title">The Complete Flow</h2>
-          <p class="labs-flow-subtitle">Guided step-by-step token creation, deployment, distribution, management, and analytics on TON.</p>
+          <p class="labs-flow-subtitle">Read-only review: live blockchain data. Creation, trading, distribution and liquidity transactions are unavailable.</p>
         </div>
 
         <!-- Token Lifecycle & Context Switcher Bar -->
@@ -472,7 +476,7 @@
                   <!-- Live DEX Mini Preview Card -->
                   <div class="wizard-dex-preview-card">
                     <div class="wizard-dex-preview-header">
-                      <span class="wizard-dex-live-tag">● LIVE DEX PREVIEW</span>
+                      <span class="wizard-dex-live-tag">● TOKEN DRAFT PREVIEW</span>
                       <span class="wizard-dex-net-tag">TON MAINNET</span>
                     </div>
                     <div class="wizard-dex-preview-body">
@@ -1029,7 +1033,7 @@
               </div>
               <div class="labs-stat-cell">
                 <span class="labs-stat-label">Blockchain Network</span>
-                <span class="labs-stat-val" style="color:var(--labs-green);">TON Mainnet</span>
+                <span id="labs-ana-network" class="labs-stat-val" style="color:var(--labs-green);">TON Mainnet</span>
               </div>
             </div>
 
@@ -1437,31 +1441,31 @@
       
       <div class="token-search-wrap">
         <svg class="token-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="token-search-input" placeholder="Search Jettons by name, ticker, or contract address..."/>
+        <input type="text" class="token-search-input" placeholder="Use Analytics to inspect a Jetton contract" disabled title="Market-wide name search unavailable; use the Analytics tab for address lookup."/>
       </div>
 
       <div class="grid-3">
         <div class="glass-card">
           <div class="glass-card-header"><span class="glass-card-title">Total Market Cap (Tokens)</span></div>
-          <div class="stat-value">$1.24B</div>
-          <div class="stat-change up">▲ +12.4% vs last week</div>
+          <div class="stat-value">Unavailable</div>
+          <div class="stat-change up">Live aggregate data not verified</div>
         </div>
         <div class="glass-card">
           <div class="glass-card-header"><span class="glass-card-title">24h Trading Volume</span></div>
-          <div class="stat-value">$342M</div>
-          <div class="stat-change up">▲ +5.2% vs yesterday</div>
+          <div class="stat-value">Unavailable</div>
+          <div class="stat-change up">Live aggregate data not verified</div>
         </div>
         <div class="glass-card">
           <div class="glass-card-header"><span class="glass-card-title">New Jettons (24h)</span></div>
-          <div class="stat-value">1,482</div>
-          <div class="stat-change down">▼ -2.1% vs yesterday</div>
+          <div class="stat-value">Unavailable</div>
+          <div class="stat-change down">Live aggregate data not verified</div>
         </div>
       </div>
 
       <!-- LIVE Tracker Marquee -->
       <div class="glass-card" style="padding: 12px 24px; margin-bottom: var(--space-5); display: flex; align-items: center; gap: 16px; overflow: hidden; background: rgba(0, 240, 255, 0.05); border-color: rgba(0, 240, 255, 0.2);">
         <div style="display: flex; align-items: center; gap: 8px; color: var(--accent-cyan); font-weight: 600; font-size: 13px; white-space: nowrap;">
-          <span class="status-dot"></span> Mints LIVE
+          <span class="status-dot"></span> Mint feed unavailable
         </div>
         <div style="flex: 1; overflow: hidden; position: relative; height: 24px;">
           <style>
@@ -1470,11 +1474,7 @@
             .tracker-item span { color: var(--green); margin-left: 8px; }
           </style>
           <div class="tracker-marquee">
-            <div class="tracker-item">🚀 PEPE_TON minted <span>1B supply</span></div>
-            <div class="tracker-item">💧 Liquidity added to TON/USDT <span>$50k</span></div>
-            <div class="tracker-item">🔥 BURNDOG just burned <span>5M tokens</span></div>
-            <div class="tracker-item">🚀 CATTON minted <span>10M supply</span></div>
-            <div class="tracker-item">💧 Liquidity added to REDO/TON <span>$200k</span></div>
+            <div class="tracker-item">Live mint feed unavailable. No activity is simulated.</div>
           </div>
         </div>
       </div>
@@ -1492,79 +1492,8 @@
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody id="trending-tokens-tbody">
-              <tr>
-                <td>
-                  <div class="token-cell">
-                    <div class="token-icon">REDO</div>
-                    <div>
-                      <div style="font-weight:600;">Resistance Dog</div>
-                      <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);">EQC...9fB2</div>
-                    </div>
-                  </div>
-                </td>
-                <td style="font-family:var(--font-mono);">$0.842</td>
-                <td style="font-family:var(--font-mono);">$12.4M</td>
-                <td style="font-family:var(--font-mono);">$4.2M</td>
-                <td style="white-space: nowrap;">
-                  <button class="btn-ent" style="padding:4px 12px;font-size:11px;">Analyze</button>
-                  <button class="btn-solid" style="padding:4px 12px;font-size:11px; margin-left: 4px;" onclick="copyToken('Resistance Dog', 'REDO')">Copy</button>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="token-cell">
-                    <div class="token-icon" style="background:linear-gradient(135deg, #f59e0b, #ef4444);">NOT</div>
-                    <div>
-                      <div style="font-weight:600;">Notcoin</div>
-                      <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);">EQA...1xZ8</div>
-                    </div>
-                  </div>
-                </td>
-                <td style="font-family:var(--font-mono);">$0.012</td>
-                <td style="font-family:var(--font-mono);">$88.2M</td>
-                <td style="font-family:var(--font-mono);">$21.5M</td>
-                <td style="white-space: nowrap;">
-                  <button class="btn-ent" style="padding:4px 12px;font-size:11px;">Analyze</button>
-                  <button class="btn-solid" style="padding:4px 12px;font-size:11px; margin-left: 4px;" onclick="copyToken('Notcoin', 'NOT')">Copy</button>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="token-cell">
-                    <div class="token-icon" style="background:linear-gradient(135deg, #10b981, #3b82f6);">FISH</div>
-                    <div>
-                      <div style="font-weight:600;">Ton Fish</div>
-                      <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);">EQD...4rQ1</div>
-                    </div>
-                  </div>
-                </td>
-                <td style="font-family:var(--font-mono);">$0.000045</td>
-                <td style="font-family:var(--font-mono);">$3.1M</td>
-                <td style="font-family:var(--font-mono);">$1.8M</td>
-                <td style="white-space: nowrap;">
-                  <button class="btn-ent" style="padding:4px 12px;font-size:11px;">Analyze</button>
-                  <button class="btn-solid" style="padding:4px 12px;font-size:11px; margin-left: 4px;" onclick="copyToken('Ton Fish', 'FISH')">Copy</button>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="token-cell">
-                    <div class="token-icon" style="background:linear-gradient(135deg, #8b5cf6, #ec4899);">DOGS</div>
-                    <div>
-                      <div style="font-weight:600;">DOGS</div>
-                      <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);">EQV...8mL5</div>
-                    </div>
-                  </div>
-                </td>
-                <td style="font-family:var(--font-mono);">$0.0031</td>
-                <td style="font-family:var(--font-mono);">$45.6M</td>
-                <td style="font-family:var(--font-mono);">$12.4M</td>
-                <td style="white-space: nowrap;">
-                  <button class="btn-ent" style="padding:4px 12px;font-size:11px;">Analyze</button>
-                  <button class="btn-solid" style="padding:4px 12px;font-size:11px; margin-left: 4px;" onclick="copyToken('DOGS', 'DOGS')">Copy</button>
-                </td>
-              </tr>
+            <tbody id="trending-tokens-tbody" hidden>
+              <tr><td colspan="5">Connect wallet to load blockchain data.</td></tr>
             </tbody>
           </table>
         </div>
@@ -1574,7 +1503,8 @@
             <span class="glass-card-title">Token Ecosystem Growth</span>
           </div>
           <div style="height: 250px; position:relative; width:100%;">
-            <canvas id="growthChart"></canvas>
+            <canvas id="growthChart" hidden></canvas>
+            <p>Historical ecosystem growth data unavailable.</p>
           </div>
         </div>
       </div>
@@ -1716,10 +1646,10 @@
       <div class="glass-card" style="margin-bottom:var(--space-5); text-align:center; padding: 40px 20px;">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="1.5" style="margin-bottom:16px;"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
         <h2 style="color:#fff; font-size:24px; margin-bottom:12px;">Enterprise Wallet Management</h2>
-        <p style="color:var(--text-muted); max-width:500px; margin:0 auto 24px;">Securely generate, import, and manage thousands of TON wallets with hardware-grade encryption and mass-export capabilities.</p>
+        <p style="color:var(--text-muted); max-width:500px; margin:0 auto 24px;">View the connected wallet and its indexed assets. Bulk wallet generation and import are unavailable.</p>
         <div style="display:flex; justify-content:center; gap:16px;">
-          <button class="btn-solid">Generate Wallets</button>
-          <button class="btn-ent">Import CSV</button>
+          <button class="btn-solid" disabled title="Unavailable in this read-only release">Generate Wallets — Unavailable</button>
+          <button class="btn-ent" disabled title="Unavailable in this read-only release">Import CSV — Unavailable</button>
         </div>
       </div>
 
@@ -1728,32 +1658,15 @@
           <div class="glass-card-header" style="padding: 24px;"><span class="glass-card-title">Managed Wallets</span></div>
           <table class="ent-table">
             <thead><tr><th>Label</th><th>Address</th><th>Balance</th><th>Status</th></tr></thead>
-            <tbody id="managed-wallets-tbody">
-              <tr>
-                <td><span style="font-weight:600;">Treasury Alpha</span></td>
-                <td style="font-family:var(--font-mono); color:var(--text-muted);">UQDK...4bA1</td>
-                <td style="font-family:var(--font-mono); color:var(--green);">45,210 GRAM</td>
-                <td><span style="background:rgba(0,255,100,0.1); color:#00ff66; padding:2px 8px; border-radius:12px; font-size:11px;">Active</span></td>
-              </tr>
-              <tr>
-                <td><span style="font-weight:600;">Airdrop Dist #1</span></td>
-                <td style="font-family:var(--font-mono); color:var(--text-muted);">UQC8...9vL4</td>
-                <td style="font-family:var(--font-mono);">1,050 GRAM</td>
-                <td><span style="background:rgba(0,255,100,0.1); color:#00ff66; padding:2px 8px; border-radius:12px; font-size:11px;">Active</span></td>
-              </tr>
-              <tr>
-                <td><span style="font-weight:600;">Marketing Reserve</span></td>
-                <td style="font-family:var(--font-mono); color:var(--text-muted);">UQZ1...0mM9</td>
-                <td style="font-family:var(--font-mono);">12,400 GRAM</td>
-                <td><span style="background:rgba(0,255,100,0.1); color:#00ff66; padding:2px 8px; border-radius:12px; font-size:11px;">Active</span></td>
-              </tr>
+            <tbody id="managed-wallets-tbody" hidden>
+              <tr><td colspan="4">Connect wallet to load blockchain data.</td></tr>
             </tbody>
           </table>
         </div>
         <div class="glass-card">
           <div class="glass-card-header"><span class="glass-card-title">Portfolio Distribution</span></div>
           <div style="height:200px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:13px; text-align:center;">
-            [Interactive Donut Chart Rendered via Canvas]<br>GRAM 65% | USDT 20% | NOT 15%
+            Portfolio allocation data unavailable.
           </div>
         </div>
       </div>
@@ -1887,8 +1800,8 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
           <h3 style="color: #fff; font-size: 20px; font-weight: 600; margin: 0;">Your Pools</h3>
           <div style="display: flex; gap: 8px;">
-            <button style="background: var(--accent-blue); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">STON.fi</button>
-            <button style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--glass-border); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">DeDust</button>
+            <button disabled title="Pool discovery unavailable in this release" style="background: var(--accent-blue); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">STON.fi</button>
+            <button disabled title="Pool discovery unavailable in this release" style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--glass-border); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">DeDust</button>
           </div>
         </div>
         <div id="liquidity-pools-list" class="glass-card" style="padding: 0;">
@@ -1903,12 +1816,18 @@
     <div id="tab-analytics" class="tab-content">
       <div class="glass-card" style="height:400px; display:flex; align-items:center; justify-content:center; flex-direction:column;">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom:16px;"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-        <div style="font-weight:600; color:#fff; margin-bottom:8px;">Advanced Analytics Engine</div>
+        <div style="font-weight:600; color:#fff; margin-bottom:8px;">Public Jetton Analytics</div>
         <p style="color:var(--text-muted); font-size:14px; max-width:400px; text-align:center;">
-          Connect your API keys or upgrade to Enterprise Tier 2 to unlock real-time liquidity flow analysis and predictive memecoin modeling.
+          Read real token metadata, supply, holders and contract transactions on the selected network. No API key or wallet signature is required.
         </p>
-        <button class="btn-solid" style="margin-top:16px;">Upgrade Plan</button>
+        <form id="memelabs-inspector-form">
+          <label for="memelabs-inspector-address">Jetton contract address</label>
+          <input id="memelabs-inspector-address" class="token-search-input" type="text" placeholder="EQ… / UQ… / 0:…" required autocomplete="off" spellcheck="false"/>
+          <button id="memelabs-inspector-submit" type="submit" class="btn-solid" style="margin-top:16px;">Inspect Token</button>
+        </form>
+        <p id="memelabs-inspector-status" role="status" aria-live="polite"></p>
       </div>
+      <div id="memelabs-inspector-results" aria-live="polite"></div>
     </div>
 
   </main>
@@ -1933,30 +1852,7 @@
     if (target) target.classList.add('active');
   }
 
-  // Render dummy chart for Token Growth
-  const ctx = document.getElementById('growthChart');
-  if(ctx) {
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        datasets: [{
-          label: 'New Tokens',
-          data: [120, 190, 150, 220, 310, 480, 520],
-          backgroundColor: '#00f0ff',
-          borderRadius: 4
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { color: '#8a8a9a' } },
-          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8a8a9a' } }
-        }
-      }
-    });
-  }
+  // No ecosystem-growth chart is rendered without a genuine historical feed.
 
   function copyToken(name, symbol) {
     switchTab('launchpad');
@@ -2551,8 +2447,16 @@
 
   // --- API Integrations for Wallet ---
   
+  let tokenViewRequest = 0;
   // Listen for the wallet connection event emitted by wallet-connect.js
   window.addEventListener('anlgramWalletChanged', async (e) => {
+    const request = ++tokenViewRequest;
+    let context;
+    try { context = window.ANLGRAM_READONLY.getContext().chainId; } catch (_) { context = null; }
+    const current = () => {
+      try { return request === tokenViewRequest && context === window.ANLGRAM_READONLY.getContext().chainId; }
+      catch (_) { return false; }
+    };
     const address = e.detail.address;
     const selectEl = document.getElementById('user-jetton-select');
     const setupArea = document.getElementById('liquidity-setup-area');
@@ -2565,32 +2469,47 @@
       if(setupArea) setupArea.style.display = 'none';
       if(poolsList) poolsList.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">Connect wallet to view your active liquidity pools.</div>';
       if(walletsTbody) walletsTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Connect wallet to view balances.</td></tr>';
+      if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5">Connect wallet to view tokens.</td></tr>';
+      return;
+    }
+
+    if (!context) {
+      if(selectEl) selectEl.innerHTML = '<option value="">Wallet network unavailable. Reconnect a supported wallet.</option>';
+      if(walletsTbody) walletsTbody.innerHTML = '<tr><td colspan="4">Wallet network unavailable.</td></tr>';
+      if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5">Wallet network unavailable.</td></tr>';
+      if(setupArea) setupArea.style.display = 'none';
+      if(poolsList) poolsList.textContent = 'Wallet network unavailable.';
       return;
     }
 
     // Wallet is connected. Fetch Jettons from TonAPI
     if(selectEl) selectEl.innerHTML = '<option value="">Loading tokens from blockchain...</option>';
     if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Loading tokens...</td></tr>';
+    if(walletsTbody) walletsTbody.innerHTML = '<tr><td colspan="4">Loading wallet balance...</td></tr>';
     
     // Load Main Account Data (TON Balance)
     try {
       const accRes = await window.anlgramFetchTonApi(`/accounts/${encodeURIComponent(address)}`);
+      if (!accRes.ok) throw new Error('Account data unavailable');
       if(accRes.ok) {
         const accData = await accRes.json();
+        if (!current()) return;
         if(walletsTbody) {
           const shortAddr = address.substring(0, 4) + "..." + address.slice(-4);
-          const formattedTon = (Number(accData.balance) / 1e9).toFixed(2);
+          const formattedTon = window.ANLGRAM_READONLY.formatUnits(accData.balance, 9);
           walletsTbody.innerHTML = `
               <tr>
                 <td><span style="font-weight:600;">Main Connected Wallet</span></td>
                 <td style="font-family:var(--font-mono); color:var(--text-muted);">${shortAddr}</td>
                 <td style="font-family:var(--font-mono); color:var(--green);">${formattedTon} TON</td>
-                <td><span style="background:rgba(0,255,100,0.1); color:#00ff66; padding:2px 8px; border-radius:12px; font-size:11px;">Active</span></td>
+                <td><span style="background:rgba(0,255,100,0.1); color:#00ff66; padding:2px 8px; border-radius:12px; font-size:11px;">${String(accData.status || 'Unknown').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</span></td>
               </tr>
           `;
         }
       }
     } catch(err) {
+      if (!current()) return;
+      if(walletsTbody) walletsTbody.innerHTML = '<tr><td colspan="4">Wallet data unavailable. Retry after the provider recovers.</td></tr>';
       console.warn("Could not fetch main account:", err);
     }
     
@@ -2601,7 +2520,7 @@
       poolsList.innerHTML = `
         <div style="padding: 40px 20px; text-align: center; color: var(--text-muted);">
           <div style="font-size: 32px; margin-bottom: 12px;">🌊</div>
-          <div style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px;">Liquidity Positions Not Verified</div>
+          <div style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px;">Liquidity Positions Not Verified · Liquidity custody unverified</div>
           <div style="font-size: 13px; max-width: 480px; margin: 0 auto 16px; line-height: 1.5;">
             ANLGRAM has not verified this wallet's liquidity positions on STON.fi or DeDust.
             No pool balance, LP custody, or lock status is claimed here. Check your
@@ -2675,7 +2594,8 @@
       const response = await window.anlgramFetchTonApi(`/accounts/${encodeURIComponent(address)}/jettons?supported_extensions=custom_payload`);
       if (!response.ok) throw new Error('API Error');
       const data = await response.json();
-      const balances = data.balances || [];
+      if (!current()) return;
+      const balances = (data.balances || []).filter(b => window.BlockchainProvider.validateTonAddress(b?.jetton?.address).valid);
 
       if (balances.length === 0) {
         if(selectEl) selectEl.innerHTML = '<option value="">No tokens found in this wallet.</option>';
@@ -2690,17 +2610,8 @@
 
       // Normalize connected wallet address to raw hex for comparison
       function toRawHex(addr) {
-        if (!addr) return '';
-        // If already raw (contains ':'), strip workchain prefix
-        if (addr.includes(':')) return addr.split(':')[1].toLowerCase();
-        // If friendly (EQ/UQ), decode base64url to get raw hex
-        try {
-          const std = addr.replace(/-/g, '+').replace(/_/g, '/') + '==';
-          const bytes = atob(std);
-          let hex = '';
-          for (let i = 2; i < 34; i++) hex += bytes.charCodeAt(i).toString(16).padStart(2, '0');
-          return hex.toLowerCase();
-        } catch(e) { return addr.toLowerCase().replace(/[^a-z0-9]/g,''); }
+        const normalized = window.BlockchainProvider.validateTonAddress(addr);
+        return normalized.valid ? normalized.raw : '';
       }
 
       const walletRawHex = toRawHex(address);
@@ -2731,6 +2642,7 @@
 
       let optionsHTML = `<option value="">-- ${isFiltered ? `${adminTokens.length} token(s) you created` : 'Choose your token'} --</option>`;
       let explorerHTML = '';
+      const optionStyle = '';
 
       // Convert all minter addresses to friendly format in parallel
       const resolvedTokens = await Promise.all(tokensToShow.map(async (b) => {
@@ -2739,12 +2651,13 @@
         return { ...b, _friendlyMinterAddr: friendlyAddr };
       }));
 
+      if (!current()) return;
       resolvedTokens.forEach(b => {
         const symbol = b.jetton.symbol || 'Unknown';
         const name = b.jetton.name || 'Unknown Token';
         const rawBal = b.balance;
-        const decimals = b.jetton.decimals || 9;
-        const formattedBal = (Number(rawBal) / Math.pow(10, decimals)).toFixed(2);
+        const decimals = b.jetton.decimals;
+        const formattedBal = window.ANLGRAM_READONLY.formatUnits(rawBal, decimals);
         // Use the pre-resolved friendly EQ... address
         const minterAddr = b._friendlyMinterAddr || b._minterAddress || b.jetton.address;
 
@@ -2780,7 +2693,7 @@
             <td style="font-family:var(--font-mono);">-</td>
             <td style="font-family:var(--font-mono);">${formattedBal}</td>
             <td style="white-space: nowrap;">
-              <button class="btn-ent" style="padding:4px 12px;font-size:11px;" onclick="window.open('https://tonscan.org/address/${encodeURIComponent(minterAddr)}','_blank')">Explorer ↗</button>
+              <button class="btn-ent" style="padding:4px 12px;font-size:11px;" onclick="window.open('${window.ANLGRAM_READONLY.getContext().tonscanBase}/address/${encodeURIComponent(minterAddr)}','_blank')">Explorer ↗</button>
               <button class="btn-solid" style="padding:4px 12px;font-size:11px; margin-left: 4px;" data-name="${safeName}" data-symbol="${safeSymbol}" onclick="copyToken(this.getAttribute('data-name'), this.getAttribute('data-symbol'))">Copy</button>
             </td>
           </tr>
@@ -2866,6 +2779,7 @@
       }
 
     } catch (err) {
+      if (!current()) return;
       console.warn('Failed to fetch Jettons from TonAPI:', err);
       if(selectEl) selectEl.innerHTML = '<option value="">Error fetching tokens. Refresh page.</option>';
       if(explorerTbody) explorerTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Error fetching tokens.</td></tr>';
@@ -2882,7 +2796,7 @@
 <script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
 <script src="assets/js/donation-config.js?v=2026.54"></script>
 <script src="assets/js/wallet-connect.js?v=2026.51"></script>
-<script src="assets/js/launchpad.js?v=2026.54"></script>
+<script src="assets/js/launchpad.js?v=2026.56"></script>
 <script src="assets/js/curve-vnext-onchain-quote.js?v=2026.12"></script>
 <script>
 (function () {
@@ -2938,6 +2852,6 @@
 })();
 </script>
 <script src="assets/js/transaction-receipt.js?v=2026.54"></script>
-<script src="assets/js/anl-labs.js?v=2026.54"></script>
+<script src="assets/js/anl-labs.js?v=2026.57"></script>
 </body>
 </html>
