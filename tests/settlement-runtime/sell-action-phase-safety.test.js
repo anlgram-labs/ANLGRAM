@@ -94,6 +94,28 @@ test('VNext real Sandbox sell: never debit the Curve reserve without delivering 
         '(forward='+forward+', debit='+sellerDebit+', escrow='+newlyEscrowed+
         ', aborted='+String(tx.description.aborted)+
         ', action='+String(tx.description.actionPhase?.resultCode)+')');
+      if (sellerDebit===units && newlyEscrowed===units) {
+        // The aggregate get_curve_state()[7] is not the owner's claim right.
+        // Require the exact seller-keyed ledger entry, then exercise the real
+        // claim path and prove both token return and liability clearance.
+        const owed=(await f.chain.runGetMethod(curve,'get_pending_refund',
+          [{type:'slice',cell:beginCell().storeAddress(f.owner.address).endCell()}]))
+          .stackReader.readBigNumber();
+        assert.equal(owed,units,
+          'UNCLAIMABLE ESCROW: aggregate pending increased without a seller-keyed claim');
+        const claim=beginCell().storeUint(0x414e4c34,32)
+          .storeUint(0xA552n,64).endCell();
+        const claimed=await f.send(curve,claim,50000000n);
+        assert(exit(claimed,curve,0),
+          'REFUND FAILURE: authenticated seller claim did not execute');
+        assert.equal(await balance(),owned,
+          'REFUND FAILURE: seller Jettons not fully restored after claim');
+        const cleared=(await f.chain.runGetMethod(curve,'get_pending_refund',
+          [{type:'slice',cell:beginCell().storeAddress(f.owner.address).endCell()}]))
+          .stackReader.readBigNumber();
+        assert.equal(cleared,0n,
+          'REFUND FAILURE: seller claim remained payable after delivery');
+      }
       if (tx.description.aborted && tx.description.actionPhase?.success===false) {
         assert.equal(sellerDebit,0n,
           'ACTION PHASE FAILURE: Curve reverted payout but seller Jettons stayed transferred');
