@@ -66,10 +66,41 @@ test('actual external LP withdrawal fields verify exact authorized final recipie
  assert.equal(selectLpWithdrawalDelivery(policy,[claimRow],[recipientRow]),null);
  assert.equal(selectLpWithdrawalDelivery({...policy,beneficiary:policy.locker},[claimRow],[walletRow]),null);
  assert.throws(()=>api.verifyLpWithdrawalFields(policy,{...raw,recipientTransaction:wallet.raw}));assert.throws(()=>api.verifyProvenLpEvidence(policy,'withdrawal',raw,{}),/checkpoint/);
+ assert.throws(()=>api.verifyLpWithdrawalReturnFields(policy,raw),/Recipient failure/);
  const pending=await f.read();for(let i=0;i<6;i++)pending.readBigNumber();assert.equal(pending.readBigNumber(),amount);
  // A new fixture freezes the authentic receiving wallet before claim routing.
  const g=await fixture(75,'days180');for(const m of g.deposit.messages)await g.owner.send({...m,bounce:true});const gs=await g.read();gs.readBigNumber();gs.readBigNumber();g.chain.now=Number(gs.readBigNumber());gs.readBigNumber();const ga=gs.readBigNumber(),{freeze}=require('./refund-receipts-support');const recipientInit={code:g.vault.lpInit.code,data:beginCell().storeCoins(0).storeAddress(g.owner.address).storeAddress(g.vault.pool).storeRef(g.vault.lpInit.code).endCell()};await g.owner.send({to:destination,init:recipientInit,value:100000000n,body:beginCell().endCell()});await g.owner.send({to:g.vault.address,value:150000000n,body:beginCell().storeUint(0x414c5633,32).storeUint(1,64).storeBit(true).storeCoins(1).endCell()});await freeze(g,destination);
  const failed=await recorded(g,{to:g.vault.address,value:150000000n,body:beginCell().storeUint(0x414c5633,32).storeUint(2,64).storeBit(true).storeCoins(ga-1n).endCell()},[destination]);const bad=failed.find(x=>x.tx.inMessage.info.dest.equals(destination));assert(bad);assert.throws(()=>api.verifyLpWithdrawalFields(policy,{...raw,recipientTransaction:bad.raw,recipient:{before:bad.before,after:bad.after}}));
+ const claimRowFailed=failed.find(row=>row.tx.inMessage.info.dest.equals(g.vault.address));
+ const senderRowFailed=failed.find(row=>row.tx.inMessage.info.dest.equals(g.vault.lpWallet)&&!row.tx.inMessage.info.bounced);
+ const restored=failed.find(row=>row.tx.inMessage.info.dest.equals(g.vault.lpWallet)&&row.tx.inMessage.info.bounced);
+ assert(claimRowFailed&&senderRowFailed&&restored);
+ const snapshots=row=>({before:row.before,after:row.after});
+ const downstream={locker:snapshots(claimRowFailed),wallet:snapshots(senderRowFailed),
+  recipient:snapshots(bad),walletRestore:snapshots(restored),lockerTransaction:claimRowFailed.raw,
+  walletTransaction:senderRowFailed.raw,recipientTransaction:bad.raw,walletRestoreTransaction:restored.raw};
+ const returned=api.verifyLpWithdrawalReturnFields(policy,downstream);
+ assert.equal(returned.withdrawalQueryId,'2');
+ assert.equal(returned.amountUnits,String(ga-1n));
+ assert.equal(returned.sourceWalletRestoredFields,true);
+ assert.equal(returned.contractPrincipalRestoredFields,false);
+ assert.equal(returned.deliveryVerified,false);
+ assert.equal(returned.contractPendingMustRemain,true);
+ assert.equal(returned.newAttemptAuthorized,false);
+ assert.equal(api.isIncludedLpEvidence(returned),false);
+ const lockerState=await g.read();
+ for(let i=0;i<6;i++)lockerState.readBigNumber();
+ assert.equal(lockerState.readBigNumber(),ga,'Locker liability remains pending across both withdrawals');
+ assert.throws(()=>api.verifyProvenLpEvidence(policy,'withdrawalReturn',downstream,{}),/checkpoint/);
+ assert.throws(()=>api.verifyLpWithdrawalFields(policy,downstream),/Successful execution/);
+ for(const mutate of [
+  input=>input.walletRestoreTransaction=input.walletTransaction,
+  input=>input.walletRestore.before=input.walletRestore.after,
+  input=>input.recipientTransaction=recipient.raw
+ ]){
+  const input=structuredClone(downstream);mutate(input);
+  assert.throws(()=>api.verifyLpWithdrawalReturnFields(policy,input));
+ }
 });
 test('single token deposit stays in authentic LPAccount, then official refund_me restores exact Jettons without claiming LP or migration completion',async()=>{
  const f=await fixture();await f.owner.send({...f.deposit.messages[0],bounce:true});const account=(await f.chain.runGetMethod(f.vault.pool,'get_lp_account_address',[{type:'slice',cell:beginCell().storeAddress(f.owner.address).endCell()}])).stackReader.readAddress();
