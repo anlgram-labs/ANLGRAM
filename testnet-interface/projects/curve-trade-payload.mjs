@@ -64,6 +64,10 @@ export function prepareCurveTrade({record,checkpoint:cp,owner,side,amount,slippa
   // The legacy getter caps its result, while the sell handler refunds
   // instead of selling if the Curve cannot cover the full gross amount.
   if(gross>reserve)throw Error('Sell exceeds available Curve principal');
+  if(cp.walletBalanceNano!==undefined&&cp.walletBalanceNano!==null){
+   const liveBalance=BigInt(cp.walletBalanceNano),bookedFees=BigInt(cp.protocolFeesNano??'0');
+   if(liveBalance<reserve+bookedFees)throw Error('Curve account balance below booked reserves');
+  }
   fee=gross/100n;
   expectedOut=gross-fee;
   const walletCode=code('anlgram-settlement-wallet');

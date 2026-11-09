@@ -3075,13 +3075,21 @@
           };
         }
         const data = await res.json();
+        const tonLeg = data?.principalAccounting?.tonNano || null;
+        const jettonLeg = data?.principalAccounting?.jettonUnits || null;
         return {
           ok: true,
           state: data?.status || 'REGISTERED_PROJECT_CHAIN_EVIDENCE',
-          fingerprint: data?.fingerprint || fingerprint,
-          minterDeployed: Boolean(data?.minter?.deployed),
-          curveDeployed: Boolean(data?.curve?.deployed),
-          migrationStage: data?.migration?.stageName || (data?.migration?.stage != null ? `STAGE_${data.migration.stage}` : 'UNKNOWN'),
+          fingerprint: data?.configurationFingerprint || data?.fingerprint || fingerprint,
+          minterDeployed: Boolean(data?.minter?.deployed || data?.registrationIdentity?.accounts?.minter?.address),
+          curveDeployed: Boolean(data?.curve?.deployed || data?.registrationIdentity?.accounts?.curve?.address),
+          registrationIdentity: data?.registrationIdentity || null,
+          settlement: data?.settlement || 'UNKNOWN',
+          tonFundingStatus: tonLeg?.fundingStatus || 'UNKNOWN',
+          tonCurveReturnStatus: tonLeg?.curveReturnStatus || 'UNKNOWN',
+          jettonFundingStatus: jettonLeg?.fundingStatus || 'UNKNOWN',
+          jettonCurveReturnStatus: jettonLeg?.curveReturnStatus || 'UNKNOWN',
+          migrationStage: data?.migration?.stageName || (data?.migration?.stage != null ? `STAGE_${data.migration.stage}` : (data?.stage || 'UNKNOWN')),
           graduated: data?.migration?.graduated === true ? 'GRADUATED' : (data?.migration?.graduated === false ? 'IN_PROGRESS' : 'UNKNOWN'),
           refundState: data?.migration?.refundAvailable === true ? 'REFUND_PENDING' : 'NO_REFUND_EVIDENCE',
           lpLockState: data?.lpLocker?.locked === true ? 'LOCKED_ONCHAIN' : 'CUSTODY_UNVERIFIED',

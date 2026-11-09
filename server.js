@@ -49,6 +49,8 @@ const ALLOWED_TVM_METHODS = new Set([
   'get_jetton_data',
   'get_wallet_address',
   'get_buy_quote_v2',
+  'get_sell_quote',
+  'get_curve_state',
   'get_vesting_data',
   'get_claimable_at',
   'get_staking_data',
@@ -503,19 +505,27 @@ const server = http.createServer((req, res) => {
     }
 
     // Validate Query Parameters (ALTO-03 parity with Cloudflare Worker)
-    const isVnextBuyQuote = methodMatch?.[2] === 'get_buy_quote_v2';
+    const isVnextBuyQuote = methodMatch?.[2] === 'get_buy_quote_v2' || methodMatch?.[2] === 'get_sell_quote';
+    const isVnextCurveState = methodMatch?.[2] === 'get_curve_state';
+    const isUncachedCurveGetter = isVnextBuyQuote || isVnextCurveState;
     const filteredParams = new URLSearchParams();
     try {
       const reqUrlObj = new URL(req.url, 'http://localhost');
       if (isVnextBuyQuote) {
+        const maxHexLen = methodMatch?.[2] === 'get_sell_quote' ? 30 : 18;
+        const maxAmount = methodMatch?.[2] === 'get_sell_quote' ? 1000000000000000000n : 1000000000000000n;
         const args = reqUrlObj.searchParams.getAll('args');
         if (reqUrlObj.searchParams.size !== 1 || args.length !== 1 ||
-            !/^0x[0-9a-fA-F]{1,18}$/.test(args[0]) || BigInt(args[0]) === 0n ||
-            BigInt(args[0]) > 1000000000000000n) {
+            !new RegExp(`^0x[0-9a-fA-F]{1,${maxHexLen}}$`).test(args[0]) || BigInt(args[0]) === 0n ||
+            BigInt(args[0]) > maxAmount) {
           res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
           res.end(JSON.stringify({ error: 'VNext quote requires one positive bounded hex args value' }));
           return;
         }
+      } else if (isVnextCurveState && reqUrlObj.searchParams.size !== 0) {
+        res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
+        res.end(JSON.stringify({ error: 'get_curve_state does not accept query parameters' }));
+        return;
       }
       for (const [key, val] of reqUrlObj.searchParams.entries()) {
         if (!ALLOWED_QUERY_PARAMS.has(key)) {
@@ -550,7 +560,7 @@ const server = http.createServer((req, res) => {
     if (subPath.includes('rates')) ttl = 60000;
     else if (subPath.includes('events') || subPath.includes('transactions')) ttl = 10000;
 
-    const cached = isVnextBuyQuote ? null : proxyCache.get(cacheKey);
+    const cached = isUncachedCurveGetter ? null : proxyCache.get(cacheKey);
     if (cached && (now - cached.timestamp < cached.ttl)) {
       res.writeHead(cached.status, {
         'Content-Type': 'application/json',
@@ -620,13 +630,13 @@ const server = http.createServer((req, res) => {
           const data = await apiRes.text();
           
           // Cache successful 200 responses
-          if (apiRes.status === 200 && !isVnextBuyQuote) {
+          if (apiRes.status === 200 && !isUncachedCurveGetter) {
             proxyCache.set(cacheKey, { data, status: 200, timestamp: now, ttl });
           }
 
           res.writeHead(apiRes.status, {
             'Content-Type': 'application/json',
-            'Cache-Control': isVnextBuyQuote ? 'no-store' : `public, max-age=${Math.floor(ttl / 1000)}`,
+            'Cache-Control': isUncachedCurveGetter ? 'no-store' : `public, max-age=${Math.floor(ttl / 1000)}`,
             'X-Proxy-Cached': 'MISS',
             ...SECURITY_HEADERS
           });

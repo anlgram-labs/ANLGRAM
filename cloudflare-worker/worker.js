@@ -51,8 +51,10 @@ export const ALLOWED_ROUTES = [
 export const ALLOWED_TVM_METHODS = new Set([
   'get_jetton_data',
   'get_wallet_address',
-  // Read-only VNext contract quotation (never permits transactions).
+  // Read-only VNext contract quotation & state inspection (never permits transactions).
   'get_buy_quote_v2',
+  'get_sell_quote',
+  'get_curve_state',
   'get_vesting_data',
   'get_claimable_at',
   'get_staking_data',
@@ -362,16 +364,21 @@ const workerHandler = {
       filteredParams.set(key, val);
     }
 
-    // The new Curve getter accepts one nonnegative integer amount, expressed
+    // The Curve amount getters accept one nonnegative integer amount, expressed
     // as a bounded hex TVM argument. Do not forward arbitrary method args,
     // other filters, or duplicate query keys to this finance-sensitive path.
-    const isVnextBuyQuote = Boolean(methodMatch && methodMatch[2] === 'get_buy_quote_v2');
+    const isVnextBuyQuote = Boolean(methodMatch && (methodMatch[2] === 'get_buy_quote_v2' || methodMatch[2] === 'get_sell_quote'));
+    const isVnextCurveState = Boolean(methodMatch && methodMatch[2] === 'get_curve_state');
     if (isVnextBuyQuote) {
+      const maxHexLen = methodMatch[2] === 'get_sell_quote' ? 30 : 18;
+      const maxAmount = methodMatch[2] === 'get_sell_quote' ? 1000000000000000000n : 1000000000000000n;
       const args = url.searchParams.getAll('args');
-      if (url.searchParams.size !== 1 || args.length !== 1 || !/^0x[0-9a-fA-F]{1,18}$/.test(args[0]) ||
-          BigInt(args[0]) === 0n || BigInt(args[0]) > 1000000000000000n) {
+      if (url.searchParams.size !== 1 || args.length !== 1 || !new RegExp(`^0x[0-9a-fA-F]{1,${maxHexLen}}$`).test(args[0]) ||
+          BigInt(args[0]) === 0n || BigInt(args[0]) > maxAmount) {
         return jsonResponse({ error: 'Bad Request', message: 'VNext quote requires one positive bounded hex args value' }, 400, corsHeaders);
       }
+    } else if (isVnextCurveState && url.searchParams.size !== 0) {
+      return jsonResponse({ error: 'Bad Request', message: 'get_curve_state does not accept query parameters' }, 400, corsHeaders);
     }
 
     const queryString = filteredParams.toString() ? `?${filteredParams.toString()}` : '';
@@ -384,9 +391,10 @@ const workerHandler = {
 
     const cacheKey = new Request(targetUrl, { method: 'GET' });
     // Curve getters are snapshots of a changing contract state; never serve
-    // an edge-cached quotation that could mislead a buyer.
-    if (isVnextBuyQuote) ttl = 0;
-    const cache = !isVnextBuyQuote && typeof caches !== 'undefined' && caches && caches.default ? caches.default : null;
+    // an edge-cached quotation that could mislead a buyer or seller.
+    const isUncachedCurveGetter = isVnextBuyQuote || isVnextCurveState;
+    if (isUncachedCurveGetter) ttl = 0;
+    const cache = !isUncachedCurveGetter && typeof caches !== 'undefined' && caches && caches.default ? caches.default : null;
 
     // Check Cloudflare Cache if available
     if (cache) {
@@ -467,7 +475,7 @@ const workerHandler = {
           status: upstreamRes.status,
           headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': ttl === 0 ? 'no-store' : `public, max-age=${ttl}`,
+            'Cache-Control': `public, max-age=${ttl}`,
             'X-Proxy-Cache': 'MISS',
             'X-Content-Type-Options': 'nosniff',
             ...corsHeaders

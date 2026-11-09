@@ -107,9 +107,12 @@ test('Mission 1.4: wallet-connect.js strictly separates Testnet (-3 / 0xfffffffd
   assert.equal(sandbox.window.getConnectedWalletChainId(), null);
 });
 
-test('Mission 1.5: cloudflare-worker/worker.js sets Cache-Control: no-store when ttl === 0 (e.g. get_buy_quote_v2)', () => {
+test('Mission 1.5: cloudflare-worker/worker.js and server.js bypass edge/proxy cache (ttl = 0 / no-store) for VNext Curve getters', () => {
   const workerSrc = fs.readFileSync(path.join(__dirname, 'cloudflare-worker/worker.js'), 'utf8');
-  assert(workerSrc.includes("'Cache-Control': ttl === 0 ? 'no-store' : `public, max-age=${ttl}`"), 'cloudflare-worker/worker.js must emit no-store when ttl === 0');
+  const serverSrc = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert(workerSrc.includes("'get_buy_quote_v2'") && workerSrc.includes("'get_sell_quote'") && workerSrc.includes("'get_curve_state'"));
+  assert(workerSrc.includes('if (isUncachedCurveGetter) ttl = 0;'), 'cloudflare-worker/worker.js must set ttl = 0 for Curve getters');
+  assert(serverSrc.includes("isUncachedCurveGetter ? 'no-store'"), 'server.js must emit Cache-Control: no-store for Curve getters');
 });
 
 test('Mission 1.6: server.js POST /api/upload-logo enforces IP rate limiting, 5 MB limit, and binary image magic-byte verification', () => {

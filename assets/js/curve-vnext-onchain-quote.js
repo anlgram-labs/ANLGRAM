@@ -19,6 +19,17 @@
     if (result<=0n || result>1000000n*NANO) throw Error('TON amount out of range');
     return result;
   }
+  function tokenToUnits(value, decimals=9) {
+    if (!Number.isInteger(decimals) || decimals < 0 || decimals > 18) throw Error('Invalid token decimals');
+    const v = String(value).trim();
+    const pattern = decimals === 0 ? /^(?:0|[1-9][0-9]{0,11})$/ : new RegExp(`^(?:0|[1-9][0-9]{0,11})(?:\\.[0-9]{1,${decimals}})?$`);
+    if (!pattern.test(v)) throw Error('Invalid token amount');
+    const [whole, fraction=''] = v.split('.');
+    const factor = 10n ** BigInt(decimals);
+    const result = BigInt(whole) * factor + BigInt((decimals ? fraction.padEnd(decimals, '0') : '') || '0');
+    if (result <= 0n || result > 1000000000n * factor) throw Error('Token amount out of range');
+    return result;
+  }
   function formatUnits(n,decimals=9) {
     if (typeof n!=='bigint'||n<0n) throw Error('Invalid monetary units');
     const divisor=10n**BigInt(decimals);
@@ -59,6 +70,69 @@
       throw Error('Getter returned inconsistent financial accounting');
     }
     return {tokensAtomic:tokens,feeNano:fee,consumedNano:consumed,refundNano:refund,willGraduate:graduation===-1n};
+  }
+  function parseCurveState(result) {
+    if (!result||result.success!==true||result.exit_code!==0) throw Error('Curve state getter did not complete successfully');
+    const stack=result.stack??result.result?.stack;
+    if (!Array.isArray(stack)||stack.length!==12) throw Error('Unexpected VNext get_curve_state result');
+    const state=parseNumber(stack[0]);
+    const realTonReserve=parseNumber(stack[4]);
+    const realTokenReserve=parseNumber(stack[5]);
+    const accruedProtocolFees=parseNumber(stack[6]);
+    const pendingRefundsTokens=parseNumber(stack[7]);
+    const virtualTonReserve=parseNumber(stack[8]);
+    const virtualTokenReserve=parseNumber(stack[9]);
+    const graduationThresholdTon=parseNumber(stack[10]);
+    const spotPriceNano=parseNumber(stack[11]);
+    if (realTonReserve<0n||realTokenReserve<0n||accruedProtocolFees<0n||pendingRefundsTokens<0n||
+        virtualTonReserve<=0n||virtualTokenReserve<=0n||graduationThresholdTon!==300000000000n) {
+      throw Error('Inconsistent Curve state parameters');
+    }
+    return {
+      state,
+      realTonReserve,
+      realTokenReserve,
+      accruedProtocolFees,
+      pendingRefundsTokens,
+      virtualTonReserve,
+      virtualTokenReserve,
+      graduationThresholdTon,
+      spotPriceNano
+    };
+  }
+  function parseSellQuote(result, tokenUnits, curveState, accountBalanceNano=null) {
+    if (typeof tokenUnits!=='bigint'||tokenUnits<=0n) throw Error('Invalid sell token amount');
+    if (!curveState||curveState.state!==3n) throw Error('Curve trading is not active');
+    if (!result||result.success!==true||result.exit_code!==0) throw Error('Sell getter did not complete successfully');
+    const stack=result.stack??result.result?.stack;
+    if (!Array.isArray(stack)||stack.length!==2) throw Error('Unexpected VNext get_sell_quote result');
+    const [netTonOut, feeTon]=stack.map(parseNumber);
+    const x=curveState.realTonReserve+curveState.virtualTonReserve;
+    const y=curveState.realTokenReserve+curveState.virtualTokenReserve;
+    const uncapGross=(x*tokenUnits)/(y+tokenUnits);
+    // On-chain get_sell_quote caps gross at real_ton_reserve, whereas recv_internal
+    // refunds the tokens instead of selling if gross_ton_out > real_ton_reserve.
+    if (uncapGross>curveState.realTonReserve) {
+      throw Error('Sell exceeds available Curve principal (contract would refund Jettons instead of selling)');
+    }
+    if (accountBalanceNano!==null&&accountBalanceNano!==undefined) {
+      const bal=typeof accountBalanceNano==='bigint'?accountBalanceNano:BigInt(String(accountBalanceNano));
+      if (bal<curveState.realTonReserve+curveState.accruedProtocolFees) {
+        throw Error('Curve account balance below booked reserves (Action Phase 37 solvency risk)');
+      }
+    }
+    const expectedFee=uncapGross/100n;
+    const expectedNet=uncapGross-expectedFee;
+    if (netTonOut<=0n||feeTon<0n||feeTon!==expectedFee||netTonOut!==expectedNet) {
+      throw Error('Sell getter returned inconsistent financial accounting');
+    }
+    return {
+      tokenUnitsSold:tokenUnits,
+      grossTonNano:uncapGross,
+      feeNano:feeTon,
+      netTonOutNano:netTonOut,
+      remainingRealTonReserveNano:curveState.realTonReserve-uncapGross
+    };
   }
   function cellBytes(raw) {
     if (typeof raw!=='string'||!raw.length) throw Error('Missing on-chain code BOC');
@@ -103,5 +177,30 @@
     const data=await response.json(), values=parseQuote(data,amount);
     return Object.freeze({...values,contractAddress:account,network,codeHash:CURVE_CODE_HASH,source:'TonAPI blockchain getter',observedAt:new Date().toISOString()});
   }
-  return Object.freeze({CURVE_CODE_HASH,tonToNano,formatUnits,parseQuote,quote});
+  async function quoteSell({address,network,tokenAmount,decimals=9,tonCore,request}={}) {
+    const units=tokenToUnits(tokenAmount,decimals), account=ensureAddress(address,network,tonCore);
+    const statePath='/blockchain/accounts/'+encodeURIComponent(account);
+    const curveStatePath='/blockchain/accounts/'+encodeURIComponent(account)+'/methods/get_curve_state';
+    const sellGetterPath='/blockchain/accounts/'+encodeURIComponent(account)+'/methods/get_sell_quote?args=0x'+units.toString(16);
+    const load=request||(async path=>{
+      if((path===curveStatePath||path===sellGetterPath)&&network==='mainnet'&&typeof globalThis.anlgramFetchTonApi==='function')
+        return globalThis.anlgramFetchTonApi(path,{cache:'no-store'});
+      return fetch(ENDPOINTS[network]+path,{cache:'no-store'});
+    });
+    const accountResponse=await load(statePath);
+    if(!accountResponse?.ok) throw Error('On-chain contract state unavailable');
+    const state=await accountResponse.json();
+    if(!state?.code||!['active','ACTIVE'].includes(String(state.status??state.state??''))) throw Error('Curve contract not active');
+    const cells=tonCore.Cell.fromBoc(cellBytes(state.code));
+    if(cells.length!==1||hashHex(cells[0].hash()).toLowerCase()!==CURVE_CODE_HASH) throw Error('Curve code hash does not match VNext candidate');
+    const accountBalanceNano=state.balance!==undefined&&state.balance!==null&&/^\d+$/.test(String(state.balance))?BigInt(String(state.balance)):null;
+    const curveStateRes=await load(curveStatePath);
+    if(!curveStateRes?.ok) throw Error('Live Curve state unavailable');
+    const curveState=parseCurveState(await curveStateRes.json());
+    const sellRes=await load(sellGetterPath);
+    if(!sellRes?.ok) throw Error('Live on-chain sell quote unavailable');
+    const values=parseSellQuote(await sellRes.json(),units,curveState,accountBalanceNano);
+    return Object.freeze({...values,contractAddress:account,network,codeHash:CURVE_CODE_HASH,source:'TonAPI blockchain getter',observedAt:new Date().toISOString()});
+  }
+  return Object.freeze({CURVE_CODE_HASH,tonToNano,tokenToUnits,formatUnits,parseQuote,parseCurveState,parseSellQuote,quote,quoteSell});
 });
