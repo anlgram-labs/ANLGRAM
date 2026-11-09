@@ -1,15 +1,24 @@
 #include "factory-bootstrap-op.fc";
 
 ;; Only the factory-specific minter compiler inserts this entry point.
+;; Bootstrap body (after op and query): treasury address, service fee coins.
+;; The fee is paid only by a successful one-use bootstrap. A repeat of an
+;; already-bootstrapped request refunds its attachment to the creator.
 int bootstrap_factory_mint(int op, int query, slice sender, slice body,
-    int supply, slice creator, cell content, cell wallet_code) impure {
+    int supply, slice creator, cell content, cell wallet_code, int msg_value) impure {
     slice data = get_data().begin_parse();
     data~load_coins();
     data~load_msg_addr();
     data~load_ref();
     data~load_ref();
     if (data.slice_refs() == 0) {
-        throw_if(73, op == op::factory_bootstrap);
+        if (op == op::factory_bootstrap) {
+            ;; Capability already consumed: no mint, no fee. Return the value to the creator.
+            send_raw_message(begin_cell().store_uint(0x10, 6).store_slice(creator).store_coins(0)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .store_uint(0xd53276db, 32).store_uint(query, 64).end_cell(), 64 + 2);
+            return -1;
+        }
         return 0;
     }
 
@@ -21,7 +30,11 @@ int bootstrap_factory_mint(int op, int query, slice sender, slice body,
     bootstrap.end_parse();
     throw_unless(73, (op == op::factory_bootstrap) & equal_slices(sender, factory));
     throw_unless(73, (query == expected_query) & (supply == 0) & (amount > 0));
+    slice treasury = body~load_msg_addr();
+    int fee = body~load_coins();
     body.end_parse();
+    throw_unless(73, treasury.preload_uint(2) == 2);
+    throw_unless(73, msg_value >= FACTORY_WALLET_ATTACHMENT + fee);
 
     cell mint = begin_cell()
         .store_uint(op::internal_transfer(), 32)
@@ -34,6 +47,11 @@ int bootstrap_factory_mint(int op, int query, slice sender, slice body,
         .store_ref(begin_cell().store_uint(0, 32).store_slice("ANLGRAM Launchpad").end_cell())
         .end_cell();
     mint_tokens(creator, wallet_code, FACTORY_WALLET_ATTACHMENT, mint);
+    if (fee > 0) {
+        send_raw_message(begin_cell().store_uint(0x10, 6).store_slice(treasury).store_coins(fee)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(0, 32).store_slice("ANLGRAM Service").end_cell(), 1);
+    }
     ;; Save the standard minter state without the one-use Factory capability.
     save_data(amount, creator, content, wallet_code);
     return -1;

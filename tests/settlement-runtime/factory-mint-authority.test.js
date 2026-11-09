@@ -79,7 +79,7 @@ test('Factory deploys and mints once into the creator wallet with the fixed fee'
     const delivery = txAt(created, recipientWallet, 0x178d4519);
     assert(successful(delivery) && delivery.inMessage.info.src.equals(minter));
     assert.equal((await chain.runGetMethod(recipientWallet, 'get_wallet_data')).stackReader.readBigNumber(), SUPPLY);
-    const fee = [...root.outMessages.values()].find(out => out.info.dest.equals(treasury.address));
+    const fee = [...txAt(created, minter, BOOTSTRAP).outMessages.values()].find(out => out.info.dest.equals(treasury.address));
     assert.equal(fee.info.value.coins, FEE);
     assert.equal((await chain.getContract(factory)).balance, start);
   }
@@ -109,7 +109,7 @@ test('Factory bootstrap binds the Factory, query, creator and pinned child code'
   const created = await creator.send({to: factory, value: 220000000n, body});
   assert(successful(txAt(created, minter, BOOTSTRAP)));
   const repeated = await creator.send({to: factory, value: 220000000n, body});
-  assert.equal(txAt(repeated, minter, BOOTSTRAP).description.computePhase.exitCode, 73);
+  assert(successful(txAt(repeated, minter, BOOTSTRAP)));
   assert.equal(await supply(chain, minter, creator.address), SUPPLY);
   const changeAdmin = beginCell().storeUint(3, 32).storeUint(7, 64).storeAddress(stranger.address).endCell();
   const forgedAdmin = await chain.sendMessage(internal({from: factory, to: minter,
