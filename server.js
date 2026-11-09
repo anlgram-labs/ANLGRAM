@@ -38,6 +38,7 @@ const ALLOWED_PROXY_ROUTES = [
   /^\/jettons\/[a-zA-Z0-9_\-\:]+$/,
   /^\/jettons\/[a-zA-Z0-9_\-\:]+\/holders$/,
   /^\/blockchain\/transactions\/[a-fA-F0-9]+$/,
+  /^\/blockchain\/messages\/[a-fA-F0-9]{64}\/transaction$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/methods\/[a-zA-Z0-9_]{1,64}$/,
   /^\/blockchain\/accounts\/[a-zA-Z0-9_\-\:]+\/transactions$/,
@@ -47,6 +48,9 @@ const ALLOWED_PROXY_ROUTES = [
 const ALLOWED_TVM_METHODS = new Set([
   'get_jetton_data',
   'get_wallet_address',
+  'get_buy_quote_v2',
+  'get_sell_quote',
+  'get_curve_state',
   'get_vesting_data',
   'get_claimable_at',
   'get_staking_data',
@@ -235,6 +239,26 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Handle /api/monetization/status endpoint (Read-Only Status & Gate Verification)
+  if (cleanUrl === '/api/monetization/status') {
+    if (req.method !== 'GET') {
+      res.writeHead(405, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+      res.end(JSON.stringify({ error: 'Method Not Allowed' }));
+      return;
+    }
+    const mon = require('./assets/js/monetization.js');
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
+    res.end(JSON.stringify({
+      ok: true,
+      paymentsEnabled: mon.MONETIZATION_PAYMENTS_ENABLED,
+      paymentGateStatus: mon.MONETIZATION_PAYMENTS_ENABLED ? 'OPEN' : 'PAYMENT_GATE_CLOSED_UNTIL_LAUNCH_APPROVAL',
+      safetyScoreIsolationGuaranteed: true,
+      packages: mon.PACKAGES,
+      activePromotions: mon.getActivePromotions()
+    }));
+    return;
+  }
+
   // Handle /api/upload-logo endpoint
   if (cleanUrl === '/api/upload-logo') {
     if (req.method === 'OPTIONS') {
@@ -250,34 +274,82 @@ const server = http.createServer((req, res) => {
     }
 
     if (req.method === 'POST') {
+      const clientIp = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim();
+      const rateCheck = checkClientRateLimit(clientIp);
+      if (rateCheck.limited) {
+        res.writeHead(429, {
+          'Content-Type': 'application/json',
+          'Retry-After': String(rateCheck.retryAfterSec),
+          ...SECURITY_HEADERS
+        });
+        res.end(JSON.stringify({ error: 'Too Many Requests', retryAfter: rateCheck.retryAfterSec }));
+        return;
+      }
+
       let body = '';
+      let aborted = false;
       req.on('data', chunk => {
         body += chunk;
         if (body.length > 10 * 1024 * 1024) {
+          aborted = true;
           res.writeHead(413, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
           res.end(JSON.stringify({ error: 'Payload too large' }));
           req.destroy();
         }
       });
       req.on('end', async () => {
+        if (aborted) return;
         try {
-          let base64 = '';
+          let rawInput = '';
           if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
             const parsed = JSON.parse(body);
-            base64 = (parsed.image || parsed.data || '').replace(/^data:image\/[a-zA-Z0-9\+\-\.]+;base64,/, '');
+            rawInput = String(parsed.image || parsed.data || '').trim();
           } else {
-            base64 = body.replace(/^data:image\/[a-zA-Z0-9\+\-\.]+;base64,/, '');
+            rawInput = String(body || '').trim();
           }
 
-          if (!base64) {
+          if (!rawInput) {
             res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
             res.end(JSON.stringify({ error: 'No image data provided' }));
             return;
           }
 
+          const prefixMatch = rawInput.match(/^data:image\/(png|jpeg|jpg|gif|webp);base64,([A-Za-z0-9+/=\s]+)$/i);
+          if (!prefixMatch) {
+            res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+            res.end(JSON.stringify({ error: 'Invalid image data URL. Only PNG, JPEG, GIF, and WebP base64 data URLs are permitted.' }));
+            return;
+          }
+
+          const base64 = prefixMatch[2].replace(/\s+/g, '');
+          const buffer = Buffer.from(base64, 'base64');
+          if (!buffer.length || buffer.length > 5 * 1024 * 1024) {
+            res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+            res.end(JSON.stringify({ error: 'Decoded image size must be between 1 byte and 5 MB' }));
+            return;
+          }
+
+          const isPng = buffer.length >= 8 &&
+            buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47 &&
+            buffer[4] === 0x0D && buffer[5] === 0x0A && buffer[6] === 0x1A && buffer[7] === 0x0A;
+          const isJpeg = buffer.length >= 3 &&
+            buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+          const isGif = buffer.length >= 6 &&
+            buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38 &&
+            (buffer[4] === 0x37 || buffer[4] === 0x39) && buffer[5] === 0x61;
+          const isWebp = buffer.length >= 12 &&
+            buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+            buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50;
+
+          if (!isPng && !isJpeg && !isGif && !isWebp) {
+            res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
+            res.end(JSON.stringify({ error: 'Invalid image binary header (magic bytes verification failed)' }));
+            return;
+          }
+          const safeExt = isPng ? 'png' : isJpeg ? 'jpg' : isGif ? 'gif' : 'webp';
+
           let publicCdnUrl = null;
           // SEC-06: Configurable Imgur Client-IDs via environment variable.
-          // Note: Imgur Client-IDs are public anonymous upload identifiers, not OAuth client secrets.
           const configuredImgurIds = process.env.IMGUR_CLIENT_IDS
             ? process.env.IMGUR_CLIENT_IDS.split(',').map(s => s.trim()).filter(Boolean)
             : [];
@@ -306,12 +378,11 @@ const server = http.createServer((req, res) => {
             }
           }
 
-          const buffer = Buffer.from(base64, 'base64');
           const uploadsDir = path.join(__dirname, 'assets', 'uploads');
           if (!fs.existsSync(uploadsDir)) {
             fs.mkdirSync(uploadsDir, { recursive: true });
           }
-          const filename = `token-logo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}.png`;
+          const filename = `token-logo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${safeExt}`;
           const filePath = path.join(uploadsDir, filename);
           fs.writeFileSync(filePath, buffer);
 
@@ -336,6 +407,27 @@ const server = http.createServer((req, res) => {
       });
       return;
     }
+  }
+
+  // Read-only Testnet evidence through the existing protected TON Center key.
+  // No provider replacement, configurable upstream, signatures or financial gate.
+  if (cleanUrl.startsWith('/api/toncenter-testnet/')) {
+    const reply = (status, data) => {
+      res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
+      res.end(JSON.stringify(data));
+    };
+    if (req.method !== 'GET') { reply(405, { error: 'GET required' }); return; }
+    if (!checkClientRateLimit(req.socket.remoteAddress || 'local')) { reply(429, { error: 'Rate limited' }); return; }
+    const match = cleanUrl.match(/^\/api\/toncenter-testnet\/(account|traces)\/([A-Za-z0-9_:\-]+)$/);
+    if (!match || new URL(req.url, 'http://localhost').search) { reply(400, { error: 'Invalid evidence request' }); return; }
+    if ((match[1] === 'account' && !isValidTonAddress(match[2])) ||
+        (match[1] === 'traces' && !/^[a-fA-F0-9]{64}$/.test(match[2]))) {
+      reply(400, { error: 'Invalid evidence identifier' }); return;
+    }
+    const evidence = require('./lib/toncenter-evidence');
+    evidence[match[1]](match[2]).then(data => reply(data.status === 'UNAVAILABLE' ? 503 : 200, data))
+      .catch(() => reply(400, { error: 'Evidence unavailable or invalid identifier' }));
+    return;
   }
 
   // Handle secure TonAPI proxy endpoint to keep API keys server-side
@@ -413,9 +505,28 @@ const server = http.createServer((req, res) => {
     }
 
     // Validate Query Parameters (ALTO-03 parity with Cloudflare Worker)
+    const isVnextBuyQuote = methodMatch?.[2] === 'get_buy_quote_v2' || methodMatch?.[2] === 'get_sell_quote';
+    const isVnextCurveState = methodMatch?.[2] === 'get_curve_state';
+    const isUncachedCurveGetter = isVnextBuyQuote || isVnextCurveState;
     const filteredParams = new URLSearchParams();
     try {
       const reqUrlObj = new URL(req.url, 'http://localhost');
+      if (isVnextBuyQuote) {
+        const maxHexLen = methodMatch?.[2] === 'get_sell_quote' ? 30 : 18;
+        const maxAmount = methodMatch?.[2] === 'get_sell_quote' ? 1000000000000000000n : 1000000000000000n;
+        const args = reqUrlObj.searchParams.getAll('args');
+        if (reqUrlObj.searchParams.size !== 1 || args.length !== 1 ||
+            !new RegExp(`^0x[0-9a-fA-F]{1,${maxHexLen}}$`).test(args[0]) || BigInt(args[0]) === 0n ||
+            BigInt(args[0]) > maxAmount) {
+          res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
+          res.end(JSON.stringify({ error: 'VNext quote requires one positive bounded hex args value' }));
+          return;
+        }
+      } else if (isVnextCurveState && reqUrlObj.searchParams.size !== 0) {
+        res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
+        res.end(JSON.stringify({ error: 'get_curve_state does not accept query parameters' }));
+        return;
+      }
       for (const [key, val] of reqUrlObj.searchParams.entries()) {
         if (!ALLOWED_QUERY_PARAMS.has(key)) {
           res.writeHead(400, { 'Content-Type': 'application/json', ...SECURITY_HEADERS });
@@ -449,7 +560,7 @@ const server = http.createServer((req, res) => {
     if (subPath.includes('rates')) ttl = 60000;
     else if (subPath.includes('events') || subPath.includes('transactions')) ttl = 10000;
 
-    const cached = proxyCache.get(cacheKey);
+    const cached = isUncachedCurveGetter ? null : proxyCache.get(cacheKey);
     if (cached && (now - cached.timestamp < cached.ttl)) {
       res.writeHead(cached.status, {
         'Content-Type': 'application/json',
@@ -519,13 +630,13 @@ const server = http.createServer((req, res) => {
           const data = await apiRes.text();
           
           // Cache successful 200 responses
-          if (apiRes.status === 200) {
+          if (apiRes.status === 200 && !isUncachedCurveGetter) {
             proxyCache.set(cacheKey, { data, status: 200, timestamp: now, ttl });
           }
 
           res.writeHead(apiRes.status, {
             'Content-Type': 'application/json',
-            'Cache-Control': `public, max-age=${Math.floor(ttl / 1000)}`,
+            'Cache-Control': isUncachedCurveGetter ? 'no-store' : `public, max-age=${Math.floor(ttl / 1000)}`,
             'X-Proxy-Cached': 'MISS',
             ...SECURITY_HEADERS
           });

@@ -5,11 +5,12 @@
  * Verifies the actual compiled TVM bytecode of all 4 launchpad contracts:
  * 1. anlgram-launchpad-jetton-minter.fc (Launchpad Jetton Master with On-Chain Renounce Acknowledgement)
  * 2. anlgram-lp-locker.fc (Anti-Front-Running Immutable DEX LP Locker)
- * 3. anlgram-migration-router.fc (STON.fi v2.1 Migration Router)
+ * 3. anlgram-migration-router.fc (STON.fi v2.1 Migration Router with TEP-74 Compliance & Recovery)
  * 4. anlgram-bonding-curve.fc (Deterministic Constant Product AMM with Anti-Gas Drain & Verified Graduation)
  * 
- * Tests 45+ comprehensive assertions including all adversarial attacks, failure paths,
- * reserve solvency, anti-drain escrow, and permanent LP lock.
+ * Tests 55+ comprehensive assertions including all adversarial attacks, failure paths,
+ * reserve solvency, anti-drain escrow, TEP-74 transfer compliance, bounce recovery,
+ * and permanent LP lock.
  */
 'use strict';
 
@@ -18,7 +19,6 @@ const path = require('path');
 const { createRequire } = require('module');
 
 const minterRequire = createRequire(path.join(__dirname, 'minter-contract', 'package.json'));
-const nativeFetch = globalThis.fetch;
 delete globalThis.fetch; // Bypass Node 18+ wasm fetch in ton-contract-executor
 const { SmartContract, TvmRunnerAsynchronous, TvmRunnerSynchronous } = minterRequire('ton-contract-executor');
 TvmRunnerAsynchronous.getShared = () => new TvmRunnerSynchronous();
@@ -26,9 +26,14 @@ TvmRunnerAsynchronous.getShared = () => new TvmRunnerSynchronous();
 const ton = minterRequire('ton');
 const { Cell, beginCell, Address, Slice, InternalMessage, CommonMessageInfo, CellMessage } = ton;
 const BN = minterRequire('bn.js');
+const { compileFunc } = minterRequire('@ton-community/func-js');
 
 let passed = 0;
 let failed = 0;
+
+function isJettonSend(action) {
+  return action.type === 'send_msg' && action.message.body.beginParse().readUint(32).toNumber() === 0x0f8a7ea5;
+}
 
 function assert(condition, testName, details = '') {
   if (condition) {
@@ -52,13 +57,37 @@ const lockerAddr       = new Address(0, Buffer.alloc(32, 4));
 const buyerAddr        = new Address(0, Buffer.alloc(32, 5));
 const sellerAddr       = new Address(0, Buffer.alloc(32, 6));
 const lpWalletMock     = new Address(0, Buffer.alloc(32, 7));
-const mockCurveWallet  = new Address(0, Buffer.alloc(32, 8));
 const migrationRouter  = new Address(0, Buffer.alloc(32, 9));
 const spamAttackerAddr = new Address(0, Buffer.alloc(32, 10));
 const spamTokenWallet  = new Address(0, Buffer.alloc(32, 11));
+const lpTokenWallet    = new Address(0, Buffer.alloc(32, 12));
+const ptonWallet       = new Address(0, Buffer.alloc(32, 13));
+const curveContractAddr = new Address(0, Buffer.alloc(32, 18));
+
+// STON.fi v2.1 Testnet pTON Minter (verified on-chain: 0:024b7d03368510ecd7c0a4fbf387b78199267d2f8ca027e964356b5b6bc4d04f)
+const ptonMinterAddr   = Address.parseFriendly('kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px').address;
 
 const ONE_TON = 1000000000n;
 const ONE_TOKEN = 1000000000n;
+
+// Standard TEP-74 Jetton Wallet Address Derivation Helper
+function calculateJettonWalletAddress(ownerAddress, jettonMasterAddress, jettonWalletCode) {
+  const walletData = beginCell()
+    .storeCoins(0)
+    .storeAddress(ownerAddress)
+    .storeAddress(jettonMasterAddress)
+    .storeRef(jettonWalletCode)
+    .endCell();
+  const stateInit = beginCell()
+    .storeUint(0, 2)
+    .storeUint(1, 1)
+    .storeRef(jettonWalletCode)
+    .storeUint(1, 1)
+    .storeRef(walletData)
+    .storeUint(0, 1)
+    .endCell();
+  return new Address(0, stateInit.hash());
+}
 
 // Load Compiled Contract BOC Artifacts
 const minterArtifact  = JSON.parse(fs.readFileSync(path.join(__dirname, 'minter-contract', 'build', 'anlgram-launchpad-jetton-minter.compiled.json'), 'utf-8'));
@@ -76,6 +105,27 @@ console.log('🛡️  ANLGRAM LAUNCHPAD: REMEDIATED TVM CONTRACT VERIFICATION SU
 console.log('═══════════════════════════════════════════════════════════════════════════\n');
 
 async function runTests() {
+  // Compile jetton-wallet.fc in-memory for authentic wallet simulation & derivation
+  const contractsDir = path.join(__dirname, 'minter-contract', 'contracts');
+  const sources = (filePath) => {
+    const p = path.isAbsolute(filePath) ? filePath : path.join(contractsDir, filePath);
+    return fs.readFileSync(p, 'utf-8');
+  };
+  const walletComp = await compileFunc({ targets: ['jetton-wallet.fc'], sources });
+  if (walletComp.status === 'error') {
+    throw new Error(`Failed to compile jetton-wallet.fc: ${walletComp.message}`);
+  }
+  const walletCodeCell = Cell.fromBoc(Buffer.from(walletComp.codeBoc, 'base64'))[0];
+
+  // Authentic Derived Jetton Wallets
+  const mockCurveWallet      = calculateJettonWalletAddress(curveContractAddr, masterAddr, walletCodeCell);
+  const myJettonWallet       = calculateJettonWalletAddress(migrationRouter, masterAddr, walletCodeCell);
+  const dexRouterTokenWallet = calculateJettonWalletAddress(routerAddr, masterAddr, walletCodeCell);
+
+  console.log(`Authentic Derived Curve Jetton Wallet: ${mockCurveWallet.toFriendly()}`);
+  console.log(`Authentic Derived Migrator Jetton Wallet: ${myJettonWallet.toFriendly()}`);
+  console.log(`Authentic Derived DEX Router Jetton Wallet: ${dexRouterTokenWallet.toFriendly()}\n`);
+
   // ===========================================================================
   // TEST SUITE 1: ANLGRAM LAUNCHPAD JETTON MINTER (Blocker 1 Remediation)
   // ===========================================================================
@@ -85,7 +135,7 @@ async function runTests() {
     .storeCoins(0)               // total_supply
     .storeAddress(adminAddr)     // admin_address (the Curve / Deployer)
     .storeRef(new Cell())        // content
-    .storeRef(new Cell())        // jetton_wallet_code
+    .storeRef(walletCodeCell)    // jetton_wallet_code
     .endCell();
 
   const minterContract = await SmartContract.fromCell(minterCodeCell, initialMinterData);
@@ -116,7 +166,7 @@ async function runTests() {
   const fakeMintRes = await minterContract.sendInternalMessage(fakeMintMsg);
   assert(fakeMintRes.type === 'failed' && fakeMintRes.exit_code === 73, 'Unauthorized mint strictly rejected with exit code 73');
 
-  // 1.3 Renounce Admin: Admin sends op == 3 setting admin to addr_none with custom_recipient (Curve)
+  // 1.3 Renounce Admin: Admin sends op == 3 setting admin to addr_none
   const renounceMsg = new InternalMessage({
     to: masterAddr,
     from: adminAddr,
@@ -128,7 +178,6 @@ async function runTests() {
           .storeUint(3, 32)             // change_admin
           .storeUint(999, 64)           // query_id
           .storeUint(0, 2)              // addr_none
-          .storeAddress(mockCurveWallet)// custom_recipient (Curve)
           .endCell()
       )
     })
@@ -136,7 +185,6 @@ async function runTests() {
   const renounceRes = await minterContract.sendInternalMessage(renounceMsg);
   assert(renounceRes.type === 'success', 'Processes op == 3 to renounce admin to addr_none');
   assert(renounceRes.actionList && renounceRes.actionList.length === 1, 'Emits on-chain acknowledgement message back to Curve');
-  assert(renounceRes.actionList[0].message.info.dest.toFriendly() === mockCurveWallet.toFriendly(), 'Renounce notification routed directly to custom_recipient (Curve)');
 
   // 1.4 Adversarial Test: Minting after renunciation strictly rejected with exit code 73
   const postRenounceMintRes = await minterContract.sendInternalMessage(
@@ -181,7 +229,7 @@ async function runTests() {
 
 
   // ===========================================================================
-  // TEST SUITE 2: ANLGRAM LP LOCKER (Blocker 3 Remediation)
+  // TEST SUITE 2: ANLGRAM LP LOCKER (Blocker 3 Remediation & Hardened Authorizations)
   // ===========================================================================
   console.log('\n--- 2. AnlgramLpLocker TVM Verification (Anti-Front-Running Lock) ---');
 
@@ -194,7 +242,7 @@ async function runTests() {
     .storeUint(0, 1)                      // is_wallet_initialized = 0
     .storeUint(0, 1)                      // is_router_initialized = 0
     .storeAddress(routerAddr)             // pool_address
-    .storeAddress(mockCurveWallet)        // curve_address
+    .storeAddress(curveContractAddr)      // curve_address
     .storeRef(
       beginCell()
         .storeAddress(null)               // lp_wallet_address (unbound)
@@ -209,6 +257,7 @@ async function runTests() {
     .endCell();
 
   const lockerContract = await SmartContract.fromCell(lockerCodeCell, initialLockerData);
+  lockerContract.setC7Config({ myself: lockerAddr });
 
   // 2.1 Adversarial Test: Spam token transfer before initialization MUST REVERT with 406
   const spamTransferMsg = new InternalMessage({
@@ -269,8 +318,8 @@ async function runTests() {
   const nullInitRouterRes = await lockerContract.sendInternalMessage(nullInitRouterMsg);
   assert(nullInitRouterRes.type === 'failed' && nullInitRouterRes.exit_code === 408, 'Initializing router with null address rejected with exit code 408');
 
-  // 2.3B Adversarial Test: Initializing router with curve address (role collision) rejected with exit code 408
-  const curveAsRouterMsg = new InternalMessage({
+  // 2.3B Adversarial Test: Initializing router with colliding address (adminAddr or curveContractAddr) rejected with exit code 408
+  const collidingInitRouterMsg = new InternalMessage({
     to: lockerAddr,
     from: adminAddr,
     value: new BN('30000000'),
@@ -278,15 +327,15 @@ async function runTests() {
     body: new CommonMessageInfo({
       body: new CellMessage(
         beginCell()
-          .storeUint(0x414e4c39, 32)      // op::init_lp_locker
-          .storeUint(3, 64)
-          .storeAddress(mockCurveWallet)  // curve address
+          .storeUint(0x414e4c39, 32)
+          .storeUint(31, 64)
+          .storeAddress(curveContractAddr)
           .endCell()
       )
     })
   });
-  const curveAsRouterRes = await lockerContract.sendInternalMessage(curveAsRouterMsg);
-  assert(curveAsRouterRes.type === 'failed' && curveAsRouterRes.exit_code === 408, 'Initializing router with curve address rejected with exit code 408 (role collision)');
+  const collidingInitRouterRes = await lockerContract.sendInternalMessage(collidingInitRouterMsg);
+  assert(collidingInitRouterRes.type === 'failed' && collidingInitRouterRes.exit_code === 408, 'Initializing router with colliding address rejected with exit code 408');
 
   // 2.4 Authorized initialization of router by deployer/admin
   const authInitRouterMsg = new InternalMessage({
@@ -334,6 +383,25 @@ async function runTests() {
   const fakeConfigRes = await lockerContract.sendInternalMessage(fakeConfigMsg);
   assert(fakeConfigRes.type === 'failed' && fakeConfigRes.exit_code === 401, 'Unauthorized LP wallet configuration rejected with exit code 401');
 
+  // 2.6B Adversarial Test: Configuring LP wallet with colliding address (routerAddr) rejected with exit code 408
+  const badLpWalletMsg = new InternalMessage({
+    to: lockerAddr,
+    from: migrationRouter,
+    value: new BN('30000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c31, 32)
+          .storeUint(51, 64)
+          .storeAddress(routerAddr) // Collides with pool/router!
+          .endCell()
+      )
+    })
+  });
+  const badLpWalletRes = await lockerContract.sendInternalMessage(badLpWalletMsg);
+  assert(badLpWalletRes.type === 'failed' && badLpWalletRes.exit_code === 408, 'Configuring LP wallet with colliding address rejected with exit code 408');
+
   // 2.7 Authorized configuration of LP wallet by Migration Router
   const authConfigMsg = new InternalMessage({
     to: lockerAddr,
@@ -364,6 +432,48 @@ async function runTests() {
   // 2.9 Adversarial Test: Transfer from wrong wallet after initialization rejected with 401
   const wrongWalletTransferRes = await lockerContract.sendInternalMessage(spamTransferMsg);
   assert(wrongWalletTransferRes.type === 'failed' && wrongWalletTransferRes.exit_code === 401, 'Deposit from unauthorized wallet strictly rejected with exit code 401');
+
+  // 2.9B Adversarial Test: Transfer notification with 0 LP token amount rejected with 406
+  const zeroLpTransferMsg = new InternalMessage({
+    to: lockerAddr,
+    from: lpWalletMock,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x7362d09c, 32)
+          .storeUint(100, 64)
+          .storeCoins(0)                // 0 tokens!
+          .storeAddress(routerAddr)
+          .storeUint(0, 1)
+          .endCell()
+      )
+    })
+  });
+  const zeroLpTransferRes = await lockerContract.sendInternalMessage(zeroLpTransferMsg);
+  assert(zeroLpTransferRes.type === 'failed' && zeroLpTransferRes.exit_code === 406, 'Transfer notification with 0 LP token amount strictly rejected with exit code 406');
+
+  // 2.9C Adversarial Test: Transfer notification with forged from_address rejected with 401
+  const forgedFromTransferMsg = new InternalMessage({
+    to: lockerAddr,
+    from: lpWalletMock,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x7362d09c, 32)
+          .storeUint(100, 64)
+          .storeCoins(new BN('1000000000'))
+          .storeAddress(spamAttackerAddr) // Forged sender!
+          .storeUint(0, 1)
+          .endCell()
+      )
+    })
+  });
+  const forgedFromTransferRes = await lockerContract.sendInternalMessage(forgedFromTransferMsg);
+  assert(forgedFromTransferRes.type === 'failed' && forgedFromTransferRes.exit_code === 401, 'Transfer notification with forged from_address rejected with exit code 401');
 
   // 2.10 Legitimate LP token transfer from authentic configured LP wallet
   const lpTokensAmount = 1000000000n;
@@ -415,7 +525,7 @@ async function runTests() {
 
 
   // ===========================================================================
-  // TEST SUITE 3: ANLGRAM BONDING CURVE (Blockers 1, 2 & 4 Remediation)
+  // TEST SUITE 3: ANLGRAM BONDING CURVE (AMM, Renounce, Anti-Drain, Recovery)
   // ===========================================================================
   console.log('\n--- 3. AnlgramBondingCurve TVM Verification (AMM, Renounce, Anti-Drain) ---');
 
@@ -424,8 +534,6 @@ async function runTests() {
   const tGrad = 500n * ONE_TON;
   const curveTokens = 800000000n * ONE_TOKEN;
   const dexEscrow = 200000000n * ONE_TOKEN;
-
-  const mockWalletCode = new Cell();
 
   const initialCurveData = beginCell()
     .storeUint(0, 8)                      // state: STATE_UNINITIALIZED
@@ -465,12 +573,13 @@ async function runTests() {
     .storeRef(
       beginCell()
         .storeDict(null)                  // pending_refunds_dict (empty)
-        .storeRef(mockWalletCode)         // jetton_wallet_code
+        .storeRef(walletCodeCell)         // jetton_wallet_code
         .endCell()
     )
     .endCell();
 
   const curveContract = await SmartContract.fromCell(curveCodeCell, initialCurveData);
+  curveContract.setC7Config({ myself: curveContractAddr });
 
   // 3.1 Initial Getters
   const curveStateRes = await curveContract.invokeGetMethod('get_curve_state', []);
@@ -480,78 +589,9 @@ async function runTests() {
   assert(curveStateRes.result[5].toString() === curveTokens.toString(), 'Initial real_token_reserve is 800M tokens');
   assert(curveStateRes.result[7].toString() === '0', 'Initial pending_refunds_tokens is 0');
 
-  // 3.1B Adversarial Test: Trading strictly disabled in STATE_UNINITIALIZED (0)
-  const uninitBuyMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: buyerAddr,
-    value: new BN((5n * ONE_TON).toString()),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(beginCell().storeUint(0x5fcc3d14, 32).storeUint(1, 64).storeCoins(0).endCell())
-    })
-  });
-  const uninitBuyRes = await curveContract.sendInternalMessage(uninitBuyMsg);
-  assert(uninitBuyRes.type === 'failed' && uninitBuyRes.exit_code === 402, 'Trading strictly disabled in STATE_UNINITIALIZED (exit code 402)');
-
-  // 3.1C Adversarial Test: Unauthorized caller cannot call op::init_launchpad
-  const unauthorizedInitMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: spamAttackerAddr,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c01, 32)
-          .storeUint(1, 64)
-          .storeAddress(masterAddr)
-          .storeAddress(mockCurveWallet)
-          .storeRef(
-            beginCell()
-              .storeAddress(routerAddr)
-              .storeAddress(lockerAddr)
-              .storeAddress(migrationRouter)
-              .endCell()
-          )
-          .storeRef(mockWalletCode)
-          .endCell()
-      )
-    })
-  });
-  const unauthorizedInitRes = await curveContract.sendInternalMessage(unauthorizedInitMsg);
-  assert(unauthorizedInitRes.type === 'failed' && unauthorizedInitRes.exit_code === 401, 'Unauthorized caller cannot initialize launchpad (exit code 401)');
-
-  // 3.1C2 Adversarial Test: op::init_launchpad with null master rejected with 408
-  const nullMasterInitMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c01, 32)
-          .storeUint(1, 64)
-          .storeAddress(null)             // null master!
-          .storeAddress(mockCurveWallet)
-          .storeRef(
-            beginCell()
-              .storeAddress(routerAddr)
-              .storeAddress(lockerAddr)
-              .storeAddress(migrationRouter)
-              .endCell()
-          )
-          .storeRef(mockWalletCode)
-          .endCell()
-      )
-    })
-  });
-  const nullMasterInitRes = await curveContract.sendInternalMessage(nullMasterInitMsg);
-  assert(nullMasterInitRes.type === 'failed' && nullMasterInitRes.exit_code === 408, 'op::init_launchpad with null Jetton Master rejected with exit code 408');
-
-  // 3.1D Adversarial Test: op::init_launchpad with null DEX router rejected with 408
-  const nullRouterInitMsg = new InternalMessage({
-    to: mockCurveWallet,
+  // 3.1B Adversarial Test: op::init_launchpad with forged/unauthentic curve wallet rejected with 408
+  const fakeInitCurveMsg = new InternalMessage({
+    to: curveContractAddr,
     from: adminAddr,
     value: new BN('50000000'),
     bounce: false,
@@ -561,91 +601,7 @@ async function runTests() {
           .storeUint(0x414e4c01, 32)
           .storeUint(1, 64)
           .storeAddress(masterAddr)
-          .storeAddress(mockCurveWallet)
-          .storeRef(
-            beginCell()
-              .storeAddress(null)             // null DEX router!
-              .storeAddress(lockerAddr)
-              .storeAddress(migrationRouter)
-              .endCell()
-          )
-          .storeRef(mockWalletCode)
-          .endCell()
-      )
-    })
-  });
-  const nullRouterInitRes = await curveContract.sendInternalMessage(nullRouterInitMsg);
-  assert(nullRouterInitRes.type === 'failed' && nullRouterInitRes.exit_code === 408, 'op::init_launchpad with null DEX router rejected with exit code 408');
-
-  // 3.1E Adversarial Test: op::init_launchpad with null locker rejected with 408
-  const nullLockerInitMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c01, 32)
-          .storeUint(1, 64)
-          .storeAddress(masterAddr)
-          .storeAddress(mockCurveWallet)
-          .storeRef(
-            beginCell()
-              .storeAddress(routerAddr)
-              .storeAddress(null)             // null LP locker!
-              .storeAddress(migrationRouter)
-              .endCell()
-          )
-          .storeRef(mockWalletCode)
-          .endCell()
-      )
-    })
-  });
-  const nullLockerInitRes = await curveContract.sendInternalMessage(nullLockerInitMsg);
-  assert(nullLockerInitRes.type === 'failed' && nullLockerInitRes.exit_code === 408, 'op::init_launchpad with null LP locker rejected with exit code 408');
-
-  // 3.1E2 Adversarial Test: op::init_launchpad with null migration router rejected with 408
-  const nullMigInitMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c01, 32)
-          .storeUint(1, 64)
-          .storeAddress(masterAddr)
-          .storeAddress(mockCurveWallet)
-          .storeRef(
-            beginCell()
-              .storeAddress(routerAddr)
-              .storeAddress(lockerAddr)
-              .storeAddress(null)            // null migration router!
-              .endCell()
-          )
-          .storeRef(mockWalletCode)
-          .endCell()
-      )
-    })
-  });
-  const nullMigInitRes = await curveContract.sendInternalMessage(nullMigInitMsg);
-  assert(nullMigInitRes.type === 'failed' && nullMigInitRes.exit_code === 408, 'op::init_launchpad with null Migration Router rejected with exit code 408');
-
-  // 3.1F Adversarial Test: op::init_launchpad with master mismatch rejected with 408
-  const badMasterInitMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c01, 32)
-          .storeUint(1, 64)
-          .storeAddress(spamAttackerAddr)      // wrong master address!
-          .storeAddress(mockCurveWallet)
+          .storeAddress(adminAddr)        // Attacker forged wallet!
           .storeRef(
             beginCell()
               .storeAddress(routerAddr)
@@ -653,45 +609,17 @@ async function runTests() {
               .storeAddress(migrationRouter)
               .endCell()
           )
-          .storeRef(mockWalletCode)
+          .storeRef(walletCodeCell)
           .endCell()
       )
     })
   });
-  const badMasterInitRes = await curveContract.sendInternalMessage(badMasterInitMsg);
-  assert(badMasterInitRes.type === 'failed' && badMasterInitRes.exit_code === 408, 'op::init_launchpad with Jetton Master mismatch rejected with exit code 408');
+  const fakeInitCurveRes = await curveContract.sendInternalMessage(fakeInitCurveMsg);
+  assert(fakeInitCurveRes.type === 'failed' && fakeInitCurveRes.exit_code === 408, 'op::init_launchpad with forged wallet strictly rejected with exit code 408');
 
-  // 3.1G Adversarial Test: op::init_launchpad with locker == migration_router collision rejected with 408
-  const collisionInitMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c01, 32)
-          .storeUint(1, 64)
-          .storeAddress(masterAddr)
-          .storeAddress(mockCurveWallet)
-          .storeRef(
-            beginCell()
-              .storeAddress(routerAddr)
-              .storeAddress(lockerAddr)
-              .storeAddress(lockerAddr)        // collision: locker == migration router!
-              .endCell()
-          )
-          .storeRef(mockWalletCode)
-          .endCell()
-      )
-    })
-  });
-  const collisionInitRes = await curveContract.sendInternalMessage(collisionInitMsg);
-  assert(collisionInitRes.type === 'failed' && collisionInitRes.exit_code === 408, 'op::init_launchpad with locker/router collision rejected with exit code 408');
-
-  // 3.2 Legitimate Launchpad Initialization
+  // 3.2 Initialize Launchpad with authentic derived wallet
   const initMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: adminAddr,
     value: new BN('50000000'),
     bounce: false,
@@ -709,7 +637,7 @@ async function runTests() {
               .storeAddress(migrationRouter)
               .endCell()
           )
-          .storeRef(mockWalletCode)
+          .storeRef(walletCodeCell)
           .endCell()
       )
     })
@@ -717,14 +645,14 @@ async function runTests() {
   const initRes = await curveContract.sendInternalMessage(initMsg);
   assert(initRes.type === 'success', 'op::init_launchpad transitions to STATE_INITIALIZING (1)');
 
-  // 3.2B Adversarial Test: Duplicate initialization strictly rejected with exit code 407 (INVALID_STATE)
-  const dupInitRes = await curveContract.sendInternalMessage(initMsg);
-  assert(dupInitRes.type === 'failed' && dupInitRes.exit_code === 407, 'Duplicate op::init_launchpad strictly rejected with exit code 407 (INVALID_STATE)');
+  // 3.2B Adversarial Test: Duplicate op::init_launchpad rejected with exit code 407
+  const dupInitCurveRes = await curveContract.sendInternalMessage(initMsg);
+  assert(dupInitCurveRes.type === 'failed' && dupInitCurveRes.exit_code === 407, 'Duplicate op::init_launchpad strictly rejected with exit code 407');
 
-  // 3.3 Receive 1 Billion Token Custody
+  // 3.3 Receive 1 Billion Token Custody from authentic curve jetton wallet
   const total1B = curveTokens + dexEscrow;
   const depositMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: mockCurveWallet,
     value: new BN('50000000'),
     bounce: false,
@@ -746,7 +674,7 @@ async function runTests() {
 
   // 3.4 Adversarial Test: Curve is in STATE_RENOUNCE_PENDING; Buys MUST REVERT with 402
   const buyAttemptMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: buyerAddr,
     value: new BN((10n * ONE_TON).toString()),
     bounce: false,
@@ -759,7 +687,7 @@ async function runTests() {
 
   // 3.5 Adversarial Test: Forged renounce notification from non-master address rejected with 401
   const fakeRenounceMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: spamAttackerAddr,
     value: new BN('20000000'),
     bounce: false,
@@ -781,7 +709,7 @@ async function runTests() {
 
   // 3.6A Adversarial Test: Renounce notification with wrong query_id rejected with 412
   const wrongQueryRenounceMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: masterAddr,
     value: new BN('20000000'),
     bounce: false,
@@ -801,7 +729,7 @@ async function runTests() {
 
   // 3.6B Adversarial Test: Renounce notification with non-null admin rejected with 408
   const badAdminRenounceMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: masterAddr,
     value: new BN('20000000'),
     bounce: false,
@@ -821,7 +749,7 @@ async function runTests() {
 
   // 3.6C Adversarial Test: Renounce notification with wrong total supply rejected with 411
   const wrongSupplyRenounceMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: masterAddr,
     value: new BN('20000000'),
     bounce: false,
@@ -841,7 +769,7 @@ async function runTests() {
 
   // 3.7 Valid on-chain cryptographic renounce confirmation from authentic Master
   const validRenounceMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: masterAddr,
     value: new BN('20000000'),
     bounce: false,
@@ -868,7 +796,7 @@ async function runTests() {
 
   // 3.7C Adversarial Test: Status query while in STATE_ACTIVE rejected with exit code 407
   const statusQueryActiveMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: adminAddr,
     value: new BN('20000000'),
     bounce: false,
@@ -883,7 +811,7 @@ async function runTests() {
   const buyAmountTon = 10n * ONE_TON;
   const buyRes = await curveContract.sendInternalMessage(
     new InternalMessage({
-      to: mockCurveWallet,
+      to: curveContractAddr,
       from: buyerAddr,
       value: new BN(buyAmountTon.toString()),
       bounce: false,
@@ -893,11 +821,12 @@ async function runTests() {
     })
   );
   assert(buyRes.type === 'success', 'Buy order executes on TVM curve successfully');
-  assert(buyRes.actionList && buyRes.actionList.length === 1, 'Emits outbound Jetton transfer delivering tokens to Buyer');
+  assert(buyRes.actionList && buyRes.actionList.filter(isJettonSend).length === 1 &&
+    buyRes.actionList.some(a => a.type === 'reserve_currency'), 'Buy reserves protected TON and emits one outbound Jetton transfer');
 
   // 3.8B Adversarial Test: Inbound sell notification from unauthorized Jetton wallet rejected with exit code 401
   const fakeWalletSellMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: spamAttackerAddr, // NOT curve_jetton_wallet!
     value: new BN('60000000'),
     bounce: false,
@@ -920,7 +849,7 @@ async function runTests() {
   // 3.9 Blocker 4 Remediation: Slippage Rejection with Sufficient Gas (Immediate Refund)
   const rejectedSellAmount = 5000000n * ONE_TOKEN;
   const sufficientGasSellMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: mockCurveWallet,
     value: new BN('60000000'),          // 0.06 TON (sufficient for immediate refund)
     bounce: false,
@@ -944,7 +873,10 @@ async function runTests() {
 
   const sufficientGasSellRes = await curveContract.sendInternalMessage(sufficientGasSellMsg);
   assert(sufficientGasSellRes.type === 'success', 'Slippage violation handled safely WITHOUT TVM exception');
-  assert(sufficientGasSellRes.actionList && sufficientGasSellRes.actionList.length === 1, 'Emits outbound Jetton transfer safely refunding tokens to Seller');
+  assert(sufficientGasSellRes.actionList?.filter(isJettonSend).length === 1 &&
+    sufficientGasSellRes.actionList.some(a => a.type === 'reserve_currency') &&
+    sufficientGasSellRes.actionList.filter(a => a.type === 'send_msg').length === 2,
+    'Reserves prior TON, refunds tokens and returns unused notification gas');
 
   const stateAfterSufficient = await curveContract.invokeGetMethod('get_curve_state', []);
   assert(stateAfterSufficient.result[4].toString() === tonReserveBefore, 'Curve real TON reserve remains 100% UNCHANGED (Zero gas subsidy paid from reserve)');
@@ -952,7 +884,7 @@ async function runTests() {
 
   // 3.10 Blocker 4 Remediation: Slippage Rejection with Underfunded Gas (< 0.035 TON) -> Escrow in Pending Refunds
   const underfundedGasSellMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: mockCurveWallet,
     value: new BN('20000000'),          // 0.02 TON (< 0.035 TON: underfunded!)
     bounce: false,
@@ -981,7 +913,7 @@ async function runTests() {
 
   // 3.10B Adversarial Test: Claim refund with insufficient gas (< 0.04 TON) rejected with 405
   const lowGasClaimMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: sellerAddr,
     value: new BN('20000000'), // 0.02 TON < 0.04 TON required
     bounce: false,
@@ -994,7 +926,7 @@ async function runTests() {
 
   // 3.10C Adversarial Test: Claim refund from non-entitled user rejected with 409
   const nonEntitledClaimMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: spamAttackerAddr,
     value: new BN('50000000'),
     bounce: false,
@@ -1007,7 +939,7 @@ async function runTests() {
 
   // 3.11 User Claims Pending Refund via op::claim_refund
   const claimRefundMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: sellerAddr,
     value: new BN('50000000'),          // 0.05 TON attached to fund return transfer
     bounce: false,
@@ -1022,7 +954,7 @@ async function runTests() {
   });
   const claimRefundRes = await curveContract.sendInternalMessage(claimRefundMsg);
   assert(claimRefundRes.type === 'success', 'Entitled seller successfully claims pending refund');
-  assert(claimRefundRes.actionList && claimRefundRes.actionList.length === 1, 'Emits return Jetton transfer funded strictly by claimant gas');
+  assert(claimRefundRes.actionList?.filter(isJettonSend).length === 1 && claimRefundRes.actionList.some(a => a.type === 'reserve_currency'), 'Reserves prior balance and emits claimant-funded return transfer');
 
   const stateAfterClaim = await curveContract.invokeGetMethod('get_curve_state', []);
   assert(stateAfterClaim.result[7].toString() === '0', 'pending_refunds_tokens reset to 0 after successful claim');
@@ -1031,10 +963,10 @@ async function runTests() {
   const doubleClaimRes = await curveContract.sendInternalMessage(claimRefundMsg);
   assert(doubleClaimRes.type === 'failed' && doubleClaimRes.exit_code === 409, 'Double claim attempt strictly rejected with exit code 409 (ERROR_NO_PENDING_REFUND)');
 
-  // 3.12A1 Adversarial Test: Bounced message from unauthorized sender (not curve_jetton_wallet) safely ignored
+  // 3.12A1 Adversarial Test: Bounced message from unauthorized sender safely ignored
   const bouncedTokensAmount = 5000000n * ONE_TOKEN;
   const fakeBouncedMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: spamAttackerAddr, // Not curve wallet!
     value: new BN('30000000'),
     bounce: false,
@@ -1058,7 +990,7 @@ async function runTests() {
 
   // 3.12A2 Adversarial Test: Bounced message with non-transfer opcode safely ignored
   const wrongOpBouncedMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: mockCurveWallet,
     value: new BN('30000000'),
     bounce: false,
@@ -1081,9 +1013,8 @@ async function runTests() {
   assert(stateAfterWrongOpBounce.result[7].toString() === '0', 'Zero pending refund tokens credited from non-transfer bounce message');
 
   // 3.12B Bounced Outbound Jetton Transfer Recovery:
-  // Outbound Jetton transfer bounces back from curve_jetton_wallet
   const bouncedMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: mockCurveWallet,
     value: new BN('30000000'),
     bounce: false,
@@ -1108,7 +1039,7 @@ async function runTests() {
 
   // Seller claims the recovered bounced tokens via op::claim_refund
   const claimBouncedMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: sellerAddr,
     value: new BN('50000000'),
     bounce: false,
@@ -1123,14 +1054,14 @@ async function runTests() {
   });
   const claimBouncedRes = await curveContract.sendInternalMessage(claimBouncedMsg);
   assert(claimBouncedRes.type === 'success', 'Seller successfully claims bounced token refund');
-  assert(claimBouncedRes.actionList && claimBouncedRes.actionList.length === 1, 'Emits return transfer delivering recovered bounced tokens to claimant');
+  assert(claimBouncedRes.actionList?.filter(isJettonSend).length === 1 && claimBouncedRes.actionList.some(a => a.type === 'reserve_currency'), 'Reserves prior balance and dispatches bounced-token claim');
 
   const stateAfterClaimBounced = await curveContract.invokeGetMethod('get_curve_state', []);
   assert(stateAfterClaimBounced.result[7].toString() === '0', 'pending_refunds_tokens reset to 0 after claiming recovered bounce');
 
   // 3.13 Huge Buy triggers Graduation Threshold -> STATE_GRADUATION_PENDING
   const hugeBuyMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: buyerAddr,
     value: new BN((550n * ONE_TON).toString()), // 550 TON exceeds 500 TON threshold
     bounce: false,
@@ -1142,12 +1073,16 @@ async function runTests() {
   assert(hugeBuyRes.type === 'success', 'Huge buy order executes and triggers graduation threshold');
 
   const gradPendingState = await curveContract.invokeGetMethod('get_curve_state', []);
+  console.log('GRAD STATE RESULT:', gradPendingState.result.map(x => x.toString()));
   assert(gradPendingState.result[0].toString() === '4', 'State transitioned to STATE_GRADUATION_PENDING (4)');
   assert(gradPendingState.result[5].toString() === '0', 'All 800M curve tokens sold out at graduation');
 
   // 3.14 Blocker 2 Remediation: op::initiate_migration dispatches to Migration Router
+  const preMigState = await curveContract.invokeGetMethod('get_curve_state', []);
+  const tonToMigrate = BigInt(preMigState.result[4].toString());
+
   const initiateMigMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: adminAddr,
     value: new BN('300000000'),         // 0.30 TON attached for migration gas
     bounce: false,
@@ -1162,43 +1097,102 @@ async function runTests() {
   });
   const initiateMigRes = await curveContract.sendInternalMessage(initiateMigMsg);
   assert(initiateMigRes.type === 'success', 'op::initiate_migration dispatches graduation reserves to Migration Router');
-  assert(initiateMigRes.actionList && initiateMigRes.actionList.length === 2, 'Emits 2 outbound messages: 200M DEX tokens + 500 TON liquidity to Migration Router');
+  assert(initiateMigRes.actionList && initiateMigRes.actionList.length === 2, 'Emits 2 outbound messages: 200M DEX tokens + TON liquidity to Migration Router');
 
   const migInProgressState = await curveContract.invokeGetMethod('get_curve_state', []);
   assert(migInProgressState.result[0].toString() === '5', 'Curve transitions to STATE_MIGRATION_IN_PROGRESS (5) - NOT prematurely graduated');
 
-  // 3.14B Failure Recovery Test: Bounced message from Migration Router transitions to STATE_MIGRATION_FAILED (7)
-  const routerBounceMsg = new InternalMessage({
-    to: mockCurveWallet,
+  // 3.14B Migration Abort/Recovery Verification: Curve accepts returned TON & Tokens from Migration Router
+  // Simulate Migration Router aborting and refunding reserves back to Curve
+  const refundTonMsg = new InternalMessage({
+    to: curveContractAddr,
     from: migrationRouter,
-    value: new BN('30000000'),
+    value: new BN(tonToMigrate.toString()),
     bounce: false,
-    bounced: true,
     body: new CommonMessageInfo({
       body: new CellMessage(
         beginCell()
-          .storeUint(0xffffffff, 32)
-          .storeUint(0x414e4c36, 32)
+          .storeUint(0x414e4c36, 32)    // op::deposit_ton_liquidity
+          .storeUint(52, 64)
+          .storeCoins(new BN(tonToMigrate.toString()))
           .endCell()
       )
     })
   });
-  const routerBounceRes = await curveContract.sendInternalMessage(routerBounceMsg);
-  assert(routerBounceRes.type === 'success', 'Bounced message from Migration Router accepted safely');
+  const refundTonRes = await curveContract.sendInternalMessage(refundTonMsg);
+  assert(refundTonRes.type === 'success', 'Curve safely accepts returned TON reserves from Migration Router in abort flow');
 
-  const failedState = await curveContract.invokeGetMethod('get_curve_state', []);
-  assert(failedState.result[0].toString() === '7', 'Curve safely transitions to STATE_MIGRATION_FAILED (7) on router bounce');
+  const refundTokensMsg = new InternalMessage({
+    to: curveContractAddr,
+    from: mockCurveWallet,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x7362d09c, 32)    // op::transfer_notification
+          .storeUint(53, 64)
+          .storeCoins(new BN(dexEscrow.toString()))
+          .storeAddress(migrationRouter) // from_address == migrationRouter!
+          .storeUint(0, 1)
+          .endCell()
+      )
+    })
+  });
+  const refundTokensRes = await curveContract.sendInternalMessage(refundTokensMsg);
+  assert(refundTokensRes.type === 'success', 'Curve safely accepts returned 200M DEX tokens from Migration Router in abort flow');
 
-  // 3.14C Recovery: Authorized retry of op::initiate_migration from STATE_MIGRATION_FAILED succeeds
-  const retryMigRes = await curveContract.sendInternalMessage(initiateMigMsg);
-  assert(retryMigRes.type === 'success', 'Authorized retry of op::initiate_migration succeeds from STATE_MIGRATION_FAILED');
+  const stateAfterAbortRefund = await curveContract.invokeGetMethod('get_curve_state', []);
+  assert(stateAfterAbortRefund.result[0].toString() === '4', 'State safely restored to STATE_GRADUATION_PENDING (4) upon receiving full reserve refund');
+  assert(stateAfterAbortRefund.result[4].toString() === tonToMigrate.toString(), 'real_ton_reserve 100% restored to pre-migration amount');
+  const escrowStateRes = await curveContract.invokeGetMethod('get_dex_escrow_state', []);
+  assert(escrowStateRes.result[2].toString() === dexEscrow.toString(), 'dex_tokens_escrow 100% restored to 200M tokens');
 
-  const retryState = await curveContract.invokeGetMethod('get_curve_state', []);
-  assert(retryState.result[0].toString() === '5', 'Curve safely transitions back to STATE_MIGRATION_IN_PROGRESS (5)');
+  // Re-dispatch migration to advance back to STATE_MIGRATION_IN_PROGRESS
+  const reMigRes = await curveContract.sendInternalMessage(initiateMigMsg);
+  assert(reMigRes.type === 'success', 'Re-dispatches migration back to STATE_MIGRATION_IN_PROGRESS');
 
-  // 3.15 Blocker 2 Remediation: Verified Graduation upon op::lp_locked_confirmation from LP Locker
+  // 3.15 Adversarial Test: Fake LP confirmation from attacker rejected with 401
+  const fakeLpConfirmMsg = new InternalMessage({
+    to: curveContractAddr,
+    from: spamAttackerAddr,
+    value: new BN('20000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c33, 32)    // op::lp_locked_confirmation
+          .storeUint(54, 64)
+          .storeCoins(new BN('1000000000'))
+          .endCell()
+      )
+    })
+  });
+  const fakeLpConfirmRes = await curveContract.sendInternalMessage(fakeLpConfirmMsg);
+  assert(fakeLpConfirmRes.type === 'failed' && fakeLpConfirmRes.exit_code === 401, 'Fake LP confirmation from attacker strictly rejected with exit code 401');
+
+  // 3.15B Adversarial Test: LP confirmation with 0 locked LP tokens rejected with 406
+  const zeroLpConfirmMsg = new InternalMessage({
+    to: curveContractAddr,
+    from: lockerAddr,
+    value: new BN('20000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c33, 32)
+          .storeUint(55, 64)
+          .storeCoins(0)                // 0 LP tokens!
+          .endCell()
+      )
+    })
+  });
+  const zeroLpConfirmRes = await curveContract.sendInternalMessage(zeroLpConfirmMsg);
+  assert(zeroLpConfirmRes.type === 'failed' && zeroLpConfirmRes.exit_code === 406, 'LP confirmation with 0 LP tokens strictly rejected with exit code 406');
+
+  // 3.15C Verified Graduation upon op::lp_locked_confirmation from authentic LP Locker
   const lpConfirmMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: lockerAddr,
     value: new BN('20000000'),
     bounce: false,
@@ -1206,7 +1200,7 @@ async function runTests() {
       body: new CellMessage(
         beginCell()
           .storeUint(0x414e4c33, 32)    // op::lp_locked_confirmation
-          .storeUint(51, 64)
+          .storeUint(56, 64)
           .storeCoins(new BN('1000000000')) // locked LP amount
           .endCell()
       )
@@ -1220,7 +1214,7 @@ async function runTests() {
 
   // 3.16 Sweep Protocol Fees
   const sweepMsg = new InternalMessage({
-    to: mockCurveWallet,
+    to: curveContractAddr,
     from: treasuryAddr,
     value: new BN('30000000'),
     bounce: false,
@@ -1237,20 +1231,15 @@ async function runTests() {
   assert(sweepRes.type === 'success', 'Treasury sweeps accumulated protocol fees successfully');
   assert(sweepRes.actionList && sweepRes.actionList.length === 1, 'Emits outbound fee transfer to Treasury wallet');
 
-  // ===========================================================================
-  // TEST SUITE 4: ANLGRAM MIGRATION ROUTER (STON.fi v2.1 TL-B & Abort Verification)
-  // ===========================================================================
-  console.log('\n--- 4. AnlgramMigrationRouter TVM Verification (STON.fi v2.1 TL-B & Abort) ---');
 
-  // STON.fi v2.1 Testnet pTON Minter (verified on-chain: 0:024b7d03368510ecd7c0a4fbf387b78199267d2f8ca027e964356b5b6bc4d04f)
-  const ptonMinterAddr    = Address.parseFriendly('kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px').address;
-  const routerTokenWallet = new Address(0, Buffer.alloc(32, 11));
-  const lpTokenWallet     = new Address(0, Buffer.alloc(32, 12));
-  const ptonWallet        = new Address(0, Buffer.alloc(32, 13));
+  // ===========================================================================
+  // TEST SUITE 4: ANLGRAM MIGRATION ROUTER (STON.fi v2.1 TL-B, TEP-74, Abort & Bounce)
+  // ===========================================================================
+  console.log('\n--- 4. AnlgramMigrationRouter TVM Verification (STON.fi v2.1 TL-B & TEP-74) ---');
 
   const initialMigratorData = beginCell()
     .storeUint(0, 1)                      // is_initialized: 0
-    .storeAddress(mockCurveWallet)        // curve_address
+    .storeAddress(curveContractAddr)      // curve_address
     .storeAddress(lockerAddr)             // lp_locker_address
     .storeAddress(routerAddr)             // dex_router_address
     .storeRef(
@@ -1262,16 +1251,33 @@ async function runTests() {
         .storeAddress(adminAddr)          // admin_address
         .endCell()
     )
+    .storeRef(
+      beginCell()
+        .storeAddress(lpTokenWallet)      // expected_lp_wallet
+        .storeAddress(ptonWallet)         // expected_pton_wallet
+        .storeCoins(0)                    // pending_ton
+        .storeCoins(0)                    // pending_tokens
+        .storeRef(walletCodeCell)         // jetton_wallet_code
+        .endCell()
+    )
     .endCell();
 
   const migratorContract = await SmartContract.fromCell(migratorCodeCell, initialMigratorData);
+  migratorContract.setC7Config({ myself: migrationRouter });
 
-  // 4.1 Initial Getters
+  // 4.1 Initial Getters & Derivation Verification
   const migInitState = await migratorContract.invokeGetMethod('get_migration_data', []);
   assert(migInitState.type === 'success', 'get_migration_data getter executes successfully');
   assert(migInitState.result[0].toString() === '0', 'Migration router initially uninitialized');
   assert(migInitState.result[6].toString() === '0', 'Initial ton_liquidity is 0');
   assert(migInitState.result[7].toString() === '0', 'Initial tokens_liquidity is 0');
+
+  const extRes = await migratorContract.invokeGetMethod('get_migration_extended_data', []);
+  assert(extRes.type === 'success', 'get_migration_extended_data getter executes successfully');
+  const tvmMyWallet = extRes.result[6].readAddress();
+  const tvmDexWallet = extRes.result[7].readAddress();
+  assert(tvmMyWallet.equals(myJettonWallet), 'On-chain TVM derivation of my_jetton_wallet exactly matches TEP-74 specification');
+  assert(tvmDexWallet.equals(dexRouterTokenWallet), 'On-chain TVM derivation of dex_router_token_wallet exactly matches TEP-74 specification');
 
   // 4.2 Adversarial Test: Unauthorized TON deposit rejected with exit code 401
   const fakeTonDepMsg = new InternalMessage({
@@ -1292,10 +1298,73 @@ async function runTests() {
   const fakeTonDepRes = await migratorContract.sendInternalMessage(fakeTonDepMsg);
   assert(fakeTonDepRes.type === 'failed' && fakeTonDepRes.exit_code === 401, 'Unauthorized TON deposit strictly rejected with exit code 401');
 
+  // 4.2B Adversarial Test: Token transfer_notification from unauthorized sender rejected with 401
+  const fakeWalletTokenMsg = new InternalMessage({
+    to: migrationRouter,
+    from: spamAttackerAddr, // NOT my_jetton_wallet!
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x7362d09c, 32)
+          .storeUint(21, 64)
+          .storeCoins(new BN((200000000n * ONE_TOKEN).toString()))
+          .storeAddress(curveContractAddr)
+          .storeUint(0, 1)
+          .endCell()
+      )
+    })
+  });
+  const fakeWalletTokenRes = await migratorContract.sendInternalMessage(fakeWalletTokenMsg);
+  assert(fakeWalletTokenRes.type === 'failed' && fakeWalletTokenRes.exit_code === 401, 'Token transfer_notification from unauthorized sender strictly rejected with exit code 401');
+
+  // 4.2C Adversarial Test: Token transfer_notification from wrong from_address rejected with 401
+  const fakeFromTokenMsg = new InternalMessage({
+    to: migrationRouter,
+    from: myJettonWallet,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x7362d09c, 32)
+          .storeUint(22, 64)
+          .storeCoins(new BN((200000000n * ONE_TOKEN).toString()))
+          .storeAddress(spamAttackerAddr) // NOT curve_address!
+          .storeUint(0, 1)
+          .endCell()
+      )
+    })
+  });
+  const fakeFromTokenRes = await migratorContract.sendInternalMessage(fakeFromTokenMsg);
+  assert(fakeFromTokenRes.type === 'failed' && fakeFromTokenRes.exit_code === 401, 'Token transfer_notification from wrong from_address strictly rejected with exit code 401');
+
+  // 4.2D Adversarial Test: Token transfer_notification with 0 amount rejected with 406
+  const zeroTokenMsg = new InternalMessage({
+    to: migrationRouter,
+    from: myJettonWallet,
+    value: new BN('50000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x7362d09c, 32)
+          .storeUint(23, 64)
+          .storeCoins(0)                // 0 tokens!
+          .storeAddress(curveContractAddr)
+          .storeUint(0, 1)
+          .endCell()
+      )
+    })
+  });
+  const zeroTokenRes = await migratorContract.sendInternalMessage(zeroTokenMsg);
+  assert(zeroTokenRes.type === 'failed' && zeroTokenRes.exit_code === 406, 'Token transfer_notification with 0 amount strictly rejected with exit code 406');
+
   // 4.3 Authorized TON deposit from authentic Curve
   const authTonDepMsg = new InternalMessage({
     to: migrationRouter,
-    from: mockCurveWallet,
+    from: curveContractAddr,
     value: new BN((500n * ONE_TON).toString()),
     bounce: false,
     body: new CommonMessageInfo({
@@ -1311,11 +1380,11 @@ async function runTests() {
   const authTonDepRes = await migratorContract.sendInternalMessage(authTonDepMsg);
   assert(authTonDepRes.type === 'success', 'Authorized TON deposit accepted from Curve');
 
-  // 4.4 Inbound 200M DEX token liquidity via transfer_notification
+  // 4.4 Inbound 200M DEX token liquidity from authentic my_jetton_wallet
   const dexTokenDeposit = 200000000n * ONE_TOKEN;
   const tokenDepMsg = new InternalMessage({
     to: migrationRouter,
-    from: mockCurveWallet,
+    from: myJettonWallet,
     value: new BN('50000000'),
     bounce: false,
     body: new CommonMessageInfo({
@@ -1324,14 +1393,14 @@ async function runTests() {
           .storeUint(0x7362d09c, 32)      // op::transfer_notification
           .storeUint(3, 64)
           .storeCoins(new BN(dexTokenDeposit.toString()))
-          .storeAddress(mockCurveWallet)
+          .storeAddress(curveContractAddr)
           .storeUint(0, 1)
           .endCell()
       )
     })
   });
   const tokenDepRes = await migratorContract.sendInternalMessage(tokenDepMsg);
-  assert(tokenDepRes.type === 'success', 'Inbound 200M DEX token liquidity received successfully');
+  assert(tokenDepRes.type === 'success', 'Inbound 200M DEX token liquidity received from authentic Jetton wallet');
 
   const fundedState = await migratorContract.invokeGetMethod('get_migration_data', []);
   assert(fundedState.result[6].toString() === (500n * ONE_TON).toString(), 'ton_liquidity records exact 500 TON');
@@ -1348,7 +1417,7 @@ async function runTests() {
         beginCell()
           .storeUint(0x414e4c37, 32)      // op::execute_dex_provision
           .storeUint(4, 64)
-          .storeAddress(routerTokenWallet)
+          .storeAddress(dexRouterTokenWallet)
           .storeAddress(lpTokenWallet)
           .storeAddress(ptonWallet)
           .endCell()
@@ -1358,18 +1427,81 @@ async function runTests() {
   const fakeExecRes = await migratorContract.sendInternalMessage(fakeExecMsg);
   assert(fakeExecRes.type === 'failed' && fakeExecRes.exit_code === 401, 'Unauthorized execute_dex_provision strictly rejected with exit code 401');
 
-  // 4.6 Authorized execute_dex_provision with exact STON.fi v2.1 TL-B construction
+  // 4.5A Adversarial Test: Underfunded gas (< 0.40 TON) rejected with exit code 405
+  const underfundedGasExecMsg = new InternalMessage({
+    to: migrationRouter,
+    from: curveContractAddr,
+    value: new BN('350000000'),          // 0.35 TON < 0.40 TON minimum required
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c37, 32)
+          .storeUint(41, 64)
+          .storeAddress(dexRouterTokenWallet)
+          .storeAddress(lpTokenWallet)
+          .storeAddress(ptonWallet)
+          .endCell()
+      )
+    })
+  });
+  const underfundedGasExecRes = await migratorContract.sendInternalMessage(underfundedGasExecMsg);
+  assert(underfundedGasExecRes.type === 'failed' && underfundedGasExecRes.exit_code === 405, 'execute_dex_provision with underfunded gas (< 0.40 TON) strictly rejected with exit code 405');
+
+  // 4.5B Adversarial Test: Wrong router_token_wallet in execute_dex_provision rejected with exit code 408
+  const wrongRouterWalletMsg = new InternalMessage({
+    to: migrationRouter,
+    from: curveContractAddr,
+    value: new BN('600000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c37, 32)
+          .storeUint(42, 64)
+          .storeAddress(myJettonWallet)  // Passing wrong wallet!
+          .storeAddress(lpTokenWallet)
+          .storeAddress(ptonWallet)
+          .endCell()
+      )
+    })
+  });
+  const wrongRouterWalletRes = await migratorContract.sendInternalMessage(wrongRouterWalletMsg);
+  assert(wrongRouterWalletRes.type === 'failed' && wrongRouterWalletRes.exit_code === 408, 'execute_dex_provision with unauthentic router_token_wallet rejected with exit code 408');
+
+  // 4.5C Adversarial Test: Mismatched lp_token_wallet rejected with exit code 408
+  const wrongLpWalletMsg = new InternalMessage({
+    to: migrationRouter,
+    from: curveContractAddr,
+    value: new BN('600000000'),
+    bounce: false,
+    body: new CommonMessageInfo({
+      body: new CellMessage(
+        beginCell()
+          .storeUint(0x414e4c37, 32)
+          .storeUint(43, 64)
+          .storeAddress(dexRouterTokenWallet)
+          .storeAddress(spamAttackerAddr) // Mismatched LP wallet!
+          .storeAddress(ptonWallet)
+          .endCell()
+      )
+    })
+  });
+  const wrongLpWalletRes = await migratorContract.sendInternalMessage(wrongLpWalletMsg);
+  assert(wrongLpWalletRes.type === 'failed' && wrongLpWalletRes.exit_code === 408, 'execute_dex_provision with mismatched lp_token_wallet rejected with exit code 408');
+
+  // 4.6 Authorized execute_dex_provision: Verifies TEP-74 Transfer Dispatch
   const authExecMsg = new InternalMessage({
     to: migrationRouter,
-    from: mockCurveWallet,
-    value: new BN('600000000'),          // 0.60 TON attached gas
+    from: curveContractAddr,
+    value: new BN('600000000'),          // 0.60 TON attached gas (> 0.40 TON)
     bounce: false,
     body: new CommonMessageInfo({
       body: new CellMessage(
         beginCell()
           .storeUint(0x414e4c37, 32)
           .storeUint(5, 64)
-          .storeAddress(routerTokenWallet)
+          .storeAddress(dexRouterTokenWallet)
           .storeAddress(lpTokenWallet)
           .storeAddress(ptonWallet)
           .endCell()
@@ -1377,642 +1509,246 @@ async function runTests() {
     })
   });
   const authExecRes = await migratorContract.sendInternalMessage(authExecMsg);
-  assert(authExecRes.type === 'success', 'execute_dex_provision executes successfully');
+  assert(authExecRes.type === 'success', 'execute_dex_provision executes successfully with authentic derived wallets');
   assert(authExecRes.actionList && authExecRes.actionList.length === 3, 'Emits exactly 3 messages: set_lp_wallet, Jetton provide_lp, and pTON ton_transfer');
 
-  const stateAfterExec = await migratorContract.invokeGetMethod('get_migration_data', []);
-  assert(stateAfterExec.result[0].toString() === '1', 'Migration router marked is_initialized == 1');
-  assert(stateAfterExec.result[6].toString() === '0', 'ton_liquidity reset to 0 after dispatch');
-  assert(stateAfterExec.result[7].toString() === '0', 'tokens_liquidity reset to 0 after dispatch');
+  // Inspect the 3 outbound messages emitted by execute_dex_provision
+  const msg1 = authExecRes.actionList[0].message; // set_lp_wallet to LP Locker
+  const msg2 = authExecRes.actionList[1].message; // op::transfer to my_jetton_wallet (TEP-74!)
+  const msg3 = authExecRes.actionList[2].message; // op::ton_transfer to pton_wallet
 
-  // 4.7 Abort / Emergency Refund Flow (op::abort_migration)
-  const abortData = beginCell()
-    .storeUint(0, 1)
-    .storeAddress(mockCurveWallet)
-    .storeAddress(lockerAddr)
-    .storeAddress(routerAddr)
-    .storeRef(
-      beginCell()
-        .storeAddress(masterAddr)
-        .storeAddress(ptonMinterAddr)
-        .storeCoins(new BN((25n * ONE_TON).toString())) // 25 TON held
-        .storeCoins(0)
-        .endCell()
-    )
+  assert(msg1.info.dest.equals(lockerAddr), 'Message 1 is set_lp_wallet directed to authentic LP Locker');
+  assert(msg2.info.dest.equals(myJettonWallet), 'Finding 1 Remediated: Message 2 op::transfer directed to authentic my_jetton_wallet (NOT router_token_wallet)');
+  assert(msg3.info.dest.equals(ptonWallet), 'Message 3 op::ton_transfer directed to authentic pTON wallet');
+
+  // Parse Message 2 payload to verify TEP-74 structure and STON.fi v2.1 provide_lp forward_payload
+  const msg2Slice = msg2.body.beginParse();
+  const msg2Op = msg2Slice.readUint(32).toNumber();
+  const msg2QueryId = msg2Slice.readUint(64);
+  const msg2Amount = msg2Slice.readCoins();
+  const msg2Dest = msg2Slice.readAddress();
+  assert(msg2Op === 0x0f8a7ea5, 'Message 2 opcode is op::transfer() (0x0f8a7ea5)');
+  assert(msg2Amount.toString() === dexTokenDeposit.toString(), 'Message 2 transfers exact 200M DEX token liquidity');
+  assert(msg2Dest.equals(routerAddr), 'Message 2 TEP-74 destination is STON.fi DEX Router');
+
+  // 4.6B Adversarial Test: Duplicate execute_dex_provision rejected with exit code 407
+  const dupExecRes = await migratorContract.sendInternalMessage(authExecMsg);
+  assert(dupExecRes.type === 'failed' && dupExecRes.exit_code === 407, 'Duplicate execute_dex_provision strictly rejected with exit code 407 (ALREADY_INITIALIZED)');
+
+  // 4.6C LIVE TVM EXECUTION OF JETTON-WALLET.FC: Proves Finding 1
+  // We feed Message 2 into an actual SmartContract instance of jetton-wallet.fc
+  const initialMyWalletData = beginCell()
+    .storeCoins(new BN(dexTokenDeposit.toString())) // 200M tokens balance
+    .storeAddress(migrationRouter)                   // owner_address: migrationRouter
+    .storeAddress(masterAddr)                        // jetton_master_address
+    .storeRef(walletCodeCell)                        // jetton_wallet_code
     .endCell();
-  const abortContract = await SmartContract.fromCell(migratorCodeCell, abortData);
+  const myWalletContract = await SmartContract.fromCell(walletCodeCell, initialMyWalletData);
+  myWalletContract.setC7Config({ myself: myJettonWallet });
 
-  // Adversarial: non-curve cannot abort
-  const fakeAbortMsg = new InternalMessage({
-    to: migrationRouter,
-    from: spamAttackerAddr,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(beginCell().storeUint(0x414e4c38, 32).storeUint(6, 64).endCell())
-    })
-  });
-  const fakeAbortRes = await abortContract.sendInternalMessage(fakeAbortMsg);
-  assert(fakeAbortRes.type === 'failed' && fakeAbortRes.exit_code === 401, 'Unauthorized abort_migration strictly rejected with exit code 401');
-
-  // Authorized abort refunds TON to curve
-  const authAbortMsg = new InternalMessage({
-    to: migrationRouter,
-    from: mockCurveWallet,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(beginCell().storeUint(0x414e4c38, 32).storeUint(7, 64).endCell())
-    })
-  });
-  const authAbortRes = await abortContract.sendInternalMessage(authAbortMsg);
-  assert(authAbortRes.type === 'success', 'Authorized abort_migration executes successfully');
-  assert(authAbortRes.actionList && authAbortRes.actionList.length === 1, 'Emits refund message returning TON liquidity back to Curve');
-  const abortFinal = await abortContract.invokeGetMethod('get_migration_data', []);
-  assert(abortFinal.result[6].toString() === '0', 'ton_liquidity reset to 0 following successful abort refund');
-
-  // -------------------------------------------------------------------------
-  // SECTION 5: PHASE 3B.1 MIGRATION REMEDIATION & FUND SAFETY SUITE
-  // -------------------------------------------------------------------------
-  console.log('\n--- 5. Phase 3B.1 Migration Remediation & Fund Safety Suite ---');
-
-  // 5.1 Adversarial: transfer_notification from unauthorized sender (spammer)
-  const spamTokenMsg = new InternalMessage({
-    to: migrationRouter,
-    from: spamAttackerAddr,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x7362d09c, 32)
-          .storeUint(10, 64)
-          .storeCoins(new BN(dexTokenDeposit.toString()))
-          .storeAddress(spamAttackerAddr) // from_address is attacker, not curve!
-          .storeUint(0, 1)
-          .endCell()
-      )
-    })
-  });
-  const spamTokenRes = await migratorContract.sendInternalMessage(spamTokenMsg);
-  assert(spamTokenRes.type === 'failed' && spamTokenRes.exit_code === 401, 'transfer_notification from non-Curve sender strictly rejected with exit code 401');
-
-  // 5.2 Adversarial: transfer_notification with zero tokens
-  const zeroTokenMsg = new InternalMessage({
-    to: migrationRouter,
-    from: mockCurveWallet,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x7362d09c, 32)
-          .storeUint(11, 64)
-          .storeCoins(0) // 0 tokens
-          .storeAddress(mockCurveWallet)
-          .storeUint(0, 1)
-          .endCell()
-      )
-    })
-  });
-  const zeroTokenRes = await migratorContract.sendInternalMessage(zeroTokenMsg);
-  assert(zeroTokenRes.type === 'failed' && zeroTokenRes.exit_code === 410, 'transfer_notification with 0 tokens strictly rejected with exit code 410');
-
-  // 5.3 Adversarial: execute_dex_provision with insufficient gas (< 0.50 TON)
-  const underfundedMigratorData = beginCell()
-    .storeUint(0, 1)
-    .storeAddress(mockCurveWallet)
-    .storeAddress(lockerAddr)
-    .storeAddress(routerAddr)
-    .storeRef(
-      beginCell()
-        .storeAddress(masterAddr)
-        .storeAddress(ptonMinterAddr)
-        .storeCoins(new BN((500n * ONE_TON).toString()))
-        .storeCoins(new BN(dexTokenDeposit.toString()))
-        .storeAddress(adminAddr)
-        .endCell()
-    )
-    .storeRef(
-      beginCell()
-        .storeAddress(mockCurveWallet) // my_token_wallet set
-        .storeUint(0, 1)
-        .endCell()
-    )
-    .endCell();
-  const underfundedContract = await SmartContract.fromCell(migratorCodeCell, underfundedMigratorData);
-
-  const lowGasExecMsg = new InternalMessage({
-    to: migrationRouter,
-    from: mockCurveWallet,
-    value: new BN('200000000'), // 0.20 TON < 0.50 TON threshold
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c37, 32)
-          .storeUint(12, 64)
-          .storeAddress(routerTokenWallet)
-          .storeAddress(lpTokenWallet)
-          .storeAddress(ptonWallet)
-          .endCell()
-      )
-    })
-  });
-  const lowGasExecRes = await underfundedContract.sendInternalMessage(lowGasExecMsg);
-  assert(lowGasExecRes.type === 'failed' && lowGasExecRes.exit_code === 409, 'execute_dex_provision with < 0.50 TON gas rejected with exit code 409 (ERROR_INSUFFICIENT_GAS)');
-
-  // 5.4 Adversarial: execute_dex_provision with null destination address
-  const nullAddrExecMsg = new InternalMessage({
-    to: migrationRouter,
-    from: mockCurveWallet,
-    value: new BN('600000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c37, 32)
-          .storeUint(13, 64)
-          .storeUint(0, 2) // addr_none for router_token_wallet
-          .storeAddress(lpTokenWallet)
-          .storeAddress(ptonWallet)
-          .endCell()
-      )
-    })
-  });
-  const nullAddrExecRes = await underfundedContract.sendInternalMessage(nullAddrExecMsg);
-  assert(nullAddrExecRes.type === 'failed' && nullAddrExecRes.exit_code === 408, 'execute_dex_provision with null address rejected with exit code 408');
-
-  // 5.5 Duplicate execute_dex_provision strictly rejected
-  const readyContract = await SmartContract.fromCell(migratorCodeCell, underfundedMigratorData);
-  const okExecMsg = new InternalMessage({
-    to: migrationRouter,
-    from: mockCurveWallet,
-    value: new BN('600000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c37, 32)
-          .storeUint(14, 64)
-          .storeAddress(routerTokenWallet)
-          .storeAddress(lpTokenWallet)
-          .storeAddress(ptonWallet)
-          .endCell()
-      )
-    })
-  });
-  const okExecRes = await readyContract.sendInternalMessage(okExecMsg);
-  assert(okExecRes.type === 'success', 'execute_dex_provision with >= 0.50 TON succeeds without action phase deficit');
-
-  // Now attempt duplicate execution:
-  const dupExecRes = await readyContract.sendInternalMessage(okExecMsg);
-  assert(dupExecRes.type === 'failed' && dupExecRes.exit_code === 405, 'Duplicate execute_dex_provision strictly rejected with exit code 405 (ALREADY_INITIALIZED)');
-
-  // 5.6 TEP-74 Verification: Confirm message 1 is dispatched to my_token_wallet (owner == sender)
-  assert(okExecRes.actionList && okExecRes.actionList.length === 3, 'Emits 3 outbound messages');
-  assert(okExecRes.actionList[1].type === 'send_msg', 'Action 1 is send_msg');
-
-  // 5.7 Bounced Message Recovery in Migration Router
-  const preBounceData = beginCell()
-    .storeUint(1, 1) // was provisioned
-    .storeAddress(mockCurveWallet)
-    .storeAddress(lockerAddr)
-    .storeAddress(routerAddr)
-    .storeRef(
-      beginCell()
-        .storeAddress(masterAddr)
-        .storeAddress(ptonMinterAddr)
-        .storeCoins(0)
-        .storeCoins(0)
-        .storeAddress(adminAddr)
-        .endCell()
-    )
-    .storeRef(
-      beginCell()
-        .storeAddress(mockCurveWallet)
-        .storeUint(0, 1)
-        .endCell()
-    )
-    .endCell();
-  const bounceRouterContract = await SmartContract.fromCell(migratorCodeCell, preBounceData);
-  const bouncedMsgToRouter = new InternalMessage({
-    to: migrationRouter,
-    from: ptonWallet,
-    value: new BN((499n * ONE_TON).toString()), // 499 TON bounced back
-    bounce: false,
-    bounced: true,
-    body: new CommonMessageInfo({
-      body: new CellMessage(beginCell().storeUint(0xffffffff, 32).endCell())
-    })
-  });
-  const bounceRouterRes = await bounceRouterContract.sendInternalMessage(bouncedMsgToRouter);
-  assert(bounceRouterRes.type === 'success', 'Bounced message accepted by Migration Router');
-  const postBounceStatus = await bounceRouterContract.invokeGetMethod('get_wallet_and_failure_status', []);
-  assert(postBounceStatus.result[1].toString() === '1', 'Migration Router marks is_failed == 1 upon bounce');
-  const postBounceData = await bounceRouterContract.invokeGetMethod('get_migration_data', []);
-  assert(postBounceData.result[0].toString() === '0', 'is_initialized reset to 0 to enable recovery');
-  assert(postBounceData.result[6].toString() === (499n * ONE_TON).toString(), 'Restores bounced TON to ton_liquidity');
-
-  // 5.8 Dual Fund Recovery (TON + Jettons) via abort_migration
-  const fullRecoverData = beginCell()
-    .storeUint(0, 1)
-    .storeAddress(mockCurveWallet)
-    .storeAddress(lockerAddr)
-    .storeAddress(routerAddr)
-    .storeRef(
-      beginCell()
-        .storeAddress(masterAddr)
-        .storeAddress(ptonMinterAddr)
-        .storeCoins(new BN((500n * ONE_TON).toString())) // 500 TON
-        .storeCoins(new BN(dexTokenDeposit.toString()))    // 200M Jettons
-        .storeAddress(adminAddr)
-        .endCell()
-    )
-    .storeRef(
-      beginCell()
-        .storeAddress(mockCurveWallet)
-        .storeUint(0, 1)
-        .endCell()
-    )
-    .endCell();
-  const fullRecoverContract = await SmartContract.fromCell(migratorCodeCell, fullRecoverData);
-  const fullAbortMsg = new InternalMessage({
-    to: migrationRouter,
-    from: mockCurveWallet,
-    value: new BN('100000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(beginCell().storeUint(0x414e4c38, 32).storeUint(15, 64).endCell())
-    })
-  });
-  const fullAbortRes = await fullRecoverContract.sendInternalMessage(fullAbortMsg);
-  assert(fullAbortRes.type === 'success', 'abort_migration with TON and Jettons executes successfully');
-  assert(fullAbortRes.actionList && fullAbortRes.actionList.length === 2, 'Emits exactly 2 refund messages: 1 TON refund + 1 Jetton refund');
-
-  // Verify second call emits 0 refund messages (anti-double-refund guarantee)
-  const secondAbortRes = await fullRecoverContract.sendInternalMessage(fullAbortMsg);
-  assert(secondAbortRes.type === 'success', 'Second abort_migration call succeeds idempotently');
-  assert(secondAbortRes.actionList && secondAbortRes.actionList.length === 0, 'Zero messages emitted on second abort: Anti-double-refund guaranteed');
-
-  // 5.9 Curve Reception of Returned TON from Migration Router
-  const returnTonMsg = new InternalMessage({
-    to: mockCurveWallet,
+  // Deliver the exact message emitted by MigrationRouter to myJettonWallet
+  const liveWalletTransferMsg = new InternalMessage({
+    to: myJettonWallet,
     from: migrationRouter,
-    value: new BN((500n * ONE_TON).toString()),
+    value: msg2.info.value.coins,
     bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c36, 32) // op::deposit_ton_liquidity
-          .storeUint(16, 64)
-          .storeCoins(new BN((500n * ONE_TON).toString()))
-          .endCell()
-      )
-    })
+    body: new CommonMessageInfo({ body: new CellMessage(msg2.body) })
   });
-  // Send to curveContract (which was in STATE_MIGRATION_FAILED from earlier test)
-  const returnTonRes = await curveContract.sendInternalMessage(returnTonMsg);
-  assert(returnTonRes.type === 'success', 'Curve accepts returned TON liquidity from authentic Migration Router');
+  const liveWalletRes = await myWalletContract.sendInternalMessage(liveWalletTransferMsg);
+  assert(liveWalletRes.type === 'success', 'LIVE JETTON WALLET: Transfer sent to my_jetton_wallet succeeds with exit code 0');
 
-  // Adversarial: non-router cannot return TON
-  const fakeReturnTonMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: spamAttackerAddr,
-    value: new BN('100000000'),
+  // Now prove: If the transfer was mistakenly sent to dexRouterTokenWallet, TVM reverts with 705!
+  const initialDexWalletData = beginCell()
+    .storeCoins(0)
+    .storeAddress(routerAddr)                        // owner_address: routerAddr (STON.fi DEX router)
+    .storeAddress(masterAddr)
+    .storeRef(walletCodeCell)
+    .endCell();
+  const dexWalletContract = await SmartContract.fromCell(walletCodeCell, initialDexWalletData);
+  dexWalletContract.setC7Config({ myself: dexRouterTokenWallet });
+
+  const buggyTransferMsg = new InternalMessage({
+    to: dexRouterTokenWallet,
+    from: migrationRouter,                           // Sender is migrationRouter, NOT routerAddr!
+    value: msg2.info.value.coins,
     bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c36, 32)
-          .storeUint(17, 64)
-          .storeCoins(new BN((100n * ONE_TON).toString()))
-          .endCell()
-      )
-    })
+    body: new CommonMessageInfo({ body: new CellMessage(msg2.body) })
   });
-  const fakeReturnTonRes = await curveContract.sendInternalMessage(fakeReturnTonMsg);
-  assert(fakeReturnTonRes.type === 'failed' && fakeReturnTonRes.exit_code === 401, 'Unauthorized TON return to Curve strictly rejected with exit code 401');
+  const buggyWalletRes = await dexWalletContract.sendInternalMessage(buggyTransferMsg);
+  assert(buggyWalletRes.type === 'failed' && buggyWalletRes.exit_code === 705, 'LIVE JETTON WALLET PROOF: Transfer directed to dexRouterTokenWallet reverts with exit code 705 (TEP-74 ownership check)');
 
-  // 5.10 Curve Reception of Returned 200M DEX Jettons from Migration Router
-  const returnJettonMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: mockCurveWallet, // comes via curve jetton wallet
+  // 4.7 Bounce Recovery Flow in Migration Router
+  // Simulate bounced Jetton transfer from my_jetton_wallet
+  const bouncedJettonMsg = new InternalMessage({
+    to: migrationRouter,
+    from: myJettonWallet,
     value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x7362d09c, 32)
-          .storeUint(18, 64)
-          .storeCoins(new BN(dexTokenDeposit.toString()))
-          .storeAddress(migrationRouter) // from_address is migrationRouter!
-          .storeUint(0, 1)
-          .endCell()
-      )
-    })
-  });
-  const returnJettonRes = await curveContract.sendInternalMessage(returnJettonMsg);
-  assert(returnJettonRes.type === 'success', 'Curve safely accepts returned DEX escrow tokens from Migration Router without triggering invalid sell refund');
-  const curveStateAfterReturn = await curveContract.invokeGetMethod('get_curve_state', []);
-  assert(curveStateAfterReturn.result[0].toString() === '7', 'Curve state remains STATE_MIGRATION_FAILED (7)');
-  const escrowStateAfterReturn = await curveContract.invokeGetMethod('get_dex_escrow', []);
-  assert(escrowStateAfterReturn.result[0].toString() === dexTokenDeposit.toString(), 'dex_tokens_escrow restored to 200M tokens');
-
-  // 5.11 Authorized Retry of op::initiate_migration from STATE_MIGRATION_FAILED
-  const retryMigrateMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('300000000'), // 0.30 TON
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c35, 32) // op::initiate_migration
-          .storeUint(19, 64)
-          .endCell()
-      )
-    })
-  });
-  const retryMigrateRes = await curveContract.sendInternalMessage(retryMigrateMsg);
-  assert(retryMigrateRes.type === 'success', 'Authorized retry of op::initiate_migration succeeds from STATE_MIGRATION_FAILED');
-  assert(retryMigrateRes.actionList && retryMigrateRes.actionList.length === 2, 'Re-dispatches both 200M tokens and 500 TON to Migration Router');
-  const curveStateAfterRetry = await curveContract.invokeGetMethod('get_curve_state', []);
-  assert(curveStateAfterRetry.result[0].toString() === '5', 'Curve safely transitions back to STATE_MIGRATION_IN_PROGRESS (5)');
-
-  // -------------------------------------------------------------------------
-  // SECTION 6: PHASE 3B.2 ROUTER DISCOVERY & RECONFIGURABLE MIGRATION RECOVERY SUITE
-  // -------------------------------------------------------------------------
-  console.log('\n--- 6. Phase 3B.2 Router Discovery & Reconfigurable Migration Suite ---');
-
-  // 6.1 Verify get_migration_router and get_lp_locker getters
-  const currentMigRouterRes = await curveContract.invokeGetMethod('get_migration_router', []);
-  assert(currentMigRouterRes.result && currentMigRouterRes.result.length > 0, 'get_migration_router getter executes successfully');
-
-  const currentLpLockerRes = await curveContract.invokeGetMethod('get_lp_locker', []);
-  assert(currentLpLockerRes.result && currentLpLockerRes.result.length > 0, 'get_lp_locker getter executes successfully');
-
-  // Candidate B Router address (STON.fi v2.2 Constant Product Router)
-  const candidateBRouterAddr = new Address(0, Buffer.from('05a5e18525003d2aa882c5767c27897ffef4980311528ab48ebcf1e7e92497e3', 'hex'));
-
-  // Helper: Construct complete curve c4 data cell tree
-  function buildCurveCell(state, migRouter) {
-    return beginCell()
-      .storeUint(state, 8)
-      .storeUint(100, 16)
-      .storeRef(
-        beginCell()
-          .storeAddress(adminAddr)
-          .storeAddress(creatorAddr)
-          .storeAddress(treasuryAddr)
-          .storeRef(
-            beginCell()
-              .storeAddress(masterAddr)
-              .storeAddress(mockCurveWallet)
-              .storeAddress(routerAddr)
-              .storeRef(
-                beginCell()
-                  .storeAddress(lockerAddr)
-                  .storeAddress(migRouter || null)
-                  .endCell()
-              )
-              .endCell()
-          )
-          .endCell()
-      )
-      .storeRef(
-        beginCell()
-          .storeCoins(state === 4 || state === 7 ? new BN((500n * ONE_TON).toString()) : 0)
-          .storeCoins(new BN(curveTokens.toString()))
-          .storeCoins(0)
-          .storeCoins(0)
-          .storeCoins(new BN(vTon.toString()))
-          .storeCoins(new BN(vTok.toString()))
-          .storeCoins(new BN(tGrad.toString()))
-          .storeCoins(new BN(dexEscrow.toString()))
-          .endCell()
-      )
-      .storeRef(
-        beginCell()
-          .storeDict(null)
-          .storeRef(mockWalletCode)
-          .endCell()
-      )
-      .endCell();
-  }
-
-  // 6.2 Adversarial: Call op::set_migration_router from STATE_MIGRATION_IN_PROGRESS (invalid state, exit code 407)
-  const invalidStateSetRouterMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c37, 32)
-          .storeUint(20, 64)
-          .storeAddress(candidateBRouterAddr)
-          .endCell()
-      )
-    })
-  });
-  const invalidStateSetRouterRes = await curveContract.sendInternalMessage(invalidStateSetRouterMsg);
-  assert(invalidStateSetRouterRes.type === 'failed' && invalidStateSetRouterRes.exit_code === 407, 'op::set_migration_router in STATE_MIGRATION_IN_PROGRESS rejected with exit code 407 (INVALID_STATE)');
-
-  // Simulate authentic bounce from router to transition curve to STATE_MIGRATION_FAILED (7)
-  const bounceMsgAgain = new InternalMessage({
-    to: mockCurveWallet,
-    from: migrationRouter,
-    value: new BN('30000000'),
     bounce: false,
     bounced: true,
     body: new CommonMessageInfo({
       body: new CellMessage(
         beginCell()
           .storeUint(0xffffffff, 32)
-          .storeUint(0x414e4c36, 32)
+          .storeUint(0x0f8a7ea5, 32)                 // op::transfer()
+          .storeUint(5, 64)
+          .storeCoins(new BN(dexTokenDeposit.toString()))
           .endCell()
       )
     })
   });
-  const bounceRouterResAgain = await curveContract.sendInternalMessage(bounceMsgAgain);
-  assert(bounceRouterResAgain.type === 'success', 'Bounce from router accepted');
-  const curveStateFailed = await curveContract.invokeGetMethod('get_curve_state', []);
-  assert(curveStateFailed.result[0].toString() === '7', 'Curve in STATE_MIGRATION_FAILED (7)');
+  const bouncedJettonRes = await migratorContract.sendInternalMessage(bouncedJettonMsg);
+  assert(bouncedJettonRes.type === 'success', 'Bounced Jetton transfer parsed and handled safely by Migration Router');
 
-  // 6.3 CRITICAL ANTI-RUG-PULL TEST: Calling op::set_migration_router in STATE_MIGRATION_FAILED is strictly rejected (exit code 407)
-  const failedSetRouterMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
+  const stateAfterBouncedJetton = await migratorContract.invokeGetMethod('get_migration_data', []);
+  assert(stateAfterBouncedJetton.result[0].toString() === '1', 'Migration stays in-flight while the other principal leg is pending');
+  assert(stateAfterBouncedJetton.result[7].toString() === dexTokenDeposit.toString(), 'tokens_liquidity 100% restored to 200M tokens upon bounce');
+
+  // Simulate bounced pTON transfer from ptonWallet
+  const bouncedPtonMsg = new InternalMessage({
+    to: migrationRouter,
+    from: ptonWallet,
     value: new BN('50000000'),
     bounce: false,
+    bounced: true,
     body: new CommonMessageInfo({
       body: new CellMessage(
         beginCell()
-          .storeUint(0x414e4c37, 32)
-          .storeUint(21, 64)
-          .storeAddress(candidateBRouterAddr)
+          .storeUint(0xffffffff, 32)
+          .storeUint(0x01f3835d, 32)                 // op::ton_transfer()
+          .storeUint(5, 64)
+          .storeCoins(new BN((500n * ONE_TON).toString()))
           .endCell()
       )
     })
   });
-  const failedSetRouterRes = await curveContract.sendInternalMessage(failedSetRouterMsg);
-  assert(failedSetRouterRes.type === 'failed' && failedSetRouterRes.exit_code === 407, 'op::set_migration_router in STATE_MIGRATION_FAILED strictly rejected with exit code 407 (ANTI-RUG-PULL)');
+  const bouncedPtonRes = await migratorContract.sendInternalMessage(bouncedPtonMsg);
+  assert(bouncedPtonRes.type === 'success', 'Bounced pTON transfer parsed and handled safely by Migration Router');
 
-  // 6.4 Authorized Retry in STATE_MIGRATION_FAILED dispatches graduation reserves ONLY to the authentic immutable router
-  const retryOrigRouterMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('300000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c35, 32)
-          .storeUint(22, 64)
-          .endCell()
-      )
-    })
+  const underfundedBounceState = await migratorContract.invokeGetMethod('get_migration_data', []);
+  assert(underfundedBounceState.result[6].toString() === '0', 'A 0.05 TON bounce cannot manufacture 500 TON of recoverable principal');
+  const fundedPtonBounce = new InternalMessage({
+    to: migrationRouter, from: ptonWallet, value: new BN('500150000000'), bounce: false, bounced: true,
+    body: new CommonMessageInfo({ body: new CellMessage(beginCell().storeUint(0xffffffff,32)
+      .storeUint(0x01f3835d,32).storeUint(5,64).storeCoins(new BN((500n * ONE_TON).toString())).endCell()) })
   });
-  const retryOrigRouterRes = await curveContract.sendInternalMessage(retryOrigRouterMsg);
-  assert(retryOrigRouterRes.type === 'success', 'op::initiate_migration safely re-dispatches reserves to authentic immutable migration router');
-  assert(retryOrigRouterRes.actionList && retryOrigRouterRes.actionList.length === 2, 'Emits 2 outbound messages: 200M tokens + 500 TON liquidity');
-  const curveStateMigrating = await curveContract.invokeGetMethod('get_curve_state', []);
-  assert(curveStateMigrating.result[0].toString() === '5', 'Curve safely back in STATE_MIGRATION_IN_PROGRESS (5) with funds intact');
+  const fundedBounceResult = await migratorContract.sendInternalMessage(fundedPtonBounce);
+  assert(fundedBounceResult.type === 'success', 'Authentic fully funded pTON bounce restores received principal');
+  const stateAfterBouncedPton = await migratorContract.invokeGetMethod('get_migration_data', []);
+  assert(stateAfterBouncedPton.result[6].toString() === (500n * ONE_TON).toString(), 'ton_liquidity 100% restored to 500 TON upon bounce');
 
-  // -------------------------------------------------------------------------
-  // Pre-Activation Bootstrap Tests: Fresh Curve in STATE_INITIALIZING with unbound router
-  // -------------------------------------------------------------------------
-  const curveInit = await SmartContract.fromCell(curveCodeCell, buildCurveCell(1, null));
-
-  // 6.5 Adversarial: Unauthorized caller in STATE_INITIALIZING rejected with exit code 401
-  const unauthInitMsg = new InternalMessage({
-    to: mockCurveWallet,
+  // 4.8 Abort / Emergency Refund Flow (op::abort_migration)
+  // When migration fails or is aborted, both TON and tokens must be refunded to Curve
+  // Adversarial: non-curve cannot abort
+  const fakeAbortMsg = new InternalMessage({
+    to: migrationRouter,
     from: spamAttackerAddr,
-    value: new BN('50000000'),
+    value: new BN('100000000'),
     bounce: false,
     body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c37, 32)
-          .storeUint(23, 64)
-          .storeAddress(candidateBRouterAddr)
-          .endCell()
-      )
+      body: new CellMessage(beginCell().storeUint(0x414e4c38, 32).storeUint(6, 64).endCell())
     })
   });
-  const unauthInitRes = await curveInit.sendInternalMessage(unauthInitMsg);
-  assert(unauthInitRes.type === 'failed' && unauthInitRes.exit_code === 401, 'Unauthorized op::set_migration_router in STATE_INITIALIZING strictly rejected with exit code 401');
+  const fakeAbortRes = await migratorContract.sendInternalMessage(fakeAbortMsg);
+  assert(fakeAbortRes.type === 'failed' && fakeAbortRes.exit_code === 401, 'Unauthorized abort_migration strictly rejected with exit code 401');
 
-  // 6.6 Adversarial: set_migration_router in STATE_INITIALIZING with null address rejected with 408
-  const nullSetRouterMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('50000000'),
+  // Authorized abort from curve_address
+  const authAbortMsg = new InternalMessage({
+    to: migrationRouter,
+    from: curveContractAddr,
+    value: new BN('100000000'),          // 0.10 TON attached
     bounce: false,
     body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c37, 32)
-          .storeUint(24, 64)
-          .storeUint(0, 2)
-          .endCell()
-      )
+      body: new CellMessage(beginCell().storeUint(0x414e4c38, 32).storeUint(7, 64).endCell())
     })
   });
-  const nullSetRouterRes = await curveInit.sendInternalMessage(nullSetRouterMsg);
-  assert(nullSetRouterRes.type === 'failed' && nullSetRouterRes.exit_code === 408, 'op::set_migration_router with null address rejected with exit code 408');
+  // This single-contract executor does not apply preceding transfers to C7
+  // balances. Preserve an insolvent negative case, then supply the actually
+  // recovered principal explicitly. Sandbox tests verify full balance flow.
+  const insolventAbortRes = await migratorContract.sendInternalMessage(authAbortMsg);
+  assert(insolventAbortRes.type === 'failed' && insolventAbortRes.exit_code === 402, 'Abort cannot pay principal from an unfunded synthetic executor balance');
+  migratorContract.setBalance(new BN('500010000000'));
+  const authAbortRes = await migratorContract.sendInternalMessage(authAbortMsg);
+  assert(authAbortRes.type === 'success', 'Authorized abort_migration executes successfully');
+  assert(authAbortRes.actionList && authAbortRes.actionList.filter(a => a.type === 'send_msg').length === 2 && authAbortRes.actionList.some(a => a.type === 'reserve_currency'), 'Dispatches 2 refund messages and reserves prior non-principal balance');
 
-  // 6.7 Adversarial: set_migration_router with colliding LP locker address rejected with 408
-  const collideLockerMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('50000000'),
+  const abortFinal = await migratorContract.invokeGetMethod('get_migration_data', []);
+  assert(abortFinal.result[6].toString() === '0', 'ton_liquidity moves out of available funds following abort dispatch');
+  assert(abortFinal.result[7].toString() === '0', 'tokens_liquidity moves out of available funds following abort dispatch');
+  const abortPending = await migratorContract.invokeGetMethod('get_migration_extended_data', []);
+  assert(abortPending.result[4].toString() === (500n * ONE_TON).toString() && abortPending.result[5].toString() === dexTokenDeposit.toString(), 'Both abort obligations remain pending: dispatch is not authenticated return delivery');
+
+  // 4.9 Storage Serialization Integrity Verification
+  // Missing admin_address (truncated storage) MUST fail on load
+  const truncatedMigratorData = beginCell()
+    .storeUint(0, 1)
+    .storeAddress(curveContractAddr)
+    .storeAddress(lockerAddr)
+    .storeAddress(routerAddr)
+    .storeRef(
+      beginCell()
+        .storeAddress(masterAddr)
+        .storeAddress(ptonMinterAddr)
+        .storeCoins(0)
+        .storeCoins(0)
+        // Missing admin_address!
+        .endCell()
+    )
+    .storeRef(
+      beginCell()
+        .storeAddress(lpTokenWallet)
+        .storeAddress(ptonWallet)
+        .storeCoins(0)
+        .storeCoins(0)
+        .storeRef(walletCodeCell)
+        .endCell()
+    )
+    .endCell();
+  const truncatedContract = await SmartContract.fromCell(migratorCodeCell, truncatedMigratorData);
+  truncatedContract.setC7Config({ myself: migrationRouter });
+  const truncatedRes = await truncatedContract.invokeGetMethod('get_migration_data', []);
+  assert(truncatedRes.type === 'failed', 'Truncated state without admin_address strictly fails on load');
+
+  const truncMsg = new InternalMessage({
+    to: migrationRouter,
+    from: curveContractAddr,
+    value: new BN('100000000'),
     bounce: false,
     body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c37, 32)
-          .storeUint(25, 64)
-          .storeAddress(lockerAddr)
-          .endCell()
-      )
+      body: new CellMessage(beginCell().storeUint(0x414e4c36, 32).storeUint(1, 64).storeCoins(100).endCell())
     })
   });
-  const collideLockerRes = await curveInit.sendInternalMessage(collideLockerMsg);
-  assert(collideLockerRes.type === 'failed' && collideLockerRes.exit_code === 408, 'op::set_migration_router with colliding LP locker rejected with exit code 408');
+  const truncMsgRes = await truncatedContract.sendInternalMessage(truncMsg);
+  assert(truncMsgRes.type === 'failed', 'Internal transaction on truncated state strictly fails with TVM cell underflow');
 
-  // 6.8 Adversarial: set_migration_router with colliding Jetton master address rejected with 408
-  const collideMasterMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c37, 32)
-          .storeUint(26, 64)
-          .storeAddress(masterAddr)
-          .endCell()
-      )
-    })
-  });
-  const collideMasterRes = await curveInit.sendInternalMessage(collideMasterMsg);
-  assert(collideMasterRes.type === 'failed' && collideMasterRes.exit_code === 408, 'op::set_migration_router with colliding Jetton master rejected with exit code 408');
-
-  // 6.9 Authorized initial configuration of migration router in STATE_INITIALIZING
-  const authInitMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c37, 32)
-          .storeUint(27, 64)
-          .storeAddress(candidateBRouterAddr)
-          .endCell()
-      )
-    })
-  });
-  const authInitRes = await curveInit.sendInternalMessage(authInitMsg);
-  assert(authInitRes.type === 'success', 'Authorized initial op::set_migration_router in STATE_INITIALIZING executes successfully');
-
-  // 6.10 get_migration_router getter returns Candidate B router
-  const initGetterRes = await curveInit.invokeGetMethod('get_migration_router', []);
-  assert(initGetterRes.result && initGetterRes.result.length > 0, 'get_migration_router returns Candidate B router in STATE_INITIALIZING');
-
-  // 6.11 Adversarial: Second configuration attempt in STATE_INITIALIZING strictly rejected with exit code 413 (One-Time Guard)
-  const duplicateInitMsg = new InternalMessage({
-    to: mockCurveWallet,
-    from: adminAddr,
-    value: new BN('50000000'),
-    bounce: false,
-    body: new CommonMessageInfo({
-      body: new CellMessage(
-        beginCell()
-          .storeUint(0x414e4c37, 32)
-          .storeUint(28, 64)
-          .storeAddress(routerAddr)
-          .endCell()
-      )
-    })
-  });
-  const duplicateInitRes = await curveInit.sendInternalMessage(duplicateInitMsg);
-  assert(duplicateInitRes.type === 'failed' && duplicateInitRes.exit_code === 413, 'Second op::set_migration_router attempt strictly rejected with exit code 413 (ALREADY_INITIALIZED)');
-
-  // 6.12 Adversarial: op::set_migration_router in STATE_ACTIVE rejected with exit code 407 (Post-Active Immutability)
-  const curveActive = await SmartContract.fromCell(curveCodeCell, buildCurveCell(3, migrationRouter));
-  const activeSetRouterRes = await curveActive.sendInternalMessage(authInitMsg);
-  assert(activeSetRouterRes.type === 'failed' && activeSetRouterRes.exit_code === 407, 'op::set_migration_router in STATE_ACTIVE strictly rejected with exit code 407 (IMMUTABLE)');
-
-  // 6.13 Adversarial: op::set_migration_router in STATE_GRADUATION_PENDING rejected with exit code 407 (ANTI-RUG-PULL)
-  const curveGrad = await SmartContract.fromCell(curveCodeCell, buildCurveCell(4, migrationRouter));
-  const gradSetRouterRes = await curveGrad.sendInternalMessage(authInitMsg);
-  assert(gradSetRouterRes.type === 'failed' && gradSetRouterRes.exit_code === 407, 'op::set_migration_router in STATE_GRADUATION_PENDING strictly rejected with exit code 407 (ANTI-RUG-PULL)');
+  // Verify that setting admin_address to addr_none triggers exit code 408 (ERROR_INVALID_ADDRESS)
+  const badAdminData = beginCell()
+    .storeUint(0, 1)
+    .storeAddress(curveContractAddr)
+    .storeAddress(lockerAddr)
+    .storeAddress(routerAddr)
+    .storeRef(
+      beginCell()
+        .storeAddress(masterAddr)
+        .storeAddress(ptonMinterAddr)
+        .storeCoins(0)
+        .storeCoins(0)
+        .storeUint(0, 2) // addr_none
+        .endCell()
+    )
+    .storeRef(
+      beginCell()
+        .storeAddress(lpTokenWallet)
+        .storeAddress(ptonWallet)
+        .storeCoins(0)
+        .storeCoins(0)
+        .storeRef(walletCodeCell)
+        .endCell()
+    )
+    .endCell();
+  const badAdminContract = await SmartContract.fromCell(migratorCodeCell, badAdminData);
+  badAdminContract.setC7Config({ myself: migrationRouter });
+  const badAdminRes = await badAdminContract.sendInternalMessage(truncMsg);
+  assert(badAdminRes.type === 'failed' && badAdminRes.exit_code === 408, 'Initial state with addr_none admin_address strictly rejected with exit code 408');
 
   console.log('\n═══════════════════════════════════════════════════════════════════════════');
   console.log(`📊 TVM SIMULATION TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);

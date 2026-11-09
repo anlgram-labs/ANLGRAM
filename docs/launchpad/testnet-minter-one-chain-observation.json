@@ -1,0 +1,41 @@
+{
+  "observedUtc": "2026-11-01T04:19:40.200Z",
+  "network": "-3",
+  "observations": {
+    "operator": {
+      "state": "active",
+      "balanceNano": "1893123044",
+      "codeHash": "20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f",
+      "dataHash": "8e81171a05b561cc3b7be81be60ffda079495902da8021381d0b8963f4a6fc08",
+      "lastTransaction": {
+        "@type": "internal.transactionId",
+        "lt": "106801931000001",
+        "hash": "G8O0tt/FFcSVVy0HcRRESuz9RXPriTZo17EFAnBOnB4="
+      },
+      "authentication": "TESTNET_KEY_ACCEPTED",
+      "dataStatus": "FRESH_PROVIDER_OBSERVATION",
+      "signatureAllowed": true,
+      "seqno": 1,
+      "walletId": 2147483645,
+      "publicKey": "94a010bf130bfceefdcba69f1dc18260277e1a3d073b632dd578b9c38b421a09"
+    },
+    "minter": {
+      "state": "active",
+      "balanceNano": "99966866",
+      "codeHash": "90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec",
+      "dataHash": "0e8b1bae1b7c8f68c4d713b24b1a7c0542c56c44f199987ad3360a78991f684a",
+      "lastTransaction": {
+        "@type": "internal.transactionId",
+        "lt": "106801931000003",
+        "hash": "DHm5Mj8QXUs/Dg2cPn+z7heORzgGIYLM1QeGfBLIubE="
+      },
+      "authentication": "TESTNET_KEY_ACCEPTED",
+      "dataStatus": "FRESH_PROVIDER_OBSERVATION",
+      "supply": "0",
+      "admin": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+      "expectedCodeMatches": true,
+      "expectedInitialDataMatches": true
+    }
+  },
+  "financialOutcome": "NOT_YET_VERIFIED"
+}

@@ -1,0 +1,217 @@
+{
+  "observedUtc": "2026-10-31T21:22:27.929Z",
+  "provider": "TON Center Testnet estimateFee",
+  "planSha256": "b522eb3b5e3125cf39bf9103fae8e2252de70cd9b1138eacaeafaf9560b726aa",
+  "walletSdkVersion": "16.3.0",
+  "walletVersion": "V4",
+  "operator": "0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d",
+  "walletPublicKey": "94a010bf130bfceefdcba69f1dc18260277e1a3d073b632dd578b9c38b421a09",
+  "walletCodeHash": "feb5ff6820e2ff0d9483e7e0d62c817d846789fb4ae580c878866d959dabd5c0",
+  "walletInitialDataHash": "3060a0c70fb82328b425819da304c6cbe637549a3a939b90bacf3d4ccef61535",
+  "addressBindingVerified": true,
+  "ownershipCryptographicallyVerified": false,
+  "account": {
+    "provider": "toncenter",
+    "network": "testnet",
+    "verification": "PROVIDER_OBSERVATION",
+    "financialOutcome": "NOT_VERIFIED",
+    "address": "0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d",
+    "status": "uninitialized",
+    "balanceNano": "2003498553",
+    "codeHash": null,
+    "dataHash": null,
+    "lastTransaction": {
+      "lt": "106738843000003",
+      "hash": "qaq0iYLDcPeRWDwycuF4a3sBBr9u5tHxyhF+wBHn3m4="
+    }
+  },
+  "quotes": [
+    {
+      "step": "deploy-minter",
+      "destination": "kQDzVA3j1ue-cB_ZeBZgXVYSiPIbE6F57nzH0KwhbEoTgBQD",
+      "attachmentNano": "100000000",
+      "payloadHash": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+      "sourceFeesNano": "6797337",
+      "sourceFees": {
+        "@type": "fees",
+        "in_fwd_fee": 3561868,
+        "storage_fee": 1,
+        "gas_fee": 220534,
+        "fwd_fee": 3014934
+      },
+      "destinationExecutionFeesVerified": false,
+      "destinationFees": [],
+      "estimationContext": "Independent current-state seqno-0 source-wallet estimate; later-step destination state is not deployed."
+    },
+    {
+      "step": "deploy-curve",
+      "destination": "kQDUo6ZeovKuperyN7xb6Vy795qoh3ce09amMC1uwlmhACwa",
+      "attachmentNano": "100000000",
+      "payloadHash": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+      "sourceFeesNano": "17409471",
+      "sourceFees": {
+        "@type": "fees",
+        "in_fwd_fee": 8867935,
+        "storage_fee": 1,
+        "gas_fee": 220534,
+        "fwd_fee": 8321001
+      },
+      "destinationExecutionFeesVerified": false,
+      "destinationFees": [],
+      "estimationContext": "Independent current-state seqno-0 source-wallet estimate; later-step destination state is not deployed."
+    },
+    {
+      "step": "deploy-guard",
+      "destination": "kQCPD5nXhUVy6VUMaGSkdbq3HPxIW8ew9ULdCgY4F2fLYGL6",
+      "attachmentNano": "100000000",
+      "payloadHash": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+      "sourceFeesNano": "4598804",
+      "sourceFees": {
+        "@type": "fees",
+        "in_fwd_fee": 2462601,
+        "storage_fee": 1,
+        "gas_fee": 220534,
+        "fwd_fee": 1915668
+      },
+      "destinationExecutionFeesVerified": false,
+      "destinationFees": [],
+      "estimationContext": "Independent current-state seqno-0 source-wallet estimate; later-step destination state is not deployed."
+    },
+    {
+      "step": "deploy-migration",
+      "destination": "kQCaEEzQhQ8vhR4VgihpQKbIE0BervHvCi6VR_YKaCVhox2k",
+      "attachmentNano": "100000000",
+      "payloadHash": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+      "sourceFeesNano": "22898405",
+      "sourceFees": {
+        "@type": "fees",
+        "in_fwd_fee": 11612402,
+        "storage_fee": 1,
+        "gas_fee": 220534,
+        "fwd_fee": 11065468
+      },
+      "destinationExecutionFeesVerified": false,
+      "destinationFees": [],
+      "estimationContext": "Independent current-state seqno-0 source-wallet estimate; later-step destination state is not deployed."
+    },
+    {
+      "step": "initialize-curve",
+      "destination": "kQDUo6ZeovKuperyN7xb6Vy795qoh3ce09amMC1uwlmhACwa",
+      "attachmentNano": "100000000",
+      "payloadHash": "e6745ddbdfc1c9777034c946124fbe627031d3d4425eab24fae0c2dacb6fe651",
+      "sourceFeesNano": "5682937",
+      "sourceFees": {
+        "@type": "fees",
+        "in_fwd_fee": 3004468,
+        "storage_fee": 1,
+        "gas_fee": 220534,
+        "fwd_fee": 2457934
+      },
+      "destinationExecutionFeesVerified": false,
+      "destinationFees": [],
+      "estimationContext": "Independent current-state seqno-0 source-wallet estimate; later-step destination state is not deployed."
+    },
+    {
+      "step": "mandatory-creation-donation",
+      "destination": "0QDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbZ2X",
+      "attachmentNano": "20000000",
+      "payloadHash": "d40c9c41a71524d36fe564bd889d5c1823b913b648c6daa62c51d43c873c16cf",
+      "sourceFeesNano": "921203",
+      "sourceFees": {
+        "@type": "fees",
+        "in_fwd_fee": 634001,
+        "storage_fee": 1,
+        "gas_fee": 220534,
+        "fwd_fee": 66667
+      },
+      "destinationExecutionFeesVerified": false,
+      "destinationFees": [],
+      "estimationContext": "Independent current-state seqno-0 source-wallet estimate; later-step destination state is not deployed."
+    },
+    {
+      "step": "mint-test-supply",
+      "destination": "kQDzVA3j1ue-cB_ZeBZgXVYSiPIbE6F57nzH0KwhbEoTgBQD",
+      "attachmentNano": "200000000",
+      "payloadHash": "6ea26594273c420416e4e024a7b90146905f9a4ebd3252113dd6b08d57b3d4c6",
+      "sourceFeesNano": "1003004",
+      "sourceFees": {
+        "@type": "fees",
+        "in_fwd_fee": 677801,
+        "storage_fee": 1,
+        "gas_fee": 220534,
+        "fwd_fee": 104668
+      },
+      "destinationExecutionFeesVerified": false,
+      "destinationFees": [],
+      "estimationContext": "Independent current-state seqno-0 source-wallet estimate; later-step destination state is not deployed."
+    },
+    {
+      "step": "operator-renounce",
+      "destination": "kQDzVA3j1ue-cB_ZeBZgXVYSiPIbE6F57nzH0KwhbEoTgBQD",
+      "attachmentNano": "50000000",
+      "payloadHash": "9a36be938e79c5ccab879375bc5c4a1e9046eab13bd01df853bd0fb6f66f2f51",
+      "sourceFeesNano": "924736",
+      "sourceFees": {
+        "@type": "fees",
+        "in_fwd_fee": 637534,
+        "storage_fee": 1,
+        "gas_fee": 220534,
+        "fwd_fee": 66667
+      },
+      "destinationExecutionFeesVerified": false,
+      "destinationFees": [],
+      "estimationContext": "Independent current-state seqno-0 source-wallet estimate; later-step destination state is not deployed."
+    },
+    {
+      "step": "small-test-buy",
+      "destination": "kQDUo6ZeovKuperyN7xb6Vy795qoh3ce09amMC1uwlmhACwa",
+      "attachmentNano": "1000000000",
+      "payloadHash": "b712b3b64ca7dbca5403cbe65a297bf8f2ed24fc92063ef5e7b4d8741065d689",
+      "sourceFeesNano": "910803",
+      "sourceFees": {
+        "@type": "fees",
+        "in_fwd_fee": 623601,
+        "storage_fee": 1,
+        "gas_fee": 220534,
+        "fwd_fee": 66667
+      },
+      "destinationExecutionFeesVerified": false,
+      "destinationFees": [],
+      "estimationContext": "Independent current-state seqno-0 source-wallet estimate; later-step destination state is not deployed."
+    },
+    {
+      "step": "expected-slippage-rejection",
+      "destination": "kQDUo6ZeovKuperyN7xb6Vy795qoh3ce09amMC1uwlmhACwa",
+      "attachmentNano": "100000000",
+      "payloadHash": "8a1d75165f12d075161a062f3cf17d2126dd9770e8f55317b62f7eec7b54e4d3",
+      "sourceFeesNano": "911336",
+      "sourceFees": {
+        "@type": "fees",
+        "in_fwd_fee": 624134,
+        "storage_fee": 1,
+        "gas_fee": 220534,
+        "fwd_fee": 66667
+      },
+      "destinationExecutionFeesVerified": false,
+      "destinationFees": [],
+      "estimationContext": "Independent current-state seqno-0 source-wallet estimate; later-step destination state is not deployed."
+    }
+  ],
+  "mainnetReplayObservation": {
+    "mainnetSeqno": 44,
+    "proposedTestnetSeqnoMinimum": 0,
+    "proposedTestnetSeqnoMaximum": 12,
+    "rangeSeparatedAtObservation": true,
+    "requirement": "Before EACH real Testnet signature recheck both chains; stop on any source-state/nonce change or range overlap. No chain-binding signature is assumed for V4."
+  },
+  "sourceFeeSumNano": "62058036",
+  "firstTransactionEstimatedRequiredNano": "106797337",
+  "firstTransactionEstimatedShortfallNano": "0",
+  "proposedEnvelopeNano": "2500000000",
+  "proposedEnvelopeShortfallNano": "496501447",
+  "liveEndToEndFeeQuoteComplete": false,
+  "readyForSigning": false,
+  "signed": false,
+  "broadcast": false,
+  "limitation": "Empty destination_fees is not zero future execution cost. Later-state, sell, wallet activation/rent and recovery costs require fresh confirmation before signing."
+}

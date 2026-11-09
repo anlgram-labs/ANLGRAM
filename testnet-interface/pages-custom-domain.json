@@ -1,0 +1,15 @@
+{
+  "id": "6c839f75-b9ab-4564-bde1-8056138f4d06",
+  "domain_id": "6c839f75-b9ab-4564-bde1-8056138f4d06",
+  "name": "testnet.anlgram.com",
+  "status": "initializing",
+  "verification_data": {
+    "status": "pending"
+  },
+  "validation_data": {
+    "status": "initializing",
+    "method": "http"
+  },
+  "certificate_authority": "google",
+  "created_on": "2026-11-01T01:29:17.189517Z"
+}

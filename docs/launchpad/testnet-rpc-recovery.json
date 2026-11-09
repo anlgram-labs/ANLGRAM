@@ -1,0 +1,13 @@
+{
+  "observedUtc": "2026-11-01T03:44:32.013Z",
+  "pagesProject": "anlgram-testnet-preparation",
+  "pagesDeployment": "https://82ade18c.anlgram-testnet-preparation.pages.dev",
+  "privateWorkerVersion": "ad39a939-464a-40c2-a0d2-74d5afc17be8",
+  "productionSecretConfigured": true,
+  "privateWorkerTestnetSecretConfigured": false,
+  "financialApprovalAbsent": true,
+  "liveFinancialClaimStatus": 403,
+  "productionProxyUnchanged": true,
+  "proofNamespacePreserved": true,
+  "financialLockNamespacePreserved": true
+}

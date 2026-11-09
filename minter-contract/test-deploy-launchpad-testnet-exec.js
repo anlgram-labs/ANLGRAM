@@ -210,8 +210,30 @@ test('Artifact verifier: checks all 4 compiled artifacts and validates SHA256 in
 
   const curveArtifact = res.artifacts.bondingCurve;
   assert.ok(curveArtifact.codeBocBase64);
-  assert.equal(curveArtifact.codeCellHash, 'dae0ca19cd71c54fd4bbf90e545f1de38c66bc5de7ad5bdc37eaa8dd8ea62eae');
-  assert.equal(curveArtifact.bocSha256, 'f9d62f52d4ccb71fd95d93d9fe57d961e37165159e456b55aa0c9a9a48f12797');
+  // Integration preserves the corrected Curve, not main's older financial code.
+  const { Cell } = require('@ton/core');
+  const bytes = Buffer.from(curveArtifact.codeBocBase64, 'base64');
+  assert.equal(curveArtifact.codeCellHash, Cell.fromBoc(bytes)[0].hash().toString('hex'));
+  const saved = JSON.parse(fs.readFileSync(path.join(__dirname, 'build/anlgram-bonding-curve.compiled.json'), 'utf8'));
+  const serialized = saved.codeHex ? Buffer.from(saved.codeHex, 'hex') : bytes;
+  assert.equal(curveArtifact.bocSha256, require('node:crypto').createHash('sha256').update(serialized).digest('hex'));
+});
+
+test('Artifact verifier rejects forged recorded cell hash and conflicting BOC encodings', () => {
+  const read = fs.readFileSync;
+  for (const field of ['codeCellHash','codeHex']) {
+    try {
+      fs.readFileSync = function(file, options) {
+        const data = read.apply(this, arguments);
+        if (String(file).endsWith('anlgram-bonding-curve.compiled.json')) {
+          const artifact = JSON.parse(data.toString()); artifact[field] = '00'.repeat(32);
+          return JSON.stringify(artifact);
+        }
+        return data;
+      };
+      assert.equal(verifyArtifacts().ok, false, field);
+    } finally { fs.readFileSync = read; }
+  }
 });
 
 // ---------------------------------------------------------------------------

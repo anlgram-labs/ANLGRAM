@@ -1,0 +1,58 @@
+{
+  "network": "-3",
+  "status": "BLOCKED_NOT_AUTHORIZED",
+  "operatorInput": "UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd",
+  "operatorRaw": "0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d",
+  "operatorTestnetRepresentation": "0QDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbZ2X",
+  "warning": "A Testnet tag is not proof of control. Match the connected wallet account and chain before any signature.",
+  "proposedMetadata": {
+    "name": "ANLGRAM Testnet Settlement",
+    "symbol": "ANLTEST",
+    "decimals": 9
+  },
+  "metadataApproved": false,
+  "lpDevelopmentProfile": {
+    "codeIdentityPinned": true,
+    "trustModelAcceptedForDevelopment": true,
+    "sourceAuditVerified": false,
+    "migrationAuthorized": false
+  },
+  "accounts": {
+    "minter": {
+      "address": "kQDzVA3j1ue-cB_ZeBZgXVYSiPIbE6F57nzH0KwhbEoTgBQD",
+      "raw": "0:f3540de3d6e7be701fd97816605d561288f21b13a179ee7cc7d0ac216c4a1380",
+      "codeHash": "90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec",
+      "dataHash": "3666bbbf42ec3244c104663ac951a905a26186474fea2343643a4e612af52498"
+    },
+    "curve": {
+      "address": "kQDUo6ZeovKuperyN7xb6Vy795qoh3ce09amMC1uwlmhACwa",
+      "raw": "0:d4a3a65ea2f2aea5eaf237bc5be95cbbf79aa887771ed3d6a6302d6ec259a100",
+      "codeHash": "421b1028536b49f6d79eadf872076cc7e7c9afde2aeca0e2868b2706449c3627",
+      "dataHash": "e407231ce93a78000c22b3c650364d42761140bf88764dbff995a619278ae83e"
+    },
+    "guard": {
+      "address": "kQCPD5nXhUVy6VUMaGSkdbq3HPxIW8ew9ULdCgY4F2fLYGL6",
+      "raw": "0:8f0f99d7854572e9550c6864a475bab71cfc485bc7b0f542dd0a06381767cb60",
+      "codeHash": "113108a0c8e7a48729e3da01dd2e2a4067955561ad8bfc19f1fba90db084a967",
+      "dataHash": "73ef15577e58c9ef76e5b86c9fa4daf5988213eaeb8d410ffaa8dcd72ad1a88d"
+    },
+    "migration": {
+      "address": "kQCaEEzQhQ8vhR4VgihpQKbIE0BervHvCi6VR_YKaCVhox2k",
+      "raw": "0:9a104cd0850f2f851e1582286940a6c813405eaef1ef0a2e9547f60a682561a3",
+      "codeHash": "e9124986c48a9b070ed8e617447b7f4529c10e1f8d7698f0fbc6493dc090ec4a",
+      "dataHash": "4dae568682dfe9edcd4fcf2d2ce4e8885a4aa342e2596b326145540acf2df41b"
+    }
+  },
+  "curveWallet": "kQBg6cKYy8pLfcBygdzEKYR55TIblrbfqv6Cjuh5zWOBHWUt",
+  "settlementWalletCodeHash": "e21136c0ea3074a48addec49215af2d8d20125b4cc61a564a1a37d37667b58a2",
+  "dexRouter": "kQAFpeGFJQA9KqiCxXZ8J4l__vSYAxFSirSOvPHn6SSX4ztn",
+  "ptonMinter": "kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px",
+  "blockers": [
+    "Operator Testnet account control/funding/activation must be verified.",
+    "Test metadata requires review.",
+    "LP address binding is not foreign code/custody proof; opt-in migration and graduation finalization reject 414.",
+    "Migration pending balances and interrupted DEX recovery are not fully reconciled.",
+    "Testnet donation recipient is not approved; production donation remains mainnet-only.",
+    "No deployment or transaction is authorized."
+  ]
+}

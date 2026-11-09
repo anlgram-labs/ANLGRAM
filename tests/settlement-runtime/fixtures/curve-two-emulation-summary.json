@@ -1,0 +1,184 @@
+{
+  "evidence": "CAPTURED_PROVIDER_EMULATION_NOT_ONCHAIN_EXECUTION",
+  "observedAt": 1793509169808,
+  "bodyHash": "8cd73de1585e4c21e2806f8c555c5723865585d7e86850898d5a8925126dc568",
+  "validUntil": 1793509258,
+  "trace": {
+    "is_incomplete": false,
+    "mc_block_seqno": 95019954,
+    "transactions": {
+      "f8DzKJgzx6Ji7Gsw8Dlvq6sZhfJb7Yum4NJn2CStvUA=": {
+        "account": "0:8119EB76FF64AF554AD7FCC64BD30D0EB8FAA56C9B651D3DE76E959A107D9061",
+        "hash": "f8DzKJgzx6Ji7Gsw8Dlvq6sZhfJb7Yum4NJn2CStvUA=",
+        "orig_status": "active",
+        "end_status": "active",
+        "total_fees": "11474804",
+        "description": {
+          "type": "ord",
+          "aborted": false,
+          "destroyed": false,
+          "credit_first": true,
+          "is_tock": false,
+          "installed": false,
+          "storage_ph": {
+            "storage_fees_collected": "111",
+            "status_change": "unchanged"
+          },
+          "compute_ph": {
+            "skipped": false,
+            "success": true,
+            "msg_state_used": false,
+            "account_activated": false,
+            "gas_fees": "329268",
+            "gas_used": "4939",
+            "gas_limit": "0",
+            "gas_credit": "10000",
+            "mode": 0,
+            "exit_code": 0,
+            "vm_steps": 143,
+            "vm_init_state_hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            "vm_final_state_hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          },
+          "action": {
+            "success": true,
+            "valid": true,
+            "no_funds": false,
+            "status_change": "unchanged",
+            "total_fwd_fees": "8321001",
+            "total_action_fees": "2773624",
+            "result_code": 0,
+            "tot_actions": 1,
+            "spec_actions": 0,
+            "skipped_actions": 0,
+            "msgs_created": 1,
+            "action_list_hash": "G0ZOFI+Yoq7i7sQjBGSDLH8RlayOeKwEDN+eRYxCEdU=",
+            "tot_msg_size": {
+              "cells": "179",
+              "bits": "106726"
+            }
+          }
+        },
+        "account_state_before": {
+          "hash": "KFyMKwPskjkentJZICAbqD3bgVnY2JT2NG1/y4s9T0Q=",
+          "balance": "1893123044",
+          "extra_currencies": null,
+          "account_status": "active",
+          "frozen_hash": null,
+          "data_hash": "joEXGgW1Ycw7e+gb5g/9oHlJWQLagCE4HQuJY/Sm/Ag=",
+          "code_hash": "IINLe3KxEhR+Gy+0V7hOdNGjDwT3N9T2KmaOlVLSty8="
+        },
+        "account_state_after": {
+          "hash": "iIOMPt4ieTlVh9JFI1dDy96QC8lUTdEAdcKrJvgmd7w=",
+          "balance": "1776100863",
+          "extra_currencies": null,
+          "account_status": "active",
+          "frozen_hash": null,
+          "data_hash": "+Ae0ngFEv5EKpSe3dfhkmeb7FtBZ9PxAD/iPHbOwEsU=",
+          "code_hash": "IINLe3KxEhR+Gy+0V7hOdNGjDwT3N9T2KmaOlVLSty8="
+        },
+        "emulated": true,
+        "in_msg": {
+          "hash": "RxpIM8GtAntBk12mVn59N7XEmBldYKrFbPJ805FEY/I=",
+          "message_content": {
+            "hash": "jNc94VheTCHigG+MVVxXI4ZVhdfoaFCJjVqJJRJtxWg="
+          }
+        },
+        "out_msgs": [
+          {
+            "destination": "0:1F04BF5AFBD04F9851FA195518A14CF46F2B93A1344703014082A657032468EE",
+            "value": "100000000",
+            "hash": "1Frqnsh5x2LVp9nSJ5E3OuY6T8rVI/tNX4xtGjaIlOc=",
+            "fwd_fee": "5547377",
+            "message_content": {
+              "hash": "lqKW0iTyhcZ77pPDD4owkVfw2qNdxbh+QQt4YwoJz8c="
+            },
+            "init_state": {
+              "hash": "HwS/WvvQT5hR+hlVGKFM9G8rk6E0RwMBQIKmVwMkaO4="
+            }
+          }
+        ]
+      },
+      "hi4+zhMKV8R/KXIgm8f72Omy5Mk/T0KecDEMMqsOSp8=": {
+        "account": "0:1F04BF5AFBD04F9851FA195518A14CF46F2B93A1344703014082A657032468EE",
+        "hash": "hi4+zhMKV8R/KXIgm8f72Omy5Mk/T0KecDEMMqsOSp8=",
+        "orig_status": "nonexist",
+        "end_status": "active",
+        "total_fees": "43268",
+        "description": {
+          "type": "ord",
+          "aborted": false,
+          "destroyed": false,
+          "credit_first": false,
+          "is_tock": false,
+          "installed": false,
+          "storage_ph": {
+            "storage_fees_collected": "0",
+            "status_change": "unchanged"
+          },
+          "credit_ph": {
+            "credit": "100000000"
+          },
+          "compute_ph": {
+            "skipped": false,
+            "success": true,
+            "msg_state_used": false,
+            "account_activated": false,
+            "gas_fees": "43268",
+            "gas_used": "649",
+            "gas_limit": "1000000",
+            "mode": 0,
+            "exit_code": 0,
+            "vm_steps": 11,
+            "vm_init_state_hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            "vm_final_state_hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          },
+          "action": {
+            "success": true,
+            "valid": true,
+            "no_funds": false,
+            "status_change": "unchanged",
+            "result_code": 0,
+            "tot_actions": 0,
+            "spec_actions": 0,
+            "skipped_actions": 0,
+            "msgs_created": 0,
+            "action_list_hash": "lqKW0iTyhcZ77pPDD4owkVfw2qNdxbh+QQt4YwoJz8c=",
+            "tot_msg_size": {
+              "cells": "0",
+              "bits": "0"
+            }
+          }
+        },
+        "account_state_before": {
+          "hash": "kK7Illr6uxbrw8ubQI665xthjXh4i8gNCYQ1k8rJjaQ=",
+          "balance": "0",
+          "extra_currencies": null,
+          "account_status": "nonexist",
+          "frozen_hash": null,
+          "data_hash": null,
+          "code_hash": null
+        },
+        "account_state_after": {
+          "hash": "3D+vdcDe2JW8kiSqW5Q1wHYa/Y472bWADU6Mszw9L+0=",
+          "balance": "99956732",
+          "extra_currencies": null,
+          "account_status": "active",
+          "frozen_hash": null,
+          "data_hash": "4vORK2BuVbDL2IgF8JGbUHL2lkne0s6CoMm/HGt2jsQ=",
+          "code_hash": "QhsQKFNrSfbXnq34cgdsx+fJr94q7KDihosnBkScNic="
+        },
+        "emulated": true,
+        "in_msg": {
+          "hash": "1Frqnsh5x2LVp9nSJ5E3OuY6T8rVI/tNX4xtGjaIlOc=",
+          "message_content": {
+            "hash": "lqKW0iTyhcZ77pPDD4owkVfw2qNdxbh+QQt4YwoJz8c="
+          }
+        },
+        "out_msgs": []
+      }
+    },
+    "data_cells": {
+      "+Ae0ngFEv5EKpSe3dfhkmeb7FtBZ9PxAD/iPHbOwEsU=": "te6cckEBAQEAKwAAUYAAAAE////+ylAIX4mF/nd+5dNPjuDBMBO/DR6DnbGW6rxc4cWhDQSgCvwKfw=="
+    }
+  }
+}

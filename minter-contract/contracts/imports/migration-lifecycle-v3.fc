@@ -1,0 +1,150 @@
+;; One root ID (<2^62); funding wire=root+2^63, return wire=root+2^62.
+;; DEX obligations stay in existing pending_*; Curve transit is tracked separately.
+;; Fields: 0/1 original TON/Jettons; 2/3 funded TON/Jettons; 4 Curve epoch;
+;; 5 funding epoch; 6 DEX epoch; 7/8 Curve transit; 9/10 Curve booked; 11 DEX sent.
+int life_get(cell d,int k) inline { (slice s,int ok) = d.udict_get?(8,k);return ok ? s~load_uint(256) : 0; }
+cell life_put(cell d,int k,int v) inline { throw_unless(409,v >= 0);return d.udict_set_builder(8,k,begin_cell().store_uint(v,256)); }
+(int,cell,cell) migration_life(int q) inline {
+    if((q <= 0) | (q >= (1 << 62))) { return (0,null(),null()); }
+    (_,_,_,_,_,cell ids) = load_flight();(slice s,int ok) = ids.udict_get?(64,q + (1 << 63));
+    ifnot(ok) { return (0,null(),null()); } if(s.slice_bits() < 32) { return (0,null(),null()); } if(s~load_uint(32) != 0x4d494733) { return (0,null(),null()); }
+    return(-1,s~load_dict(),s~load_dict());
+}
+() save_migration_life(int q,cell fields,cell seen) impure inline {
+    (int id,int nonce,int phase,slice pool,slice account,cell ids) = load_flight();
+    ids~udict_set_builder(64,q + (1 << 63),begin_cell().store_uint(0x4d494733,32).store_dict(fields).store_dict(seen));
+    save_flight(id,nonce,phase,pool,account,ids);
+}
+() life_ready(slice curve,int q,cell f,int previous) impure inline {
+    if(life_get(f,5) & life_get(f,6)) {
+        raw_reserve(previous,0);
+        cell b = begin_cell().store_uint(0x414e5902,32).store_uint(q,64).store_uint(life_get(f,4),64)
+            .store_uint(life_get(f,5),64).store_uint(life_get(f,6),64).end_cell();
+        send_raw_message(begin_cell().store_uint(0x10,6).store_slice(curve).store_coins(0).store_uint(1,107).store_ref(b).end_cell(),128 + 2);
+    }
+}
+int handle_migration_life(int balance,int value,cell full,slice body) impure {
+    slice h = full.begin_parse();int flags = h~load_uint(4);slice sender = h~load_msg_addr();
+    if(body.slice_bits() < 96) { return 0; }
+    if(flags & 1) { body~load_uint(32); }
+    if(body.slice_bits() < 96) { return 0; }
+    int op = body~load_uint(32);int wire = body~load_uint(64);int q = wire;
+    if(wire >= (1 << 63)) { q = wire - (1 << 63); }
+    elseif(wire >= (1 << 62)) { q = wire - (1 << 62); }
+    (int active_id,_,_,_,_,_) = load_flight();(int active,_,_) = migration_life(active_id);
+    if(active & ((flags & 1) == 0)) {
+        throw_if(409,(op == op::abort_migration) | (op == op::prime_refund_receipts));
+        if(op == op::deposit_ton_liquidity) { throw_unless(409,wire == active_id); }
+    }
+    (int exists,cell f,cell seen) = migration_life(q);
+    ifnot(exists | (op == 0x414e5901)) { return 0; }
+    (int initialized,slice curve,slice locker,slice dex,slice master,slice pton,int ton,int jettons,slice admin,
+        slice lp,slice pw,int dt,int dj,cell code) = load_data();
+    slice own = calculate_user_jetton_wallet_address(my_address(),master,code);
+    throw_unless(409,cell_hash(code) == SETTLEMENT_WALLET_CODE_HASH);
+    if(flags & 1) {
+        int native = (op == op::deposit_ton_liquidity) & equal_slices(sender,curve) & (wire == q);
+        int token = (op == op::transfer()) & equal_slices(sender,own) & (wire == q + (1 << 62));
+        ifnot(native | token) { return 0; }
+        int hash = cell_hash(full);(_,int duplicate) = seen.udict_get?(256,hash);if(duplicate) { return -1; }
+        int amount = body~load_coins();int index = native ? 7 : 8;
+        throw_unless(409,(amount > 0) & (amount <= life_get(f,index)));
+        if(native) { throw_unless(407,value >= amount);ton += amount; } else { jettons += amount; }
+        f = life_put(f,index,life_get(f,index) - amount);seen~udict_set_builder(256,hash,begin_cell().store_uint(1,1));
+    } elseif(op == 0x414e5901) {
+        throw_unless(401,equal_slices(sender,curve));throw_unless(409,(q > 0) & (q < (1 << 62)) & (wire == q));
+        throw_unless(407,value >= 140000000);
+        int ot = body~load_coins();int oj = body~load_coins();int ce = body~load_uint(64);body.end_parse();
+        throw_unless(409,(ot > 0) & (oj > 0) & (ce > 0));
+        ifnot(exists) {
+            throw_unless(409,(ton == 0) & (jettons == 0) & (dt == 0) & (dj == 0));
+            (_,_,_,_,_,cell ids) = load_flight();(_,int used) = ids.udict_get?(64,q);throw_if(409,used);
+            (_,int occupied) = ids.udict_get?(64,q + (1 << 63));throw_if(409,occupied);
+            slice none = begin_cell().store_uint(0,2).end_cell().begin_parse();save_flight(q,0,0,none,none,ids);
+            f = life_put(f,0,ot);f = life_put(f,1,oj);f = life_put(f,4,ce);
+            save_reconciliation_with_receipts(9,0,0,ot,oj,0,0,0,null(),null());
+        } else { throw_unless(409,(life_get(f,0) == ot) & (life_get(f,1) == oj) & (life_get(f,4) == ce)); }
+        save_migration_life(q,f,seen);raw_reserve(balance - value,0);
+        cell init = calculate_jetton_wallet_state_init(my_address(),master,code);
+        repeat(2) {
+            int funding = wire == q;int id = funding ? q + (1 << 63) : q;
+            slice peer = funding ? curve : dex;
+            cell b = begin_cell().store_uint(sop::credit_open,32).store_uint(id,64).store_slice(peer).end_cell();
+            send_raw_message(begin_cell().store_uint(0x18,6).store_slice(own).store_coins(50000000)
+                .store_uint(7,108).store_ref(init).store_ref(b).end_cell(),1);
+            wire = q + (1 << 63);
+        }
+        return -1;
+    } elseif(op == sop::credit_receipt) {
+        throw_unless(401,equal_slices(sender,own));int epoch = body~load_uint(64);slice peer = body~load_msg_addr();
+        int total = body~load_coins();int actual = body~load_coins();body.end_parse();throw_unless(409,epoch > 0);
+        if(wire == q) {
+            throw_unless(401,equal_slices(peer,dex));
+            if(life_get(f,11)) { return 0; } ;; existing DEX receipt ledger is authoritative
+            throw_unless(409,(total == 0) & ((life_get(f,6) == 0) | (life_get(f,6) == epoch)));f = life_put(f,6,epoch);
+        } else {
+            throw_unless(401,(wire == q + (1 << 63)) & equal_slices(peer,curve));
+            throw_unless(409,((life_get(f,5) == 0) | (life_get(f,5) == epoch)) & (total >= life_get(f,3)) & (total + life_get(f,13) <= life_get(f,1)));
+            int delta = total - life_get(f,3);throw_unless(409,actual >= jettons + delta);
+            jettons += delta;f = life_put(f,3,total);f = life_put(f,5,epoch);
+        }
+        save_migration_life(q,f,seen);
+        ifnot(life_get(f,11)) {
+            int ready = (life_get(f,2) == life_get(f,0)) & (life_get(f,3) == life_get(f,1)) & (life_get(f,5) > 0) & (life_get(f,6) > 0);
+            save_reconciliation_with_receipts(((life_get(f,9) == life_get(f,0)) & (life_get(f,10) == life_get(f,1))) ? 8 : ((life_get(f,7) + life_get(f,8) + life_get(f,9) + life_get(f,10)) > 0 ? 6 : (ready ? 2 : 9)),life_get(f,6) > 0,life_get(f,6),life_get(f,0),life_get(f,1),0,0,0,null(),null());
+        }
+        save_data((dt > 0) | (dj > 0),curve,locker,dex,master,pton,ton,jettons,admin,lp,pw,dt,dj,code);
+        life_ready(curve,q,f,balance - value);return -1;
+    } elseif(op == op::deposit_ton_liquidity) {
+        throw_unless(401,equal_slices(sender,curve));throw_unless(409,wire == q);
+        int amount = body~load_coins();body.end_parse();int hash = cell_hash(full);(_,int duplicate) = seen.udict_get?(256,hash);if(duplicate) { return -1; }
+        throw_unless(409,(amount > 0) & (life_get(f,2) + amount + life_get(f,12) <= life_get(f,0)));throw_unless(407,value >= amount);
+        ton += amount;f = life_put(f,2,life_get(f,2) + amount);seen~udict_set_builder(256,hash,begin_cell().store_uint(1,1));
+    } elseif(op == op::transfer_notification()) {
+        if(wire == q + (1 << 63)) { throw_unless(401,equal_slices(sender,own));return -1; } return 0;
+    } elseif(op == 0x414e5903) {
+        throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,curve));body.end_parse();throw_unless(407,value >= 80000000);
+        raw_reserve(balance - value,0);
+        cell b = begin_cell().store_uint(sop::credit_query,32).store_uint(q + (1 << 63),64).end_cell();
+        send_raw_message(begin_cell().store_uint(0x18,6).store_slice(own).store_coins(50000000).store_uint(1,107).store_ref(b).end_cell(),1);return -1;
+    } elseif(op == 0x414e5904) {
+        throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,curve));body.end_parse();
+        throw_unless(407,value >= 120000000);throw_unless(409,(ton > 0) | (jettons > 0));
+        raw_reserve(balance - value - ton,0);
+        if(jettons) {
+            cell b = begin_cell().store_uint(op::transfer(),32).store_uint(q + (1 << 62),64).store_coins(jettons)
+                .store_slice(curve).store_slice(my_address()).store_uint(0,1).store_coins(20000000).store_uint(0,1).end_cell();
+            send_raw_message(begin_cell().store_uint(0x18,6).store_slice(own).store_coins(80000000).store_uint(1,107).store_ref(b).end_cell(),1);
+        }
+        if(ton) { send_raw_message(begin_cell().store_uint(0x18,6).store_slice(curve).store_coins(ton + 10000000).store_uint(0,107)
+            .store_uint(op::deposit_ton_liquidity,32).store_uint(q,64).store_coins(ton).end_cell(),1); }
+        f = life_put(f,7,life_get(f,7) + ton);f = life_put(f,8,life_get(f,8) + jettons);ton = 0;jettons = 0;
+    } elseif(op == 0x414e5905) {
+        throw_unless(401,equal_slices(sender,curve));int ot = body~load_coins();int oj = body~load_coins();int bt = body~load_coins();int bj = body~load_coins();int it = body~load_coins();int ij = body~load_coins();body.end_parse();
+        throw_unless(409,(ot == life_get(f,0)) & (oj == life_get(f,1)) & (bt >= life_get(f,9)) & (bj >= life_get(f,10)));
+        throw_unless(409,(it >= life_get(f,12)) & (ij >= life_get(f,13)) & (it + life_get(f,2) <= ot) & (ij + life_get(f,3) <= oj));
+        int nt = bt - life_get(f,9) - (it - life_get(f,12));int nj = bj - life_get(f,10) - (ij - life_get(f,13));
+        throw_unless(409,(nt >= 0) & (nj >= 0));f = life_put(f,12,it);f = life_put(f,13,ij);
+        throw_unless(409,(nt <= life_get(f,7)) & (nj <= life_get(f,8)));
+        f = life_put(f,7,life_get(f,7) - nt);f = life_put(f,8,life_get(f,8) - nj);f = life_put(f,9,bt);f = life_put(f,10,bj);
+    } elseif(op == op::abort_migration) { throw(409); }
+    else { return 0; }
+    ifnot(life_get(f,11)) {
+        if((life_get(f,2) == life_get(f,0)) & (life_get(f,3) == life_get(f,1)) & (life_get(f,5) > 0) & (life_get(f,6) > 0)) {
+            save_reconciliation_with_receipts(2,1,life_get(f,6),life_get(f,0),life_get(f,1),0,0,0,null(),null());
+        }
+    }
+    if((life_get(f,7) + life_get(f,8) + life_get(f,9) + life_get(f,10)) > 0) {
+        (int stage,int opened,int epoch,int ot,int oj,int rt,int rj,int total) = load_reconciliation();
+        int complete = (life_get(f,9) == life_get(f,0)) & (life_get(f,10) == life_get(f,1)) & (dt == 0) & (dj == 0);
+        if(complete | (life_get(f,11) == 0)) { save_reconciliation_with_receipts(complete ? 8 : 6,opened,epoch,ot,oj,rt,rj,total,native_receipts(),lp_evidence()); }
+    }
+    save_data((dt > 0) | (dj > 0),curve,locker,dex,master,pton,ton,jettons,admin,lp,pw,dt,dj,code);save_migration_life(q,f,seen);return -1;
+}
+() mark_life_deposit(int q) impure inline {
+    (int found,cell f,cell seen) = migration_life(q);if(found) { f = life_put(f,11,1);save_migration_life(q,f,seen); }
+}
+(int,int,int,int,int,int,int,int,int,int,int,int) get_migration_lifecycle(int q) method_id {
+    (_,cell f,_) = migration_life(q);
+    return(life_get(f,0),life_get(f,1),life_get(f,2),life_get(f,3),life_get(f,4),life_get(f,5),life_get(f,6),life_get(f,7),life_get(f,8),life_get(f,9),life_get(f,10),life_get(f,11));
+}

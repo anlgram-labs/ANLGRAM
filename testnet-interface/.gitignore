@@ -1,0 +1,8 @@
+node_modules/
+public/
+public-pages/
+.pages-worker-build/
+.storage-worker-build/
+.worker-build/
+.wrangler/
+.dev.vars*

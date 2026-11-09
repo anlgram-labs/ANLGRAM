@@ -1,15 +1,15 @@
 /**
  * ANLGRAM Launchpad — Factory Integration
- * Version: 2026.1
+ * Version: 1.0.0
  *
- * Routes token creation with integrated 10% Token Creation Donation.
- * ONE transaction → Deploys Jetton minter, mints supply,
- * sends 10% Token Creation Donation (0.02 TON) to designated recipient.
+ * Factory submission remains blocked pending verified routing and approval.
+ * Direct creation delegates to the canonical creator and its safeguards.
  *
- * Fee & Donation model (all BigInt, no floating point):
- *   Blockchain execution base :  0.20 TON (0.05 minter deploy + 0.15 mint)
- *   10% Token Creation Donation: 0.02 TON (10% of 0.20 TON)
- *   Total estimated cost      :  0.22 TON
+ * Fee model (all BigInt, no floating point):
+ *   Creation execution  : 0.20 TON
+ *   Mandatory Donation  : 0.02 TON (10% of execution)
+ *   Transaction total   : 0.22 TON before wallet network fees
+ * See donation-config.js for the preserved main-branch creation allocation.
  */
 
 (function () {
@@ -22,15 +22,7 @@
     FACTORY_TESTNET: '',   // TODO: fill after testnet deploy
     FACTORY_MAINNET: '',   // TODO: fill after mainnet deploy
 
-    TREASURY: (typeof window !== 'undefined' && window.ANLGRAM_DONATION_CONFIG?.RECIPIENT_ADDRESS)
-      || 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd',
-
-    DONATION_RATE_NUMERATOR:   10n,
-    DONATION_RATE_DENOMINATOR: 100n,
-
-    BLOCKCHAIN_COST_NANO: (typeof window !== 'undefined' && window.ANLGRAM_DONATION_CONFIG?.BASE_EXECUTION_NANO)
-      || 200_000_000n,  // 0.20 TON base execution cost
-    BUFFER_RATE: 0n,
+    TREASURY: 'UQDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbSYd',
 
     NETWORK: 'testnet',  // change to 'mainnet' when ready
 
@@ -40,28 +32,23 @@
   };
 
   // ══════════════════════════════════════════════════════════
-  // FEE & DONATION CALCULATION  (BigInt only)
+  // FEE CALCULATION  (BigInt only)
   // ══════════════════════════════════════════════════════════
 
   function calculateFees() {
-    const dConfig = typeof window !== 'undefined' && window.ANLGRAM_DONATION_CONFIG;
-    const blockchainCost = dConfig ? dConfig.BASE_EXECUTION_NANO : ANLGRAM_CONFIG.BLOCKCHAIN_COST_NANO;
-    const donationFee    = dConfig ? dConfig.DONATION_AMOUNT_NANO : (blockchainCost * ANLGRAM_CONFIG.DONATION_RATE_NUMERATOR / ANLGRAM_CONFIG.DONATION_RATE_DENOMINATOR);
-    const estimatedTotal = dConfig ? dConfig.TOTAL_TRANSACTION_NANO : (blockchainCost + donationFee);
-    const withBuffer     = estimatedTotal;
-
+    const d = window.ANLGRAM_DONATION_CONFIG;
+    if (!d || d.DONATION_AMOUNT_NANO !== 20000000n || d.BASE_EXECUTION_NANO !== 200000000n) throw new Error('Mandatory donation configuration unavailable.');
     return {
-      blockchainCostNano: blockchainCost,
-      platformFeeNano:    donationFee,
-      estimatedTotalNano: estimatedTotal,
-      sendAmountNano:     withBuffer,
-      blockchainCostTON:  nanoToTON(blockchainCost),
-      platformFeeTON:     nanoToTON(donationFee),
-      estimatedTotalTON:  nanoToTON(estimatedTotal),
-      sendAmountTON:      nanoToTON(withBuffer),
+      blockchainCostNano: d.BASE_EXECUTION_NANO,
+      platformFeeNano:    d.DONATION_AMOUNT_NANO,
+      estimatedTotalNano: d.TOTAL_TRANSACTION_NANO,
+      sendAmountNano:     d.TOTAL_TRANSACTION_NANO,
+      blockchainCostTON:  nanoToTON(d.BASE_EXECUTION_NANO),
+      platformFeeTON:     nanoToTON(d.DONATION_AMOUNT_NANO),
+      estimatedTotalTON:  nanoToTON(d.TOTAL_TRANSACTION_NANO),
+      sendAmountTON:      nanoToTON(d.TOTAL_TRANSACTION_NANO),
     };
   }
-
   function nanoToTON(nano) {
     const whole = nano / 1_000_000_000n;
     const frac  = nano % 1_000_000_000n;
@@ -120,7 +107,7 @@
     if (!quote.factoryAddress) {
       throw new Error(
         'ANLGRAM Factory not yet deployed on ' + quote.network.toUpperCase() + '. ' +
-        'Falling back to direct deploy (no platform fee collected).'
+        'Use the canonical creator with its disclosed Mandatory Donation (10%).'
       );
     }
 
@@ -144,6 +131,7 @@
       .endCell();
 
     return {
+      network: '-3',
       validUntil: Math.floor(Date.now() / 1000) + 300,
       messages: [{
         address: quote.factoryAddress,
@@ -167,6 +155,10 @@
       alert("Connect your TON wallet first using 'Connect Wallet'!");
       tc.openModal(); return;
     }
+    if (String(tc.account?.chain) !== '-3') {
+      alert('Red incorrecta: Tu billetera está conectada a TON Mainnet. Cambia a TON Testnet para operar en MemeLabs.');
+      return;
+    }
     if (!window.TON_CORE?.Address) {
       alert('TON libraries still loading. Please retry in a few seconds.'); return;
     }
@@ -187,11 +179,12 @@
     try {
       // If factory not deployed yet → fallback to direct deploy
       if (!quote.factoryAddress) {
-        showProgress(btn, 1, 'Factory not deployed — direct deploy (no fee)...');
+        showProgress(btn, 1, 'Preparing creation with disclosed Mandatory Donation (10%)...');
         await directDeploy(btn, origHTML, tc, name, symbol, desc, logo);
         return;
       }
 
+      throw new Error('Factory creation requires verified donation routing and explicit production approval. No wallet request was sent.');
       showProgress(btn, 1, 'Building factory transaction...');
       const formData = {
         name, symbol,
@@ -205,13 +198,12 @@
       const tx = await buildFactoryTransaction(quote, formData);
 
       showProgress(btn, 2, 'Confirm in your wallet — ONE transaction...');
+      if (String(tc.account?.chain) !== '-3' || quote.network !== 'testnet' || tx.network !== '-3') throw new Error('MemeLabs requires TON Testnet.');
       await tc.sendTransaction(tx);
 
-      showProgress(btn, 3, 'Waiting for blockchain confirmation...');
-      const txHash = await waitForConfirmation(creatorWallet, quote.factoryAddress, 60000);
-
-      showProgress(btn, 4, '✅ Token Created!');
-      showSuccessScreen(quote, formData, txHash);
+      // A wallet response and a recent transaction to the factory do not prove
+      // that this particular token was created. Keep the result unconfirmed.
+      showProgress(btn, 3, 'Transaction submitted; token creation is not yet verified. Check your wallet and the blockchain.');
 
     } catch (e) {
       console.error('[Launchpad] Error:', e);
@@ -235,104 +227,32 @@
   // ══════════════════════════════════════════════════════════
 
   async function directDeploy(btn, origHTML, tc, name, symbol, desc, logo) {
-    const { beginCell, toNano, storeStateInit, Dictionary, Cell, contractAddress, Address } =
-      window.TON_CORE || {};
-    if (!beginCell) {
-      alert('TON Core not ready.'); btn.innerHTML = origHTML; btn.removeAttribute('style'); return;
+    // Reuse the canonical creator: bytecode, network, intent persistence and
+    // exact-address verification must not be bypassed by this entry point.
+    if (typeof window.deployJettonWeb3 !== 'function') {
+      throw new Error('Verified Jetton creator is unavailable. No wallet request was sent.');
     }
-
-    const adminAddress = Address.parse(tc.account.address);
-    const hexToBytes   = (hex) => Uint8Array.from(hex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
-    const sha256Big    = async (s) => {
-      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-      return BigInt('0x' + Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join(''));
-    };
-
-    showProgress(btn, 1, 'Fetching Jetton code...');
-    try {
-      const metadata = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell());
-      const entries  = [['name',name],['symbol',symbol],['description',desc||''],['image',logo||''],['decimals','9']];
-      for (const [k,v] of entries) {
-        if (!v) continue;
-        metadata.set(await sha256Big(k), beginCell().storeUint(0,8).storeStringTail(v).endCell());
-      }
-      const metaCell = beginCell().storeUint(0,8).storeDict(metadata).endCell();
-
-      const res = await fetch(`https://tonapi.io/v2/blockchain/accounts/${ANLGRAM_CONFIG.CLONE_SOURCE}`);
-      const d   = await res.json();
-      if (!d.code || !d.data) throw new Error('Cannot fetch Jetton code');
-
-      const minterCode = Cell.fromBoc(hexToBytes(d.code))[0];
-      const sp = Cell.fromBoc(hexToBytes(d.data))[0].beginParse();
-      sp.loadCoins(); sp.loadAddress(); sp.loadRef();
-      const walletCode = sp.loadRef();
-
-      const minterData = beginCell().storeCoins(0n).storeAddress(adminAddress)
-        .storeRef(metaCell).storeRef(walletCode).endCell();
-
-      const si       = { code: minterCode, data: minterData };
-      const siCell   = beginCell().store(storeStateInit(si)).endCell();
-      const dest     = contractAddress(0, si).toString({ bounceable: false });
-      const destBnc  = contractAddress(0, si).toString({ bounceable: true });
-
-      const fwd   = beginCell().storeUint(0,32).storeStringTail('ANLGRAM Launchpad').endCell();
-      const itr   = beginCell().storeUint(0x178d4519,32).storeUint(0n,64)
-        .storeCoins(toNano('1000000000')).storeAddress(null)
-        .storeAddress(adminAddress).storeCoins(toNano('0.02'))
-        .storeBit(1).storeRef(fwd).endCell();
-      const mint  = beginCell().storeUint(21,32).storeUint(0n,64)
-        .storeAddress(adminAddress).storeCoins(toNano('0.08')).storeRef(itr).endCell();
-
-      const dConfig = window.ANLGRAM_DONATION_CONFIG;
-      const donationNano = (dConfig ? dConfig.DONATION_NANO : 20_000_000n).toString();
-      const donationComment = (dConfig ? dConfig.PAYLOAD_COMMENT : 'ANLGRAM 10% Token Creation Donation');
-      const donationPayload = beginCell().storeUint(0, 32).storeStringTail(donationComment).endCell();
-      const donationRecipient = (dConfig ? dConfig.RECIPIENT_ADDRESS : ANLGRAM_CONFIG.TREASURY);
-
-      showProgress(btn, 2, 'Confirm 3 messages in wallet (0.22 TON total)...');
-      await tc.sendTransaction({
-        validUntil: Math.floor(Date.now()/1000)+600,
-        messages: [
-          { address: dest,    amount: toNano('0.05').toString(), stateInit: siCell.toBoc().toString('base64') },
-          { address: destBnc, amount: toNano('0.15').toString(), payload:   mint.toBoc().toString('base64') },
-          { address: donationRecipient, amount: donationNano, payload: donationPayload.toBoc().toString('base64') },
-        ],
-      });
-
-      btn.innerHTML = '✅ Jetton Deployed (Direct — Factory coming soon)';
-      btn.style.background = 'rgba(255,165,0,0.15)';
-      btn.style.color = '#ffa500';
-      setTimeout(() => { btn.innerHTML = origHTML; btn.removeAttribute('style'); }, 6000);
-
-    } catch (e) {
-      console.error('[Launchpad] Direct deploy error:', e);
-      alert('❌ Error:\n\n' + (e?.message || e));
+    const result = await window.deployJettonWeb3({ currentTarget: btn });
+    if (!result?.submitted) {
       btn.innerHTML = origHTML;
       btn.removeAttribute('style');
+      if (result?.uncertain) {
+        btn.textContent = 'Deployment outcome pending — check wallet and contract';
+        return result;
+      }
+      throw new Error(result?.reason || 'Jetton creation was not submitted.');
     }
+    // The creator emits its existing event to start exact-address state checks.
+    // Wallet acceptance alone is never displayed as completed deployment.
+    btn.textContent = 'Transaction submitted — deployment not yet verified';
+    return result;
   }
-
   // ══════════════════════════════════════════════════════════
-  // TX MONITORING  (best-effort, no backend)
+  // TX MONITORING  (fail-closed; requires AnlgramTransactionReceipt)
   // ══════════════════════════════════════════════════════════
 
-  async function waitForConfirmation(sender, factory, timeoutMs) {
-    const base = ANLGRAM_CONFIG.NETWORK === 'mainnet'
-      ? 'https://tonapi.io' : 'https://testnet.tonapi.io';
-    const end = Date.now() + timeoutMs;
-    while (Date.now() < end) {
-      await sleep(3000);
-      try {
-        const url  = `${base}/v2/blockchain/accounts/${factory}/transactions?limit=5`;
-        const data = await (await fetch(url)).json();
-        const hit  = (data.transactions||[]).find(tx =>
-          (Date.now()/1000 - tx.utime) < 120 &&
-          tx.in_msg?.source?.address === sender
-        );
-        if (hit) return hit.hash || 'confirmed';
-      } catch { /* keep polling */ }
-    }
-    return 'pending';
+  async function waitForConfirmation() {
+    throw new Error('Unverified polling is disabled. Use AnlgramTransactionReceipt for verified on-chain confirmation.');
   }
 
   // ══════════════════════════════════════════════════════════
@@ -351,60 +271,14 @@
         ${done?'✓':active?'⟳':'○'} ${s}</span>`;
     }).join('');
     btn.innerHTML = `<div style="text-align:center;">
-      <div style="font-size:12px;color:#fff;margin-bottom:4px;">${message}</div>
+      <div style="font-size:12px;color:#fff;margin-bottom:4px;">${String(message || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</div>
       <div style="display:flex;justify-content:center;flex-wrap:wrap;">${dots}</div>
     </div>`;
     btn.style.pointerEvents = 'none';
   }
 
-  function showSuccessScreen(quote, formData, txHash) {
-    const panel = document.getElementById('tab-launchpad');
-    if (!panel) return;
-    const txBase = quote.network === 'mainnet'
-      ? 'https://tonscan.org/tx/' : 'https://testnet.tonscan.org/tx/';
-
-    panel.innerHTML = `
-<div class="glass-card" style="max-width:640px;margin:40px auto;text-align:center;padding:40px 32px;">
-  <div style="font-size:56px;margin-bottom:12px;">🚀</div>
-  <h2 style="color:#fff;font-size:26px;font-weight:700;margin-bottom:6px;">Token Created Successfully!</h2>
-  <div style="color:var(--accent-cyan);font-size:20px;font-weight:600;margin-bottom:28px;">$${formData.symbol}</div>
-
-  <div class="glass-card" style="text-align:left;margin-bottom:20px;">
-    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Creation Cost Breakdown</div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-      <span style="color:#94a3b8;">Blockchain execution</span>
-      <span style="font-family:var(--font-mono);color:#fff;">~${quote.blockchainCostTON} TON</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-      <span style="color:#94a3b8;">ANLGRAM platform service</span>
-      <span style="font-family:var(--font-mono);color:#fff;">~${quote.platformFeeTON} TON</span>
-    </div>
-    <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;">
-      <strong style="color:#fff;">Estimated total</strong>
-      <span style="font-family:var(--font-mono);color:var(--accent-cyan);font-weight:700;">~${quote.estimatedTotalTON} TON</span>
-    </div>
-  </div>
-
-  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
-    <div style="display:flex;align-items:center;gap:10px;background:rgba(0,255,100,0.07);border:1px solid rgba(0,255,100,0.2);padding:10px 14px;border-radius:10px;">
-      <span style="color:#00ff66;font-size:16px;">✓</span>
-      <span style="color:#94a3b8;font-size:12px;">Platform service — Processed via ANLGRAM Factory</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;background:rgba(0,255,100,0.07);border:1px solid rgba(0,255,100,0.2);padding:10px 14px;border-radius:10px;">
-      <span style="color:#00ff66;font-size:16px;">✓</span>
-      <span style="color:#94a3b8;font-size:12px;">Blockchain transaction — Submitted</span>
-    </div>
-  </div>
-
-  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-    <a href="${txBase}${txHash}" target="_blank" class="btn-ent" style="text-decoration:none;padding:10px 18px;">View Transaction ↗</a>
-    <button class="btn-solid" onclick="switchTab('liquidity')" style="padding:10px 18px;">Manage Token</button>
-    <button class="btn-solid" onclick="location.reload()" style="padding:10px 18px;background:rgba(255,255,255,0.08);color:#fff;">Create Another</button>
-  </div>
-  <div style="margin-top:16px;font-size:10px;color:var(--text-muted);">
-    Quote ID: ${quote.quoteId} · ${quote.network.toUpperCase()}
-  </div>
-</div>`;
+  function showSuccessScreen() {
+    throw new Error('Unverified success screen is disabled. Confirmations require verified blockchain inclusion.');
   }
 
   // ══════════════════════════════════════════════════════════
@@ -708,8 +582,6 @@
     const fees = calculateFees();
     const card = document.createElement('div');
     card.id = 'anlgram-fee-breakdown';
-    const dConfig = typeof window !== 'undefined' && window.ANLGRAM_DONATION_CONFIG;
-    const recipientAddr = dConfig ? dConfig.RECIPIENT_ADDRESS : ANLGRAM_CONFIG.TREASURY;
     card.innerHTML = `
 <div style="background:rgba(0,240,255,0.04);border:1px solid rgba(0,240,255,0.15);border-radius:12px;padding:16px 20px;margin-bottom:16px;">
   <div style="color:var(--accent-cyan);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Token Creation Cost &amp; Donation Breakdown</div>

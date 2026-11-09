@@ -1,0 +1,39 @@
+name = "anlgram-testnet-preparation"
+main = "../worker.mjs"
+compatibility_date = "2026-10-30"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+preview_urls = false
+[[durable_objects.bindings]]
+name = "PROOFS"
+class_name = "ProofAttempt"
+[[durable_objects.bindings]]
+name = "OPERATIONS"
+class_name = "FinancialOperation"
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ProofAttempt"]
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["FinancialOperation"]
+
+[[durable_objects.bindings]]
+name = "TESTNET_READS"
+class_name = "TestnetReads"
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["TestnetReads"]
+
+[[durable_objects.bindings]]
+name = "CURVE_OPERATIONS"
+class_name = "CurveFinancialOperation"
+
+[[durable_objects.bindings]]
+name = "PROJECT_REGISTRY"
+class_name = "ProjectRegistry"
+script_name = "anlgram-testnet-project-registry"
+
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["CurveFinancialOperation"]

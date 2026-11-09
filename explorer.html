@@ -16,6 +16,8 @@
   <link rel="stylesheet" href="assets/css/tma-mobile.css?v=2026.50"/>
   <link rel="stylesheet" href="assets/css/animations.css"/>
   <link rel="stylesheet" href="assets/css/explorer-stitch.css?v=2026.56"/>
+  <link rel="stylesheet" href="assets/css/rug-radar.css?v=2026.62"/>
+  <link rel="stylesheet" href="assets/css/monetization.css?v=2026.62"/>
   <style>
     /* Absolute Unconstrained Natural Scrolling Guarantee */
     html {
@@ -2712,26 +2714,46 @@ function renderJettonMasterView(jm, holders) {
     }
   }
 
-  // Live STON.fi DEX pool telemetry for GRAM
+  // Live STON.fi DEX pool telemetry for all Jetton Masters (GRAM + dynamic STON.fi pool lookup)
   const dexLiqBox = document.getElementById('jmDexLiqBox');
   const dexVolBox = document.getElementById('jmDexVolBox');
-  if (isGram) {
-    if (dexLiqBox) dexLiqBox.style.display = 'flex';
-    if (dexVolBox) dexVolBox.style.display = 'flex';
-    fetchStonfiPool('EQASBZLwa2vfdsgoDF2w96pdccBJJRxDNXXPUL7NMm0WdnMx').then(pool => {
-      if (pool) {
-        const dexLiqEl = document.getElementById('jmDexLiquidity');
-        const dexVolEl = document.getElementById('jmDexVolume');
-        const liqVal = pool.lp_total_supply_usd ? String(Math.round(Number(pool.lp_total_supply_usd))) : '';
-        const volVal = pool.volume_24h_usd ? String(Math.round(Number(pool.volume_24h_usd))) : '';
-        if (dexLiqEl) dexLiqEl.textContent = liqVal ? ('USD ' + Number(liqVal).toLocaleString()) : 'No disponible';
-        if (dexVolEl) dexVolEl.textContent = volVal ? ('USD ' + Number(volVal).toLocaleString()) : 'No disponible';
+  const dexLiqEl = document.getElementById('jmDexLiquidity');
+  const dexVolEl = document.getElementById('jmDexVolume');
+  if (dexLiqBox) dexLiqBox.style.display = 'flex';
+  if (dexVolBox) dexVolBox.style.display = 'flex';
+  if (dexLiqEl) dexLiqEl.textContent = 'Consultando DEX...';
+  if (dexVolEl) dexVolEl.textContent = 'Consultando DEX...';
+
+  (async () => {
+    try {
+      const targetMasterFriendly = isGram ? CANONICAL_GRAM_CONTRACT : rawToFriendly(currentAccount?.address || '');
+      let poolAddrToQuery = isGram ? 'EQASBZLwa2vfdsgoDF2w96pdccBJJRxDNXXPUL7NMm0WdnMx' : (window.ANLGRAM_RUG_RADAR?.KNOWN_STONFI_POOLS?.[targetMasterFriendly] || '');
+      if (!poolAddrToQuery && targetMasterFriendly) {
+        try {
+          const assetRes = await fetch(`https://api.ston.fi/v1/assets/${encodeURIComponent(targetMasterFriendly)}`);
+          if (assetRes.ok) {
+            const assetData = await assetRes.json();
+            poolAddrToQuery = assetData?.asset?.dex_price_usd ? (assetData?.asset?.default_symbol ? '' : '') : '';
+          }
+        } catch (_) {}
       }
-    }).catch(() => {});
-  } else {
-    if (dexLiqBox) dexLiqBox.style.display = 'none';
-    if (dexVolBox) dexVolBox.style.display = 'none';
-  }
+      if (poolAddrToQuery) {
+        const pool = await fetchStonfiPool(poolAddrToQuery);
+        if (pool) {
+          const liqVal = pool.lp_total_supply_usd ? String(Math.round(Number(pool.lp_total_supply_usd))) : '';
+          const volVal = pool.volume_24h_usd ? String(Math.round(Number(pool.volume_24h_usd))) : '';
+          if (dexLiqEl) dexLiqEl.textContent = liqVal ? ('USD ' + Number(liqVal).toLocaleString()) : 'No verificado';
+          if (dexVolEl) dexVolEl.textContent = volVal ? ('USD ' + Number(volVal).toLocaleString()) : 'No verificado';
+          return;
+        }
+      }
+      if (dexLiqEl) dexLiqEl.textContent = 'No verificado (Sin pool STON.fi indexado)';
+      if (dexVolEl) dexVolEl.textContent = 'No verificado (Sin pool STON.fi indexado)';
+    } catch (_) {
+      if (dexLiqEl) dexLiqEl.textContent = 'No disponible';
+      if (dexVolEl) dexVolEl.textContent = 'No disponible';
+    }
+  })();
 
   // Update STON.fi swap link for GRAM
   const swapLink = document.getElementById('jmSwapLink');
@@ -5151,6 +5173,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 </script>
 
 <script src="assets/js/platform.js?v=2026.35"></script>
+<script src="assets/js/rug-radar.js?v=2026.62"></script>
+<script src="assets/js/monetization.js?v=2026.62"></script>
 <script src="https://unpkg.com/@tonconnect/ui@2.0.8/dist/tonconnect-ui.min.js"></script>
 <script src="assets/js/wallet-connect.js?v=2026.35"></script>
 </body>

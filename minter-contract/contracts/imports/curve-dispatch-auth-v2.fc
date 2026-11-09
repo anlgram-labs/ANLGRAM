@@ -1,0 +1,74 @@
+#include "vnext-permit-fields.fc";
+#include "vnext-migration-template.fc";
+int vn_config_key() inline { return cell_hash(begin_cell().store_uint(0x564e4346,32).end_cell()); }
+int vn_curve_key(int q) inline { return cell_hash(begin_cell().store_uint(0x564e4150,32).store_uint(q,64).end_cell()); }
+cell vn_curve_config() inline { (slice s,int ok) = curve_life_records().udict_get?(256,vn_config_key());throw_unless(409,ok);return s~load_ref(); }
+(int,int,int,int,int) vn_curve_record(int q) inline {
+    (slice s,int found) = curve_life_records().udict_get?(256,vn_curve_key(q));ifnot(found) { return(0,0,0,0,0); }
+    return(s~load_uint(64),s~load_uint(256),s~load_uint(32),s~load_uint(64),s~load_uint(2));
+}
+() vn_curve_save(int q,int nonce,int digest,int expiry,int epoch,int state) impure inline {
+    cell d = curve_life_records();d~udict_set_builder(256,vn_curve_key(q),begin_cell().store_uint(nonce,64).store_uint(digest,256).store_uint(expiry,32).store_uint(epoch,64).store_uint(state,2));curve_life_save(d);
+}
+cell validate_guard_vnext(cell init,cell migration_init,slice curve,slice migrator,slice guard,slice master) impure inline {
+    throw_unless(408,equal_slices(calculate_jetton_wallet_address(init),guard));slice s = init.begin_parse();throw_unless(408,s~load_uint(2) == 0);cell code = s~load_dict();cell data = s~load_dict();throw_unless(408,(s~load_uint(1) == 0) & (cell_hash(code) == LP_AUTH_GUARD_CODE_HASH));s.end_parse();
+    slice gd = data.begin_parse();throw_unless(408,gd~load_uint(8) == 1);cell cfg = gd~load_ref();throw_unless(408,cell_null?(gd~load_dict()));gd.end_parse();
+    s = migration_init.begin_parse();s~skip_bits(2);s~load_dict();slice md = s~load_dict().begin_parse();md~load_uint(1);repeat(3) { md~load_msg_addr(); } md~load_ref();md~load_ref();slice flight = md~load_ref().begin_parse();flight~skip_bits(131);flight~load_msg_addr();flight~load_msg_addr();cell ids = flight~load_dict();(slice record,int found) = ids.udict_get?(64,0);throw_unless(408,found);slice r = record~load_ref().begin_parse();r~load_uint(32);cell intent = r~load_ref();
+    slice c = cfg.begin_parse();int root = c~load_uint(64);int key = c~load_uint(256);int versions = c~load_uint(256);throw_unless(408,(c~load_uint(256) == cell_hash(intent)) & (key != 0));
+    slice parties = c~load_ref().begin_parse();c.end_parse();throw_unless(408,equal_slices(parties~load_msg_addr(),curve) & (parties~load_msg_addr().preload_uint(2) == 0) & equal_slices(parties~load_msg_addr(),master));cell template = parties~load_ref();parties.end_parse();throw_unless(408,cell_hash(template) == cell_hash(vn_migration_template(migration_init,curve,guard)));slice i = intent.begin_parse();i~skip_bits(71);throw_unless(408,i~load_uint(64) == root);
+    throw_unless(408,versions == cell_hash(begin_cell().store_uint(LP_AUTH_GUARD_CODE_HASH,256).store_uint(MIGRATION_ROUTER_V2_CODE_HASH,256).store_uint(LP_LOCKER_V2_CODE_HASH,256).store_ref(begin_cell().store_uint(SETTLEMENT_WALLET_CODE_HASH,256).store_uint(2,32).end_cell()).end_cell()));
+    return cfg;
+}
+int handle_curve_vnext_auth(int op,int q,slice body,slice sender,int value,int balance) impure {
+    ifnot((op == 0x414e5b12) | (op == 0x414e5b13) | (op == 0x414e5b02) | (op == 0x414e5b21) | (op == 0xd53276db)) { return 0; }
+    (int state,slice admin,slice creator,_,slice master,_,_,slice guard,slice migrator,int ton,_,_,_,_,_,_,int tokens,cell d,_) = load_data();
+    if((op == 0xd53276db) & (~ equal_slices(sender,guard))) { return 0; }
+    slice cfg = vn_curve_config().begin_parse();throw_unless(409,cfg~load_uint(64) == q);cfg~load_uint(256);int versions = cfg~load_uint(256);int intent = cfg~load_uint(256);
+    if(op == 0xd53276db) { body.end_parse();raw_reserve(balance - value,0);return_unreserved_gas(admin,q);return -1; } ;; operational query TON only, never a financial receipt
+    if(op == 0x414e5b21) {
+        throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,creator));throw_unless(407,value >= 80000000);cell init = body~load_ref();body.end_parse();throw_unless(408,equal_slices(calculate_jetton_wallet_address(init),migrator));
+        raw_reserve(balance - value,0);cell b = begin_cell().store_uint(0x414e5b20,32).store_uint(q,64).store_ref(init).end_cell();
+        send_raw_message(begin_cell().store_uint(0x18,6).store_slice(guard).store_coins(50000000).store_uint(1,107).store_ref(b).end_cell(),1);
+        send_raw_message(begin_cell().store_uint(0x10,6).store_slice(sender).store_coins(0).store_uint(0,107).store_uint(0xd53276db,32).store_uint(q,64).end_cell(),128 + 2);return -1;
+    }
+    throw_unless(409,curve_v2_local_ready() & (curve_life_flags(q) >= 0) & ((curve_life_flags(q) & 4) == 0));
+    (slice refund,int opened) = d.udict_get?(256,curve_return_key(q));throw_unless(409,opened);repeat(4) { refund~load_coins(); } int epoch = refund~load_uint(64);throw_unless(409,epoch > 0);
+    if(op != 0x414e5b02) {
+        throw_unless(401,equal_slices(sender,admin) | equal_slices(sender,creator));throw_unless(407,value >= 80000000);int nonce = body~load_uint(64);int digest = body~load_uint(256);body.end_parse();throw_unless(409,nonce > 0);
+        if(op == 0x414e5b13) { (int prior,int hash,int expiry,_,int status) = vn_curve_record(q);throw_unless(409,(prior == nonce) & (hash == digest) & (status != 3) & ((expiry == 0) | (now() >= expiry))); }
+        vn_curve_save(q,nonce,digest,0,epoch,op == 0x414e5b13 ? 2 : 0);raw_reserve(balance - value,0);
+        cell snapshot = begin_cell().store_coins(ton).store_coins(tokens).store_uint(epoch,64).store_uint(0,64).store_uint(0,64).end_cell();
+        cell b = begin_cell().store_uint(op == 0x414e5b13 ? 0x414e5b05 : 0x414e5701,32).store_uint(q,64).store_uint(nonce,64).store_uint(digest,256).store_ref(snapshot).end_cell();
+        send_raw_message(begin_cell().store_uint(0x18,6).store_slice(guard).store_coins(50000000).store_uint(1,107).store_ref(b).end_cell(),1);
+        send_raw_message(begin_cell().store_uint(0x10,6).store_slice(sender).store_coins(0).store_uint(0,107).store_uint(0xd53276db,32).store_uint(q,64).end_cell(),128 + 2);return -1;
+    }
+    throw_unless(401,equal_slices(sender,guard));int revision = body~load_uint(64);int expiry = body~load_uint(32);int digest = body~load_uint(256);cell p = body~load_ref();body.end_parse();
+    (int phase,int root,int nonce,int deadline,int nt,int nj,_,int ce,_,_,int v,slice g,slice c,slice m,slice token,int commitment) = vn_fields(p);
+    throw_unless(408,equal_slices(g,guard) & equal_slices(c,my_address()) & equal_slices(m,migrator) & equal_slices(token,master) & (commitment == intent) & (v == versions));
+    (int requested,int hash,_,int expected,int status) = vn_curve_record(q);throw_unless(409,(phase == 1) & (root == q) & (nonce == revision) & (deadline == expiry) & (digest == cell_hash(p)) & (requested == nonce) & (hash == digest) & (expected == ce) & (ce == epoch) & (nt == ton) & (nj == tokens) & ((status == 0) | (status == 1)));
+    vn_curve_save(q,nonce,digest,expiry,epoch,1);curve_life_flag(q,curve_life_flags(q) | 1);
+    raw_reserve(balance - value,0);return_unreserved_gas(admin,q);return -1;
+}
+() vn_require_curve_dispatch(int q,int nonce,int digest) impure inline {
+    (int n,int h,int expiry,_,int status) = vn_curve_record(q);throw_unless(409,(n == nonce) & (h == digest) & (n > 0) & (status == 1) & (now() < expiry));
+    cell network = config_param(19);throw_if(408,cell_null?(network));slice actual_network = network.begin_parse();throw_unless(408,actual_network~load_int(32) == -3);
+    throw_unless(409,curve_v2_local_ready() & ((curve_life_flags(q) & 7) == 3));
+    (_,_,_,_,_,_,_,_,_,int ton,_,int fees,_,_,_,_,_,_,_) = load_data();
+    throw_unless(409,get_balance().pair_first() >= ton + fees + 10000000);
+}
+(int,int,int,int,int,int) get_curve_permit_vnext(int q) method_id { (int n,int h,int d,int e,int s) = vn_curve_record(q);return(n,h,d,e,s,0); }
+(int,int) get_emergency_recovery_vnext() method_id {
+    (int state,_,_,_,_,_,_,_,_,int ton,_,int fees,int claims,_,_,_,_,_,_) = load_data();
+    slice cfg = vn_curve_config().begin_parse();int root = cfg~load_uint(64);int flags = curve_life_flags(root);
+    int never_sent = (flags < 0) | ((flags & 4) == 0);
+    return(never_sent & (state == STATE_GRADUATION_PENDING) & (ton > 0) & (claims == 0) & (get_balance().pair_first() >= ton + fees + 10000000),0); ;; reserve check only, NO refund authorization
+}
+
+() vd_consume_curve(int q) impure inline {
+    (int n,int h,int expiry,int epoch,int state) = vn_curve_record(q);throw_unless(409,state == 1);
+    vn_curve_save(q,n,h,expiry,epoch,3);
+}
+(int,int) get_dispatch_state_curve(int q) method_id {
+    (int n,_,_,_,int state) = vn_curve_record(q);int flags = curve_life_flags(q);
+    return((flags >= 0) & ((flags & 4) != 0) ? 2 : (state == 1 ? 1 : 0),0);
+}

@@ -1,0 +1,7 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {fileURLToPath} from 'node:url';
+import {Miniflare,convertV4MiniflareOptions} from 'miniflare';import {createDraft} from '../wizard/model.mjs';
+test('exact compiled Pages bundle prepares both project modes without RPC, storage mutation or signing capability',async()=>{
+ const origin='https://testnet.anlgram.com',mf=new Miniflare(convertV4MiniflareOptions({scriptPath:fileURLToPath(new URL('../public-pages/_worker.js',import.meta.url)),modules:true,compatibilityDate:'2026-10-30',compatibilityFlags:['nodejs_compat'],bindings:{APP_ORIGIN:origin},serviceBindings:{ASSETS:async()=>new Response('asset')}}));
+ try{for(const mode of ['standard','launchpad']){const d=createDraft();d.mode=mode;Object.assign(d.metadata,{name:'Pages runtime',symbol:'PGS',creator:'0:'+'11'.repeat(32)});d.lp.beneficiary=d.metadata.creator;const r=await mf.dispatchFetch(origin+'/api/projects/prepare',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(d)}),p=await r.json();assert.equal(r.status,200,JSON.stringify(p));assert.equal(p.network,'-3');assert.equal(p.financialSigningEnabled,false);assert.equal(p.broadcastEnabled,false);assert.equal(p.metadata.anlgram_project_id,d.id);assert.equal(p.operations[0].receiptExpectation.stateInitHash.length,64);assert(p.operations.every(x=>x.status==='NOT_SUBMITTED'));}}
+ finally{await mf.dispose();}
+});

@@ -1,0 +1,16 @@
+{
+  "recordedUtc": "2026-10-31T21:18:14.747Z",
+  "productionCommit": "37ee53b483d69b0e301dc7ba8ba62696e2d37e17",
+  "source": "Actual public Chrome TON Connect session and owner confirmation",
+  "raw": "0:d6fcfb2399e38107f7efcce166c2a5bbade74472e7ca420226cab511bceedd6d",
+  "network": "-3",
+  "friendly": "0QDW_PsjmeOBB_fvzOFmwqW7redEcufKQgImyrURvO7dbZ2X",
+  "ownerApprovedConnection": true,
+  "restoredAfterReload": true,
+  "deployEnabled": false,
+  "cryptographicTonProofVerified": false,
+  "financialSignaturesRequested": 0,
+  "transactionsBroadcast": 0,
+  "spentTON": "0",
+  "scope": "Owner-approved SDK connection only; not an independent ton_proof signature or financial authorization."
+}

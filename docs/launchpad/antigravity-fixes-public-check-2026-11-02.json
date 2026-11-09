@@ -1,0 +1,24 @@
+{
+  "observedAt": "2026-11-02T19:22:31.155Z",
+  "commit": "1e7f4fe",
+  "scope": "PUBLIC_READ_ONLY_CHECK_NOT_AUTHENTICATED_RECEIPT_SUCCESS",
+  "versionMatches": true,
+  "bundleMatches": false,
+  "financialSigningEnabled": false,
+  "originalLock": {
+    "operation": "ANLTEST_CURVE_TX2",
+    "state": "LOCKED_PENDING_RECONCILIATION",
+    "fingerprint": "508c80f62122112cbda6af7a1fdad53a4a1bc86bad009bdd66f212988055bb28",
+    "claimedAt": 1793573585344,
+    "validUntil": 1793573616
+  },
+  "executionEnabled": false,
+  "lastReceiptCheck": null,
+  "observation": {
+    "status": 429,
+    "provider": "TONAPI_TESTNET",
+    "reason": "PROVIDER_RATE_LIMITED"
+  },
+  "missingProofRejected": true,
+  "financialRequests": 0
+}

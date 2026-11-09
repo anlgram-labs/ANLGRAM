@@ -1,0 +1,11 @@
+;; ANLGRAM opt-in settlement protocol v1. These are NOT STON.fi opcodes.
+const int sop::transfer = 0x414e5301;
+const int sop::internal = 0x414e5302;
+const int sop::ack = 0x414e5303;
+const int sop::receipt = 0x414e5304;
+const int sop::retry = 0x414e5305;
+const int sop::query = 0x414e5306;
+const int sop::not_seen = 0x414e5307;
+const int sop::credit_open = 0x414e5308;
+const int sop::credit_query = 0x414e5309;
+const int sop::credit_receipt = 0x414e530a;

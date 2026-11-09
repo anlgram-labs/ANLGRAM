@@ -1,0 +1,13 @@
+;; Typed migration permission fields. Never a custody/refund attestation.
+(int,int,int,int,int,int,int,int,int,int,int,slice,slice,slice,slice,int) vn_fields(cell permit) impure inline {
+    cell network = config_param(19);throw_if(408,cell_null?(network));slice n = network.begin_parse();throw_unless(408,n~load_int(32) == -3);n.end_parse();
+    slice s = permit.begin_parse();throw_unless(408,(s~load_uint(32) == 0x414e5650) & (s~load_uint(8) == 1) & (s~load_int(32) == -3));
+    int phase = s~load_uint(8);int q = s~load_uint(64);int nonce = s~load_uint(64);int starts = s~load_uint(32);int deadline = s~load_uint(32);
+    int ton = s~load_coins();int tokens = s~load_coins();int minimum = s~load_coins();slice scope = s~load_ref().begin_parse();slice project = s~load_ref().begin_parse();slice epochs = s~load_ref().begin_parse();s.end_parse();
+    slice guard = scope~load_msg_addr();slice curve = scope~load_msg_addr();slice migrator = scope~load_msg_addr();scope.end_parse();slice master = project~load_msg_addr();int intent = project~load_uint(256);project.end_parse();
+    int ce = epochs~load_uint(64);int fe = epochs~load_uint(64);int de = epochs~load_uint(64);int versions = epochs~load_uint(256);epochs.end_parse();
+    throw_unless(409,((phase == 1) | (phase == 2)) & (q > 0) & (q < (1 << 62)) & (nonce > 0) & (starts <= now()) & (deadline > now()) & (deadline <= starts + 60));
+    throw_unless(409,(ton >= 300000000000) & (tokens == 200000000000000000) & (minimum > 0) & (ce > 0));
+    throw_unless(409,phase == 1 ? ((fe == 0) & (de == 0)) : ((fe > 0) & (de > 0)));
+    return(phase,q,nonce,deadline,ton,tokens,minimum,ce,fe,de,versions,guard,curve,migrator,master,intent);
+}

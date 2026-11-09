@@ -1,0 +1,124 @@
+{
+  "observedUtc": "2026-10-30T10:47:35.887Z",
+  "scope": "Read-only independent provider observations, not cryptographic state proofs or ANLGRAM live transactions",
+  "credentialsAvailable": {
+    "TONCENTER_API_KEY": false
+  },
+  "observations": [
+    {
+      "role": "router",
+      "address": "0:05a5e18525003d2aa882c5767c27897ffef4980311528ab48ebcf1e7e92497e3",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "status": "active",
+      "balanceNano": "2103627072",
+      "codeHash": "a7e2f92c4bccbdbaaa0c083aa1da9762b52023134234adeb3b7bc8e72dbd1182",
+      "dataHash": "cce94692fedffabc18bd98427cabdbd18d968cc50e173f2eb5d2868c5693512b",
+      "lastTransaction": {
+        "lt": "106246913000005",
+        "hash": "JcfZsRIAD/jZKQ+AiEHVp0Gmgi9DyoYn4hqYqzx+HJo="
+      },
+      "snapshotCodeReferenceMatches": true
+    },
+    {
+      "role": "pton",
+      "address": "0:024b7d03368510ecd7c0a4fbf387b78199267d2f8ca027e964356b5b6bc4d04f",
+      "provider": "toncenter",
+      "network": "testnet",
+      "verification": "PROVIDER_OBSERVATION",
+      "financialOutcome": "NOT_VERIFIED",
+      "status": "active",
+      "balanceNano": "13198701348",
+      "codeHash": "faf8bb63fe7c20f8468c1cda6981998eb1fdfb86571bf6e592e141f30f8e4461",
+      "dataHash": "471f12a89a5921abfb0dd3f811eb63d96c1f543cb2575dbf9d28f5103413b24b",
+      "lastTransaction": {
+        "lt": "106417186000003",
+        "hash": "6BurrmBFtrjGteNaC/hSZPnMVYt0tuBB2OaHMse0Ju4="
+      },
+      "snapshotCodeReferenceMatches": true
+    }
+  ],
+  "trace": {
+    "provider": "toncenter",
+    "network": "testnet",
+    "status": "OBSERVED",
+    "financialOutcome": "NOT_VERIFIED",
+    "lookup": {
+      "kind": "transaction",
+      "hash": "25c7d9b112000ff8d9290f808841d5a741a6822f43ca8627e21a98ab3c7e1c9a"
+    },
+    "traceId": "ACC/+BELF43DByJP1aeQht2Is/sPwiOYaGqhZZTNsPs=",
+    "isIncomplete": false,
+    "transactionCount": 8,
+    "transactions": [
+      {
+        "hash": "ACC/+BELF43DByJP1aeQht2Is/sPwiOYaGqhZZTNsPs=",
+        "account": "0:D835591CC533F9ABE50DB6E1846BDBF7F28C27A278600EC2707F46A052B4EBFA",
+        "lt": "106246913000001",
+        "emulated": false,
+        "finality": "finalized"
+      },
+      {
+        "hash": "CHCBuozPENBu3NT+WrmmBbIo6ypy1wS13VCsWiOyC0Q=",
+        "account": "0:F9816D7DB07745B247F7A05C94B34BDD8E369A4D71AB90D1A26C96E4820ED728",
+        "lt": "106246913000003",
+        "emulated": false,
+        "finality": "finalized"
+      },
+      {
+        "hash": "JcfZsRIAD/jZKQ+AiEHVp0Gmgi9DyoYn4hqYqzx+HJo=",
+        "account": "0:05A5E18525003D2AA882C5767C27897FFEF4980311528AB48EBCF1E7E92497E3",
+        "lt": "106246913000005",
+        "emulated": false,
+        "finality": "finalized"
+      },
+      {
+        "hash": "U8DSCYeTbdBW4PQrwTBwQQwCyfLXJ4Ky9EHaz4TrGgI=",
+        "account": "0:232878BB142C9B29C13A3743EBBB5620CF7F90433DB2D05B696AA4D3B37EBCBE",
+        "lt": "106246913000007",
+        "emulated": false,
+        "finality": "finalized"
+      },
+      {
+        "hash": "SfSlM1mR++/Sa2f7H/Hd4H/tpDtFjNq4R7lRtSRcmhw=",
+        "account": "0:D80E5F3C1D90AE1841BBE00C2E07F4F3DC4CD36BF6D4065C2C3B2D3253A0AA1E",
+        "lt": "106246913000009",
+        "emulated": false,
+        "finality": "finalized"
+      },
+      {
+        "hash": "I6OfEQlctNjQHS7l15emauK9pViXYaHRalLGs2wVyUI=",
+        "account": "0:232878BB142C9B29C13A3743EBBB5620CF7F90433DB2D05B696AA4D3B37EBCBE",
+        "lt": "106246913000011",
+        "emulated": false,
+        "finality": "finalized"
+      },
+      {
+        "hash": "nJBw6WYSO/DZfIET7ltvmNnpnwRJopsGDZgOSevrh5k=",
+        "account": "0:0E2C03EB38AB6331DCB548FCCD16FD72CB8C8D7953F5FB7F431E37091B961C11",
+        "lt": "106246913000013",
+        "emulated": false,
+        "finality": "finalized"
+      },
+      {
+        "hash": "wOK3RTBLQWcTYvDuzsOgDpLyg5GR9uxRO11VYbhpLDA=",
+        "account": "0:D835591CC533F9ABE50DB6E1846BDBF7F28C27A278600EC2707F46A052B4EBFA",
+        "lt": "106246913000015",
+        "emulated": false,
+        "finality": "finalized"
+      }
+    ]
+  },
+  "migrationAuthorized": false,
+  "existingCredentialReadCheck": {
+    "variableName": "TONCENTER_API_KEY",
+    "credentialSource": "Existing original checkout environment file, read-only; value never copied or recorded",
+    "requestHost": "testnet.toncenter.com",
+    "httpStatus": 200,
+    "status": "active",
+    "codeHash": "a7e2f92c4bccbdbaaa0c083aa1da9762b52023134234adeb3b7bc8e72dbd1182",
+    "scope": "Protected header read-only account request, not transaction verification"
+  }
+}

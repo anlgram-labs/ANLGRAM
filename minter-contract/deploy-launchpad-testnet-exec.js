@@ -279,17 +279,32 @@ function verifyArtifacts() {
         errors.push(`Artifact ${spec.artifact} is missing codeBocBase64.`);
         continue;
       }
+      // Hex/base64 may use different valid index/CRC serialization options.
+      // Compare decoded cells, and hash the serialization recorded by compiler.
+      const { Cell } = require('@ton/core');
+      const codeCells = Cell.fromBoc(Buffer.from(data.codeBocBase64, 'base64'));
       const bocBuffer = data.codeHex ? Buffer.from(data.codeHex, 'hex') : Buffer.from(data.codeBocBase64, 'base64');
+      const cells = Cell.fromBoc(bocBuffer);
+      if (cells.length !== 1 || codeCells.length !== 1 || !cells[0].hash().equals(codeCells[0].hash())) {
+        errors.push(`Conflicting BOC encodings in ${spec.artifact}.`);
+        continue;
+      }
       const sha256 = crypto.createHash('sha256').update(bocBuffer).digest('hex');
       if (data.bocFileSha256 && data.bocFileSha256.toLowerCase() !== sha256.toLowerCase()) {
         errors.push(`Checksum mismatch in ${spec.artifact}: recorded ${data.bocFileSha256} != calculated ${sha256}`);
         continue;
       }
+      const actualCodeHash = cells[0].hash().toString('hex');
+      if ([data.codeCellHash, data.codeHash].some(hash => hash && hash.toLowerCase() !== actualCodeHash)) {
+        errors.push(`Code cell hash mismatch in ${spec.artifact}.`);
+        continue;
+      }
+      // Internal consistency is not deployment approval or source verification.
       artifacts[spec.id] = {
         id: spec.id,
         label: spec.label,
         codeBocBase64: data.codeBocBase64,
-        codeCellHash: data.codeCellHash || data.codeHash,
+        codeCellHash: actualCodeHash,
         bocSha256: sha256,
         sizeBytes: bocBuffer.length,
       };
@@ -328,9 +343,9 @@ function deriveDeterministicAddresses(deployerAddress, artifacts) {
   const minterAddress = contractAddress(0, minterStateInit);
 
   // 2. Bonding Curve StateInit
-  const vTon = 166666666666n;
-  const vTok = 266666666665600000n;
-  const tGrad = 500000000000n; // 500 TON
+  const vTon = 100000000000n; // 100 TON
+  const vTok = 266666666666666666n; // 266.666666666M tokens
+  const tGrad = 300000000000n; // 300 TON
   const curveTokens = 800000000000000000n; // 800M
   const dexEscrow = 200000000000000000n; // 200M
 
@@ -849,7 +864,7 @@ function printPlan(predictedAddresses) {
   console.log('  ─────────────────────────────────────────────────────────────────────────');
   console.log(`  TOTAL REQUIRED MINIMUM BALANCE:                        ${DEPLOYMENT_BUDGET.minimumRequiredBalance.toFixed(2)} TON`);
   console.log(`  RECOMMENDED OPERATOR WALLET BALANCE:                   ${DEPLOYMENT_BUDGET.recommendedBalance.toFixed(2)} TON`);
-  console.log('\n  ⚠️  FINANCIAL INVARIANT: The 500 TON DEX graduation liquidity is provided');
+  console.log('\n  ⚠️  FINANCIAL INVARIANT: The 300 TON DEX graduation liquidity is provided');
   console.log('      by users during trading, NEVER subsidized from deployer gas reserves.');
 
   console.log('\n--- 5. Security & Safety State ---');

@@ -296,22 +296,25 @@
 
   window.getConnectedWalletChainId = function() {
     // 1. Live chain directly from connected TonConnect wallet instance
-    const rawChain = window.tonConnectUI?.wallet?.account?.chain;
-    if (rawChain === '-3' || rawChain === -3) return '-3';
-    if (rawChain === '-239' || rawChain === -239) return '-239';
+    const walletAccount = window.tonConnectUI?.wallet?.account || window.tonConnectUI?.account;
+    if (walletAccount) {
+      const rawChain = String(walletAccount.chain ?? '').toLowerCase();
+      if (rawChain === '-3' || rawChain === '0xfffffffd') return '-3';
+      if (rawChain === '-239' || rawChain === '0xffffff11') return '-239';
+      // Connected TonConnect wallet with missing or unrecognized chain must fail closed
+      return null;
+    }
 
-    // 2. Fallback to stored network preference if TonConnect session is still restoring or watch-only mode
+    // 2. Fallback to stored network preference ONLY in watch-only mode
     const storedNet = localStorage.getItem('anlgram_wallet_network') || localStorage.getItem('anlgram_staking_network');
     if (storedNet === 'mainnet') return '-239';
     if (storedNet === 'testnet') return '-3';
 
-    // 3. Fallback based on address prefix if available
+    // 3. Fallback based on friendly address prefix ONLY (raw 0:... addresses are ambiguous across chains)
     const addr = currentAddress || localStorage.getItem('anlgram_wallet_addr');
     if (addr) {
       if (addr.startsWith('kQ') || addr.startsWith('0Q')) return '-3';
       if (addr.startsWith('EQ') || addr.startsWith('UQ')) return '-239';
-      // Workchain 0 raw format (0:...), default to Mainnet
-      return '-239';
     }
 
     return null;
@@ -381,6 +384,12 @@ window.isWalletReadyForTransaction = function() {
 
     const overlay = document.getElementById('anlgram-wallet-modal-overlay');
     if (overlay) overlay.style.display = 'none';
+
+    const notice = document.getElementById('memelabs-network-warning');
+    if (notice) {
+      notice.hidden = true;
+      notice.textContent = '';
+    }
 
     window.dispatchEvent(new CustomEvent('anlgramWalletChanged', { detail: { address: null, network: 'mainnet', isTonConnect: false, isReadOnly: true } }));
     await updateAllButtons();
@@ -466,8 +475,25 @@ window.isWalletReadyForTransaction = function() {
         window.tonConnectUI = tonConnectUI;
 
         const getChainNetwork = (wallet) => {
-          const chain = wallet?.account?.chain;
-          return (chain === '-3' || chain === -3) ? 'testnet' : 'mainnet';
+          const chain = String(wallet?.account?.chain ?? '').toLowerCase();
+          if (['-3','0xfffffffd'].includes(chain)) return 'testnet';
+          if (['-239','0xffffff11'].includes(chain)) return 'mainnet';
+          return 'unverified';
+        };
+        const displayMemeLabsNetwork = (wallet) => {
+          if (!/\/(?:memecoin-platform\.html|memelabs)\/?$/.test(window.location.pathname)) return;
+          const root=document.querySelector('main')||document.body;
+          let notice=document.getElementById('memelabs-network-warning');
+          if(!notice){notice=document.createElement('p');notice.id='memelabs-network-warning';
+            notice.setAttribute('role','status');notice.style.color='#ef4444';root.prepend(notice);}
+          const wrong=wallet?.account&&getChainNetwork(wallet)!=='testnet';
+          notice.hidden=!wrong;
+          notice.textContent=wrong?(['-239','0xffffff11'].includes(String(wallet.account.chain).toLowerCase())
+            ?'Red incorrecta: Tu billetera está conectada a TON Mainnet. Cambia a TON Testnet para operar en MemeLabs.'
+            :'No se pudo verificar la red de la billetera. Conecta una cuenta de TON Testnet.'):'';
+          if(wrong)for(const id of ['wizard-step2-deploy-btn','deploy-confirm-submit','curve-buy','curve-sell']){
+            const button=document.getElementById(id);if(button)button.disabled=true;
+          }
         };
 
         let hasRestoredAttempted = false;
@@ -477,6 +503,7 @@ window.isWalletReadyForTransaction = function() {
           tonConnectUI.connectionRestored.then(restored => {
             hasRestoredAttempted = true;
             if (restored && tonConnectUI.wallet && tonConnectUI.wallet.account) {
+              displayMemeLabsNetwork(tonConnectUI.wallet);
               const addr = tonConnectUI.wallet.account.address || tonConnectUI.wallet.account.friendlyAddress;
               const net = getChainNetwork(tonConnectUI.wallet);
               window.setConnectedWallet(addr, tonConnectUI.wallet.device?.appName || 'TON Connect', net, true);
@@ -490,6 +517,7 @@ window.isWalletReadyForTransaction = function() {
         }
 
         tonConnectUI.onStatusChange(wallet => {
+          displayMemeLabsNetwork(wallet);
           if (wallet && wallet.account) {
             const addr = wallet.account.address || wallet.account.friendlyAddress;
             const net = getChainNetwork(wallet);
@@ -504,6 +532,7 @@ window.isWalletReadyForTransaction = function() {
 
         // Restore session if wallet was synchronously available
         if (tonConnectUI.wallet && tonConnectUI.wallet.account) {
+          displayMemeLabsNetwork(tonConnectUI.wallet);
           const addr = tonConnectUI.wallet.account.address || tonConnectUI.wallet.account.friendlyAddress;
           const net = getChainNetwork(tonConnectUI.wallet);
           window.setConnectedWallet(addr, tonConnectUI.wallet.device?.appName || 'TON Connect', net, true);

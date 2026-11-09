@@ -1,0 +1,13 @@
+{
+  "operationId": "ANLTEST_MINTER_TX1",
+  "network": "-3",
+  "origin": "https://testnet.anlgram.com",
+  "validUntil": 1793506802,
+  "fingerprint": "165b270f03372584e46982baeb0774a7705ea9da31bdaac6b39fcdb86e9a28d1",
+  "modeledDebitNano": "106876954",
+  "quoteExpiresAt": "2026-11-01T04:19:33.000Z",
+  "ownerProofExpiresAt": "2026-11-01T04:22:31.000Z",
+  "authorization": "Owner attached authorization to prepare and present first Testnet deployment for native wallet review; same approved candidate and exact 0.10 TON attachment",
+  "requestPresentedFromReviewedWebPanel": true,
+  "rawProofOrSignedBocCommitted": false
+}

@@ -1,0 +1,29 @@
+;; DEVELOPMENT code-identity pins, not independently audited source approval.
+;; Genesis schema matched to captured real Router and pinned TON ABI revision.
+;; These checks never authorize migration or establish live foreign code state.
+(cell,cell,cell) stonfi_profile_codes(cell profile) impure inline {
+    slice s = profile.begin_parse();
+    throw_unless(408,s~load_uint(32) == 0x53543232);
+    int lp_fee = s~load_uint(16);int protocol_fee = s~load_uint(16);
+    throw_unless(408,(lp_fee == 20) & (protocol_fee == 10));
+    cell pool_code = s~load_ref();cell lp_code = s~load_ref();cell account_code = s~load_ref();s.end_parse();
+    throw_unless(408,cell_hash(pool_code) == 0xec614ea4aaea3f7768606f1c1632b3374d3de096a1e7c4ba43c8009c487fee9d);
+    throw_unless(408,cell_hash(lp_code) == 0xbf13041750f2beeb688859c75689e2c18b9c90bd78e97b197aad7ad6bc520c84);
+    throw_unless(408,cell_hash(account_code) == 0x3f1bb3192caaaa1ab7ae7474de50e2e3625fe2757aed4be4f4e9c3fc85ac0b9a);
+    return (pool_code,lp_code,account_code);
+}
+(slice,slice) stonfi_expected_destinations(slice router,slice w0,slice w1,cell profile) inline {
+    force_chain(router);force_chain(w0);force_chain(w1);
+    throw_if(408,equal_slices(w0,w1));
+    (cell pool_code,cell lp_code,cell account_code) = stonfi_profile_codes(profile);
+    ;; Actual captured v2.2 ordering: descending serialized-address cell hash.
+    slice a = w0;slice b = w1;
+    if (slice_hash(w0) < slice_hash(w1)) { a = w1;b = w0; }
+    cell static_data = begin_cell().store_slice(router).store_slice(a).store_slice(b).store_ref(lp_code).store_ref(account_code).end_cell();
+    cell pool_data = begin_cell().store_uint(0,1).store_coins(0).store_coins(0).store_coins(0).store_coins(0).store_coins(0)
+        .store_uint(0,2).store_uint(20,16).store_uint(10,16).store_ref(static_data).end_cell();
+    cell init = begin_cell().store_uint(0,2).store_dict(pool_code).store_dict(pool_data).store_uint(0,1).end_cell();
+    slice pool = calculate_jetton_wallet_address(init);
+    slice lp = calculate_user_jetton_wallet_address(my_address(),pool,lp_code);
+    return (pool,lp);
+}

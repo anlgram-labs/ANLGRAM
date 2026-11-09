@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "observedAt": "2026-11-02T15:06:46.958Z",
+  "scope": "LIVE_READ_ONLY_PROVIDER_EVIDENCE_NOT_FINALIZED_RECEIPT",
+  "network": "-3",
+  "operator": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+  "originalFingerprint": "508c80f62122112cbda6af7a1fdad53a4a1bc86bad009bdd66f212988055bb28",
+  "toncenter": {
+    "endpoint": "https://testnet.toncenter.com/api/v2/getShardAccountCell",
+    "httpStatus": 200,
+    "authentication": "ANONYMOUS_LOCAL_READ"
+  },
+  "tonapi": {
+    "endpoint": "https://testnet.tonapi.io/v2/liteserver/get_account_state/0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+    "httpStatus": 200,
+    "authentication": "ANONYMOUS_LOCAL_READ"
+  },
+  "accountHash": "2c9a3c46e7d68b6dcfa350699e82306aca04a009a957e53ff71725c082593058",
+  "seqno": 1,
+  "balanceNano": "5893016464",
+  "lastTransactionHash": "d2e8fd5233eb8bf05a428605ea3735d67a1b50741826bb6996156ec49020dc21",
+  "referenceBlock": {
+    "workchain": -1,
+    "shard": "8000000000000000",
+    "seqno": 95327439,
+    "root_hash": "0ceac32314b07a84cc7e88dd03af14b3f5b0eaa56fc12c6fb5d44f4ee17b11d0",
+    "file_hash": "26aaf1ec70763225297bce65d84ecd5521389e907e4012c14306e99a7e23dd1b"
+  },
+  "fullAccountHashesAgree": true,
+  "proofInclusionVerified": false,
+  "validatorFinalityVerified": false,
+  "authenticCurveSignedMessageFound": false,
+  "operationCompleted": false,
+  "financialRequests": 0,
+  "financialSigningEnabled": false
+}

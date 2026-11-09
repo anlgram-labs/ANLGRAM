@@ -46,6 +46,16 @@ async function compileLaunchpadMinter() {
   const bocSizeBytes   = bocBuffer.length;
 
   const outputPath = path.join(__dirname, 'build', 'anlgram-launchpad-jetton-minter.compiled.json');
+  if (process.argv.includes('--check')) {
+    const artifact = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+    if (artifact.codeCellHash !== codeCellHash || artifact.codeHash !== codeCellHash ||
+        artifact.codeBocBase64 !== result.codeBoc || artifact.bocFileSha256 !== bocFileSha256 ||
+        artifact.codeHex !== codeHex || artifact.bocSizeBytes !== bocSizeBytes) {
+      throw new Error('Launchpad minter artifact does not reproduce');
+    }
+    console.log('Launchpad minter code cell:', codeCellHash);
+    return;
+  }
   fs.mkdirSync(path.join(__dirname, 'build'), { recursive: true });
   fs.writeFileSync(outputPath, JSON.stringify({
     contract: 'anlgram-launchpad-jetton-minter.fc',

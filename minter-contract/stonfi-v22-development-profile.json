@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "tag": 1398026802,
+  "scope": "Development code identity only; not independently audited source or deployment authorization",
+  "sourceAuditVerified": false,
+  "migrationAuthorized": false,
+  "routerCodeReferenceHash": "a7e2f92c4bccbdbaaa0c083aa1da9762b52023134234adeb3b7bc8e72dbd1182",
+  "snapshotObservedUtc": "2026-10-30T09:27:37.127Z",
+  "abiReference": "https://github.com/ton-blockchain/abis/tree/7dc57067d85c95dc25c09ccaaf108eaba62f6303/data/stonfi",
+  "genesisLpFee": 20,
+  "genesisProtocolFee": 10,
+  "genesisProtocolFeeAddress": null,
+  "codes": {
+    "pool": {
+      "hash": "ec614ea4aaea3f7768606f1c1632b3374d3de096a1e7c4ba43c8009c487fee9d",
+      "boc": "te6cckEBAQEAIwAIQgKpM47NYkyhXTfkqNm/Z33cm4Tw6Y8F8vuEx6/jMqKBtKTTrh0="
+    },
+    "lpWallet": {
+      "hash": "bf13041750f2beeb688859c75689e2c18b9c90bd78e97b197aad7ad6bc520c84",
+      "boc": "te6cckEBAQEAIwAIQgLACDZEDQhORPuUMWEyrFohQX709CnuCbVWC1Z4szTD6PedWHM="
+    },
+    "lpAccount": {
+      "hash": "3f1bb3192caaaa1ab7ae7474de50e2e3625fe2757aed4be4f4e9c3fc85ac0b9a",
+      "boc": "te6cckEBAQEAIwAIQgLJWi7SKrUW93+dSJjcRXjnLxiiRI6PaDIzSwtL9QG8eU64SPQ="
+    }
+  }
+}

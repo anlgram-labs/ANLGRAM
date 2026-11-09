@@ -1,0 +1,29 @@
+;; Project partner identity + authenticated LP delivery observation.
+;; Does not authorize migration or waive the independent foreign code review.
+cell lp_records() inline {
+    slice s = get_data().begin_parse();s~skip_bits(72);s~load_ref();s~load_ref();s~load_ref();
+    return s.slice_refs() ? s~load_ref() : null();
+}
+() save_lp_records(cell records) impure inline {
+    slice s = get_data().begin_parse();int phase = s~load_uint(8);int nonce = s~load_uint(64);
+    cell cfg = s~load_ref();cell wallets = s~load_ref();cell result = s~load_ref();
+    set_data(begin_cell().store_uint(phase,8).store_uint(nonce,64).store_ref(cfg).store_ref(wallets).store_ref(result).store_ref(records).end_cell());
+}
+int lp_operation_key(int id) inline { return cell_hash(begin_cell().store_uint(0x4c504f50,32).store_uint(id,64).end_cell()); }
+() validate_migration_genesis(cell init,slice funding_owner,slice curve,slice router,slice master,slice pton,slice admin,slice lp,slice pton_wallet) impure inline {
+    throw_unless(408,equal_slices(calculate_jetton_wallet_address(init),funding_owner));
+    slice s = init.begin_parse();throw_unless(408,s~load_uint(2) == 0);cell code = s~load_dict();cell data = s~load_dict();
+    throw_unless(408,s~load_uint(1) == 0);s.end_parse();
+    throw_if(408,cell_null?(code) | cell_null?(data));throw_unless(408,cell_hash(code) == MIGRATION_ROUTER_CODE_HASH);
+    s = data.begin_parse();throw_unless(408,s~load_uint(1) == 0);
+    slice c = s~load_msg_addr();slice locker = s~load_msg_addr();slice r = s~load_msg_addr();cell c2 = s~load_ref();cell c3 = s~load_ref();s.end_parse();
+    throw_unless(408,equal_slices(c,curve) & equal_slices(locker,my_address()) & equal_slices(r,router));
+    s = c2.begin_parse();slice m = s~load_msg_addr();slice p = s~load_msg_addr();int ton = s~load_coins();int tokens = s~load_coins();slice a = s~load_msg_addr();s.end_parse();
+    throw_unless(408,equal_slices(m,master) & equal_slices(p,pton) & equal_slices(a,admin));
+    throw_unless(408,((ton == 0) | (ton == 500000000000)) & ((tokens == 0) | (tokens == 200000000000000000)));
+    s = c3.begin_parse();slice expected_lp = s~load_msg_addr();slice expected_pton = s~load_msg_addr();
+    int pending_ton = s~load_coins();int pending_tokens = s~load_coins();cell wallet = s~load_ref();s.end_parse();
+    throw_unless(408,(pending_ton == 0) & (pending_tokens == 0) & (cell_hash(wallet) == SETTLEMENT_WALLET_CODE_HASH));
+    throw_unless(408,(expected_lp.preload_uint(2) == 0) | equal_slices(expected_lp,lp));
+    throw_unless(408,(expected_pton.preload_uint(2) == 0) | equal_slices(expected_pton,pton_wallet));
+}

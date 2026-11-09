@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "result": "B",
+  "financialVerdict": "NO_GO_CURRENT_CANONICAL_MIGRATION",
+  "proofCodeReviewTarget": "257f805b5bea236d4f6a3eac11d1511f6d2aed9d",
+  "financialCodeBaseline": "59f5a931ef488508c20140d7dbd467caefadc77d",
+  "base": "737797845e6efc56f7d6c8b584b7a0598494461f",
+  "financialContractChanges": false,
+  "financialExecutionAuthorized": false,
+  "contracts": {
+    "anlgram-bonding-curve-vnext": {
+      "sourceSha256Lf": "07227137605f32247242b34e528555f1f6c048192385a5efe86a99da837c3710",
+      "codeCellHash": "3e2e97612ff7ce9c95ab4ebb8b89d285d69b9ea68f155137e8f3f59da07493a9",
+      "artifactFileSha256": "2ecf2ec72de7f6a019bad03b098f785ac126f055c824485c6580abf0fe11c44c",
+      "sourceDependenciesSha256Lf": {
+        "anlgram-bonding-curve-vnext.fc": "07227137605f32247242b34e528555f1f6c048192385a5efe86a99da837c3710",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653",
+        "imports/settlement-wallet-code.fc": "b5f16e35d6fb285636b209167c87617006f59b3f6ec3501a38b2a7cde13d6b28",
+        "imports/guard-vnext-code.fc": "d7eeda6fa411ddf988ddcb9df0e0f45e7e31f5fccf9a838b17602a97f33624be",
+        "imports/curve-return-v2.fc": "3eedf570e5430198b47343222de8d879633eee82fd6223cf4272f0974be088c8",
+        "imports/curve-vnext-router.fc": "2a00d5b1309f7d9a811f30b8c513677e9d05080195f2f583078697589f4cef68",
+        "imports/migration-router-vnext-code.fc": "26f50d4ad816ed7b22b4754110c97d78be587acda6dc3dd28b53d5a4b8cd8a88",
+        "imports/lp-locker-v2-code.fc": "d6ad285d03e77a4017fc378e1c8ac18fa50a1abf8a2ca9154e71128f7b8b40cb",
+        "imports/curve-lifecycle-vnext.fc": "38db12093df3218d9d56236c31afdf392841449963a57412739a28996e01946e",
+        "imports/curve-vnext-auth.fc": "edbb349b5f29f26cd3f8095d6763b82519069c9fcee72786f972ccf7b52ff553",
+        "imports/vnext-permit-fields.fc": "73466c317b8fced7d1e885054b9080f9c3148d1b6ec1a9201af0c802ecffaf00",
+        "imports/vnext-migration-template.fc": "a7d64d232cf80aa88c6d39a4595f183f07386b229e4448ed0ede75739b1387bb"
+      },
+      "bocFileSha256": "06ae8ffc79ea7f281c30f9fa1cba776dae4f401d490b90ed330f8ab3d1e44fe7"
+    },
+    "anlgram-guard-vnext": {
+      "sourceSha256Lf": "4d42470edafc3504d23c642904e6c1d39bf167cfaf6e77849f82de2811e5946f",
+      "codeCellHash": "a2bbc0a304d40113da0ba78447862597f7302128dae04d344caee7686946f157",
+      "artifactFileSha256": "d46b275bac4221c8a9c11b474f306c6f5ad85e8a96f0c1c03ba0e862380f6f51",
+      "sourceDependenciesSha256Lf": {
+        "anlgram-guard-vnext.fc": "4d42470edafc3504d23c642904e6c1d39bf167cfaf6e77849f82de2811e5946f",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/vnext-migration-template.fc": "a7d64d232cf80aa88c6d39a4595f183f07386b229e4448ed0ede75739b1387bb"
+      },
+      "bocFileSha256": "c6f098dd8524db3c35a55a11ab9f921d1542ca9486cf47993be04904c918b117"
+    },
+    "anlgram-migration-router-vnext": {
+      "sourceSha256Lf": "2d18bcdeb1dd6863c5930ba06fb9f56c3029c07edcca90570d31e9af84a28414",
+      "codeCellHash": "eeb1daf8834ca7037c8637c2f5a2a0829b2d69bad49e1b4f66096a1f44c1d686",
+      "artifactFileSha256": "c34047080d6049b00d88a5ad7e918722111ed945641fd53f122b2de3efe4f872",
+      "sourceDependenciesSha256Lf": {
+        "anlgram-migration-router-vnext.fc": "2d18bcdeb1dd6863c5930ba06fb9f56c3029c07edcca90570d31e9af84a28414",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653",
+        "imports/settlement-wallet-code.fc": "b5f16e35d6fb285636b209167c87617006f59b3f6ec3501a38b2a7cde13d6b28",
+        "imports/migration-lifecycle-v3.fc": "8d5df22f51069444c759f3b0adae86ea61d7e5f0810a6019c2e3a8d1a98b79f8",
+        "imports/migration-lp-vnext-base.fc": "53d8fcf0eed362f43b3edcf8ffd7280837194715b4f5e2bdb6c30ab5c3dd53d9",
+        "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728",
+        "imports/lp-locker-v2-code.fc": "d6ad285d03e77a4017fc378e1c8ac18fa50a1abf8a2ca9154e71128f7b8b40cb",
+        "imports/migration-vnext-auth.fc": "3acb0363dddd0abda0f11c474fd2f2c9517b8dffb1d67f97e83e331de9a69e18",
+        "imports/vnext-permit-fields.fc": "73466c317b8fced7d1e885054b9080f9c3148d1b6ec1a9201af0c802ecffaf00",
+        "imports/migration-vnext-recovery.fc": "5a61920dd3c04ed06909bc2f62526da71a235e683382f90e23544ac903848652"
+      },
+      "bocFileSha256": "a575eb2ef918acc7e7154c5ac09199a3d85f0a4beba6121d10bed21d2606dfa4"
+    },
+    "anlgram-launchpad-jetton-minter": {
+      "sourceSha256Lf": "47be0eb15f264f0c8933d9c2f4e9de2a317d3d5b0107c9802aa77e462c4195a1",
+      "codeCellHash": "90b5069f199fcea56ef467dd25cf8420c5e9848ba0fcc0cc139424c5cac17aec",
+      "artifactFileSha256": "361c690be08e5da75fb1800aef07a660c2c6c1077611bc2bc2e3338a5cdac27f",
+      "sourceDependenciesSha256Lf": {},
+      "bocFileSha256": "92b25bfa090b89cdb453f50ae268c53dbae87ffffdb7e15b99e9bc9396ef2a00"
+    },
+    "anlgram-settlement-wallet": {
+      "sourceSha256Lf": "d6460470a9558397d42a43d5f78ef7a1f5383955293677e8a3b4477bfbbd6075",
+      "codeCellHash": "e21136c0ea3074a48addec49215af2d8d20125b4cc61a564a1a37d37667b58a2",
+      "artifactFileSha256": "d870e5b7d5b6d77dcd337738339afa465b28b2d6661e2885b1d34474b75bdc41",
+      "sourceDependenciesSha256Lf": {
+        "anlgram-settlement-wallet.fc": "d6460470a9558397d42a43d5f78ef7a1f5383955293677e8a3b4477bfbbd6075",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+      },
+      "bocFileSha256": "b8283a205b69b9cb9a3a5f3de6df7f03ce739b75f9b3c03839a0ff42a6b6f472"
+    },
+    "anlgram-lp-locker-v2": {
+      "sourceSha256Lf": "da2e6b55d7536049c1254f5a751c9c4ab49a4bf54ef3559a496561c6f5ea7474",
+      "codeCellHash": "22d689df2f32d5fd00c72b50f31ab77291117a7625ad1bb654a4b6dbc796e001",
+      "artifactFileSha256": "ae4985e3013905fda5a0385d0d332d69a6b70494c6922922aa622687d74beef3",
+      "sourceDependenciesSha256Lf": {
+        "anlgram-lp-locker-v2.fc": "da2e6b55d7536049c1254f5a751c9c4ab49a4bf54ef3559a496561c6f5ea7474",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/lp-custody-probe-v4.fc": "62bcf17fa4fcacc0955757ed0a03f5a7f008cd10bb10dba8099af062572bdf7f",
+        "imports/lp-v2-receipt.fc": "494cdcc77cbe5df715a15a5c818bb39783095c704625afeb7d5aea2e00b00813",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728"
+      },
+      "bocFileSha256": "c84a400362588cf4a67b089bd30aad44118a2f24d2edd2a374a1876552037fbd"
+    }
+  },
+  "foreignCapturedProfileCodeHashes": {
+    "pool": "ec614ea4aaea3f7768606f1c1632b3374d3de096a1e7c4ba43c8009c487fee9d",
+    "lpWallet": "bf13041750f2beeb688859c75689e2c18b9c90bd78e97b197aad7ad6bc520c84",
+    "lpAccount": "3f1bb3192caaaa1ab7ae7474de50e2e3625fe2757aed4be4f4e9c3fc85ac0b9a"
+  },
+  "proofTestSha256Lf": "228dc0719f23056830b8e757e9e35d751a4da6534af9acf1caa5f283039fb30f",
+  "localTraceFileSha256": "05bb5e1a260498ce856374484539d792dfb73a871b3d8f2e79b95aa7385be493",
+  "targetedTests": {
+    "cases": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "scope": "FRESH_CANONICAL_PREFIX_TO_BLOCKER_AND_INDEPENDENT_FOREIGN_COMPATIBILITY"
+  },
+  "full208SuiteRerun": false,
+  "sourceArtifactCheck": "PASS",
+  "firstBlocker": {
+    "file": "minter-contract/contracts/imports/curve-vnext-auth.fc",
+    "line": 54,
+    "opcode": "0x414e5803",
+    "exitCode": 414,
+    "nativePrincipalSentNano": "0",
+    "jettonsSent": "0"
+  },
+  "additionalStaticGates": [
+    {
+      "file": "minter-contract/contracts/imports/migration-vnext-auth.fc",
+      "line": 60,
+      "exitCode": 414
+    },
+    {
+      "file": "minter-contract/contracts/anlgram-migration-router-vnext.fc",
+      "line": 382,
+      "exitCode": 414
+    }
+  ],
+  "liveTestnetExecution": false,
+  "qualifiedHumanReviewCompleted": false,
+  "newEscrowImplemented": false,
+  "deployableCandidateCreated": false
+}

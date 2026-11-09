@@ -23,10 +23,19 @@
     'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c'
   ]);
 
+  // Verified LP Locker Contracts & Code Hashes (ANLGRAM LP Locker V2, Ton Raffles, STON.fi Locker)
+  const KNOWN_LP_LOCKERS = new Set([
+    '0:0fd58e52e4221cd81d58dc8da8fb6316e750b4c0be2e7113b72687e59a16f71b', // ANLGRAM Testnet V5 LP Locker
+    'kQAP1Y5S5CIc2B1Y3I2o-2MW51C0wL4ucRO3Jofmmhb3G-8O',                   // ANLGRAM Testnet V5 LP Locker (friendly)
+    '0:779dcc815138d9500e449c5291e7f12738c23d575b5310000f6a253bd607384e', // Ton Raffles LP Locker
+    'EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt'                    // Ton Raffles LP Locker (friendly)
+  ]);
+
   // STON.fi DEX Routers
   const KNOWN_DEX_ROUTERS = new Set([
     '0:9220c181a6cfeacd11b7b8f62138df1bb9cc82b6ed2661d2f5faee204b3efb20', // STON.fi AMM Router
-    '0:92e1411ae546892f33b2c8a89ea90390d8ff4cfbb917a643b91e73f706fdb9d1'  // STON.fi Router v1
+    '0:92e1411ae546892f33b2c8a89ea90390d8ff4cfbb917a643b91e73f706fdb9d1', // STON.fi Router v1
+    '0:99b6a7df7662a64f2f2b31585aa6e8b9232c1b07b64e888a4319d5789f4e6734'  // STON.fi Router v2.2 Testnet
   ]);
 
   // In-memory tab cache (TTL: 60s)
@@ -551,8 +560,10 @@
       isMintUnverified = true;
     }
 
+    const effectiveAdminAddr = adminAddr || adminAnalysis.address || '';
+
     // 4. Liquidity Check (Weight: 25)
-    let rowLiquidity = { name: 'Liquidity', value: 'Unverified', status: 'unverified', weight: 25, points: 0, link: '' };
+    let rowLiquidity = { name: 'Liquidity', value: 'Unverified', status: 'unverified', weight: 25, points: 0, link: '', category: 'observed_fact', evidenceType: 'DETERMINISTIC_ONCHAIN_STATE' };
     let depthUsdStr = null;
     let depthTonStr = null;
 
@@ -574,7 +585,12 @@
           rowLiquidity.status = 'green';
           rowLiquidity.points = 25;
           hasLockProof = true;
-        } else if (adminAddr && topOwnerAddr === adminAddr) {
+        } else if (KNOWN_LP_LOCKERS.has(topOwnerAddr)) {
+          rowLiquidity.value = 'Locked (Verified Locker)';
+          rowLiquidity.status = 'green';
+          rowLiquidity.points = 25;
+          hasLockProof = true;
+        } else if (effectiveAdminAddr && topOwnerAddr === effectiveAdminAddr) {
           rowLiquidity.value = 'Unlocked';
           rowLiquidity.status = 'red';
           rowLiquidity.points = 0;
@@ -596,25 +612,43 @@
       rowLiquidity.points = 0;
     }
 
-    // 5. Distribution Check (Weight: 20)
-    let rowDistribution = { name: 'Distribution', value: 'Unverified', status: 'unverified', weight: 20, points: 0, link: getTonviewerLink(cleanAddr) };
+    // 5. Distribution Check (Weight: 20) — Heuristic Risk Assessment
+    let rowDistribution = { name: 'Distribution', value: 'Unverified', status: 'unverified', weight: 20, points: 0, link: getTonviewerLink(cleanAddr), category: 'heuristic_assessment', evidenceType: 'HEURISTIC_RISK_INDICATOR' };
     const totalHoldersCount = (jettonData && jettonData.holders_count != null) ? Number(jettonData.holders_count) : ((holdersData && holdersData.total) ? holdersData.total : 0);
     const sampleList = (holdersData && Array.isArray(holdersData.addresses)) ? holdersData.addresses : [];
+    let concentrationMetrics = null;
 
     if (totalHoldersCount > 0 && sampleList.length > 0) {
+      let validHolders = sampleList.filter(h => {
+        const ownerAddr = (h.owner && h.owner.address) ? h.owner.address : (h.address || '');
+        return ownerAddr !== poolAddr && !KNOWN_BURN_ADDRESSES.has(ownerAddr) && !KNOWN_LP_LOCKERS.has(ownerAddr);
+      });
+      const rawTotalSupply = Number(jettonData?.total_supply || 0);
+      const totalCircBalance = validHolders.reduce((acc, h) => acc + (Number(h.balance) || 0), 0);
+      const denom = totalHoldersCount > (2 * sampleList.length) && rawTotalSupply > 0 ? rawTotalSupply : totalCircBalance;
+      if (denom > 0 && validHolders.length > 0) {
+        const top1Pct = ((Number(validHolders[0]?.balance) || 0) / denom) * 100;
+        const top5Bal = validHolders.slice(0, 5).reduce((acc, h) => acc + (Number(h.balance) || 0), 0);
+        const top5Pct = (top5Bal / denom) * 100;
+        const top10Bal = validHolders.slice(0, 10).reduce((acc, h) => acc + (Number(h.balance) || 0), 0);
+        const top10Pct = (top10Bal / denom) * 100;
+        concentrationMetrics = {
+          sampleSize: sampleList.length,
+          totalHoldersCount,
+          top1Pct: Number(top1Pct.toFixed(2)),
+          top5Pct: Number(top5Pct.toFixed(2)),
+          top10Pct: Number(top10Pct.toFixed(2)),
+          denominatorType: totalHoldersCount > (2 * sampleList.length) ? 'total_supply_snapshot' : 'sampled_circulating_supply'
+        };
+      }
+
       if (totalHoldersCount > (2 * sampleList.length)) {
-        // Sample is less than half the total set: unverified
-        rowDistribution.value = `Sample < total (${totalHoldersCount.toLocaleString()} holders)`;
+        // Sample is less than half the total set: keep status unverified for score, but disclose observed top-holder share
+        const snapshotSuffix = concentrationMetrics ? ` · Top10: ${concentrationMetrics.top10Pct.toFixed(1)}% · Top1: ${concentrationMetrics.top1Pct.toFixed(1)}%` : '';
+        rowDistribution.value = `Sample < total (${totalHoldersCount.toLocaleString()} holders)${snapshotSuffix}`;
         rowDistribution.status = 'unverified';
         rowDistribution.points = 0;
       } else {
-        // Calculate percentages excluding pool and known burns
-        let validHolders = sampleList.filter(h => {
-          const ownerAddr = (h.owner && h.owner.address) ? h.owner.address : (h.address || '');
-          return ownerAddr !== poolAddr && !KNOWN_BURN_ADDRESSES.has(ownerAddr);
-        });
-
-        const totalCircBalance = validHolders.reduce((acc, h) => acc + (Number(h.balance) || 0), 0);
         if (totalCircBalance > 0) {
           const top1Pct = ((Number(validHolders[0]?.balance) || 0) / totalCircBalance) * 100;
           const top10Bal = validHolders.slice(0, 10).reduce((acc, h) => acc + (Number(h.balance) || 0), 0);
@@ -643,25 +677,38 @@
       rowDistribution.status = 'unverified';
     }
 
-    // 6. Behavior Check (Weight: 20)
-    let rowBehavior = { name: 'Behavior', value: 'Unverified', status: 'unverified', weight: 20, points: 0, link: '' };
-    if (!adminAddr || adminAddr === '0:0000000000000000000000000000000000000000000000000000000000000000') {
+    // 6. Behavior & Cluster Check (Weight: 20) — Heuristic Risk Assessment
+    let rowBehavior = { name: 'Behavior', value: 'Unverified', status: 'unverified', weight: 20, points: 0, link: '', category: 'heuristic_assessment', evidenceType: 'HEURISTIC_RISK_INDICATOR' };
+    const clusterRiskIndicators = [];
+    if (!effectiveAdminAddr || effectiveAdminAddr === '0:0000000000000000000000000000000000000000000000000000000000000000') {
       rowBehavior.value = 'Deployer unknown (renounced)';
       rowBehavior.status = 'unverified';
     } else if (adminEvents && adminEvents.length > 0) {
-      rowBehavior.link = getTonviewerLink(adminAddr);
+      rowBehavior.link = getTonviewerLink(effectiveAdminAddr);
       let deployerSold = false;
       let soldAmount = 0;
+      const fanOutRecipients = new Set();
+      const directedEdges = new Set();
+      let circularLoopDetected = false;
 
       for (const ev of adminEvents) {
         if (ev && Array.isArray(ev.actions)) {
           for (const act of ev.actions) {
             if (act.type === 'JettonTransfer' && act.JettonTransfer) {
               const jt = act.JettonTransfer;
+              const sender = (jt.sender && jt.sender.address) ? jt.sender.address : effectiveAdminAddr;
               const recipient = (jt.recipient && jt.recipient.address) ? jt.recipient.address : '';
               if (KNOWN_DEX_ROUTERS.has(recipient) || recipient === poolAddr) {
                 deployerSold = true;
                 soldAmount += Number(jt.amount) || 0;
+              } else if (recipient && recipient !== effectiveAdminAddr && !KNOWN_BURN_ADDRESSES.has(recipient)) {
+                if (sender === effectiveAdminAddr) fanOutRecipients.add(recipient);
+              }
+              if (sender && recipient && sender !== recipient) {
+                const edge = `${sender}->${recipient}`;
+                const rev = `${recipient}->${sender}`;
+                if (directedEdges.has(rev)) circularLoopDetected = true;
+                directedEdges.add(edge);
               }
             }
           }
@@ -669,9 +716,38 @@
       }
 
       if (deployerSold) {
+        clusterRiskIndicators.push({
+          id: 'DEPLOYER_DEX_TRANSFER',
+          severity: 'high',
+          factOrHeuristic: 'HEURISTIC_RISK_INDICATOR',
+          summary: 'Admin/deployer address transferred Jettons to a DEX router or pool in the sampled 20-event window.'
+        });
+      }
+      if (fanOutRecipients.size >= 3) {
+        clusterRiskIndicators.push({
+          id: 'DEPLOYER_FANOUT_CLUSTER',
+          severity: 'medium',
+          factOrHeuristic: 'HEURISTIC_RISK_INDICATOR',
+          summary: `Admin/deployer distributed Jettons to ${fanOutRecipients.size} distinct wallets in recent events (potential wallet splitting / airdrop — does not prove sybil control).`
+        });
+      }
+      if (circularLoopDetected) {
+        clusterRiskIndicators.push({
+          id: 'CIRCULAR_TRANSFER_LOOP',
+          severity: 'medium',
+          factOrHeuristic: 'HEURISTIC_RISK_INDICATOR',
+          summary: 'Bidirectional transfer loop (A ↔ B) observed in recent event sample (heuristic wash/cycling indicator).'
+        });
+      }
+
+      if (deployerSold) {
         rowBehavior.value = 'Deployer sold jettons to DEX';
         rowBehavior.status = 'red';
         rowBehavior.points = 0;
+      } else if (fanOutRecipients.size >= 4 || circularLoopDetected) {
+        rowBehavior.value = `No DEX sale · Cluster fan-out (${fanOutRecipients.size} wallets)`;
+        rowBehavior.status = 'amber';
+        rowBehavior.points = 10;
       } else {
         rowBehavior.value = 'No deployer sale in the last 20 events';
         rowBehavior.status = 'green';
@@ -681,6 +757,13 @@
       rowBehavior.value = 'Recent events unverified';
       rowBehavior.status = 'unverified';
     }
+
+    rowCode.category = 'observed_fact';
+    rowCode.evidenceType = 'DETERMINISTIC_ONCHAIN_STATE';
+    rowAdmin.category = 'observed_fact';
+    rowAdmin.evidenceType = 'DETERMINISTIC_ONCHAIN_STATE';
+    rowMint.category = 'observed_fact';
+    rowMint.evidenceType = 'DETERMINISTIC_ONCHAIN_STATE';
 
     // --- SCORE COMPUTATION & CEILINGS ---
     const evaluatedRows = [rowAdmin, rowMint, rowLiquidity, rowDistribution, rowBehavior].filter(
@@ -728,6 +811,10 @@
       }
     }
 
+    const observedFacts = [rowCode, rowAdmin, rowMint, rowLiquidity];
+    const heuristicAssessments = [rowDistribution, rowBehavior];
+    const methodologyDisclaimer = 'Observed On-Chain Facts reflect deterministic contract state at query time. Heuristic Risk Assessments (holder concentration snapshots, recent event windows, and wallet interaction clusters) are probabilistic indicators and NEVER constitute an accusation or proof of a rug-pull.';
+
     return {
       ticker,
       address: cleanAddr,
@@ -735,7 +822,12 @@
       band,
       depthUsd: depthUsdStr,
       depthTon: depthTonStr,
-      rows: [rowCode, rowAdmin, rowMint, rowLiquidity, rowDistribution, rowBehavior]
+      rows: [rowCode, rowAdmin, rowMint, rowLiquidity, rowDistribution, rowBehavior],
+      observedFacts,
+      heuristicAssessments,
+      concentrationMetrics,
+      clusterRiskIndicators,
+      methodologyDisclaimer
     };
   }
 
@@ -745,7 +837,7 @@
   function renderRadarResult(result) {
     if (!radarResult) return;
 
-    const { ticker, address, score, band, depthUsd, depthTon, rows } = result;
+    const { ticker, address, score, band, depthUsd, depthTon, rows, observedFacts, heuristicAssessments, clusterRiskIndicators, methodologyDisclaimer } = result;
     if (radarInput && address) {
       radarInput.value = address;
       radarInput.setAttribute('title', address);
@@ -800,12 +892,10 @@
       `;
     }
 
-    // 6 Rows
-    html += '<div class="rug-radar-rows">';
-    rows.forEach(r => {
+    const renderRowItem = (r) => {
       const linkHtml = r.link ? `<a href="${r.link}" target="_blank" rel="noopener noreferrer" class="rug-radar-row-link" title="Open in Tonviewer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : '';
-      html += `
-        <div class="rug-radar-row">
+      return `
+        <div class="rug-radar-row" data-evidence-category="${escapeHtml(r.category || '')}">
           <div class="rug-radar-row-left">
             <span class="rug-radar-row-name">${escapeHtml(r.name)}</span>
             <span class="rug-radar-row-value">${escapeHtml(r.value)}</span>
@@ -816,7 +906,27 @@
           </div>
         </div>
       `;
-    });
+    };
+
+    const factsList = Array.isArray(observedFacts) && observedFacts.length > 0 ? observedFacts : rows.slice(0, 4);
+    const heuristicsList = Array.isArray(heuristicAssessments) && heuristicAssessments.length > 0 ? heuristicAssessments : rows.slice(4);
+
+    html += '<div class="rug-radar-rows">';
+    html += `<div class="rug-radar-section-label" style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#67e8f9; margin:6px 0 4px; padding:2px 4px; border-left:2px solid #00f0ff;">Observed On-Chain Facts (Deterministic State)</div>`;
+    factsList.forEach(r => { html += renderRowItem(r); });
+
+    html += `<div class="rug-radar-section-label" style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#fbbf24; margin:10px 0 4px; padding:2px 4px; border-left:2px solid #f59e0b;">Heuristic Risk Assessments (Probabilistic — Not Proof of Fraud)</div>`;
+    heuristicsList.forEach(r => { html += renderRowItem(r); });
+
+    if (Array.isArray(clusterRiskIndicators) && clusterRiskIndicators.length > 0) {
+      html += `<div class="rug-radar-cluster-alerts" style="margin-top:6px; padding:6px 8px; border-radius:6px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); font-size:11px; color:#fde68a;">`;
+      clusterRiskIndicators.forEach(ind => {
+        html += `<div style="margin-bottom:3px;"><strong>[Heuristic: ${escapeHtml(ind.id)}]</strong> ${escapeHtml(ind.summary)}</div>`;
+      });
+      html += `</div>`;
+    }
+
+    html += `<div class="rug-radar-methodology-note" style="margin-top:8px; font-size:10.5px; color:#94a3b8; line-height:1.4;">${escapeHtml(methodologyDisclaimer || '')}</div>`;
     html += '</div>';
 
     radarResult.innerHTML = html;
@@ -988,7 +1098,12 @@
   // Expose for safe diagnostics and integration
   window.ANLGRAM_RUG_RADAR = {
     evaluateStructuralChecks,
-    scanMasterContract
+    scanMasterContract,
+    renderRadarResult,
+    KNOWN_LP_LOCKERS,
+    KNOWN_STONFI_POOLS,
+    KNOWN_BURN_ADDRESSES,
+    KNOWN_DEX_ROUTERS
   };
 
   // Safe app initialization

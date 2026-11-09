@@ -1382,24 +1382,65 @@
       clusterMap.get(root).push(n);
     });
 
-    // Format Cluster Summaries
+    // Format Cluster Summaries with Real On-Chain Relationship & Heuristic Risk Analysis
     const clusters = [];
+    const suspiciousClusters = [];
     let clusterCounter = 1;
     clusterMap.forEach((members, rootId) => {
       if (members.length > 1) { // Only components with >1 node are considered relational clusters
         const totalBal = members.reduce((sum, m) => sum + m.balance, 0);
         const totalPct = members.reduce((sum, m) => sum + m.percentOfTracked, 0);
-        clusters.push({
+        const clusterTransfers = observedTransfersLog.filter(t => 
+          members.some(m => m.id === t.source) && members.some(m => m.id === t.target)
+        );
+        // Detect bidirectional / circular transfer pairs (A -> B and B -> A) within the component
+        const directedSet = new Set();
+        let circularPairsCount = 0;
+        clusterTransfers.forEach(t => {
+          const fwd = `${t.source}->${t.target}`;
+          const rev = `${t.target}->${t.source}`;
+          if (directedSet.has(rev)) circularPairsCount++;
+          directedSet.add(fwd);
+        });
+        // Detect star / fan-out hub (wallet with >= 3 outgoing transfers to distinct cluster members)
+        const hubCandidate = members.reduce((best, m) => (!best || m.outgoingTransfers > best.outgoingTransfers ? m : best), null);
+        const isFanOutHub = Boolean(hubCandidate && hubCandidate.outgoingTransfers >= 3);
+        const isHighConcentration = totalPct >= 25;
+
+        let heuristicRiskLevel = 'low';
+        const heuristicReasons = [];
+        if (isHighConcentration) {
+          heuristicRiskLevel = totalPct >= 40 ? 'high' : 'medium';
+          heuristicReasons.push(`Connected cluster holds ${totalPct.toFixed(2)}% of tracked supply`);
+        }
+        if (isFanOutHub) {
+          if (heuristicRiskLevel === 'low') heuristicRiskLevel = 'medium';
+          heuristicReasons.push(`Hub wallet #${hubCandidate.rank} sent ${hubCandidate.outgoingTransfers} transfers inside cluster (fan-out pattern)`);
+        }
+        if (circularPairsCount > 0) {
+          if (heuristicRiskLevel === 'low') heuristicRiskLevel = 'medium';
+          heuristicReasons.push(`${circularPairsCount} bidirectional transfer loop(s) observed (A ↔ B)`);
+        }
+
+        const clusterObj = {
           id: rootId,
           displayId: clusterCounter++,
           wallets: members,
           walletCount: members.length,
           totalBalance: totalBal,
           percentOfTracked: totalPct,
-          internalTransfers: observedTransfersLog.filter(t => 
-            members.some(m => m.id === t.source) && members.some(m => m.id === t.target)
-          ).length
-        });
+          internalTransfers: clusterTransfers.length,
+          circularPairsCount,
+          isFanOutHub,
+          heuristicRiskLevel,
+          heuristicReasons,
+          evidenceType: 'HEURISTIC_CLUSTER_ASSESSMENT',
+          disclaimer: 'Heuristic Assessment — On-chain transfer interaction between wallets does NOT prove common ownership or rug-pull intent.'
+        };
+        clusters.push(clusterObj);
+        if (heuristicReasons.length > 0) {
+          suspiciousClusters.push(clusterObj);
+        }
       }
     });
 
@@ -1449,6 +1490,7 @@
       nodes,
       links,
       clusters,
+      suspiciousClusters,
       transfers: observedTransfersLog,
       totalTrackedBalance
     };
@@ -3210,6 +3252,7 @@
   // Export engine methods to window for global integration
   window.ANLGRAM_WCE = {
     state,
+    processGraphTopology,
     indexJettonMasterContract,
     openBubbleMap,
     openTokenDetailsDrawer,

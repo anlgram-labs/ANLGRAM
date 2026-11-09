@@ -1,0 +1,11 @@
+{
+  "observedUtc": "2026-11-01T03:14:54.929Z",
+  "proxy": {
+    "id": "anlgram-ton-proxy",
+    "modified_on": "2026-10-27T04:37:56.362791Z"
+  },
+  "proofNamespacePreserved": true,
+  "operationsClass": "FinancialOperation",
+  "financialApprovalAbsent": true,
+  "productionBranch": "codex/testnet-pages-hosting"
+}

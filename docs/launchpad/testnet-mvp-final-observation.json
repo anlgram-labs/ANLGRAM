@@ -1,0 +1,86 @@
+{
+  "observedUtc": "2026-11-01T14:52:12.015Z",
+  "network": "-3",
+  "operator": {
+    "signatureAllowed": true,
+    "seqno": 1,
+    "walletId": 2147483645,
+    "publicKey": "94a010bf130bfceefdcba69f1dc18260277e1a3d073b632dd578b9c38b421a09",
+    "hasExtensions": false,
+    "balanceNano": "3893069608",
+    "lastTransaction": {
+      "@type": "internal.transactionId",
+      "lt": "106888530000003",
+      "hash": "vIEfM8B+4DutDagwzIVW7I96CQw3mVMBh4McF/srSSc="
+    }
+  },
+  "status": {
+    "network": "-3",
+    "observedUtc": "2026-11-01T14:52:15.461Z",
+    "scope": "ACCOUNT_AND_GETTER_OBSERVATIONS_NOT_TRANSACTION_RECEIPTS",
+    "dataStatus": "INCLUDES_SHORT_LIVED_CACHE",
+    "observations": [
+      {
+        "name": "minter",
+        "observedAt": 1793544730000,
+        "dataStatus": "SHORT_LIVED_CACHE"
+      },
+      {
+        "name": "jettonData",
+        "observedAt": 1793544731442,
+        "dataStatus": "FRESH_PROVIDER_OBSERVATION"
+      },
+      {
+        "name": "curve",
+        "observedAt": 1793544732782,
+        "dataStatus": "FRESH_PROVIDER_OBSERVATION"
+      },
+      {
+        "name": "curveWallet",
+        "observedAt": 1793544734109,
+        "dataStatus": "FRESH_PROVIDER_OBSERVATION"
+      },
+      {
+        "name": "buyerWallet",
+        "observedAt": 1793544735436,
+        "dataStatus": "FRESH_PROVIDER_OBSERVATION"
+      }
+    ],
+    "stage": "CURVE_NOT_DEPLOYED",
+    "minter": {
+      "address": "kQA5PEDpb0UPGsGUD0jByO9qNFd6PqyXPpMkTUyngd5-IYq8",
+      "supplyUnits": "0",
+      "decimals": 9,
+      "symbol": "ANLTEST",
+      "name": "ANLGRAM Testnet Settlement",
+      "admin": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+      "renouncedObserved": false
+    },
+    "curve": {
+      "address": "kQAfBL9a-9BPmFH6GVUYoUz0byuToTRHAwFAgqZXAyRo7kOW",
+      "accountState": "uninitialized",
+      "protocolState": null,
+      "reserves": null
+    },
+    "curveWallet": {
+      "state": "NOT_DEPLOYED",
+      "balanceUnits": null,
+      "owner": "0:1f04bf5afbd04f9851fa195518a14cf46f2b93a1344703014082a657032468ee",
+      "master": "0:393c40e96f450f1ac1940f48c1c8ef6a34577a3eac973e93244d4ca781de7e21",
+      "custodyVerified": false
+    },
+    "buyerWallet": {
+      "state": "NOT_DEPLOYED",
+      "balanceUnits": null,
+      "owner": "0:8119eb76ff64af554ad7fcc64bd30d0eb8faa56c9b651d3de76e959a107d9061",
+      "master": "0:393c40e96f450f1ac1940f48c1c8ef6a34577a3eac973e93244d4ca781de7e21",
+      "custodyVerified": false
+    },
+    "financialSigningEnabled": false,
+    "migrationEnabled": false,
+    "lpWithdrawalsEnabled": false,
+    "transactionOutcome": "NOT_VERIFIED_BY_ACCOUNT_SNAPSHOT"
+  },
+  "signingAuthorizationAbsent": true,
+  "financialTransactionsPerformedBySprint": 0
+}

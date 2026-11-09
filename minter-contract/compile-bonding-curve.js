@@ -13,6 +13,7 @@ async function compileBondingCurve() {
   const { Cell } = require('@ton/core');
 
   const contractsDir = path.join(__dirname, 'contracts');
+  const sourceHashes = {};
   const sources = (filePath) => {
     let absPath;
     if (filePath.startsWith('/') || filePath.includes(':')) {
@@ -23,7 +24,11 @@ async function compileBondingCurve() {
     if (!fs.existsSync(absPath)) {
       throw new Error(`Source file not found: ${absPath}`);
     }
-    return fs.readFileSync(absPath, 'utf-8');
+    // Git may check out CRLF on Windows; normalize input and provenance so
+    // identical sources compile reproducibly across checkout line endings.
+    const source = fs.readFileSync(absPath, 'utf-8').replace(/\r\n/g, '\n');
+    sourceHashes[path.relative(contractsDir, absPath).replace(/\\/g, '/')] = crypto.createHash('sha256').update(source).digest('hex');
+    return source;
   };
 
   console.log('Compiling anlgram-bonding-curve.fc ...');
@@ -47,7 +52,7 @@ async function compileBondingCurve() {
 
   const outputPath = path.join(__dirname, 'build', 'anlgram-bonding-curve.compiled.json');
   fs.mkdirSync(path.join(__dirname, 'build'), { recursive: true });
-  fs.writeFileSync(outputPath, JSON.stringify({
+  const serialized = JSON.stringify({
     contract: 'anlgram-bonding-curve.fc',
     thresholdTon: 500,
     feeBps: 100,
@@ -58,8 +63,17 @@ async function compileBondingCurve() {
     codeHash: codeCellHash,
     bocFileSha256: bocFileSha256,
     bocSizeBytes: bocSizeBytes,
-    compiledAt: new Date().toISOString(),
-  }, null, 2), 'utf-8');
+    compilerPackageVersion: require('@ton-community/func-js/package.json').version,
+    sourceFilesSha256: Object.fromEntries(Object.entries(sourceHashes).sort(([a], [b]) => a.localeCompare(b))),
+  }, null, 2);
+  if (process.argv.includes('--check')) {
+    if (fs.readFileSync(outputPath, 'utf8') !== serialized) {
+      throw new Error('Saved curve artifact differs from reproducible source compilation.');
+    }
+    console.log('CHECK PASSED: source, BOC and provenance match; no artifact written.');
+    return;
+  }
+  fs.writeFileSync(outputPath, serialized, 'utf-8');
 
   console.log('SUCCESS! Compiled to:', outputPath);
   console.log('TON code cell representation hash:', codeCellHash);

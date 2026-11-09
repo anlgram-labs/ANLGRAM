@@ -1,0 +1,66 @@
+;; Real TEP-74 self-transfer proves ONLY a custody lower bound at a logical time.
+;; NEVER changes mint receipts, locked/free balances or withdrawal settlement.
+;; Restricted to initial, 100%-permanent vaults: no withdrawal can race the probe.
+(int,int,int,int,int) lp_probe(cell requests) inline {
+    (slice s,int found) = requests.udict_get?(64,0);ifnot(found) { return(0,0,0,0,0); }
+    throw_unless(409,s~load_uint(32) == 0x4c505234);
+    return(s~load_uint(2),s~load_coins(),s~load_coins(),s~load_uint(64),s~load_uint(64));
+}
+cell lp_probe_save(cell requests,int status,int candidate,int floor,int nonce,int lt) inline {
+    return requests.udict_set_builder(64,0,begin_cell().store_uint(0x4c505234,32).store_uint(status,2)
+        .store_coins(candidate).store_coins(floor).store_uint(nonce,64).store_uint(lt,64));
+}
+() lp_floor_receipt(cell cfg,cell requests,int previous) impure inline {
+    (_,_,int q,_,_,slice contributor,slice pool,slice wallet) = configuration(cfg);
+    (_,_,int floor,_,int lt) = lp_probe(requests);raw_reserve(max(previous,10000000),2);
+    cell b = begin_cell().store_uint(0x414c5639,32).store_uint(q,64).store_uint(lt,64).store_coins(floor)
+        .store_uint(0,2) ;; neither exact balance nor attributed migration issuance
+        .store_ref(begin_cell().store_slice(pool).store_slice(wallet).end_cell()).end_cell();
+    send_raw_message(begin_cell().store_uint(0x10,6).store_slice(contributor).store_coins(0).store_uint(1,107).store_ref(b).end_cell(),128 + 2);
+}
+int handle_lp_probe(int balance,int value,cell full,slice body) impure {
+    slice h = full.begin_parse();int flags = h~load_uint(4);slice sender = h~load_msg_addr();
+    if(body.slice_bits() < 96) { return 0; }
+    (cell cfg,cell state,cell seen,cell requests) = load_vault();
+    (int percent,int duration,int root,slice beneficiary,_,slice contributor,_,slice wallet) = configuration(cfg);
+    (int status,int candidate,int floor,int nonce,int lt) = lp_probe(requests);
+    if(flags & 1) {
+        if(body.slice_bits() < 128) { return 0; } body~load_uint(32);
+        if(body~load_uint(32) != 0x0f8a7ea5) { return 0; } int id = body~load_uint(64);
+        if((status != 1) | (id != nonce)) { return 0; }
+        throw_unless(401,equal_slices(sender,wallet));throw_unless(409,body~load_coins() == candidate);
+        ;; A retry bounce does not prove an earlier copy failed. Remain pending.
+        return -1;
+    }
+    int op = body~load_uint(32);int q = body~load_uint(64);
+    if(op == 0x7362d09c) {
+        ifnot(equal_slices(sender,wallet)) { return 0; }
+        int amount = body~load_coins();slice origin = body~load_msg_addr();
+        ifnot(equal_slices(origin,my_address())) { return 0; }
+        throw_unless(409,((status == 1) | (status == 2)) & (q == nonce) & (amount == candidate));
+        slice p = body;if(body~load_uint(1)) { p = body~load_ref().begin_parse();body.end_parse(); } else { p = body; }
+        throw_unless(409,(p~load_uint(32) == 0x414c5637) & (p~load_uint(64) == root) & (p~load_uint(64) == nonce));p.end_parse();
+        if(status == 2) { return -1; }
+        h~load_msg_addr();h~load_coins();h~load_dict();h~load_coins();h~load_coins();int emitted_lt = h~load_uint(64);
+        requests = lp_probe_save(requests,2,candidate,max(floor,candidate),nonce,emitted_lt);save_vault(cfg,state,seen,requests);
+        lp_floor_receipt(cfg,requests,balance - value);return -1;
+    }
+    ifnot((op == 0x414c5636) | (op == 0x414c5638)) { return 0; }
+    throw_unless(401,equal_slices(sender,beneficiary) | equal_slices(sender,contributor));throw_unless(409,q == root);
+    if((op == 0x414c5638) & (status == 2)) { body.end_parse();throw_unless(407,value >= 20000000);lp_floor_receipt(cfg,requests,balance - value);return -1; }
+    slice a = state.begin_parse();int received = a~load_coins();a~load_coins();a~load_coins();int pending = a~load_coins();
+    throw_unless(409,(percent == 100) & (duration == 0) & (received == 0) & (pending == 0));
+    throw_unless(407,value >= 120000000);
+    if(op == 0x414c5636) { candidate = body~load_coins();throw_unless(409,candidate > floor);nonce = cur_lt(); }
+    else { throw_unless(409,(status == 1) & (candidate > 0)); } body.end_parse();
+    requests = lp_probe_save(requests,1,candidate,floor,nonce,lt);save_vault(cfg,state,seen,requests);
+    raw_reserve(max(balance - value,10000000),0);
+    cell payload = begin_cell().store_uint(0x414c5637,32).store_uint(root,64).store_uint(nonce,64).end_cell();
+    cell transfer = begin_cell().store_uint(0x0f8a7ea5,32).store_uint(nonce,64).store_coins(candidate)
+        .store_slice(my_address()).store_slice(my_address()).store_uint(0,1).store_coins(20000000).store_uint(1,1).store_ref(payload).end_cell();
+    send_raw_message(begin_cell().store_uint(0x18,6).store_slice(wallet).store_coins(0).store_uint(1,107).store_ref(transfer).end_cell(),128);return -1;
+}
+(int,int,int,int,int,int) get_lp_recovery_v4() method_id {
+    (_,_,_,cell requests) = load_vault();(int status,int candidate,int floor,int nonce,int lt) = lp_probe(requests);
+    return(status,candidate,floor,nonce,lt,0); ;; exact balance is NOT proven
+}

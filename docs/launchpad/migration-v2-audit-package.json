@@ -1,0 +1,144 @@
+{
+  "baseCommit": "f8726732b892b4c25a279b646e0dd58092ec58d3",
+  "branch": "codex/curve-v2-migration-completion",
+  "completionStatus": "PARTIAL_COMPONENT_PACKAGE_FINANCIAL_AUTHORIZATION_CLOSED",
+  "financialExecutionAuthorized": false,
+  "mainnetReady": false,
+  "newOnchainTransactions": 0,
+  "newFinancialDeployments": 0,
+  "artifacts": {
+    "anlgram-bonding-curve-v2": {
+      "contract": "anlgram-bonding-curve-v2.fc",
+      "baseContract": "anlgram-bonding-curve.fc",
+      "baseSourceSha256": "bc2942ea836929fa1b73b2691bae31517964606416873099ae9fad440a95b6dc",
+      "compilerPackageVersion": "0.11.0",
+      "sourceFilesSha256": {
+        "anlgram-bonding-curve-v2.fc": "4a318b2500021c56bcd434f629eb0bfeba35dde5f345346069a4dd346b1e7791",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/curve-lifecycle-v3.fc": "50b8006b4168f4fef812175c284543683d739fb00c57d29d56902945121dd963",
+        "imports/curve-return-v2.fc": "3eedf570e5430198b47343222de8d879633eee82fd6223cf4272f0974be088c8",
+        "imports/curve-v2-router.fc": "85e7ded04faafdc48e1992d98f22455ed8f1c534208b0f209ad778c1ce5e0fd7",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/lp-auth-guard-code.fc": "5c17bff288052136c4176343f2685c918546d3fb3e4995e3dc7da547838657e2",
+        "imports/migration-router-v2-code.fc": "d1b0b2baa15ed0ff6b66873a272e1abfad49bcd33eddc276886fde30ae4f2551",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653",
+        "imports/settlement-wallet-code.fc": "b5f16e35d6fb285636b209167c87617006f59b3f6ec3501a38b2a7cde13d6b28",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+      },
+      "codeCellHash": "24cf7fcaf32e5021b4287bca78e1ac8886a6e2a1e46a3cc89b80a1dda7ea0965",
+      "bocFileSha256": "43fccd9664f22825d6232434483721ee23c2f799d8dc28af383be1175be63cb9",
+      "financialExecutionAuthorized": false
+    },
+    "anlgram-migration-router-v2": {
+      "contract": "anlgram-migration-router-v2.fc",
+      "baseContract": "anlgram-migration-router.fc",
+      "baseSourceSha256": "b563472048047eef8a644e6aed772c2392cbf8bf0e4e9032f87421bae73b6f82",
+      "compilerPackageVersion": "0.11.0",
+      "sourceFilesSha256": {
+        "anlgram-migration-router-v2.fc": "e406f208d96f8df1c1f55cb763c071fc3b602fea824b454e055697759f41472c",
+        "imports/constants.fc": "ba178a963dfcd96a28a9fe15d04b006286858313fb6f6b157b8e8b7a79860923",
+        "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+        "imports/lp-locker-v2-code.fc": "d6ad285d03e77a4017fc378e1c8ac18fa50a1abf8a2ca9154e71128f7b8b40cb",
+        "imports/migration-lifecycle-v3.fc": "8d5df22f51069444c759f3b0adae86ea61d7e5f0810a6019c2e3a8d1a98b79f8",
+        "imports/migration-lp-v2.fc": "dd110576a4ce98d4068d416710f716325b89d0c5e18226983dce3b30988f780c",
+        "imports/op-codes.fc": "803967bb1ab82be89ca4d9e530cd5f8b347426ab3c101c24c7377d09cfd543e0",
+        "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+        "imports/settlement-protocol.fc": "0728e1cb8093ec1d2fdf72577836c12b91828ea68c0d7a2c0159af044a13a653",
+        "imports/settlement-wallet-code.fc": "b5f16e35d6fb285636b209167c87617006f59b3f6ec3501a38b2a7cde13d6b28",
+        "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+        "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728",
+        "imports/utils.fc": "b33eca75ab4b2238fadb71cb9e734a58e15df4f346786bcccecff1084e1c72e8"
+      },
+      "codeCellHash": "c629a2e360ac8fe335177bd7e8577a937946ba37361aa2204b9972471368947a",
+      "bocFileSha256": "96f660b5940d355800af54c30b262941658f981dee9feb42e45172730974bb55",
+      "financialExecutionAuthorized": false
+    }
+  },
+  "externalBytecodeEvidence": {
+    "network": "-3",
+    "snapshotObservedUtc": "2026-10-30T09:27:37.127Z",
+    "routerCodeCellHash": "a7e2f92c4bccbdbaaa0c083aa1da9762b52023134234adeb3b7bc8e72dbd1182",
+    "scope": "CAPTURED_BYTECODE_EXECUTED_LOCALLY_NOT_LIVE_FINALITY_OR_INDEPENDENT_SOURCE_AUDIT"
+  },
+  "blockers": [
+    "POSITIVE_CURVE_AUTHORIZATION_AND_POST_FUNDING_GUARD_PRODUCER",
+    "TRUSTED_TESTNET_ANCHOR_AND_AUTHENTICATED_VALIDATOR_PROOF_CHAIN",
+    "CANONICAL_DEX_SETTLEMENT_AND_FULL_OPERATION_ATTRIBUTION",
+    "CONTRACT_CONSUMABLE_EXACT_LP_RECOVERY_PROOF",
+    "FOREIGN_WALLET_FINAL_WITHDRAWAL_ACKNOWLEDGEMENT",
+    "EXPIRED_IMMUTABLE_OPERATION_RENEWAL_REQUIRES_REVIEWED_VERSIONED_PROTOCOL",
+    "QUALIFIED_INDEPENDENT_REVIEW_AND_SEPARATE_TESTNET_APPROVAL"
+  ],
+  "previousCheckpoint": "d7efdc6005ae491f04b968ee2249e185ea73feea",
+  "reviewRequiredCodeCommit": "e1dacb7dd82d628064950af43e1a20cc3ec2a48f",
+  "reviewStatus": "QUALIFIED_INDEPENDENT_REVIEW_REQUIRED_NOT_OBTAINED",
+  "historicalTestsAt8f1f4b0": {
+    "fullFinancialSandbox": {
+      "pass": 173,
+      "fail": 0
+    },
+    "finalVersionedComponentCases": {
+      "pass": 10,
+      "fail": 0,
+      "includedInFullSuite": true
+    },
+    "readonlyAndReceiptAdapters": {
+      "pass": 15,
+      "fail": 0
+    },
+    "rootRegressions": {
+      "pass": 13,
+      "fail": 0
+    }
+  },
+  "tests": {
+    "targetedFinancialSandbox": {
+      "pass": 75,
+      "fail": 0
+    },
+    "modifiedComponentSubset": {
+      "pass": 16,
+      "fail": 0,
+      "includedInTargetedSuite": true
+    },
+    "backendAndReceiptAdapters": {
+      "pass": 18,
+      "fail": 0
+    },
+    "reproducibleCompilation": "PASS",
+    "fullSuiteRerunThisFollowup": false,
+    "newLiveOnchainVerification": false
+  },
+  "implementationSourceSha256Lf": {
+    "minter-contract/compile-migration-package-v2.js": "68d2764b57bee306ca4e8c1e24186922eab7b6d85203796fbf2adde3a54714fd",
+    "minter-contract/scripts/migration-package-v2.js": "e3681982c2a0b7c4aeda7c8f43cfeba68aeabcecb7e3da35820be0a3c31069ca",
+    "testnet-interface/projects/lp-evidence.mjs": "ecf81932ba547a6072c028757d84ba835452ee2d8dc103147bd8d53f3a1d3e15",
+    "testnet-interface/projects/migration-account.mjs": "6622eb747a58af1d0c5bd276d98ad1c1fad84ff91690935b810e940749f1a752",
+    "testnet-interface/projects/migration-status.mjs": "99e96e8c4d7a5a84be2fa2254a372137fa13c3c1f23e5d4684b8e680b221708d",
+    "testnet-interface/recovery/account-proof.mjs": "0b1a47e7da4705de6e65354de852bb1fd1304f3f27590e31fbaf8e766f81ba53",
+    "testnet-interface/recovery/receipts.mjs": "ecd0e4893d0d9bec5f429910af53b76b16f119f5da1132ee099df9c0ddeee7e1",
+    "tests/settlement-runtime/migration-package-v2.test.js": "a55d0e22a24d7242ac64bf0382b54952e53e355b869f1a0ab24dbe11ed1f8d44",
+    "tests/settlement-runtime/stonfi-locker-v2-real.test.js": "dd412808a4f25e6ef07e35a38384a42e56513b66c82a76973cbf6eab34f19445"
+  },
+  "capabilities": {
+    "registrationConsumer": "IMPLEMENTED_SEALED_POST_FUNDING_GUARD_CALLBACK",
+    "positiveGuardProducer": false,
+    "cryptographicValidatorFinality": false,
+    "authenticatedPermanent100PercentCustodyFloor": true,
+    "exactOnchainLpRecoveryCredit": false,
+    "immediateWithdrawalBounceFields": true,
+    "externalWithdrawalFinalAck": false,
+    "financialExecutionAuthorized": false
+  },
+  "officialFinalitySource": {
+    "repository": "ton-blockchain/ton",
+    "commit": "857b8a57a178e6ae0fe7fa86e7d81c5233de8560",
+    "path": "crypto/block/check-proof.cpp",
+    "scope": "DEPENDENCY_REFERENCE_ONLY_NOT_INTEGRATED_OR_INDEPENDENTLY_AUDITED"
+  },
+  "architectureDecision": "architecture-decision-financial-feasibility.md",
+  "architectureEvidence": "architecture-feasibility-evidence.json"
+}
