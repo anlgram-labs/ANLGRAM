@@ -45,8 +45,10 @@ test('VNext real Sandbox sell: never debit the Curve reserve without delivering 
   const quote=(await f.chain.runGetMethod(curve,'get_sell_quote',[{type:'int',value:units}])).stack;
   const expectedNet=BigInt(quote[0].value);
   assert(expectedNet>0n,'Must exercise a real solvent sale');
-  const reserve=async()=>(await f.chain.runGetMethod(curve,'get_curve_state')).stack[4].value;
-  const baseline=await reserve();
+  const curveState=async()=>(await f.chain.runGetMethod(curve,'get_curve_state')).stack.map(x=>x.value);
+  const balance=async()=>(await f.chain.runGetMethod(sellerWallet,'get_wallet_data')).stackReader.readBigNumber();
+  const baselineState=await curveState();
+  const baseline=baselineState[4], initialPending=baselineState[7];
   const snapshot=f.chain.snapshot();
 
   // Sender wallet attaches enough to send each notification; deliberately
@@ -57,24 +59,45 @@ test('VNext real Sandbox sell: never debit the Curve reserve without delivering 
     const result=await f.send(sellerWallet,sellBody(curve,f.owner.address,units,forward),
       200000000n);
     const tx=curveTransaction(result,curve);
+    const state=await curveState();
+    const after=state[4], pending=state[7];
+    const sellerAfter=await balance();
+    const sellerDebit=owned-sellerAfter;
+    const payout=coinPayout(result,curve,f.owner.address);
     if (!tx) {
-      assert.equal(await reserve(),baseline,
-        'No Curve notification may debit reserve');
+      assert.equal(after,baseline,'No Curve notification may debit reserve');
+      assert.equal(sellerDebit,0n,
+        'CUSTODY VIOLATION: seller Jettons moved without Curve receipt or refund');
+      assert.equal(payout,0n);
       continue;
     }
-    const after=await reserve();
-    const payout=coinPayout(result,curve,f.owner.address);
     if (after<baseline) {
       assert.equal(payout,expectedNet,
         'SOLVENCY VIOLATION: booked a real sell without full seller TON payout '+
         '(forward='+forward+', action='+String(tx.description.actionPhase?.resultCode)+')');
       assert.equal(tx.description.aborted,false);
       assert.equal(tx.description.actionPhase?.success,true);
+      assert.equal(sellerDebit,units,'Paid sale must consume exactly the sold Jettons');
+      assert.equal(pending,initialPending,'Paid sale must not create an unpaid token claim');
     } else {
       assert.equal(after,baseline,
         'Curve reserve unexpectedly increased during a sell attempt');
       assert.equal(payout,0n,
         'Unbooked sale must not emit seller TON payout');
+      const newlyEscrowed=pending-initialPending;
+      // An Action Phase failure rolls back Curve state, but does NOT
+      // automatically roll back the preceding external Jetton transfer.
+      // Do not accept unbooked sales unless the seller recovered the tokens
+      // or an actual Curve escrow liability accounts for the full debit.
+      assert(sellerDebit===0n || (sellerDebit===units && newlyEscrowed===units),
+        'CUSTODY VIOLATION: seller lost tokens without a verified return or pending escrow '+
+        '(forward='+forward+', debit='+sellerDebit+', escrow='+newlyEscrowed+
+        ', aborted='+String(tx.description.aborted)+
+        ', action='+String(tx.description.actionPhase?.resultCode)+')');
+      if (tx.description.aborted && tx.description.actionPhase?.success===false) {
+        assert.equal(sellerDebit,0n,
+          'ACTION PHASE FAILURE: Curve reverted payout but seller Jettons stayed transferred');
+      }
     }
   }
 });
