@@ -27,11 +27,15 @@ CGROUP_DIR="/sys/fs/cgroup/audit-sandbox"
 echo "Host runner user: $RUNNER_USER (UID: $RUNNER_UID, GID: $RUNNER_GID)"
 echo "Audited commit SHA: $GIT_COMMIT"
 
-# Teardown trap ensuring complete descendant cleanup
+# Teardown trap ensuring complete descendant cleanup without killing self
 cleanup() {
   echo "=== [ISOLATED AUDIT SANDBOX] Teardown & Process Termination ==="
-  if [ -d "$CGROUP_DIR" ] && [ -f "$CGROUP_DIR/cgroup.kill" ]; then
-    echo 1 | sudo tee "$CGROUP_DIR/cgroup.kill" >/dev/null 2>&1 || true
+  if [ -d "$CGROUP_DIR" ] && [ -f "$CGROUP_DIR/cgroup.procs" ]; then
+    while read -r pid; do
+      if [ -n "$pid" ] && [ "$pid" != "$$" ]; then
+        sudo kill -9 "$pid" 2>/dev/null || true
+      fi
+    done < "$CGROUP_DIR/cgroup.procs" 2>/dev/null || true
   fi
   sudo umount -f "$RO_TARGET" 2>/dev/null || true
   sudo umount -f "$SCRATCH_ROOT" 2>/dev/null || true
@@ -139,11 +143,6 @@ echo "[PROBE PASSED] Unprivileged execution confirmed (non-root, UID: $RUNNER_UI
 
 # 7. Execute runner inside the unprivileged sandbox
 echo "=== [ISOLATED AUDIT SANDBOX] Executing Reproduction Runner ==="
-
-# Attach current process tree to cgroup limits if active
-if [ -f "$CGROUP_DIR/cgroup.procs" ]; then
-  echo $$ | sudo tee "$CGROUP_DIR/cgroup.procs" >/dev/null 2>&1 || true
-fi
 
 sudo ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
   PATH="$NODE_DIR:/usr/local/bin:/usr/bin:/bin" \
