@@ -150,7 +150,7 @@ To avoid conflating basic contract smoke tests with large-scale economic milesto
 
 ```mermaid
 flowchart TD
-    subgraph Stage1["Stage 1: Low-Cost Smoke Tests (~2.0 Testnet TON)"]
+    subgraph Stage1["Stage 1: Low-Cost Smoke Tests (~1.55 Testnet TON)"]
         S1_1["1. Connect Tonkeeper Testnet"] --> S1_2["2. Deploy Factory & Child Minter (0.30 TON)"]
         S1_2 --> S1_3["3. Renounce Minter Admin (0.05 TON)"]
         S1_3 --> S1_4["4. Execute Retail Buy (1.00 TON)"]
@@ -168,17 +168,19 @@ flowchart TD
     Stage1 --> Stage2
 ```
 
-### Stage 1: Low-Cost Smoke Tests (~2.0 Testnet TON Budget)
+### Stage 1: Low-Cost Smoke Tests (~1.55 Testnet TON Budget)
 
 | Action | Attached Value | Consumed Gas (Est.) | Excess Refunded | Risk Profile |
 |---|---|---|---|---|
-| **Factory Deploy & Mint** | 0.30 TON | ~0.035 TON | ~0.1915 TON | Zero real financial risk; Testnet faucet funds |
-| **Admin Renunciation** | 0.05 TON | ~0.005 TON | ~0.045 TON | Permanent minter lock (irreversible on Testnet) |
-| **Retail Curve Buy** | 1.00 TON | ~0.015 TON | Tokens credited | Testnet reserve increases by 0.99 TON |
-| **Retail Curve Sell** | 0.15 TON | ~0.025 TON | ~0.14 TON returned | Tokens burned/escrowed; Testnet payout verified |
-| **Refund Claim Check** | 0.05 TON | ~0.008 TON | ~0.042 TON | Verifies `op::claim_refund` no-op / entitlement |
-| **Locker V3 Duration Check** | 0.10 TON | ~0.010 TON | ~0.090 TON | Premature unlock rejected with exit 403 |
-| **Total Stage 1 Budget** | **~2.00 TON** | **~0.10 TON net** | **~1.90 TON recycled** | Minimal cost; quickly fundable from single faucet drop |
+| **Factory Deploy & Mint** | 0.30 TON | ~0.035 TON | ~0.1915 TON | Zero real financial risk; Testnet faucet funds; creation fee paid to treasury |
+| **Admin Renunciation** | 0.05 TON | ~0.005 TON | ~0.045 TON | Permanent minter lock (irreversible on Testnet); creator authority closed |
+| **Retail Curve Buy** | 1.00 TON | ~0.015 TON | Tokens credited | Testnet reserve increases by 0.99 TON; 0.01 TON trade fee accrued |
+| **Retail Curve Sell** | 0.15 TON | ~0.025 TON | ~0.14 TON returned | Tokens burned/escrowed; Testnet payout verified; 1% trade fee deducted |
+| **Refund Claim Check** | 0.05 TON | ~0.008 TON | ~0.042 TON | Verifies `op::claim_refund` (`0x414e4c34`): returns tokens if escrowed; aborts with exit code 409 if no refund pending |
+| **Total Stage 1 Budget** | **~1.55 TON** | **~0.088 TON gas + ~0.0835 TON fees (~0.15 TON net)** | **~1.40 TON recycled** | Minimal cost; quickly fundable from single faucet drop (2.0–5.0 TON) |
+
+> [!NOTE]
+> **LP Locker V3 Scope Clarification**: In Stage 1 smoke tests, Curve reserve (~0.99 TON) remains far below the 300 TON threshold. Because graduation has not occurred, STON.fi pool is not provisioned and LP tokens have not been minted. LP Locker V3 is uninitialized/unfunded in Stage 1. Therefore, LP Locker withdrawal verification is strictly classified as a Stage 3 post-graduation acceptance test, sealed behind Gate 414 (`throw(414)`).
 
 ### Stage 2: 300 TON Graduation Milestone Acceptance (305.00 Testnet TON Budget)
 

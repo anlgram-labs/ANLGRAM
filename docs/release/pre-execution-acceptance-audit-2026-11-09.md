@@ -121,16 +121,26 @@ Prior to any transaction construction, every contract address is mathematically 
 
 ---
 
-## 5. Transaction-by-Transaction Stage 1 Checklist
+## 5. Transaction-by-Transaction Stage 1 Checklist & Individual Verdicts
 
-| Tx # | Step Name | Destination Address | Attached TON | Opcode & Description | StateInit Required | Platform & Network Fees | Maximum Loss | Success Criteria | Failure Criteria |
-|---|---|---|---|---|---|---|---|---|---|
-| **Tx 1** | Factory Jetton Creation | Factory Address | `0.30 TON` (`300000000n`) | `0x4e585a91` (`CREATE_JETTON`) | Yes (if first deploy) | `0.0735 TON` treasury fee + ~`0.035 TON` gas | `0.1085 TON` net | Child minter deployed; 1B Jettons minted; 0.0735 TON treasury fee paid; ~0.1915 TON refunded | Compute exit != 0 (e.g. 201 unauthorized, 202 underfunded) |
-| **Tx 2** | Admin Renunciation | Child Minter Address | `0.05 TON` (`50000000n`) | `0x00000003` (`CHANGE_ADMIN`) with `addr_none` | No (active) | ~`0.005 TON` gas | `0.005 TON` net | `get_jetton_data().admin_address == null`; minting permanently closed | Supply increases or admin remains non-null |
-| **Tx 3** | Retail Curve Buy | Bonding Curve Address | `1.00 TON` (`1000000000n`) | `0x5fcc3d14` (`BUY_TOKENS`) with max 1% slippage | No (active) | 1% trade fee (`0.01 TON`) + ~`0.015 TON` gas | 1.00 TON exchanged for Jettons | Reserve increases by 0.99 TON; purchaser Jetton wallet credited with exact formula tokens | Slippage > 1% aborts; TON refunded |
-| **Tx 4** | Retail Curve Sell | Seller Jetton Wallet | `0.15 TON` (`150000000n`) | `0x0f8a7ea5` (`TRANSFER`) with forward payload `0x21c200` | No (active) | ~`0.025 TON` gas | `0.025 TON` net | TON payout returned to seller; curve reserve reduced; Jettons burned/escrowed | Short gas -> Jettons escrowed in `pending_refunds_dict` for refund |
-| **Tx 5** | Refund Claim Check | Bonding Curve Address | `0.05 TON` (`50000000n`) | `0x5fcc3d15` (`CLAIM_REFUND`) | No (active) | ~`0.008 TON` gas | `0.008 TON` net | If claim pending, Jettons refunded; if no claim, no-op; excess TON returned | Reserve altered (solvency violation) |
-| **Tx 6** | Locker Duration Check | LP Locker V3 Address | `0.10 TON` (`100000000n`) | `0x414c5633` (`WITHDRAW`) | No (active) | ~`0.010 TON` gas | `0.010 TON` net | Rejection with **exit code 403** (premature unlock rejected); ~0.09 TON refunded | Premature release of locked LP tokens |
+Stage 1 comprises exactly five sequential smoke transactions designed to verify contract lifecycle and trading mechanics on TON Testnet with minimum cost and zero real-world capital risk.
+
+| Tx # | Step Name | Destination Address | Attached TON | Opcode & Description | StateInit Required | Platform & Network Fees | Maximum Loss | Success Criteria | Failure Criteria | Individual Verdict |
+|---|---|---|---|---|---|---|---|---|---|:---:|
+| **Tx 1** | Factory Jetton Creation | Factory Address | `0.30 TON` (`300000000n`) | `0x4e585a91` (`CREATE_JETTON`) | Yes (if first deploy) | `0.0735 TON` treasury fee + ~`0.035 TON` gas | `0.1085 TON` net | Child minter deployed; 1B Jettons minted; 0.0735 TON treasury fee paid; ~0.1915 TON refunded | Compute exit != 0 (e.g. 201 unauthorized, 202 underfunded) | **GO** |
+| **Tx 2** | Admin Renunciation | Child Minter Address | `0.05 TON` (`50000000n`) | `0x00000003` (`CHANGE_ADMIN`) with `addr_none` | No (active) | ~`0.005 TON` gas | `0.005 TON` net | `get_jetton_data().admin_address == null`; minting permanently closed | Supply increases or admin remains non-null | **GO** |
+| **Tx 3** | Retail Curve Buy | Bonding Curve Address | `1.00 TON` (`1000000000n`) | `0x5fcc3d14` (`BUY_TOKENS`) with max 1% slippage | No (active) | 1% trade fee (`0.01 TON`) + ~`0.015 TON` gas | 1.00 TON exchanged for Jettons | Reserve increases by 0.99 TON; purchaser Jetton wallet credited with exact formula tokens | Slippage > 1% aborts; TON refunded | **GO** |
+| **Tx 4** | Retail Curve Sell | Seller Jetton Wallet | `0.15 TON` (`150000000n`) | `0x0f8a7ea5` (`TRANSFER`) with forward payload `0x21c200` | No (active) | ~`0.025 TON` gas | `0.025 TON` net | TON payout returned to seller; curve reserve reduced; Jettons burned/escrowed | Short gas -> Jettons escrowed in `pending_refunds_dict` for refund | **GO** |
+| **Tx 5** | Refund Claim Check | Bonding Curve Address | `0.05 TON` (`50000000n`) | `0x414e4c34` (`CLAIM_REFUND`) | No (active) | ~`0.008 TON` gas | `0.008 TON` net | **Dual-case semantics**: (A) If seller has pending refund in `pending_refunds_dict`, delivers Jettons via internal transfer (`0x414e5302`), decrements liability, preserves reserve; (B) If seller has NO pending refund, contract aborts with TVM exit code 409 (`ERROR_NO_PENDING_REFUND`). Exit code 409 is a protective rejection and must NOT be classified as a successful claim | Reserve altered (solvency violation); or classifying exit 409 rejection as a successful claim | **GO** |
+
+### 5.1 Exclusion of LP Locker V3 from Stage 1 Smoke Tests
+
+In Stage 1 smoke tests, Curve reserve is ~0.99 TON, which is far below the 300 TON threshold (`300000000000n` nanoTON). Because graduation has not occurred:
+- STON.fi liquidity pool has NOT been provisioned.
+- LP tokens have NOT been minted.
+- LP Locker V3 is uninitialized and unfunded.
+
+Attempting to test LP withdrawal in Stage 1 is premature and structurally invalid. LP Locker V3 withdrawal verification is strictly classified under **Stage 3: Post-Graduation DEX Migration Acceptance**, which is currently locked behind **Gate 414 (`throw(414)`)**.
 
 ---
 
@@ -146,7 +156,7 @@ An audit of current official TON Testnet faucet mechanisms was conducted (withou
 2. **Official Web Faucet (`faucet.ton.org`)**:
    - Grants up to 5-10 Testnet TON with GitHub/Telegram verification.
 3. **Funding Strategy Alignment**:
-   - **Stage 1 Budget (~2.0 TON)**: Can be funded completely from a **single faucet drop**.
+   - **Stage 1 Budget (~1.55 TON Attached; ~0.15 TON Net Consumed)**: Can be funded completely from a **single faucet drop** (2.0–5.0 TON).
    - **Stage 2 Budget (305.0 TON)**: Requires scheduled multi-request faucet collection or developer testgiver grants over multiple sessions. **Zero production parameters will be lowered to simulate graduation.**
 
 ---
@@ -155,7 +165,7 @@ An audit of current official TON Testnet faucet mechanisms was conducted (withou
 
 | Acceptance Stage | Budget Required | Economics Invariant | Status | Execution Guard |
 |---|---|---|:---:|---|
-| **Stage 1: Smoke Tests** | ~2.0 Testnet TON | N/A (Smoke testing) | **GO** | Authorized for supervised Testnet execution |
+| **Stage 1: Smoke Tests** | ~1.55 Testnet TON | N/A (Smoke testing) | **GO** | Authorized for supervised Testnet execution |
 | **Stage 2: 300 TON Graduation** | 305.0 Testnet TON | 300 TON reserve / 80-20 split / 1% fee | **GO** (Conditional) | Requires completed Testnet faucet accumulation |
 | **Stage 3: STON.fi DEX Migration** | N/A | DEX pool migration | **NO-GO** | **Gate 414 SEALED (`throw(414)`)** |
 
