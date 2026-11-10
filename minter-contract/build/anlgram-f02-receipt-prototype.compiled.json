@@ -1,0 +1,15 @@
+{
+  "contract": "anlgram-f02-receipt-prototype.fc",
+  "compiler": "@ton-community/func-js@0.11.0",
+  "codeCellHash": "14f13ca485eadc716de8691bd3fe47d7bf9ced6d6b421a664ba1da94645cd7ac",
+  "codeBocBase64": "te6ccgECCwEAAjkAART/APSkE/S88sgLAQIBYgIDAgLPBAUBXaBTu9qJoan0AaIDoaZ/qAOh9IH0gfSBogeoA6H0gaIDqaJD4AIptnjYREWEAKpBBwL3GwiIMcAkVvgAdDTA/pAMAFxsPLRme1E0NT6ANEh0NM/1AHQ+kD6QPpA0QPUAdD6QNEB1NEh8AEU2zwxFccF8uGRBNMfAYIQc2LQnLry4ZTTP1EVuvLhmfoAIcIA8uGY+kAFxwXy4ZED0wABldQB0AHR3tMfAYIQQUxWMoAcGABE+kQwcLry4U2AAOLry4ZnTPwW68uGZA9ECwADy4ZkByMwB+gLJ7VQC6CPwASLwASHwAVMhxwXy0ZjbPFR0NPkBJvkBuZNbEDSSNTXiyFAGzxZQBM8WWM8WUiDME8zJeoAUcCDIywAh+gIh+gIh+gIh+gIh+gLLAcsPyw/MyXAgyMsBFPQA9AASywDJ+QBwdMjLAsoHy//J0PgoVCADCAkB6tDTHwGCEFNUMjK68uGY0w/TDwLAFAHACrDy4ZjU1NTRIvkAgvDsYU6kquo/d2hgbxwWMrM3TT3glqHnxLpDyACcSH/unbry4Zgh+QCC8L8TBBdQ8r7raIhZx1aJ4sGLnJC9eOl7GXqteta8UgyEuvLhmCD5AAoAWnBUIBNUFAPIUAT6AljPFgHPFszJIsjLARL0APQAywDJ+QBwdMjLAsoHy//J0ABMgvA/G7MZLKqqGreudHTeUOLjYl/idXrtS+T06cP8hawLmrry4Zg=",
+  "sourceFilesSha256": {
+    "anlgram-f02-receipt-prototype.fc": "6a286d1f5e05ed9ceb4a46f6ac9c367fb9531f4c60fe174f8907b81fdfeda011",
+    "imports/stdlib.fc": "8f42ab2d921984f354ee0d85544a446f3df7264d6bdf8555f1b2ddd427e1e925",
+    "imports/params.fc": "65925e6e45e20dbc836dbec2dfd660e874aa7f1049d187ae543b469018de9a7a",
+    "imports/jetton-utils.fc": "f825c69d4660f04267b2b0f2372d65819ac9c90b7bf828910bfc16a1bdcd9b19",
+    "imports/stonfi-v22-auth.fc": "671d954ba354d46aab2cfe1daac69acc1b08007d3a0dd2debc522bc27745f728"
+  },
+  "financialDeploymentAuthorized": false,
+  "settlementImplemented": false
+}
