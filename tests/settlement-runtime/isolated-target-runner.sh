@@ -89,16 +89,31 @@ if [ -n "${HOST_NET_NS:-}" ] && [ "$TARGET_NET_NS" = "$HOST_NET_NS" ]; then
   exit 1
 fi
 
-# Test network isolation: external blocked, loopback active
-if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
-  echo "[CRITICAL FAIL] Network namespace has external internet access! Aborting."
+# Test network isolation: loopback active and external internet egress blocked
+if [ ! -d /sys/class/net/lo ]; then
+  echo "[CRITICAL FAIL] Loopback interface missing! Aborting."
   exit 1
 fi
-if ! ping -c 1 -W 1 127.0.0.1 >/dev/null 2>&1; then
-  echo "[CRITICAL FAIL] Loopback interface is inactive inside network namespace! Aborting."
+LO_FLAGS="$(cat /sys/class/net/lo/flags 2>/dev/null || echo '0x0')"
+echo "[PROBE] Loopback device flags: $LO_FLAGS"
+# Bit 0 (0x1) is IFF_UP
+if [ "$(( LO_FLAGS & 1 ))" -ne 1 ]; then
+  echo "[CRITICAL FAIL] Loopback interface is down! Aborting."
   exit 1
 fi
-echo "[PROBE PASSED] Mount and network namespaces isolated (loopback only, distinct mount view)."
+
+# Verify unprivileged local TCP socket binding succeeds on loopback
+if ! "$NODE_BIN" -e "const s = require('net').createServer().listen(0, '127.0.0.1', () => { s.close(); process.exit(0); }); s.on('error', () => process.exit(1));" 2>/dev/null; then
+  echo "[CRITICAL FAIL] Loopback socket binding failed! Aborting."
+  exit 1
+fi
+
+# Verify external network egress is blocked (connection to external IP must fail or timeout)
+if "$NODE_BIN" -e "const s = require('net').createConnection({host: '8.8.8.8', port: 53, timeout: 500}); s.on('connect', () => process.exit(1)); s.on('error', () => process.exit(0)); setTimeout(() => process.exit(0), 600);" 2>/dev/null; then
+  echo "[CRITICAL FAIL] External network connection to 8.8.8.8:53 succeeded! Aborting."
+  exit 1
+fi
+echo "[PROBE PASSED] Mount and network namespaces isolated (loopback active, external egress blocked, distinct mount view)."
 
 # -----------------------------------------------------------------------------
 # 4. Probe: File descriptor sanitization and inheritance
