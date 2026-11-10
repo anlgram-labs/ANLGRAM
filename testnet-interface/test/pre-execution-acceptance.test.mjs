@@ -10,11 +10,11 @@ import factoryArtifact from '../../minter-contract/build/anlgram-factory.compile
 import curveArtifact from '../../minter-contract/build/anlgram-bonding-curve-dispatch-v2.compiled.json' with {type:'json'};
 import routerArtifact from '../../minter-contract/build/anlgram-migration-router-dispatch-v2.compiled.json' with {type:'json'};
 
-const require = createRequire(import.meta.url);
-const core = require('../../tests/settlement-runtime/node_modules/@ton/core');
+const require = createRequire(new URL('../../tests/settlement-runtime/one-shot-dispatch-support.js', import.meta.url));
+const core = require('@ton/core');
 const {Address,Cell,Dictionary,beginCell,contractAddress,storeStateInit} = core;
-const {fixture,exit} = require('../../tests/settlement-runtime/one-shot-dispatch-support');
-const vnextPackage = require('../../tests/settlement-runtime/vnext-package-support');
+const {fixture,exit} = require('./one-shot-dispatch-support');
+const vnextPackage = require('./vnext-package-support');
 const {createShardAccount} = require('@ton/sandbox');
 
 const hash = cell => cell.hash().toString('hex');

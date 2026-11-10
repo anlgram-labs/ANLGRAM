@@ -56,6 +56,8 @@ jobs:
         working-directory: tests/settlement-runtime
       - name: Verify deterministic artifacts, getter parity and migration evidence
         working-directory: .
+        env:
+          NODE_PATH: tests/settlement-runtime/node_modules:testnet-interface/node_modules
         run: |
           node minter-contract/compile-one-shot-dispatch.js --check
           node minter-contract/compile-vesting-v2.js --dispatch --check
