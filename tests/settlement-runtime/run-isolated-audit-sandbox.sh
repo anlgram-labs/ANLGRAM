@@ -7,7 +7,7 @@ set -euo pipefail
 # 2. Read-only audited repository target and immutable tools
 # 3. Scratch-only writable storage on tmpfs / isolated directory
 # 4. Sanitized empty environment allowlist (credential removal)
-# 5. OS-enforced resource limits (ulimits + node max heap) compatible with Wasm
+# 5. OS-enforced resource limits (process, file, CPU time, wall-clock, and Node physical heap)
 # 6. Unprivileged target execution (strictly non-root)
 # 7. Pre-flight enforcement probe before target execution
 # 8. Teardown trap ensuring cleanup on success or failure
@@ -91,11 +91,10 @@ echo "=== [ISOLATED AUDIT SANDBOX] Executing Reproduction Runner ==="
 # Resource Limits explanation:
 # - ulimit -u 200: max processes/threads
 # - ulimit -f 1048576: max file size 1GB
-# - ulimit -v 16777216: 16GB virtual address space cap.
-#   Notice: 64-bit V8/Emscripten WebAssembly reserves an 8GB virtual guard region for memory safety.
-#   A restrictive 4GB ulimit -v causes Wasm instantiation to fail with ENOMEM. 16GB allows Wasm guard pages
-#   while strictly preventing runaway allocations.
-# - node --max-old-space-size=2048: caps actual physical V8 heap to 2GB RSS.
+# - ulimit -t 300: max 300 CPU seconds
+# - Node --max-old-space-size=2048: caps physical V8 heap to 2GB RSS.
+# - Virtual memory (ulimit -v) is left unconstrained because 64-bit V8/Emscripten WebAssembly
+#   reserves large virtual address guard regions (up to 8GB per Wasm instance) for TVM Sandbox emulators.
 # - timeout 300s: caps wall-clock time to 5 minutes.
 
 sudo ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
@@ -109,7 +108,7 @@ sudo ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
   bash -c "
     ulimit -u 200
     ulimit -f 1048576
-    ulimit -v 16777216
+    ulimit -t 300
     cd '$RO_TARGET'
     timeout 300s '$NODE_BIN' --max-old-space-size=2048 tests/settlement-runtime/f02-independent-reproduction-runner.js
   "
