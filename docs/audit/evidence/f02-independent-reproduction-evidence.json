@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-10T22:32:08.082Z",
+  "timestamp": "2026-11-10T22:36:11.132Z",
   "environment": {
     "platform": "linux",
     "arch": "x64",
@@ -10,9 +10,9 @@
     "username": "runner",
     "isRoot": false,
     "isolatedSandbox": true,
-    "gitCommit": "4bfa396cfad05dc37f01610139d85ed18cbdadb6",
-    "prHeadSha": "eebfab2871e4b6222a3531cd7e76f39bf14889d6",
-    "testedMergeSha": "4bfa396cfad05dc37f01610139d85ed18cbdadb6",
+    "gitCommit": "1510e50f502d2ee290351b5ee27d2cc171e21733",
+    "prHeadSha": "8b410f9ad4ee66999d22384b077344a1c7154491",
+    "testedMergeSha": "1510e50f502d2ee290351b5ee27d2cc171e21733",
     "mountNamespace": true,
     "networkNamespace": true,
     "noNewPrivs": true,
@@ -21,7 +21,7 @@
   "pr63Compilation": {
     "name": "PR #63 Prototype Compilation Check",
     "exitCode": 0,
-    "durationMs": 415,
+    "durationMs": 525,
     "success": true,
     "stdoutPreview": "code cell 14f13ca485eadc716de8691bd3fe47d7bf9ced6d6b421a664ba1da94645cd7ac verified\n",
     "stderrPreview": "",
@@ -30,33 +30,33 @@
   "pr63PrototypeTest": {
     "name": "PR #63 Prototype TVM Sandbox Test",
     "exitCode": 0,
-    "durationMs": 2277,
+    "durationMs": 2684,
     "success": true,
-    "stdoutPreview": "TAP version 13\n# Subtest: isolated LP receipt authenticates captured wallet, records actual custody once, never finalizes or pays out\nok 1 - isolated LP receipt authenticates captured wallet, records actual custody once, never finalizes or pays out\n  ---\n  duration_ms: 1562.260372\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 2235.009\n",
+    "stdoutPreview": "TAP version 13\n# Subtest: isolated LP receipt authenticates captured wallet, records actual custody once, never finalizes or pays out\nok 1 - isolated LP receipt authenticates captured wallet, records actual custody once, never finalizes or pays out\n  ---\n  duration_ms: 1851.143347\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 2630.304063\n",
     "stderrPreview": ""
   },
   "lpAccountSettlementEvidence": {
     "name": "STON.fi LPAccount Deletion/Recreation & Delayed Messages Evidence",
     "exitCode": 0,
-    "durationMs": 12466,
+    "durationMs": 13227,
     "success": true,
-    "stdoutPreview": "deletes LPAccount, and post-custody query and refund cannot prove zero or return\n  ---\n  duration_ms: 5334.278227\n  type: 'test'\n  ...\n# Subtest: authentic getter reply can become stale while a refund and the delayed second leg recreate the same LPAccount\nok 2 - authentic getter reply can become stale while a refund and the delayed second leg recreate the same LPAccount\n  ---\n  duration_ms: 1872.676202\n  type: 'test'\n  ...\n# LPACCOUNT_REFUND_EDGE f98e2b8\n# LPACCOUNT_RETURN_ROUTE f98e2b8 -> 657b54f5 -> 657b54f5 -> f8a7ea5 -> f8a7ea5 -> 1f3835d -> 178d4519 -> d53276db\n# Subtest: minimum-LP rejection recreates LPAccount holding both legs, while refund dispatch precedes returned balances\nok 3 - minimum-LP rejection recreates LPAccount holding both legs, while refund dispatch precedes returned balances\n  ---\n  duration_ms: 1741.02117\n  type: 'test'\n  ...\n# Subtest: failed first token send leaves only pTON in LPAccount and native return is separate from token bounce\nok 4 - failed first token send leaves only pTON in LPAccount and native return is separate from token bounce\n  ---\n  duration_ms: 1548.345013\n  type: 'test'\n  ...\n# Subtest: unlocked withdrawal changes LP holdings while the Migrator preserves its historical receipt\nok 5 - unlocked withdrawal changes LP holdings while the Migrator preserves its historical receipt\n  ---\n  duration_ms: 1545.893689\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 12423.417288\n",
+    "stdoutPreview": "eletes LPAccount, and post-custody query and refund cannot prove zero or return\n  ---\n  duration_ms: 5579.269109\n  type: 'test'\n  ...\n# Subtest: authentic getter reply can become stale while a refund and the delayed second leg recreate the same LPAccount\nok 2 - authentic getter reply can become stale while a refund and the delayed second leg recreate the same LPAccount\n  ---\n  duration_ms: 2016.313915\n  type: 'test'\n  ...\n# LPACCOUNT_REFUND_EDGE f98e2b8\n# LPACCOUNT_RETURN_ROUTE f98e2b8 -> 657b54f5 -> 657b54f5 -> f8a7ea5 -> f8a7ea5 -> 1f3835d -> 178d4519 -> d53276db\n# Subtest: minimum-LP rejection recreates LPAccount holding both legs, while refund dispatch precedes returned balances\nok 3 - minimum-LP rejection recreates LPAccount holding both legs, while refund dispatch precedes returned balances\n  ---\n  duration_ms: 1880.454363\n  type: 'test'\n  ...\n# Subtest: failed first token send leaves only pTON in LPAccount and native return is separate from token bounce\nok 4 - failed first token send leaves only pTON in LPAccount and native return is separate from token bounce\n  ---\n  duration_ms: 1670.213061\n  type: 'test'\n  ...\n# Subtest: unlocked withdrawal changes LP holdings while the Migrator preserves its historical receipt\nok 5 - unlocked withdrawal changes LP holdings while the Migrator preserves its historical receipt\n  ---\n  duration_ms: 1641.450243\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 13182.827854\n",
     "stderrPreview": ""
   },
   "f02AdversarialSuite": {
     "name": "F-02 Authenticated STON.fi Terminal Settlement Candidate Adversarial Suite",
     "exitCode": 0,
-    "durationMs": 20129,
+    "durationMs": 20916,
     "success": true,
-    "stdoutPreview": "9\nok 5 - F-02 Adversarial 3: Receipt with pending claims from authentic Locker is rejected with exit code 409\n  ---\n  duration_ms: 1547.827031\n  type: 'test'\n  ...\n# Subtest: F-02 Adversarial 4: LP receipt referencing mismatched or forged pool from authentic Locker is rejected with exit code 408\nok 6 - F-02 Adversarial 4: LP receipt referencing mismatched or forged pool from authentic Locker is rejected with exit code 408\n  ---\n  duration_ms: 1522.337656\n  type: 'test'\n  ...\n# Subtest: F-02 Adversarial 5: Partial deposit recovery via refund_me dispatches to authentic STON.fi LPAccount\nok 7 - F-02 Adversarial 5: Partial deposit recovery via refund_me dispatches to authentic STON.fi LPAccount\n  ---\n  duration_ms: 1284.824471\n  type: 'test'\n  ...\n# Subtest: F-02 Adversarial 6: Replaying terminal settlement proof on already-graduated Curve from authentic Router fails closed with exit code 407 (ERROR_INVALID_STATE)\nok 8 - F-02 Adversarial 6: Replaying terminal settlement proof on already-graduated Curve from authentic Router fails closed with exit code 407 (ERROR_INVALID_STATE)\n  ---\n  duration_ms: 1568.087641\n  type: 'test'\n  ...\n# Subtest: F-02 Economics: 300 TON reserve, 200M DEX tokens and 800M sold tokens strictly conserved\nok 9 - F-02 Economics: 300 TON reserve, 200M DEX tokens and 800M sold tokens strictly conserved\n  ---\n  duration_ms: 1104.375923\n  type: 'test'\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 20085.238517\n",
+    "stdoutPreview": "409\nok 5 - F-02 Adversarial 3: Receipt with pending claims from authentic Locker is rejected with exit code 409\n  ---\n  duration_ms: 1629.81449\n  type: 'test'\n  ...\n# Subtest: F-02 Adversarial 4: LP receipt referencing mismatched or forged pool from authentic Locker is rejected with exit code 408\nok 6 - F-02 Adversarial 4: LP receipt referencing mismatched or forged pool from authentic Locker is rejected with exit code 408\n  ---\n  duration_ms: 1661.277169\n  type: 'test'\n  ...\n# Subtest: F-02 Adversarial 5: Partial deposit recovery via refund_me dispatches to authentic STON.fi LPAccount\nok 7 - F-02 Adversarial 5: Partial deposit recovery via refund_me dispatches to authentic STON.fi LPAccount\n  ---\n  duration_ms: 1347.23313\n  type: 'test'\n  ...\n# Subtest: F-02 Adversarial 6: Replaying terminal settlement proof on already-graduated Curve from authentic Router fails closed with exit code 407 (ERROR_INVALID_STATE)\nok 8 - F-02 Adversarial 6: Replaying terminal settlement proof on already-graduated Curve from authentic Router fails closed with exit code 407 (ERROR_INVALID_STATE)\n  ---\n  duration_ms: 1658.438794\n  type: 'test'\n  ...\n# Subtest: F-02 Economics: 300 TON reserve, 200M DEX tokens and 800M sold tokens strictly conserved\nok 9 - F-02 Economics: 300 TON reserve, 200M DEX tokens and 800M sold tokens strictly conserved\n  ---\n  duration_ms: 1155.869988\n  type: 'test'\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 20869.837778\n",
     "stderrPreview": ""
   },
   "networkProbeContractTest": {
     "name": "Network Probe Contract Verification (Pass/Fail/Closed Logic)",
     "exitCode": 0,
-    "durationMs": 281,
+    "durationMs": 293,
     "success": true,
-    "stdoutPreview": "TAP version 13\n# Subtest: Network probe exits 99 when external connection succeeds\nok 1 - Network probe exits 99 when external connection succeeds\n  ---\n  duration_ms: 32.446103\n  type: 'test'\n  ...\n# Subtest: Network probe exits 98 on ECONNREFUSED (route exists but port closed)\nok 2 - Network probe exits 98 on ECONNREFUSED (route exists but port closed)\n  ---\n  duration_ms: 24.798106\n  type: 'test'\n  ...\n# Subtest: Network probe exits 97 on connection timeout\nok 3 - Network probe exits 97 on connection timeout\n  ---\n  duration_ms: 24.168627\n  type: 'test'\n  ...\n# Subtest: Network probe exits 0 when error code is ENETUNREACH or EHOSTUNREACH\nok 4 - Network probe exits 0 when error code is ENETUNREACH or EHOSTUNREACH\n  ---\n  duration_ms: 97.551492\n  type: 'test'\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 237.470277\n",
+    "stdoutPreview": "TAP version 13\n# Subtest: Network probe exits 99 when external connection succeeds\nok 1 - Network probe exits 99 when external connection succeeds\n  ---\n  duration_ms: 31.761905\n  type: 'test'\n  ...\n# Subtest: Network probe exits 98 on ECONNREFUSED (route exists but port closed)\nok 2 - Network probe exits 98 on ECONNREFUSED (route exists but port closed)\n  ---\n  duration_ms: 27.93769\n  type: 'test'\n  ...\n# Subtest: Network probe exits 97 on connection timeout\nok 3 - Network probe exits 97 on connection timeout\n  ---\n  duration_ms: 24.87783\n  type: 'test'\n  ...\n# Subtest: Network probe exits 0 when error code is ENETUNREACH or EHOSTUNREACH\nok 4 - Network probe exits 0 when error code is ENETUNREACH or EHOSTUNREACH\n  ---\n  duration_ms: 99.88938\n  type: 'test'\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 248.639606\n",
     "stderrPreview": ""
   },
   "escrowV3HandoffVerification": {
@@ -64,13 +64,13 @@
     "exitCode": 0,
     "durationMs": 108,
     "success": true,
-    "stdoutPreview": "TAP version 13\n# [INGESTION] Inspecting candidate source file: /tmp/scratch/test-ingestion/corrupt.fc\n# [INGESTION] Computed SHA-256: 4b626c05b4f8cc07f8bda2328d719a2643d4130fdb3ed8a58e8e55533f50cdd2\n# [INGESTION] Expected SHA-256: ed68732cba8f75917112f9bddef9cf30ce131cb2f39cb20d52585bbe65a60190\n# Subtest: Escrow V3 handoff constants are pinned correctly\nok 1 - Escrow V3 handoff constants are pinned correctly\n  ---\n  duration_ms: 0.614126\n  type: 'test'\n  ...\n# Subtest: verifySourceFile rejects corrupt source and validates correct source\nok 2 - verifySourceFile rejects corrupt source and validates correct source\n  ---\n  duration_ms: 2.35085\n  type: 'test'\n  ...\n1..2\n# tests 2\n# suites 0\n# pass 2\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 66.195222\n",
+    "stdoutPreview": "TAP version 13\n# [INGESTION] Inspecting candidate source file: /tmp/scratch/test-ingestion/corrupt.fc\n# [INGESTION] Computed SHA-256: 4b626c05b4f8cc07f8bda2328d719a2643d4130fdb3ed8a58e8e55533f50cdd2\n# [INGESTION] Expected SHA-256: ed68732cba8f75917112f9bddef9cf30ce131cb2f39cb20d52585bbe65a60190\n# Subtest: Escrow V3 handoff constants are pinned correctly\nok 1 - Escrow V3 handoff constants are pinned correctly\n  ---\n  duration_ms: 0.620046\n  type: 'test'\n  ...\n# Subtest: verifySourceFile rejects corrupt source and validates correct source\nok 2 - verifySourceFile rejects corrupt source and validates correct source\n  ---\n  duration_ms: 2.393084\n  type: 'test'\n  ...\n1..2\n# tests 2\n# suites 0\n# pass 2\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 66.090588\n",
     "stderrPreview": ""
   },
   "escrowV3Compilation": {
     "name": "Escrow V3 FunC Compilation & Code Cell Hash Determination",
     "exitCode": 0,
-    "durationMs": 543,
+    "durationMs": 593,
     "success": true,
     "stdoutPreview": "[COMPILATION SUCCESS] minter-contract/contracts/anlgram-f02-escrow-candidate.fc\nCode cell hash (SHA-256): 4283658e16d141771cdc608922cb84b0e1c41717aa744874a58ca8e23428f9b9\n",
     "stderrPreview": "",
@@ -80,9 +80,9 @@
   "escrowV3SandboxSuite": {
     "name": "Escrow V3 TVM Sandbox Verification Suite (TON, Jettons, Real Wallets)",
     "exitCode": 0,
-    "durationMs": 2738,
+    "durationMs": 2813,
     "success": true,
-    "stdoutPreview": "TAP version 13\n# Subtest: TON deposit and recovery remain pending until exact controller attestation\nok 1 - TON deposit and recovery remain pending until exact controller attestation\n  ---\n  duration_ms: 606.146313\n  type: 'test'\n  ...\n# Subtest: only the derived wallet and configured origin can credit a Jetton deposit\nok 2 - only the derived wallet and configured origin can credit a Jetton deposit\n  ---\n  duration_ms: 390.725626\n  type: 'test'\n  ...\n# Subtest: real Sandbox Jetton wallets transfer and credit separate deposits\nok 3 - real Sandbox Jetton wallets transfer and credit separate deposits\n  ---\n  duration_ms: 1339.195672\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 2693.703823\n",
+    "stdoutPreview": "TAP version 13\n# Subtest: TON deposit and recovery remain pending until exact controller attestation\nok 1 - TON deposit and recovery remain pending until exact controller attestation\n  ---\n  duration_ms: 610.776361\n  type: 'test'\n  ...\n# Subtest: only the derived wallet and configured origin can credit a Jetton deposit\nok 2 - only the derived wallet and configured origin can credit a Jetton deposit\n  ---\n  duration_ms: 387.485837\n  type: 'test'\n  ...\n# Subtest: real Sandbox Jetton wallets transfer and credit separate deposits\nok 3 - real Sandbox Jetton wallets transfer and credit separate deposits\n  ---\n  duration_ms: 1359.08269\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 2769.689621\n",
     "stderrPreview": ""
   },
   "gate414Status": "SEALED (throw(414) enforced in baseline release candidates)",

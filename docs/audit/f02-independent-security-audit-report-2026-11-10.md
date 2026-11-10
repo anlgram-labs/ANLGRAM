@@ -7,10 +7,10 @@
 - PR #64 (`90eeb5d5c96532289865a955fef2ee3531cee944`) — *Document partial independent F-02 architecture review*
 - Base Branch: `feat/testnet-readiness-verification` (PR #62)
 - Audit Candidate Branch: `audit/f02-independent-security-validation` (Draft PR #66)  
-- Verified Isolated Linux CI Run: [Run 42915399189](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42915399189) (100% Green, Artifact ID: `13807844761`, ZIP SHA-256: `c3351aa564aca43099352511e02198b89c8db9a6e726f3b0d9486060afd04145`)
-- PR Head SHA: `eebfab2871e4b6222a3531cd7e76f39bf14889d6`
-- Tested Merge SHA: `4bfa396cfad05dc37f01610139d85ed18cbdadb6`
-- Preceding Verification Runs: [Run 42909833444](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909833444), [Run 42909112874](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909112874), [Run 42768895998](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42768895998), [Run 42765992724](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42765992724)
+- Verified Isolated Linux CI Run: [Run 42915999838](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42915999838) (100% Green, Artifact ID: `13809676194`, ZIP SHA-256: `bacc8be0118b091ebe6023f3fecb1defacedb50e7dc363a839054d90bc1882fa`)
+- PR Head SHA: `8b410f9ad4ee66999d22384b077344a1c7154491`
+- Tested Merge SHA: `1510e50f502d2ee290351b5ee27d2cc171e21733`
+- Preceding Verification Runs: [Run 42915399189](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42915399189), [Run 42909833444](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909833444), [Run 42909112874](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909112874), [Run 42768895998](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42768895998), [Run 42765992724](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42765992724)
 - Lead Security Agent: Antigravity AI (Pair Programming with Engineering Team)
 
 ---
@@ -68,12 +68,12 @@ Per `.agents/skills/security-audit/SKILL.md` (Universal Execution Safety), all t
 - **Network Namespace Verified:** `networkNamespace: true` (`net:[4026532260]` != host `net:[4026531833]`)
 - **NoNewPrivs Enforced:** `noNewPrivs: true` (`NoNewPrivs: 1`, `CapEff: 0000000000000000`, `CapPrm: 0000000000000000`)
 - **Cgroups V2 Enforced:** `cgroupsV2Enforced: true` (`MemoryMax: 4294967296`, `TasksMax: 200`, `MemorySwapMax: 0`)
-- **PR Head SHA:** `eebfab2871e4b6222a3531cd7e76f39bf14889d6`
-- **Tested Merge SHA:** `4bfa396cfad05dc37f01610139d85ed18cbdadb6`
-- **Workflow Status:** **100% Green (Success, Duration: 59s)**
-- **GitHub Actions Run:** [Run 42915399189](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42915399189)
-- **Uploaded Artifact ID:** `13807844761` (`f02-independent-reproduction-evidence.zip`)
-- **Uploaded Artifact ZIP SHA-256:** `c3351aa564aca43099352511e02198b89c8db9a6e726f3b0d9486060afd04145`
+- **PR Head SHA:** `8b410f9ad4ee66999d22384b077344a1c7154491`
+- **Tested Merge SHA:** `1510e50f502d2ee290351b5ee27d2cc171e21733`
+- **Workflow Status:** **100% Green (Success, Duration: 1m 20s)**
+- **GitHub Actions Run:** [Run 42915999838](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42915999838)
+- **Uploaded Artifact ID:** `13809676194` (`f02-independent-reproduction-evidence.zip`)
+- **Uploaded Artifact ZIP SHA-256:** `bacc8be0118b091ebe6023f3fecb1defacedb50e7dc363a839054d90bc1882fa`
 - **Evidence Promotion:** Verified and persisted in `docs/audit/evidence/f02-independent-reproduction-evidence.json`
 
 ### 3.2 Strengthened Adversarial Verification Results (Authenticated Senders)
