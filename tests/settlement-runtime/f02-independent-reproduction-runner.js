@@ -43,7 +43,13 @@ const evidence = {
     username: typeof os.userInfo === 'function' ? os.userInfo().username : 'unknown',
     isRoot: typeof process.getuid === 'function' ? process.getuid() === 0 : false,
     isolatedSandbox: !!process.env.AUDIT_ISOLATED_SANDBOX,
-    gitCommit: getCommitSha()
+    gitCommit: getCommitSha(),
+    prHeadSha: process.env.AUDIT_PR_HEAD_SHA || getCommitSha(),
+    testedMergeSha: process.env.AUDIT_MERGE_SHA || getCommitSha(),
+    mountNamespace: !!process.env.AUDIT_MOUNT_NAMESPACE,
+    networkNamespace: !!process.env.AUDIT_NET_NAMESPACE,
+    noNewPrivs: !!process.env.AUDIT_NO_NEW_PRIVS,
+    cgroupsV2Enforced: !!process.env.AUDIT_CGROUPS_ENFORCED
   },
   pr63Compilation: null,
   pr63PrototypeTest: null,

@@ -112,6 +112,9 @@ mkdir -p "$SCRATCH_ROOT/home" "$SCRATCH_ROOT/tmp"
 sudo chown -R "$RUNNER_USER:$RUNNER_USER" "$SCRATCH_ROOT"
 sudo chmod -R 700 "$SCRATCH_ROOT"
 
+# Ensure runtime scripts in sanitized source have executable permissions before read-only mounting
+chmod +x "$SANITIZED_SOURCE/tests/settlement-runtime/"*.sh 2>/dev/null || true
+
 # -----------------------------------------------------------------------------
 # 3. Mount sanitized source as READ-ONLY
 # -----------------------------------------------------------------------------
@@ -193,7 +196,7 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 6. Verify non-root execution capability
+# 6. Verify non-root execution capability & capture host namespaces
 # -----------------------------------------------------------------------------
 NODE_BIN="$(command -v node)"
 NODE_DIR="$(dirname "$NODE_BIN")"
@@ -206,10 +209,15 @@ if [ "$PROBE_USER" = "root" ]; then
 fi
 echo "[PROBE PASSED] Unprivileged execution confirmed (non-root, UID: $RUNNER_UID)."
 
+HOST_MNT_NS="$(readlink /proc/self/ns/mnt 2>/dev/null || echo '')"
+HOST_NET_NS="$(readlink /proc/self/ns/net 2>/dev/null || echo '')"
+echo "[SETUP] Host mount namespace: $HOST_MNT_NS"
+echo "[SETUP] Host network namespace: $HOST_NET_NS"
+
 # -----------------------------------------------------------------------------
-# 7. Execute runner inside the unprivileged sandbox with explicit cgroup joining
+# 7. Execute runner inside isolated mount namespace, network namespace & cgroups
 # -----------------------------------------------------------------------------
-echo "=== [ISOLATED AUDIT SANDBOX] Executing Reproduction Runner ==="
+echo "=== [ISOLATED AUDIT SANDBOX] Executing Reproduction Runner in Isolated Namespaces ==="
 
 if [ "$USE_SYSTEMD" -eq 1 ]; then
   sudo systemd-run --scope --unit="$SCOPE_NAME" \
@@ -217,32 +225,46 @@ if [ "$USE_SYSTEMD" -eq 1 ]; then
     -p MemorySwapMax=0 \
     -p TasksMax=200 \
     -p Delegate=yes \
-    ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
-      PATH="$NODE_DIR:/usr/local/bin:/usr/bin:/bin" \
-      HOME="$SCRATCH_ROOT/home" \
-      TMPDIR="$SCRATCH_ROOT/tmp" \
-      AUDIT_SCRATCH_DIR="$SCRATCH_ROOT" \
-      AUDIT_ISOLATED_SANDBOX=1 \
-      AUDIT_GIT_COMMIT="$GIT_COMMIT" \
+    ip netns exec audit-net \
+    unshare --mount -- \
+    env \
+      RUNNER_USER="$RUNNER_USER" \
+      RUNNER_UID="$RUNNER_UID" \
+      RUNNER_GID="$RUNNER_GID" \
+      REPO_SOURCE="$REPO_SOURCE" \
+      SCRATCH_ROOT="$SCRATCH_ROOT" \
       RO_TARGET="$RO_TARGET" \
       NODE_BIN="$NODE_BIN" \
-      NODE_PATH="$RO_TARGET/tests/settlement-runtime/node_modules:$RO_TARGET/minter-contract/node_modules:$RO_TARGET/testnet-interface/node_modules" \
-      bash "$RO_TARGET/tests/settlement-runtime/isolated-target-runner.sh"
+      NODE_DIR="$NODE_DIR" \
+      GIT_COMMIT="$GIT_COMMIT" \
+      AUDIT_PR_HEAD_SHA="${AUDIT_PR_HEAD_SHA:-$GIT_COMMIT}" \
+      AUDIT_MERGE_SHA="${AUDIT_MERGE_SHA:-$GIT_COMMIT}" \
+      HOST_MNT_NS="$HOST_MNT_NS" \
+      HOST_NET_NS="$HOST_NET_NS" \
+      SCOPE_UNIT="$SCOPE_NAME.scope" \
+      bash "$RO_TARGET/tests/settlement-runtime/isolated-mount-setup.sh"
 else
   # Direct cgroup placement using sudo tee before running target code
   CGROUP_DIR="/sys/fs/cgroup/audit-sandbox"
-  sudo ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
-    PATH="$NODE_DIR:/usr/local/bin:/usr/bin:/bin" \
-    HOME="$SCRATCH_ROOT/home" \
-    TMPDIR="$SCRATCH_ROOT/tmp" \
-    AUDIT_SCRATCH_DIR="$SCRATCH_ROOT" \
-    AUDIT_ISOLATED_SANDBOX=1 \
-    AUDIT_GIT_COMMIT="$GIT_COMMIT" \
-    RO_TARGET="$RO_TARGET" \
-    NODE_BIN="$NODE_BIN" \
-    CGROUP_DIR="$CGROUP_DIR" \
-    NODE_PATH="$RO_TARGET/tests/settlement-runtime/node_modules:$RO_TARGET/minter-contract/node_modules:$RO_TARGET/testnet-interface/node_modules" \
-    bash "$RO_TARGET/tests/settlement-runtime/isolated-target-runner.sh" &
+  sudo ip netns exec audit-net \
+    unshare --mount -- \
+    env \
+      RUNNER_USER="$RUNNER_USER" \
+      RUNNER_UID="$RUNNER_UID" \
+      RUNNER_GID="$RUNNER_GID" \
+      REPO_SOURCE="$REPO_SOURCE" \
+      SCRATCH_ROOT="$SCRATCH_ROOT" \
+      RO_TARGET="$RO_TARGET" \
+      NODE_BIN="$NODE_BIN" \
+      NODE_DIR="$NODE_DIR" \
+      GIT_COMMIT="$GIT_COMMIT" \
+      AUDIT_PR_HEAD_SHA="${AUDIT_PR_HEAD_SHA:-$GIT_COMMIT}" \
+      AUDIT_MERGE_SHA="${AUDIT_MERGE_SHA:-$GIT_COMMIT}" \
+      HOST_MNT_NS="$HOST_MNT_NS" \
+      HOST_NET_NS="$HOST_NET_NS" \
+      CGROUP_DIR="$CGROUP_DIR" \
+      SCOPE_UNIT="" \
+      bash "$RO_TARGET/tests/settlement-runtime/isolated-mount-setup.sh" &
   CHILD_PID=$!
   echo "$CHILD_PID" | sudo tee "$CGROUP_DIR/cgroup.procs" >/dev/null
   if ! grep -qx "$CHILD_PID" "$CGROUP_DIR/cgroup.procs" 2>/dev/null; then

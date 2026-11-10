@@ -48,8 +48,11 @@ jobs:
         working-directory: minter-contract
 
       - name: Run OS-Enforced Isolated Security Audit Sandbox
+        env:
+          AUDIT_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          AUDIT_MERGE_SHA: ${{ github.sha }}
         run: |
-          chmod +x tests/settlement-runtime/run-isolated-audit-sandbox.sh
+          chmod +x tests/settlement-runtime/*.sh
           ./tests/settlement-runtime/run-isolated-audit-sandbox.sh
 
       - name: Upload Verified Reproduction Evidence Artifact
