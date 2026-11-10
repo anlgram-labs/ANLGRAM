@@ -15,7 +15,35 @@ test('exact pinned V5 future messages initialize/mint/custody/renounce/activate/
  const curveWallet=core.Address.parse(plan.curveWallet),buyerWallet=core.Address.parse(plan.buyerWallet);
  const curveState=async()=>(await c.chain.runGetMethod(c.curve,'get_curve_state')).stack.map(x=>x.value);
  let seqno=1,deliveryId,delivered,exactPayout,totalFees=0n,buySnapshot,queries=0;
- async function send(message){const e=await external(c.w,message,seqno,c.chain.now+90,c.w.address,null),r=await c.chain.sendMessage(core.Cell.fromBase64(e.boc),{ignoreChksig:true});const source=r.transactions.find(t=>t.inMessage?.info.type==='external-in');assert(source&&!source.description.aborted);assert.equal(source.outMessages.size,1);assert.equal((await c.chain.runGetMethod(c.source,'seqno')).stackReader.readBigNumber(),BigInt(++seqno));totalFees+=r.transactions.reduce((n,t)=>n+t.totalFees.coins,0n);return r;}
+ async function send(message){
+  const expiry=c.chain.now+90;
+  const e=await external(c.w,message,seqno,expiry,c.w.address,null);
+  const r=await c.chain.sendMessage(core.Cell.fromBase64(e.boc),{ignoreChksig:true});
+  const source=r.transactions.find(t=>t.inMessage?.info.type==='external-in');
+  assert(source&&!source.description.aborted);
+  assert(source.inMessage.info.dest.equals(c.source));
+  assert(source.inMessage.body.equals(e.body));
+  assert.equal(source.description.actionPhase?.success,true);
+  assert.equal(source.description.actionPhase.skippedActions,0);
+  assert.equal(source.outMessages.size,1);
+  const [out]=source.outMessages.values(),destination=core.Address.parseFriendly(message.address);
+  assert(destination.isTestOnly);
+  assert.equal(out.info.type,'internal');
+  assert(out.info.src.equals(c.source));
+  assert(out.info.dest.equals(destination.address));
+  assert.equal(out.info.bounce,destination.isBounceable);
+  assert.equal(out.info.value.coins,BigInt(message.amount));
+  assert(out.body.equals(core.Cell.fromBase64(message.payload)));
+  const initHash=out.init?core.beginCell().store(core.storeStateInit(out.init)).endCell().hash().toString('hex'):null;
+  assert.equal(initHash,message.stateInit?core.Cell.fromBase64(message.stateInit).hash().toString('hex'):null);
+  const hashMessage=m=>core.beginCell().store(core.storeMessage(m)).endCell().hash();
+  const child=r.transactions.filter(t=>t.inMessage?.info.type==='internal'&&hashMessage(t.inMessage).equals(hashMessage(out)));
+  assert.equal(child.length,1);
+  assert(child[0].lt>source.lt);
+  assert.equal((await c.chain.runGetMethod(c.source,'seqno')).stackReader.readBigNumber(),BigInt(++seqno));
+  totalFees+=r.transactions.reduce((n,t)=>n+t.totalFees.coins,0n);
+  return r;
+ }
  for(const step of plan.steps){
   let message=step.message;
   if(step.name==='small-test-buy'){

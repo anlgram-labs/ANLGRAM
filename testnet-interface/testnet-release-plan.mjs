@@ -5,6 +5,7 @@ import curveTwo from './curve-two-intent.json' with {type:'json'};
 import foreign from '../tests/settlement-runtime/fixtures/stonfi-testnet-public-snapshot.json' with {type:'json'};
 import profile from '../minter-contract/stonfi-v22-development-profile.json' with {type:'json'};
 import curveArtifact from '../minter-contract/build/anlgram-bonding-curve-dispatch-v2.compiled.json' with {type:'json'};
+import dispatchWalletArtifact from '../minter-contract/build/anlgram-dispatch-sell-wallet.compiled.json' with {type:'json'};
 import guardArtifact from '../minter-contract/build/anlgram-guard-vnext.compiled.json' with {type:'json'};
 import migrationArtifact from '../minter-contract/build/anlgram-migration-router-dispatch-v2.compiled.json' with {type:'json'};
 import {prepareProject} from './projects/prepare.mjs';
@@ -16,6 +17,7 @@ import {assertReviewedStandardOperator,reviewedStandardOperator,reviewedStandard
 import {launchpadGenesisOperations} from './projects/launchpad-gen2-operations.mjs';
 import charges from '../assets/js/donation-config.js';
 const dispatchArtifacts={'anlgram-bonding-curve-dispatch-v2':curveArtifact,
+ 'anlgram-dispatch-sell-wallet':dispatchWalletArtifact,
  'anlgram-guard-vnext':guardArtifact,'anlgram-migration-router-dispatch-v2':migrationArtifact};
 
 function testnetAddress(value) {
@@ -64,8 +66,8 @@ export async function buildReviewedOwnerInventory(draft) {
   operatorV5R1:genesis.codeHash,standardMinter:hash(standardV2Code('minter')),legacyStandardWallet:hash(standardV2Code('wallet')),
   standardSettlementWallet:hash(code('standard-jetton-settlement-wallet')),standardVesting:hash(code('anlgram-vesting-wallet-standard-v2')),
   launchpadMinter:hash(code('anlgram-launchpad-jetton-minter')),launchpadSettlementWallet:hash(code('anlgram-settlement-wallet')),
-  ...Object.fromEntries(['anlgram-bonding-curve-dispatch-v2','anlgram-guard-vnext','anlgram-migration-router-dispatch-v2'].map(name=>{
-    const artifact=dispatchArtifacts[name],cell=core.Cell.fromBase64(artifact.codeBocBase64);
+  ...Object.fromEntries(Object.entries(dispatchArtifacts).map(([name,artifact])=>{
+    const cell=core.Cell.fromBase64(artifact.codeBocBase64);
     if(hash(cell)!==artifact.codeCellHash)throw Error('Release artifact hash mismatch');
     return [name,hash(cell)];
   })),locker:hash(code('anlgram-lp-locker-v2'))

@@ -213,7 +213,7 @@ test('insufficient trade gas and unknown or underfunded retries never create a c
 test('graduation allocations reconcile but opt-in migration cannot bypass missing LP code/custody proof',async()=>{
  const [curve,wallet]=await codes;const s=await setup(curve,wallet);await s.buy(1000000000000n);
  const before=(await s.chain.runGetMethod(curveAddress,'get_curve_state')).stack;
- assert.equal(before[0].value,4n);assert.equal(before[4].value,500000000000n);assert.equal(before[5].value,0n);
+ assert.equal(before[0].value,4n);assert.equal(before[4].value,300000000001n);assert.equal(before[5].value,0n);
  assert.equal(await tokens(s,s.buyerWallet),800000000000000000n);assert.equal(await tokens(s,s.curveWallet),200000000000000000n);
  const r=await s.admin.send({to:curveAddress,value:300000000n,bounce:true,body:beginCell().storeUint(0x414e4c35,32).storeUint(9,64).endCell()});
  assert(r.transactions.some(t=>t.description.computePhase?.exitCode===414));

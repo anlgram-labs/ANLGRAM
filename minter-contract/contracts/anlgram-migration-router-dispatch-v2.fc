@@ -29,7 +29,7 @@
 #include "imports/utils.fc";
 #include "imports/jetton-utils.fc";
 #include "imports/settlement-protocol.fc";
-#include "imports/settlement-wallet-code.fc";
+#include "imports/dispatch-sell-wallet-code.fc";
 #pragma version >=0.2.0;
 
 const int ERROR_UNAUTHORIZED_SENDER = 401;

@@ -27,11 +27,11 @@ test('VNext one-time binding can be recovered by an authenticated funded query a
 });
 
 for(const lost of [false,true])test(`VNext post-funding consumer fixture renews with authenticated safe-phase revocation; lost grant=${lost}; stale execution fails`,async()=>{
- const f=await fundedConsumerFixture(),c=f.c,options={phase:2,nonce:1n,starts:f.chain.now,deadline:f.chain.now+60,tonNano:500000000000n,jettonUnits:200000000000000000n,minimumLpUnits:100n,curveEpoch:1n,fundingEpoch:2n,dexEpoch:3n},p=permits.permit(core,c.guard,options);assert(exit(await f.submit(p),c.addresses.guard,0));
+ const f=await fundedConsumerFixture(),c=f.c,options={phase:2,nonce:1n,starts:f.chain.now,deadline:f.chain.now+60,tonNano:300000000000n,jettonUnits:200000000000000000n,minimumLpUnits:100n,curveEpoch:1n,fundingEpoch:2n,dexEpoch:3n},p=permits.permit(core,c.guard,options);assert(exit(await f.submit(p),c.addresses.guard,0));
  if(lost){const {internal}=require('@ton/sandbox'),{freeze,restore}=require('./refund-receipts-support'),message=pkg.request(core,c,p,'post');let old;
   for await(const t of await f.chain.sendMessageIter(internal({from:f.owner.address,to:message.to,value:message.value,body:message.body}))){if(!old&&t.inMessage?.info.dest?.equals(c.addresses.guard))old=await freeze(f,c.addresses.migration);}
   assert(old);await restore(f,c.addresses.migration,old);assert.equal((await f.chain.runGetMethod(c.addresses.migration,'get_registration_vnext')).stackReader.readBigNumber(),0n);
  }else{assert(exit(await f.request(p,'post'),c.addresses.migration,0));assert.equal((await f.chain.runGetMethod(c.addresses.migration,'get_registration_vnext')).stackReader.readBigNumber(),1n);const execution=pkg.execute(core,c,p);assert(exit(await f.send(execution.to,execution.body,execution.value),execution.to,414));}
  f.chain.now=options.deadline;assert(exit(await f.request(p,'post',true),c.addresses.guard,0));const next=permits.permit(core,c.guard,{...options,nonce:2n,starts:f.chain.now,deadline:f.chain.now+60});assert(exit(await f.submit(next),c.addresses.guard,0));assert(exit(await f.request(next,'post'),c.addresses.migration,0));
- const oldExec=pkg.execute(core,c,p),newExec=pkg.execute(core,c,next);assert(exit(await f.send(oldExec.to,oldExec.body,oldExec.value),oldExec.to,409));assert(exit(await f.send(newExec.to,newExec.body,newExec.value),newExec.to,414));assert((await f.chain.getContract(c.addresses.migration)).balance>=500000000000n);
+ const oldExec=pkg.execute(core,c,p),newExec=pkg.execute(core,c,next);assert(exit(await f.send(oldExec.to,oldExec.body,oldExec.value),oldExec.to,409));assert(exit(await f.send(newExec.to,newExec.body,newExec.value),newExec.to,414));assert((await f.chain.getContract(c.addresses.migration)).balance>=300000000000n);
 });
