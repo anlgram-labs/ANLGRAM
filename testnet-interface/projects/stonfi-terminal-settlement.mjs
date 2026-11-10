@@ -10,7 +10,20 @@ export const TerminalOutcome = Object.freeze({
   JETTONS_RETURNED: 'JETTONS_RETURNED',
   PARTIAL_OR_FAILED_REFUND: 'PARTIAL_OR_FAILED_REFUND',
   LP_ACCOUNT_RESET_OR_DELETED: 'LP_ACCOUNT_RESET_OR_DELETED',
+  TERMINAL_GRADUATED: 'TERMINAL_GRADUATED',
   UNKNOWN_OUTCOME: 'UNKNOWN_OUTCOME'
+});
+
+export const STONFI_OPCODES = Object.freeze({
+  PROVIDE_LP: 0x37c096df,
+  TON_TRANSFER: 0x01f3835d,
+  DEPOSIT_REF: 0x414c5003,
+  REFUND_ME: 0x132b9a2c,
+  LP_MINT_NOTIFICATION: 0x7362d09c,
+  LP_CUSTODY_RECEIPT: 0x414c5005,
+  LP_OBSERVATION_RECEIPT: 0x414c5635,
+  TERMINAL_SETTLEMENT_PROOF: 0x414e5903,
+  SETTLE_MIGRATION: 0x414e5904
 });
 
 export function evaluateTerminalSettlement({
@@ -18,6 +31,7 @@ export function evaluateTerminalSettlement({
   lpMintEvidence,
   tonRefundEvidence,
   jettonRefundEvidence,
+  terminalProofEvidence,
   expectedDepositor,
   expectedPool,
   expectedLpWallet
@@ -25,6 +39,24 @@ export function evaluateTerminalSettlement({
   // Guard: Depositor and pool bindings are mandatory
   if (!expectedDepositor || !expectedPool) {
     return { outcome: TerminalOutcome.UNKNOWN_OUTCOME, reason: 'Missing expected depositor or pool' };
+  }
+
+  // 0. Evaluate Terminal Settlement Proof (Router -> Curve completed)
+  if (terminalProofEvidence) {
+    if (
+      terminalProofEvidence.verified &&
+      terminalProofEvidence.pool === expectedPool &&
+      terminalProofEvidence.lpWallet === expectedLpWallet &&
+      BigInt(terminalProofEvidence.lpAmount || '0') > 0n
+    ) {
+      return {
+        outcome: TerminalOutcome.TERMINAL_GRADUATED,
+        pool: terminalProofEvidence.pool,
+        lpWallet: terminalProofEvidence.lpWallet,
+        lpAmount: terminalProofEvidence.lpAmount,
+        lockedAmount: terminalProofEvidence.lockedAmount || terminalProofEvidence.lpAmount
+      };
+    }
   }
 
   // 1. Evaluate LP Mint & Delivery
