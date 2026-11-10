@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const core = require('@ton/core');
-const { createShardAccount } = require('@ton/sandbox');
+const { createShardAccount, internal } = require('@ton/sandbox');
 const { compileFunc } = require('@ton-community/func-js');
 const { ready, fixture, exit } = require('./one-shot-dispatch-support');
 const { setup } = require('./stonfi-snapshot-support');
@@ -195,16 +195,19 @@ test('F-02 Adversarial 2: Forged terminal settlement proof (0x414e5903) sent dir
 });
 
 // ------------------------------------------------------------------------------------------------
-// TEST 5: Adversarial Case 3 — Slippage / Pending Claims Rejected
+// TEST 5: Adversarial Case 3 — Slippage / Pending Claims Rejected (Authenticated Sender)
 // ------------------------------------------------------------------------------------------------
-test('F-02 Adversarial 3: Receipt with pending claims is rejected with exit code 409', async () => {
+test('F-02 Adversarial 3: Receipt with pending claims from authentic Locker is rejected with exit code 409', async () => {
   const [f02RouterCode] = await getCandidateCodes();
   const f = await ready();
   const c = f.c;
   await upgradeContractCode(f.chain, c.addresses.migration, f02RouterCode);
   await f.fund();
+  const p = await f.authorize();
+  await f.execute(p);
 
-  // Receipt with pending > 0 (locker has uncleared withdrawal claims)
+  // Authenticated sender = c.vault.address (the exact configured Locker V3)
+  // Receipt contains pending > 0 (locker has uncleared withdrawal claims)
   const badPendingReceipt = beginCell()
     .storeUint(0x414c5635, 32)
     .storeUint(77, 64)
@@ -217,24 +220,39 @@ test('F-02 Adversarial 3: Receipt with pending claims is rejected with exit code
     .storeRef(beginCell().storeAddress(c.vault.pool).storeAddress(c.vault.lpWallet).endCell())
     .endCell();
 
-  const result = await f.send(c.addresses.migration, badPendingReceipt, 50000000n, f.other);
+  const result = await f.chain.sendMessage(internal({
+    from: c.vault.address,
+    to: c.addresses.migration,
+    value: 50000000n,
+    body: badPendingReceipt,
+    bounce: true
+  }));
+
   assert(
-    exit(result, c.addresses.migration, 401) || exit(result, c.addresses.migration, 409),
-    'Receipt with pending claims must fail'
+    exit(result, c.addresses.migration, 409),
+    'Authenticated receipt with pending claims must fail with exit code 409'
+  );
+  assert(
+    !exit(result, c.addresses.migration, 401),
+    'Must NOT fail with 401 (sender is authentic Locker V3)'
   );
 });
 
 // ------------------------------------------------------------------------------------------------
-// TEST 6: Adversarial Case 4 — Mismatched Pool Address Rejected
+// TEST 6: Adversarial Case 4 — Mismatched Pool Address Rejected (Authenticated Sender)
 // ------------------------------------------------------------------------------------------------
-test('F-02 Adversarial 4: LP receipt referencing mismatched or forged pool address is rejected', async () => {
+test('F-02 Adversarial 4: LP receipt referencing mismatched or forged pool from authentic Locker is rejected with exit code 408', async () => {
   const [f02RouterCode] = await getCandidateCodes();
   const f = await ready();
   const c = f.c;
   await upgradeContractCode(f.chain, c.addresses.migration, f02RouterCode);
   await f.fund();
+  const p = await f.authorize();
+  await f.execute(p);
 
+  // Authenticated sender = c.vault.address, but referencing mismatched/untrusted pool and wallet
   const wrongPool = new Address(0, Buffer.alloc(32, 0xee));
+  const wrongWallet = new Address(0, Buffer.alloc(32, 0xef));
   const badPoolReceipt = beginCell()
     .storeUint(0x414c5635, 32)
     .storeUint(77, 64)
@@ -244,13 +262,24 @@ test('F-02 Adversarial 4: LP receipt referencing mismatched or forged pool addre
     .storeCoins(0)
     .storeCoins(0)
     .storeUint(0xffffffffffffffffn, 64)
-    .storeRef(beginCell().storeAddress(wrongPool).storeAddress(c.vault.lpWallet).endCell())
+    .storeRef(beginCell().storeAddress(wrongPool).storeAddress(wrongWallet).endCell())
     .endCell();
 
-  const result = await f.send(c.addresses.migration, badPoolReceipt, 50000000n, f.other);
+  const result = await f.chain.sendMessage(internal({
+    from: c.vault.address,
+    to: c.addresses.migration,
+    value: 50000000n,
+    body: badPoolReceipt,
+    bounce: true
+  }));
+
   assert(
-    exit(result, c.addresses.migration, 401) || exit(result, c.addresses.migration, 408),
-    'Mismatched pool address must fail'
+    exit(result, c.addresses.migration, 408),
+    'Authenticated receipt with mismatched pool/wallet must fail with exit code 408'
+  );
+  assert(
+    !exit(result, c.addresses.migration, 401),
+    'Must NOT fail with 401 (sender is authentic Locker V3)'
   );
 });
 
@@ -284,9 +313,9 @@ test('F-02 Adversarial 5: Partial deposit recovery via refund_me dispatches to a
 });
 
 // ------------------------------------------------------------------------------------------------
-// TEST 8: Adversarial Case 6 — Duplicate Settlement / Replay Protection
+// TEST 8: Adversarial Case 6 — Duplicate Settlement / Replay Protection (Authenticated Sender)
 // ------------------------------------------------------------------------------------------------
-test('F-02 Adversarial 6: Replaying terminal settlement proof on already-graduated Curve fails closed', async () => {
+test('F-02 Adversarial 6: Replaying terminal settlement proof on already-graduated Curve from authentic Router fails closed with exit code 402', async () => {
   const [f02RouterCode, f02CurveCode] = await getCandidateCodes();
   const f = await ready();
   const c = f.c;
@@ -302,8 +331,8 @@ test('F-02 Adversarial 6: Replaying terminal settlement proof on already-graduat
   // Verify Curve is at STATE_GRADUATED (6)
   assert.equal((await f.chain.runGetMethod(c.addresses.curve, 'get_curve_state')).stack[0].value, 6n);
 
-  // Attempt duplicate replay of terminal proof message to already-graduated Curve:
-  const replayProof = beginCell()
+  // Construct valid terminal proof payload
+  const proofPayload = beginCell()
     .storeUint(0x414e5903, 32)
     .storeUint(77, 64)
     .storeAddress(c.vault.pool)
@@ -312,11 +341,30 @@ test('F-02 Adversarial 6: Replaying terminal settlement proof on already-graduat
     .storeCoins(1000000000n)
     .endCell();
 
-  // Sending from migration router address:
-  const replayAttempt = await f.send(c.addresses.curve, replayProof, 50000000n, f.owner);
+  const replayProofMsg = beginCell()
+    .storeUint(0x414e5903, 32)
+    .storeUint(77, 64)
+    .storeUint(1, 107) // dummy address
+    .storeRef(proofPayload)
+    .endCell();
+
+  // Send directly from the AUTHENTIC migration router address
+  const replayAttempt = await f.chain.sendMessage(internal({
+    from: c.addresses.migration,
+    to: c.addresses.curve,
+    value: 50000000n,
+    body: replayProofMsg,
+    bounce: true
+  }));
+
+
   assert(
-    exit(replayAttempt, c.addresses.curve, 401) || exit(replayAttempt, c.addresses.curve, 402),
-    'Replay of terminal proof MUST fail (exit 401 or 402)'
+    exit(replayAttempt, c.addresses.curve, 407),
+    'Replay of terminal proof from authentic Router must fail with exit code 407 (ERROR_INVALID_STATE in Curve)'
+  );
+  assert(
+    !exit(replayAttempt, c.addresses.curve, 401),
+    'Must NOT fail with 401 (sender is authentic migration router)'
   );
 });
 
