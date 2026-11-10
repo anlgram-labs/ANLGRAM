@@ -103,14 +103,34 @@ if [ "$(( LO_FLAGS & 1 ))" -ne 1 ]; then
 fi
 
 # Verify unprivileged local TCP socket binding succeeds on loopback
-if ! "$NODE_BIN" -e "const s = require('net').createServer().listen(0, '127.0.0.1', () => { s.close(); process.exit(0); }); s.on('error', () => process.exit(1));" 2>/dev/null; then
+LOOPBACK_OK=0
+"$NODE_BIN" -e "
+  const net = require('net');
+  const server = net.createServer().listen(0, '127.0.0.1', () => {
+    server.close();
+    process.exit(0);
+  });
+  server.on('error', () => process.exit(1));
+" && LOOPBACK_OK=1 || true
+
+if [ "$LOOPBACK_OK" -ne 1 ]; then
   echo "[CRITICAL FAIL] Loopback socket binding failed! Aborting."
   exit 1
 fi
+echo "[PROBE PASSED] Loopback interface operational and accepts local connections."
 
-# Verify external network egress is blocked (connection to external IP must fail or timeout)
-if "$NODE_BIN" -e "const s = require('net').createConnection({host: '8.8.8.8', port: 53, timeout: 500}); s.on('connect', () => process.exit(1)); s.on('error', () => process.exit(0)); setTimeout(() => process.exit(0), 600);" 2>/dev/null; then
-  echo "[CRITICAL FAIL] External network connection to 8.8.8.8:53 succeeded! Aborting."
+# Verify external network egress is strictly blocked (ENETUNREACH expected)
+EGRESS_OPEN=0
+"$NODE_BIN" -e "
+  const net = require('net');
+  const s = net.createConnection({ host: '8.8.8.8', port: 53 });
+  s.on('connect', () => { s.destroy(); process.exit(99); });
+  s.on('error', () => { process.exit(0); });
+  setTimeout(() => { s.destroy(); process.exit(0); }, 500);
+" || EGRESS_OPEN=$?
+
+if [ "$EGRESS_OPEN" -eq 99 ]; then
+  echo "[CRITICAL FAIL] External network connection to 8.8.8.8:53 succeeded! Egress not blocked!"
   exit 1
 fi
 echo "[PROBE PASSED] Mount and network namespaces isolated (loopback active, external egress blocked, distinct mount view)."
