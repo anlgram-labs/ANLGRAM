@@ -53,6 +53,7 @@ mkdir -p "$SANITIZED_SOURCE" "$RO_TARGET" "$SCRATCH_ROOT/home" "$SCRATCH_ROOT/tm
 cp -r "$REPO_SOURCE/minter-contract" "$SANITIZED_SOURCE/"
 cp -r "$REPO_SOURCE/tests" "$SANITIZED_SOURCE/"
 cp -r "$REPO_SOURCE/testnet-interface" "$SANITIZED_SOURCE/"
+cp -r "$REPO_SOURCE/lib" "$SANITIZED_SOURCE/"
 mkdir -p "$SANITIZED_SOURCE/docs/audit/evidence"
 if [ -f "$REPO_SOURCE/docs/audit/f02-receipt-prototype-2026-11-10.md" ]; then
   mkdir -p "$SANITIZED_SOURCE/docs/audit"
@@ -139,10 +140,9 @@ echo "[PROBE PASSED] Unprivileged execution confirmed (non-root, UID: $RUNNER_UI
 # 7. Execute runner inside the unprivileged sandbox
 echo "=== [ISOLATED AUDIT SANDBOX] Executing Reproduction Runner ==="
 
-# Execution command wrapped inside cgroup procs if available
-CGROUP_JOIN=""
+# Attach current process tree to cgroup limits if active
 if [ -f "$CGROUP_DIR/cgroup.procs" ]; then
-  CGROUP_JOIN="echo \$\$ > '$CGROUP_DIR/cgroup.procs' 2>/dev/null || true;"
+  echo $$ | sudo tee "$CGROUP_DIR/cgroup.procs" >/dev/null 2>&1 || true
 fi
 
 sudo ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
@@ -154,7 +154,6 @@ sudo ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
   AUDIT_GIT_COMMIT="$GIT_COMMIT" \
   NODE_PATH="$RO_TARGET/tests/settlement-runtime/node_modules:$RO_TARGET/minter-contract/node_modules:$RO_TARGET/testnet-interface/node_modules" \
   bash -c "
-    $CGROUP_JOIN
     ulimit -u 200
     ulimit -f 1048576
     ulimit -t 300
