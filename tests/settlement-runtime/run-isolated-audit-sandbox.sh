@@ -30,7 +30,10 @@ echo "Audited commit SHA: $GIT_COMMIT"
 # Teardown trap ensuring complete descendant cleanup
 cleanup() {
   echo "=== [ISOLATED AUDIT SANDBOX] Teardown & Process Termination ==="
-  if [ -d "$CGROUP_DIR" ] && [ -f "$CGROUP_DIR/cgroup.procs" ]; then
+  if [ "${USE_SYSTEMD:-0}" -eq 1 ] && command -v systemctl >/dev/null 2>&1; then
+    sudo systemctl stop "${SCOPE_NAME:-}" 2>/dev/null || true
+  fi
+  if [ -n "${CGROUP_DIR:-}" ] && [ -d "$CGROUP_DIR" ] && [ -f "$CGROUP_DIR/cgroup.procs" ]; then
     while read -r pid; do
       if [ -n "$pid" ] && [ "$pid" != "$$" ]; then
         sudo kill -9 "$pid" 2>/dev/null || true
@@ -40,7 +43,7 @@ cleanup() {
   sudo umount -f "$RO_TARGET" 2>/dev/null || true
   sudo umount -f "$SCRATCH_ROOT" 2>/dev/null || true
   sudo ip netns del audit-net 2>/dev/null || true
-  if [ -d "$CGROUP_DIR" ]; then
+  if [ -n "${CGROUP_DIR:-}" ] && [ -d "$CGROUP_DIR" ]; then
     sudo rmdir "$CGROUP_DIR" 2>/dev/null || true
   fi
   sudo rm -rf "$SANITIZED_SOURCE" 2>/dev/null || true
@@ -159,32 +162,29 @@ echo "[PROBE PASSED] Loopback interface verified active inside sandbox namespace
 # 5. OS-Level Total Memory & Process Limits via cgroups v2
 # -----------------------------------------------------------------------------
 if [ ! -d "/sys/fs/cgroup" ]; then
-  echo "[CRITICAL FAIL] Linux cgroups v2 (/sys/fs/cgroup) is not available! Aborting."
+  echo "[CRITICAL FAIL] Linux cgroups (/sys/fs/cgroup) is not available! Aborting."
   exit 1
 fi
 
-echo "[SETUP] Configuring Linux cgroups v2 resource limits..."
-sudo mkdir -p "$CGROUP_DIR"
-
-# Enforce 4GB physical memory ceiling for the whole sandbox process tree
-echo "4294967296" | sudo tee "$CGROUP_DIR/memory.max" >/dev/null
-echo "0" | sudo tee "$CGROUP_DIR/memory.swap.max" >/dev/null || true
-echo "200" | sudo tee "$CGROUP_DIR/pids.max" >/dev/null
-
-sudo chown -R "$RUNNER_USER:$RUNNER_USER" "$CGROUP_DIR"
-
-# Verify effective cgroup configuration
-MEM_MAX="$(cat "$CGROUP_DIR/memory.max")"
-PIDS_MAX="$(cat "$CGROUP_DIR/pids.max")"
-if [ "$MEM_MAX" != "4294967296" ]; then
-  echo "[CRITICAL FAIL] cgroups memory.max verification failed: expected 4294967296, got $MEM_MAX"
-  exit 1
+SCOPE_NAME="audit-sandbox-$$"
+if [ -d /run/systemd/system ] && command -v systemd-run >/dev/null 2>&1; then
+  echo "[SETUP] Using systemd-run to manage OS-enforced transient cgroup scope ($SCOPE_NAME)."
+  USE_SYSTEMD=1
+else
+  echo "[SETUP] Using direct cgroups v2 controller hierarchy ($SCOPE_NAME)."
+  USE_SYSTEMD=0
+  CGROUP_DIR="/sys/fs/cgroup/audit-sandbox"
+  sudo mkdir -p "$CGROUP_DIR"
+  echo "4294967296" | sudo tee "$CGROUP_DIR/memory.max" >/dev/null
+  echo "0" | sudo tee "$CGROUP_DIR/memory.swap.max" >/dev/null 2>&1 || true
+  echo "200" | sudo tee "$CGROUP_DIR/pids.max" >/dev/null
+  MEM_MAX="$(cat "$CGROUP_DIR/memory.max")"
+  PIDS_MAX="$(cat "$CGROUP_DIR/pids.max")"
+  if [ "$MEM_MAX" != "4294967296" ] || [ "$PIDS_MAX" != "200" ]; then
+    echo "[CRITICAL FAIL] Direct cgroup limit verification failed!"
+    exit 1
+  fi
 fi
-if [ "$PIDS_MAX" != "200" ]; then
-  echo "[CRITICAL FAIL] cgroups pids.max verification failed: expected 200, got $PIDS_MAX"
-  exit 1
-fi
-echo "[PROBE PASSED] OS-level memory limit (4GB physical RAM) and process limit (200 PIDs) strictly verified via cgroups v2."
 
 # -----------------------------------------------------------------------------
 # 6. Verify non-root execution capability
@@ -205,28 +205,85 @@ echo "[PROBE PASSED] Unprivileged execution confirmed (non-root, UID: $RUNNER_UI
 # -----------------------------------------------------------------------------
 echo "=== [ISOLATED AUDIT SANDBOX] Executing Reproduction Runner ==="
 
-sudo ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
-  PATH="$NODE_DIR:/usr/local/bin:/usr/bin:/bin" \
-  HOME="$SCRATCH_ROOT/home" \
-  TMPDIR="$SCRATCH_ROOT/tmp" \
-  AUDIT_SCRATCH_DIR="$SCRATCH_ROOT" \
-  AUDIT_ISOLATED_SANDBOX=1 \
-  AUDIT_GIT_COMMIT="$GIT_COMMIT" \
-  NODE_PATH="$RO_TARGET/tests/settlement-runtime/node_modules:$RO_TARGET/minter-contract/node_modules:$RO_TARGET/testnet-interface/node_modules" \
-  bash -c "
-    CHILD_PID=\$\$
-    echo \$CHILD_PID > '$CGROUP_DIR/cgroup.procs'
-    if ! grep -qx \"\$CHILD_PID\" '$CGROUP_DIR/cgroup.procs'; then
-      echo \"[CRITICAL FAIL] Failed to join process \$CHILD_PID to cgroup!\"
-      exit 1
-    fi
-    echo \"[PROBE PASSED] Audited process tree (PID \$CHILD_PID) confirmed inside cgroup.\"
-    ulimit -u 200
-    ulimit -f 1048576
-    ulimit -t 300
-    cd '$RO_TARGET'
-    timeout 300s '$NODE_BIN' --max-old-space-size=2048 tests/settlement-runtime/f02-independent-reproduction-runner.js
-  "
+if [ "$USE_SYSTEMD" -eq 1 ]; then
+  sudo systemd-run --scope --unit="$SCOPE_NAME" \
+    -p MemoryMax=4294967296 \
+    -p MemorySwapMax=0 \
+    -p TasksMax=200 \
+    ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
+      PATH="$NODE_DIR:/usr/local/bin:/usr/bin:/bin" \
+      HOME="$SCRATCH_ROOT/home" \
+      TMPDIR="$SCRATCH_ROOT/tmp" \
+      AUDIT_SCRATCH_DIR="$SCRATCH_ROOT" \
+      AUDIT_ISOLATED_SANDBOX=1 \
+      AUDIT_GIT_COMMIT="$GIT_COMMIT" \
+      NODE_PATH="$RO_TARGET/tests/settlement-runtime/node_modules:$RO_TARGET/minter-contract/node_modules:$RO_TARGET/testnet-interface/node_modules" \
+      bash -c "
+        CGROUP_PATH=\$(cut -d: -f3 < /proc/self/cgroup 2>/dev/null || echo '')
+        CGROUP_DIR=\"/sys/fs/cgroup\${CGROUP_PATH}\"
+        echo \"[PROBE] Target process cgroup path: \$CGROUP_DIR\"
+        if [ ! -d \"\$CGROUP_DIR\" ]; then
+          echo \"[CRITICAL FAIL] Cgroup scope directory \$CGROUP_DIR does not exist!\"
+          exit 1
+        fi
+        MEM_MAX=\$(cat \"\$CGROUP_DIR/memory.max\" 2>/dev/null || echo '0')
+        PIDS_MAX=\$(cat \"\$CGROUP_DIR/pids.max\" 2>/dev/null || echo '0')
+        if [ \"\$MEM_MAX\" != \"4294967296\" ]; then
+          echo \"[CRITICAL FAIL] cgroups memory.max verification failed: expected 4294967296, got \$MEM_MAX\"
+          exit 1
+        fi
+        if [ \"\$PIDS_MAX\" != \"200\" ]; then
+          echo \"[CRITICAL FAIL] cgroups pids.max verification failed: expected 200, got \$PIDS_MAX\"
+          exit 1
+        fi
+        if ! grep -qx \"\$\$\" \"\$CGROUP_DIR/cgroup.procs\" 2>/dev/null; then
+          echo \"[CRITICAL FAIL] Process \$\$ is not confirmed inside cgroup.procs!\"
+          exit 1
+        fi
+        if [ -f \"\$CGROUP_DIR/memory.swap.max\" ]; then
+          SWAP_MAX=\$(cat \"\$CGROUP_DIR/memory.swap.max\" 2>/dev/null || echo 'none')
+          echo \"[PROBE] Effective memory.swap.max: \$SWAP_MAX\"
+        fi
+        echo \"[PROBE PASSED] OS-level memory limit (4GB physical RAM) and process limit (200 PIDs) strictly verified via cgroups v2.\"
+        echo \"[PROBE PASSED] Audited process tree (PID \$\$) confirmed inside cgroup.\"
+        ulimit -u 200
+        ulimit -f 1048576
+        ulimit -t 300
+        cd '$RO_TARGET'
+        timeout 300s '$NODE_BIN' --max-old-space-size=2048 tests/settlement-runtime/f02-independent-reproduction-runner.js
+      "
+else
+  # Direct cgroup placement using sudo tee before running target code
+  CGROUP_DIR="/sys/fs/cgroup/audit-sandbox"
+  sudo ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
+    PATH="$NODE_DIR:/usr/local/bin:/usr/bin:/bin" \
+    HOME="$SCRATCH_ROOT/home" \
+    TMPDIR="$SCRATCH_ROOT/tmp" \
+    AUDIT_SCRATCH_DIR="$SCRATCH_ROOT" \
+    AUDIT_ISOLATED_SANDBOX=1 \
+    AUDIT_GIT_COMMIT="$GIT_COMMIT" \
+    NODE_PATH="$RO_TARGET/tests/settlement-runtime/node_modules:$RO_TARGET/minter-contract/node_modules:$RO_TARGET/testnet-interface/node_modules" \
+    bash -c "
+      MEM_MAX=\$(cat '$CGROUP_DIR/memory.max')
+      PIDS_MAX=\$(cat '$CGROUP_DIR/pids.max')
+      if [ \"\$MEM_MAX\" != \"4294967296\" ] || [ \"\$PIDS_MAX\" != \"200\" ]; then
+        echo \"[CRITICAL FAIL] Direct cgroup limit verification failed!\"
+        exit 1
+      fi
+      ulimit -u 200
+      ulimit -f 1048576
+      ulimit -t 300
+      cd '$RO_TARGET'
+      timeout 300s '$NODE_BIN' --max-old-space-size=2048 tests/settlement-runtime/f02-independent-reproduction-runner.js
+    " &
+  CHILD_PID=$!
+  echo "$CHILD_PID" | sudo tee "$CGROUP_DIR/cgroup.procs" >/dev/null
+  if ! grep -qx "$CHILD_PID" "$CGROUP_DIR/cgroup.procs" 2>/dev/null; then
+    echo "[CRITICAL FAIL] Failed to place process $CHILD_PID into cgroup!"
+    exit 1
+  fi
+  wait "$CHILD_PID"
+fi
 
 echo "=== [ISOLATED AUDIT SANDBOX] Target Execution Completed Successfully ==="
 
