@@ -55,6 +55,10 @@ const evidence = {
   pr63PrototypeTest: null,
   lpAccountSettlementEvidence: null,
   f02AdversarialSuite: null,
+  networkProbeContractTest: null,
+  escrowV3HandoffVerification: null,
+  escrowV3Compilation: null,
+  escrowV3SandboxSuite: null,
   gate414Status: 'SEALED (throw(414) enforced in baseline release candidates)',
   verdict: 'PENDING'
 };
@@ -143,13 +147,69 @@ if (!f02AdversarialRes.success) {
   process.exit(1);
 }
 
+// 5. Run Network Probe Contract Unit Tests
+const netProbeRes = runStep(
+  'Network Probe Contract Verification (Pass/Fail/Closed Logic)',
+  'node',
+  ['--max-old-space-size=2048', '--test', 'tests/settlement-runtime/network-probe-contract.test.js'],
+  REPO_ROOT
+);
+evidence.networkProbeContractTest = netProbeRes;
+if (!netProbeRes.success) {
+  console.error('[ERROR] Network probe contract unit tests failed!');
+  process.exit(1);
+}
+
+// 6. Run Escrow V3 Cryptographic Handoff Integrity Check
+const handoffRes = runStep(
+  'Escrow V3 Cryptographic Handoff Integrity Verification',
+  'node',
+  ['--max-old-space-size=2048', '--test', 'tests/settlement-runtime/verify-escrow-v3-handoff.test.js'],
+  REPO_ROOT
+);
+evidence.escrowV3HandoffVerification = handoffRes;
+if (!handoffRes.success) {
+  console.error('[ERROR] Escrow V3 handoff integrity verification failed!');
+  process.exit(1);
+}
+
+// 7. Verify Escrow V3 Compilation and Code Cell Hash
+const escrowCompileRes = runStep(
+  'Escrow V3 FunC Compilation & Code Cell Hash Determination',
+  'node',
+  ['--max-old-space-size=2048', 'tests/settlement-runtime/compile-f02-escrow-candidate.js'],
+  REPO_ROOT
+);
+evidence.escrowV3Compilation = {
+  ...escrowCompileRes,
+  expectedSourceSha256: 'ed68732cba8f75917112f9bddef9cf30ce131cb2f39cb20d52585bbe65a60190',
+  codeCellHash: '4283658e16d141771cdc608922cb84b0e1c41717aa744874a58ca8e23428f9b9'
+};
+if (!escrowCompileRes.success) {
+  console.error('[ERROR] Escrow V3 compilation check failed!');
+  process.exit(1);
+}
+
+// 8. Run Escrow V3 TVM Sandbox Verification Suite
+const escrowSandboxRes = runStep(
+  'Escrow V3 TVM Sandbox Verification Suite (TON, Jettons, Real Wallets)',
+  'node',
+  ['--max-old-space-size=2048', '--test', 'tests/settlement-runtime/f02-escrow-candidate.test.js'],
+  REPO_ROOT
+);
+evidence.escrowV3SandboxSuite = escrowSandboxRes;
+if (!escrowSandboxRes.success) {
+  console.error('[ERROR] Escrow V3 TVM sandbox verification suite failed!');
+  process.exit(1);
+}
+
 evidence.verdict = 'ALL_EVIDENCE_REPRODUCED_SUCCESSFULLY';
 
 const evidencePath = path.join(SCRATCH_DIR, 'f02-independent-reproduction-evidence.json');
 fs.writeFileSync(evidencePath, JSON.stringify(evidence, null, 2));
 
 console.log(`\n======================================================`);
-console.log(`[SUCCESS] All 4 independent reproduction steps completed successfully!`);
+console.log(`[SUCCESS] All 8 independent reproduction steps completed successfully!`);
 console.log(`Structured evidence written to: ${evidencePath}`);
 console.log(`Gate 414 status: ${evidence.gate414Status}`);
 console.log(`======================================================\n`);

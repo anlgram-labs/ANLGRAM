@@ -68,6 +68,10 @@ if [ -f "$REPO_SOURCE/docs/audit/f02-receipt-prototype-2026-11-10.md" ]; then
   mkdir -p "$SANITIZED_SOURCE/docs/audit"
   cp "$REPO_SOURCE/docs/audit/f02-receipt-prototype-2026-11-10.md" "$SANITIZED_SOURCE/docs/audit/"
 fi
+if [ -f "$REPO_SOURCE/docs/launchpad/f02-escrow-candidate.md" ]; then
+  mkdir -p "$SANITIZED_SOURCE/docs/launchpad"
+  cp "$REPO_SOURCE/docs/launchpad/f02-escrow-candidate.md" "$SANITIZED_SOURCE/docs/launchpad/"
+fi
 
 # Verify strict exclusion of sensitive patterns
 for BAD_PATTERN in ".git" ".env" "*.pem" "*.key" "id_rsa" ".aws" ".ssh" "credentials"; do

@@ -119,20 +119,55 @@ if [ "$LOOPBACK_OK" -ne 1 ]; then
 fi
 echo "[PROBE PASSED] Loopback interface operational and accepts local connections."
 
-# Verify external network egress is strictly blocked (ENETUNREACH expected)
-EGRESS_OPEN=0
-"$NODE_BIN" -e "
-  const net = require('net');
-  const s = net.createConnection({ host: '8.8.8.8', port: 53 });
-  s.on('connect', () => { s.destroy(); process.exit(99); });
-  s.on('error', () => { process.exit(0); });
-  setTimeout(() => { s.destroy(); process.exit(0); }, 500);
-" || EGRESS_OPEN=$?
-
-if [ "$EGRESS_OPEN" -eq 99 ]; then
-  echo "[CRITICAL FAIL] External network connection to 8.8.8.8:53 succeeded! Egress not blocked!"
+# Verify kernel routing table is strictly empty (zero routes in private network namespace)
+ROUTES_COUNT=$(ip route show 2>/dev/null | wc -l || echo 0)
+if [ "$ROUTES_COUNT" -ne 0 ]; then
+  echo "[CRITICAL FAIL] Network routing table is non-empty! Routes: $(ip route show 2>/dev/null)"
   exit 1
 fi
+echo "[PROBE PASSED] Network routing table verified empty (0 routes)."
+
+# Verify external network egress is strictly blocked (ENETUNREACH expected)
+EGRESS_PROBE_EXIT=0
+"$NODE_BIN" -e "
+  const net = require('net');
+  let resolved = false;
+  const finish = (code) => {
+    if (resolved) return;
+    resolved = true;
+    try { s.destroy(); } catch (_) {}
+    process.exit(code);
+  };
+  const s = net.createConnection({ host: '8.8.8.8', port: 53 });
+  s.setTimeout(1500);
+  s.on('connect', () => finish(99));
+  s.on('timeout', () => finish(97));
+  s.on('error', (err) => {
+    if (err.code === 'ENETUNREACH' || err.code === 'EHOSTUNREACH' || err.code === 'ENETDOWN') {
+      finish(0);
+    } else if (err.code === 'ECONNREFUSED') {
+      finish(98);
+    } else {
+      finish(95);
+    }
+  });
+  process.on('uncaughtException', () => finish(96));
+" || EGRESS_PROBE_EXIT=$?
+
+if [ "$EGRESS_PROBE_EXIT" -eq 99 ]; then
+  echo "[CRITICAL FAIL] External network connection to 8.8.8.8:53 succeeded! Egress not blocked! (Exit: 99)"
+  exit 1
+elif [ "$EGRESS_PROBE_EXIT" -eq 98 ]; then
+  echo "[CRITICAL FAIL] External probe received ECONNREFUSED (route exists to remote host)! (Exit: 98)"
+  exit 1
+elif [ "$EGRESS_PROBE_EXIT" -eq 97 ]; then
+  echo "[CRITICAL FAIL] External probe timed out waiting for network rejection (fail closed)! (Exit: 97)"
+  exit 1
+elif [ "$EGRESS_PROBE_EXIT" -ne 0 ]; then
+  echo "[CRITICAL FAIL] External egress probe failed closed with unexpected exit code: $EGRESS_PROBE_EXIT"
+  exit 1
+fi
+echo "[PROBE PASSED] External network egress demonstrably blocked with ENETUNREACH (exit code 0)."
 echo "[PROBE PASSED] Mount and network namespaces isolated (loopback active, external egress blocked, distinct mount view)."
 
 # -----------------------------------------------------------------------------

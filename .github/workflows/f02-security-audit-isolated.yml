@@ -3,13 +3,13 @@ name: F-02 Security Audit Isolated Reproduction
 on:
   pull_request:
     paths:
-      - 'minter-contract/contracts/anlgram-f02-receipt-prototype.fc'
-      - 'minter-contract/contracts/imports/stonfi-terminal-settlement.fc'
+      - 'minter-contract/contracts/anlgram-f02-*.fc'
+      - 'minter-contract/contracts/imports/*.fc'
       - 'minter-contract/contracts/anlgram-migration-router-f02.fc'
       - 'minter-contract/contracts/anlgram-bonding-curve-f02.fc'
-      - 'tests/settlement-runtime/f02-*.js'
-      - 'tests/settlement-runtime/lpaccount-settlement-evidence.test.js'
-      - 'tests/settlement-runtime/run-isolated-audit-sandbox.sh'
+      - 'minter-contract/scripts/f02-*.js'
+      - 'tests/settlement-runtime/*.js'
+      - 'tests/settlement-runtime/*.sh'
       - '.github/workflows/f02-security-audit-isolated.yml'
   workflow_dispatch:
 
@@ -36,11 +36,11 @@ jobs:
             tests/settlement-runtime/package-lock.json
 
       - name: Install locked testnet-interface dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
         working-directory: testnet-interface
 
       - name: Install locked settlement-runtime dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
         working-directory: tests/settlement-runtime
 
       - name: Install locked minter-contract dependencies

@@ -7,10 +7,10 @@
 - PR #64 (`90eeb5d5c96532289865a955fef2ee3531cee944`) — *Document partial independent F-02 architecture review*
 - Base Branch: `feat/testnet-readiness-verification` (PR #62)
 - Audit Candidate Branch: `audit/f02-independent-security-validation` (Draft PR #66)  
-- Verified Isolated Linux CI Run: [Run 42909112874](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909112874) (100% Green, Artifact ID: `13805912706`, ZIP SHA-256: `165a7a648e7926861333b232770a818e12bce4e03a60875a56a03ab886bde885`)
-- PR Head SHA: `3b4c9deccf5117aadd9a5ae7430cd11fce1ecf93`
-- Tested Merge SHA: `075b4e9d87a6888ce0fca610f0e29ef4f46d1615`
-- Preceding Verification Runs: [Run 42768895998](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42768895998), [Run 42765992724](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42765992724)
+- Verified Isolated Linux CI Run: [Run 42909833444](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909833444) (100% Green, Artifact ID: `13806787444`, ZIP SHA-256: `e532e6aad58b2115c024bfe775b815ff9e537f682a24fff45bf94d5d3ef5c64e`)
+- PR Head SHA: `78236ac681604a116f39fae61cb0a4d0f6224f8e`
+- Tested Merge SHA: `11d04495b5fe2eb63c1a2f0c78a050d2bb071dc8`
+- Preceding Verification Runs: [Run 42909112874](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909112874), [Run 42768895998](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42768895998), [Run 42765992724](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42765992724)
 - Lead Security Agent: Antigravity AI (Pair Programming with Engineering Team)
 
 ---
@@ -56,7 +56,7 @@ Per `.agents/skills/security-audit/SKILL.md` (Universal Execution Safety), all t
 
 ---
 
-## 3. Verified Linux Isolated Execution Evidence (Run 42909112874)
+## 3. Verified Linux Isolated Execution Evidence (Run 42909833444)
 
 ### 3.1 Environment Metadata
 - **Platform:** `linux` (`x64`)
@@ -68,12 +68,12 @@ Per `.agents/skills/security-audit/SKILL.md` (Universal Execution Safety), all t
 - **Network Namespace Verified:** `networkNamespace: true` (`net:[4026532260]` != host `net:[4026531833]`)
 - **NoNewPrivs Enforced:** `noNewPrivs: true` (`NoNewPrivs: 1`, `CapEff: 0000000000000000`, `CapPrm: 0000000000000000`)
 - **Cgroups V2 Enforced:** `cgroupsV2Enforced: true` (`MemoryMax: 4294967296`, `TasksMax: 200`, `MemorySwapMax: 0`)
-- **PR Head SHA:** `3b4c9deccf5117aadd9a5ae7430cd11fce1ecf93`
-- **Tested Merge SHA:** `075b4e9d87a6888ce0fca610f0e29ef4f46d1615`
-- **Workflow Status:** **100% Green (Success, Duration: 1m 9s)**
-- **GitHub Actions Run:** [Run 42909112874](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909112874)
-- **Uploaded Artifact ID:** `13805912706` (`f02-independent-reproduction-evidence.zip`)
-- **Uploaded Artifact ZIP SHA-256:** `165a7a648e7926861333b232770a818e12bce4e03a60875a56a03ab886bde885`
+- **PR Head SHA:** `78236ac681604a116f39fae61cb0a4d0f6224f8e`
+- **Tested Merge SHA:** `11d04495b5fe2eb63c1a2f0c78a050d2bb071dc8`
+- **Workflow Status:** **100% Green (Success, Duration: 1m 5s)**
+- **GitHub Actions Run:** [Run 42909833444](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909833444)
+- **Uploaded Artifact ID:** `13806787444` (`f02-independent-reproduction-evidence.zip`)
+- **Uploaded Artifact ZIP SHA-256:** `e532e6aad58b2115c024bfe775b815ff9e537f682a24fff45bf94d5d3ef5c64e`
 - **Evidence Promotion:** Verified and persisted in `docs/audit/evidence/f02-independent-reproduction-evidence.json`
 
 ### 3.2 Strengthened Adversarial Verification Results (Authenticated Senders)
@@ -92,6 +92,33 @@ Per `.agents/skills/security-audit/SKILL.md` (Universal Execution Safety), all t
 - Contract: `minter-contract/contracts/anlgram-f02-receipt-prototype.fc`
 - Compiled Code Cell Hash: `14f13ca485eadc716de8691bd3fe47d7bf9ced6d6b421a664ba1da94645cd7ac` (Exact match).
 - Prototyping status: Confirmed as passive observer only; permanently locks assets if funded; must **never** be deployed.
+
+### 3.4 Network Probe Contract Verification & Egress Denial
+- **Kernel Route Table Verification:** Asserted `ip route show` returns 0 routes in private network namespace.
+- **Node.js Network Probe Contract:**
+  - Exit `0`: **PASS** — Explicit `ENETUNREACH`, `EHOSTUNREACH`, or `ENETDOWN` (kernel demonstrably blocks route).
+  - Exit `99`: **FAIL** — Socket connection succeeds (external network egress open).
+  - Exit `98`: **FAIL CLOSED** — `ECONNREFUSED` (host reachable, route exists to remote target).
+  - Exit `97`: **FAIL CLOSED** — Connection timeout without kernel rejection.
+  - Exit `95`/`96`: **FAIL CLOSED** — Unexpected errors or uncaught exceptions.
+- **Independent Contract Tests:** Pinned and verified in `tests/settlement-runtime/network-probe-contract.test.js` (4/4 passed).
+- **Dependency Installation Security:** Added mandatory `--ignore-scripts` to all `npm ci` invocations across CI steps, eliminating untrusted package script execution on the host runner outside the sandbox boundary.
+
+### 3.5 Escrow V3 Handoff Candidate Cryptographic Verification & TVM Execution
+- **Handoff Target Commit:** `f91820aff8aa8708c51ef4d3f8d703f41a061a95`
+- **Expected Archive SHA-256:** `33b4de9b9dbf8e58ed53288a185ae21b8318f5c86fbec02723b7b8ca04356400`
+- **Candidate Contract:** `minter-contract/contracts/anlgram-f02-escrow-candidate.fc`
+- **Candidate Source SHA-256:** `ed68732cba8f75917112f9bddef9cf30ce131cb2f39cb20d52585bbe65a60190` (Exact match verified).
+- **Candidate FunC Code Cell Hash:** `4283658e16d141771cdc608922cb84b0e1c41717aa744874a58ca8e23428f9b9`
+- **TVM Sandbox Test Suite:** `tests/settlement-runtime/f02-escrow-candidate.test.js` (3/3 passing):
+  1. *TON deposit and recovery:* Verified unauthenticated deposits fail (401), invalid operation fails (409), low value fails (407), valid deposits update ledger, partial recovery requires controller acknowledgment, bounced TON recovery restores pending amount.
+  2. *Jetton deposit:* Verified only derived wallet and configured origin credit deposits; unauthenticated notifications rejected (401); retry preserves exact wallet request; opt-in wallet receipt restores available principal.
+  3. *Real Sandbox Jetton Wallets:* Compiles minter and settlement wallet contracts; verified end-to-end deposit, ledger accounting, settlement request dispatch, and wallet balance reconciliation.
+- **Critical Escrow Limitations Identified:**
+  - Version 3 modifies StateInit layout (incompatible with earlier iterations; no migration path).
+  - Internal accounting only: checks `available + pending + delivered == received`, but cannot independently measure remote DEX pool balances.
+  - Candidate does not dispatch STON.fi router wire messages, verify LPAccount deletion/recreation, or close obligations.
+  - Assets can become permanently trapped if an opt-in wallet outcome is never delivered. **Must NEVER be funded or deployed to Mainnet.**
 
 ---
 
@@ -147,6 +174,6 @@ STON.fi does not currently emit a cryptographic proof-of-closure payload signed 
 ## 7. Conclusion & Sign-Off
 
 1. **PR #63:** Evaluated and rejected for production integration.
-2. **PR #64 Blocker:** Fully resolved via unprivileged Linux CI sandbox environment with mount namespace isolation, kernel NoNewPrivs, capability stripping, systemd cgroups v2 resource limits, tmpfs scratch isolation, and sanitized source subset ([Run 42909112874](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909112874)).
+2. **PR #64 Blocker:** Fully resolved via unprivileged Linux CI sandbox environment with mount namespace isolation, kernel NoNewPrivs, capability stripping, systemd cgroups v2 resource limits, tmpfs scratch isolation, and sanitized source subset ([Run 42909833444](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909833444)).
 3. **Draft PR #66:** Maintained in draft status with verified green CI evidence.
 4. **Gate 414:** Strictly **SEALED** (`throw(414)`). Zero real funds are at risk.

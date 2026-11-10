@@ -1,0 +1,232 @@
+;; F-02 CANDIDATE ONLY: UNCOMPILED, UNTESTED, NOT FOR DEPLOYMENT OR FUNDING.
+;; No STON.fi dispatch or terminal settlement. Version 3 StateInit is incompatible
+;; with earlier versions. No migration or upgrade path exists; never fund either.
+#include "imports/stdlib.fc";
+#include "imports/params.fc";
+#include "imports/jetton-utils.fc";
+#include "imports/f02-recovery-ledger.fc";
+#include "imports/settlement-protocol.fc";
+
+const int f02_deposit_ton = 0x46323001;
+const int f02_recover_ton = 0x46323002;
+const int f02_recover_jetton = 0x46323003;
+const int f02_ack_ton = 0x46323004;
+const int f02_ton_payment = 0x46323005;
+const int f02_restore_ton = 0x46323006;
+const int f02_query_jetton = 0x46323007;
+const int f02_retry_jetton = 0x46323008;
+const int f02_notification = 0x7362d09c;
+const int f02_transfer = 0x0f8a7ea5;
+const int f02_min_gas = 50000000;
+const int f02_jetton_gas = 200000000;
+
+;; root: version:uint8 ^config ^ton_ledger ^jetton_ledger ^deposit_history
+;; deposit_history: ton_nonces:(HashmapE 64 bit) jetton_messages:(HashmapE 256 bit) ton_bounces:(HashmapE 64 bit)
+;; config: operation:uint64 ^controller ^asset
+;; controller: controller:MsgAddressInt
+;; asset: master:MsgAddressInt ^wallet_code
+;; ledger: available:Coins pending:Coins delivered:Coins next:uint64 pending_id:uint64 received:Coins
+;; Initial StateInit MUST use zero flags and zero ledgers. Configuration and
+;; code are part of StateInit; caller must verify the deployed address and code.
+(cell, cell, cell, cell) f02_load() inline {
+    slice s = get_data().begin_parse();
+    throw_unless(408, s~load_uint(8) == 3);
+    cell cfg = s~load_ref(); cell ton = s~load_ref(); cell jetton = s~load_ref();
+    cell history = s~load_ref();
+    s.end_parse();
+    return (cfg, ton, jetton, history);
+}
+() f02_save(cell cfg, cell ton, cell jetton, cell history) impure inline {
+    set_data(begin_cell().store_uint(3, 8).store_ref(cfg).store_ref(ton).store_ref(jetton).store_ref(history).end_cell());
+}
+(int, slice, slice, cell) f02_config(cell cfg) inline {
+    slice s = cfg.begin_parse();
+    int operation = s~load_uint(64);
+    slice p = s~load_ref().begin_parse(); slice controller = p~load_msg_addr(); p.end_parse();
+    slice a = s~load_ref().begin_parse(); slice master = a~load_msg_addr(); cell wallet_code = a~load_ref(); a.end_parse();
+    s.end_parse();
+    return (operation, controller, master, wallet_code);
+}
+(int, int, int, int, int, int) f02_read_ledger(cell c) inline {
+    slice s = c.begin_parse();
+    int a = s~load_coins(); int p = s~load_coins(); int d = s~load_coins();
+    int n = s~load_uint(64); int id = s~load_uint(64); int received = s~load_coins(); s.end_parse();
+    f02_recovery_check(a, p, d, n, id);
+    throw_unless(463, a + p + d == received);
+    return (a, p, d, n, id, received);
+}
+cell f02_ledger(int a, int p, int d, int n, int id, int received) inline {
+    throw_unless(463, a + p + d == received);
+    return begin_cell().store_coins(a).store_coins(p).store_coins(d).store_uint(n, 64).store_uint(id, 64).store_coins(received).end_cell();
+}
+
+() recv_internal(int balance, int value, cell message, slice body) impure {
+    if (body.slice_empty?()) { return (); }
+    slice h = message.begin_parse(); int flags = h~load_uint(4); slice sender = h~load_msg_addr();
+    (cell cfg, cell ton, cell jetton, cell history) = f02_load();
+    (int operation, slice controller, slice master, cell wallet_code) = f02_config(cfg);
+    slice wallet = calculate_user_jetton_wallet_address(my_address(), master, wallet_code);
+    if (flags & 1) {
+        ;; An authenticated TON bounce establishes non-delivery, but its value
+        ;; may be smaller than the principal. Record it; never restore on bounce.
+        if (equal_slices(sender, controller) & (body.slice_bits() >= 192)) {
+            if (body~load_uint(32) != 0xffffffff) { return (); }
+            if (body~load_uint(32) != f02_ton_payment) { return (); }
+            if (body~load_uint(64) != operation) { return (); }
+            int bounced_seq = body~load_uint(64);
+            (int a, int p, int d, int n, int id, int received) = f02_read_ledger(ton);
+            if ((p == 0) | (bounced_seq != id)) { return (); }
+            slice hs = history.begin_parse(); cell tons = hs~load_dict(); cell messages = hs~load_dict(); cell bounces = hs~load_dict(); hs.end_parse();
+            bounces~udict_set_builder(64, bounced_seq, begin_cell().store_uint(1, 1));
+            f02_save(cfg, ton, jetton, begin_cell().store_dict(tons).store_dict(messages).store_dict(bounces).end_cell());
+            return ();
+        }
+        ;; A rejected wallet request is not proof that a copy was not accepted.
+        ;; Keep the principal pending and query or retry with the same owner ID.
+        return ();
+    }
+    int op = body~load_uint(32);
+    int q = body~load_uint(64);
+    if (op == sop::receipt) {
+        ;; Settlement wallet receipts are meaningful only for the exact reviewed
+        ;; wallet code/master pair. q is our single outstanding owner sequence.
+        throw_unless(401, equal_slices(sender, wallet));
+        int wire_id = body~load_uint(64); int amount = body~load_coins(); int status = body~load_uint(2); body.end_parse();
+        (int a, int p, int d, int n, int id, int received) = f02_read_ledger(jetton);
+        if ((p == 0) | (q != id)) { return (); }
+        throw_unless(409, amount == p);
+        if (status == 2) {
+            (a, p, d, n, id) = f02_recovery_delivered(a, p, d, n, id, q, amount);
+        } elseif (status == 3) {
+            (a, p, d, n, id) = f02_recovery_restore(a, p, d, n, id, q, amount);
+        } else { throw(409); }
+        f02_save(cfg, ton, f02_ledger(a, p, d, n, id, received), history);
+        return ();
+    }
+    if (op == f02_notification) {
+        throw_unless(401, equal_slices(sender, wallet));
+        throw_unless(409, q == operation);
+        int amount = body~load_coins(); slice origin = body~load_msg_addr();
+        throw_unless(401, equal_slices(origin, controller));
+        throw_unless(408, amount > 0);
+        ;; Distinct real wallet credits can share a query ID. Deduplicate the
+        ;; complete message, not its query ID or body, before crediting.
+        slice hs = history.begin_parse(); cell tons = hs~load_dict(); cell messages = hs~load_dict(); cell bounces = hs~load_dict(); hs.end_parse();
+        int msg_hash = cell_hash(message);
+        (slice old, int seen) = udict_get?(messages, 256, msg_hash);
+        throw_unless(409, ~ seen);
+        messages~udict_set_builder(256, msg_hash, begin_cell().store_uint(1, 1));
+        (int a, int p, int d, int n, int id, int received) = f02_read_ledger(jetton);
+        f02_save(cfg, ton, f02_ledger(a + amount, p, d, n, id, received + amount),
+            begin_cell().store_dict(tons).store_dict(messages).store_dict(bounces).end_cell());
+        return ();
+    }
+    throw_unless(401, equal_slices(sender, controller));
+    throw_unless(409, q == operation);
+    if (op == f02_deposit_ton) {
+        ;; Version 2 adds a controller-chosen per-operation deposit nonce.
+        int deposit_nonce = body~load_uint(64); int amount = body~load_coins(); body.end_parse();
+        throw_unless(407, (amount > 0) & (value >= amount + f02_min_gas));
+        slice hs = history.begin_parse(); cell tons = hs~load_dict(); cell messages = hs~load_dict(); cell bounces = hs~load_dict(); hs.end_parse();
+        (slice old, int seen) = udict_get?(tons, 64, deposit_nonce);
+        throw_unless(409, ~ seen);
+        tons~udict_set_builder(64, deposit_nonce, begin_cell().store_uint(1, 1));
+        (int a, int p, int d, int n, int id, int received) = f02_read_ledger(ton);
+        f02_save(cfg, f02_ledger(a + amount, p, d, n, id, received + amount), jetton,
+            begin_cell().store_dict(tons).store_dict(messages).store_dict(bounces).end_cell());
+        return ();
+    }
+    if (op == f02_recover_ton) {
+        int seq = body~load_uint(64); int amount = body~load_coins(); body.end_parse();
+        throw_unless(407, value >= f02_min_gas);
+        (int a, int p, int d, int n, int id, int received) = f02_read_ledger(ton);
+        throw_unless(409, seq == n);
+        (a, p, d, n, id) = f02_recovery_reserve(a, p, d, n, id, amount);
+        f02_save(cfg, f02_ledger(a, p, d, n, id, received), jetton, history);
+        ;; Protect previously held TON except the authorised principal amount.
+        raw_reserve(balance - value - amount, 0);
+        cell payment = begin_cell().store_uint(f02_ton_payment, 32).store_uint(operation, 64)
+            .store_uint(seq, 64).store_coins(amount).end_cell();
+        send_raw_message(begin_cell().store_uint(0x18, 6).store_slice(controller).store_coins(amount)
+            .store_uint(1, 107).store_ref(payment).end_cell(), 1);
+        return ();
+    }
+    if (op == f02_ack_ton) {
+        int seq = body~load_uint(64); int amount = body~load_coins(); body.end_parse();
+        (int a, int p, int d, int n, int id, int received) = f02_read_ledger(ton);
+        slice hs = history.begin_parse(); hs~load_dict(); hs~load_dict(); cell bounces = hs~load_dict(); hs.end_parse();
+        (_, int bounced) = udict_get?(bounces, 64, seq); throw_unless(409, ~ bounced);
+        ;; Controller is also fixed recipient: this is its explicit attestation.
+        (a, p, d, n, id) = f02_recovery_delivered(a, p, d, n, id, seq, amount);
+        f02_save(cfg, f02_ledger(a, p, d, n, id, received), jetton, history);
+        return ();
+    }
+    if (op == f02_restore_ton) {
+        int seq = body~load_uint(64); body.end_parse();
+        throw_unless(407, value >= f02_min_gas);
+        (int a, int p, int d, int n, int id, int received) = f02_read_ledger(ton);
+        slice hs = history.begin_parse(); cell tons = hs~load_dict(); cell messages = hs~load_dict(); cell bounces = hs~load_dict(); hs.end_parse();
+        (_, int bounced) = udict_get?(bounces, 64, seq);
+        throw_unless(409, bounced & (p > 0) & (id == seq));
+        ;; Controller tops up fees if necessary; no partial or external asset is
+        ;; invented as recovered. Keep a conservative gas reserve as well.
+        throw_unless(407, balance >= a + p + f02_min_gas);
+        (a, p, d, n, id) = f02_recovery_restore(a, p, d, n, id, seq, p);
+        (bounces, _) = udict_delete?(bounces, 64, seq);
+        f02_save(cfg, f02_ledger(a, p, d, n, id, received), jetton,
+            begin_cell().store_dict(tons).store_dict(messages).store_dict(bounces).end_cell());
+        return ();
+    }
+    if (op == f02_recover_jetton) {
+        int seq = body~load_uint(64); int amount = body~load_coins(); body.end_parse();
+        throw_unless(407, value >= f02_jetton_gas + f02_min_gas);
+        (int a, int p, int d, int n, int id, int received) = f02_read_ledger(jetton);
+        throw_unless(409, seq == n);
+        (a, p, d, n, id) = f02_recovery_reserve(a, p, d, n, id, amount);
+        f02_save(cfg, ton, f02_ledger(a, p, d, n, id, received), history);
+        raw_reserve(balance - value, 0);
+        cell transfer = begin_cell().store_uint(sop::transfer, 32).store_uint(seq, 64).store_coins(amount)
+            .store_slice(controller).store_slice(my_address()).store_uint(0, 1).store_coins(1).store_uint(0, 1).end_cell();
+        send_raw_message(begin_cell().store_uint(0x18, 6).store_slice(wallet).store_coins(f02_jetton_gas)
+            .store_uint(1, 107).store_ref(transfer).end_cell(), 1);
+        return ();
+    }
+    if (op == f02_query_jetton) {
+        int seq = body~load_uint(64); body.end_parse();
+        throw_unless(407, value >= f02_min_gas);
+        (int a, int p, int d, int n, int id, int received) = f02_read_ledger(jetton);
+        throw_unless(409, (p > 0) & (seq == id));
+        raw_reserve(balance - value, 0);
+        cell query = begin_cell().store_uint(sop::retry, 32).store_uint(seq, 64).end_cell();
+        send_raw_message(begin_cell().store_uint(0x18, 6).store_slice(wallet).store_coins(0)
+            .store_uint(1, 107).store_ref(query).end_cell(), 64);
+        return ();
+    }
+    if (op == f02_retry_jetton) {
+        int seq = body~load_uint(64); body.end_parse();
+        throw_unless(407, value >= f02_jetton_gas + f02_min_gas);
+        (int a, int p, int d, int n, int id, int received) = f02_read_ledger(jetton);
+        throw_unless(409, (p > 0) & (seq == id));
+        ;; Same ID, amount, destination and payload: the opt-in wallet's
+        ;; persistent owner-ID guard prevents a second token send.
+        raw_reserve(balance - value, 0);
+        cell retry = begin_cell().store_uint(sop::transfer, 32).store_uint(seq, 64).store_coins(p)
+            .store_slice(controller).store_slice(my_address()).store_uint(0, 1).store_coins(1).store_uint(0, 1).end_cell();
+        send_raw_message(begin_cell().store_uint(0x18, 6).store_slice(wallet).store_coins(f02_jetton_gas)
+            .store_uint(1, 107).store_ref(retry).end_cell(), 1);
+        return ();
+    }
+    throw(404);
+}
+
+(int, int, int, int, int, int) get_f02_ton_ledger() method_id {
+    (cell cfg, cell ton, cell jetton, cell history) = f02_load(); return f02_read_ledger(ton);
+}
+(int, int, int, int, int, int) get_f02_jetton_ledger() method_id {
+    (cell cfg, cell ton, cell jetton, cell history) = f02_load(); return f02_read_ledger(jetton);
+}
+slice get_f02_jetton_wallet() method_id {
+    (cell cfg, cell ton, cell jetton, cell history) = f02_load();
+    (int op, slice controller, slice master, cell code) = f02_config(cfg);
+    return calculate_user_jetton_wallet_address(my_address(), master, code);
+}
