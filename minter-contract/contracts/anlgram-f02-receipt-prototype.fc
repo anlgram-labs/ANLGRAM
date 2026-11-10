@@ -1,0 +1,51 @@
+;; SANDBOX ONLY. Not an escrow or a migration executor. It has no outgoing
+;; actions, withdrawal, upgrade, refund or terminal-settlement entrypoint.
+;; An LP balance can become permanently inaccessible: NEVER deploy with assets.
+#include "imports/stdlib.fc";
+#include "imports/params.fc";
+#include "imports/jetton-utils.fc";
+#include "imports/stonfi-v22-auth.fc";
+#pragma version >=0.2.0;
+
+;; data: ^config received:Coins
+;; config: operation:uint64 ^(router, router_wallet0, router_wallet1)
+;;         ^(expected_provider) ^pinned_profile
+(cell,int) load_receipt() inline {
+    slice s = get_data().begin_parse();
+    cell cfg = s~load_ref(); int received = s~load_coins(); s.end_parse();
+    return (cfg,received);
+}
+(int,slice,slice,slice) identity(cell cfg) impure inline {
+    slice s = cfg.begin_parse(); int q = s~load_uint(64);
+    slice endpoints = s~load_ref().begin_parse();
+    slice router = endpoints~load_msg_addr(); slice w0 = endpoints~load_msg_addr(); slice w1 = endpoints~load_msg_addr();
+    endpoints.end_parse();
+    slice p = s~load_ref().begin_parse(); slice provider = p~load_msg_addr(); p.end_parse();
+    cell profile = s~load_ref(); s.end_parse(); force_chain(provider);
+    (slice pool,slice wallet) = stonfi_expected_destinations(router,w0,w1,profile);
+    return (q,provider,pool,wallet);
+}
+() recv_internal(int balance,int value,cell message,slice body) impure {
+    if (body.slice_empty?()) { return (); }
+    slice h = message.begin_parse(); int flags = h~load_uint(4); slice sender = h~load_msg_addr();
+    throw_if(409, flags & 1);
+    (cell cfg,int received) = load_receipt();
+    (int q,slice provider,slice pool,slice wallet) = identity(cfg);
+    throw_unless(401,equal_slices(sender,wallet));
+    throw_unless(404,body~load_uint(32) == 0x7362d09c);
+    throw_unless(409,body~load_uint(64) == q);
+    int amount = body~load_coins(); throw_unless(408,amount > 0);
+    throw_unless(401,equal_slices(body~load_msg_addr(),provider));
+    slice payload = body;
+    if (body~load_uint(1)) { payload = body~load_ref().begin_parse(); body.end_parse(); } else { payload = body; }
+    throw_unless(409,payload~load_uint(32) == 0x414c5632);
+    throw_unless(409,payload~load_uint(64) == q); payload.end_parse();
+    throw_unless(409,received == 0);
+    set_data(begin_cell().store_ref(cfg).store_coins(amount).end_cell());
+}
+(int,int,slice,slice) get_f02_receipt() method_id {
+    (cell cfg,int received) = load_receipt();
+    (int q,_,slice pool,slice wallet) = identity(cfg);
+    ;; 0 = no receipt, 1 = historical receipt, never terminal settlement.
+    return (received > 0,received,pool,wallet);
+}
