@@ -140,3 +140,23 @@ test('underfunded withdrawal is rejected before any state change', async () => {
   assert.deepEqual(await state(f), before);
 });
 
+test('permanent lock rejects locked withdrawal; premature withdrawal rejects with 403', async () => {
+  // 1. Permanent lock rejection
+  const p = await fixture(100, 'permanent');
+  for (const m of p.deposit.messages) await p.owner.send({...m, bounce: true});
+  const pState = await p.read();
+  const pLocked = (pState.readBigNumber(), pState.readBigNumber(), pState.readBigNumber(), pState.readBigNumber(), pState.readBigNumber());
+  const permResult = await p.owner.send({to: p.vault.address, value: 450000000n, body: withdraw(1, true, pLocked)});
+  assert(exits(permResult).includes(403), 'permanent lock can never be withdrawn');
+
+  // 2. Premature withdrawal rejection
+  const timed = await fixture(75, 'days180');
+  for (const m of timed.deposit.messages) await timed.owner.send({...m, bounce: true});
+  const tState = await timed.read();
+  const tLocked = (tState.readBigNumber(), tState.readBigNumber(), tState.readBigNumber(), tState.readBigNumber(), tState.readBigNumber());
+  // now is before unlock (unlock is now + 180 days)
+  const premature = await timed.owner.send({to: timed.vault.address, value: 450000000n, body: withdraw(1, true, tLocked)});
+  assert(exits(premature).includes(403), 'withdrawal before unlock time must reject with 403');
+});
+
+
