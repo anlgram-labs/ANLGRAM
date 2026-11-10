@@ -1,0 +1,13 @@
+;; Test-only getter wrapper. No custody, message handling, or production use.
+#include "../../../minter-contract/contracts/imports/stdlib.fc";
+#include "../../../minter-contract/contracts/imports/f02-principal-ledger.fc";
+
+() recv_internal(int balance, int value, cell full, slice body) impure {
+    ;; Reject every internal message. This does not guarantee funds are returned
+    ;; for non-bounceable messages. Never deploy or fund this harness.
+    throw(414);
+}
+
+(int, int) get_partition(int received, int dispatched, int returned, int paid, int pending) method_id {
+    return f02_principal_partition(received, dispatched, returned, paid, pending);
+}
