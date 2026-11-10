@@ -56,9 +56,11 @@ jobs:
         working-directory: tests/settlement-runtime
       - name: Verify deterministic artifacts, getter parity and migration evidence
         working-directory: .
+        env:
+          NODE_PATH: tests/settlement-runtime/node_modules:testnet-interface/node_modules
         run: |
           node minter-contract/compile-one-shot-dispatch.js --check
           node minter-contract/compile-vesting-v2.js --dispatch --check
-          node --test --test-concurrency=1 tests/settlement-runtime/sell-action-phase-safety.test.js tests/settlement-runtime/graduation-reference.test.js tests/settlement-runtime/one-shot-dispatch.test.js tests/settlement-runtime/mvp-v5-lifecycle.test.js tests/settlement-runtime/lpaccount-settlement-evidence.test.js testnet-interface/test/generation2-status.test.mjs testnet-interface/test/testnet-release-plan.test.mjs testnet-interface/test/trusted-project-registration.test.mjs testnet-interface/test/vesting-v2-lifecycle.test.mjs
+          node --test --test-concurrency=1 tests/settlement-runtime/sell-action-phase-safety.test.js tests/settlement-runtime/graduation-reference.test.js tests/settlement-runtime/one-shot-dispatch.test.js tests/settlement-runtime/mvp-v5-lifecycle.test.js tests/settlement-runtime/lpaccount-settlement-evidence.test.js tests/settlement-runtime/stonfi-terminal-settlement.test.js testnet-interface/test/pre-execution-acceptance.test.mjs testnet-interface/test/generation2-status.test.mjs testnet-interface/test/testnet-release-plan.test.mjs testnet-interface/test/trusted-project-registration.test.mjs testnet-interface/test/vesting-v2-lifecycle.test.mjs
       - name: Build the Pages candidate without deploying
         run: npm run build:pages

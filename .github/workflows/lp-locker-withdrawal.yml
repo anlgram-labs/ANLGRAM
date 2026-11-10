@@ -7,6 +7,9 @@ on:
       - 'testnet-interface/projects/project-lp-acquisition.mjs'
       - 'testnet-interface/projects/migration-status.mjs'
       - 'tests/settlement-runtime/stonfi-locker-v2-real.test.js'
+      - 'tests/settlement-runtime/lp-locker-v3.test.js'
+      - 'minter-contract/contracts/anlgram-lp-locker-v3.fc'
+      - 'minter-contract/contracts/anlgram-lp-withdrawal-escrow.fc'
       - '.github/workflows/lp-locker-withdrawal.yml'
 
 permissions:
@@ -23,4 +26,4 @@ jobs:
       - run: npm ci --prefix tests/settlement-runtime
       - run: npm ci --prefix testnet-interface
       - run: npm ci --prefix minter-contract --ignore-scripts
-      - run: node --test --test-concurrency=1 tests/settlement-runtime/stonfi-locker-v2-real.test.js testnet-interface/test/generation2-status.test.mjs
+      - run: node --test --test-concurrency=1 tests/settlement-runtime/stonfi-locker-v2-real.test.js tests/settlement-runtime/lp-locker-v3.test.js testnet-interface/test/generation2-status.test.mjs
