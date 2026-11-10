@@ -216,6 +216,7 @@ if [ "$USE_SYSTEMD" -eq 1 ]; then
     -p MemoryMax=4294967296 \
     -p MemorySwapMax=0 \
     -p TasksMax=200 \
+    -p Delegate=yes \
     ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
       PATH="$NODE_DIR:/usr/local/bin:/usr/bin:/bin" \
       HOME="$SCRATCH_ROOT/home" \

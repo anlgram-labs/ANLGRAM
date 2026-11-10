@@ -27,13 +27,32 @@ CGROUP_REL_PATH="$(cut -d: -f3 < /proc/self/cgroup)"
 echo "[PROBE] Relative cgroup path: $CGROUP_REL_PATH"
 
 if [ -z "$CGROUP_REL_PATH" ] || [ "$CGROUP_REL_PATH" = "/" ]; then
-  # Root cgroup or direct cgroup
   CGROUP_DIR="/sys/fs/cgroup"
 else
   CGROUP_DIR="/sys/fs/cgroup${CGROUP_REL_PATH}"
 fi
 
-echo "[PROBE] Effective cgroup directory: $CGROUP_DIR"
+echo "[PROBE] Target cgroup directory: $CGROUP_DIR"
+ls -ld "$CGROUP_DIR" 2>&1 || true
+ls -la /sys/fs/cgroup/system.slice 2>&1 | head -n 30 || true
+
+# Check if systemd unit is active
+SCOPE_UNIT="$(systemctl list-units --type=scope 2>/dev/null | grep audit-sandbox | awk '{print $1}' || echo '')"
+if [ -n "$SCOPE_UNIT" ]; then
+  echo "[PROBE] Discovered active systemd scope: $SCOPE_UNIT"
+  systemctl show "$SCOPE_UNIT" -p MemoryMax -p TasksMax -p MemorySwapMax -p ControlGroup || true
+fi
+
+# Locate the actual cgroup directory
+if [ ! -d "$CGROUP_DIR" ]; then
+  if [ -n "$SCOPE_UNIT" ]; then
+    UNIT_CGROUP="$(systemctl show "$SCOPE_UNIT" -p ControlGroup --value 2>/dev/null || echo '')"
+    if [ -n "$UNIT_CGROUP" ] && [ -d "/sys/fs/cgroup${UNIT_CGROUP}" ]; then
+      CGROUP_DIR="/sys/fs/cgroup${UNIT_CGROUP}"
+      echo "[PROBE] Resolved cgroup directory from systemd ControlGroup: $CGROUP_DIR"
+    fi
+  fi
+fi
 
 if [ ! -d "$CGROUP_DIR" ]; then
   # Fallback: check /sys/fs/cgroup/audit-sandbox if set by parent
@@ -41,7 +60,7 @@ if [ ! -d "$CGROUP_DIR" ]; then
     CGROUP_DIR="/sys/fs/cgroup/audit-sandbox"
     echo "[PROBE] Using parent-configured cgroup directory: $CGROUP_DIR"
   else
-    echo "[CRITICAL FAIL] Cgroup directory does not exist! Aborting."
+    echo "[CRITICAL FAIL] Cgroup directory ($CGROUP_DIR) does not exist! Aborting."
     exit 1
   fi
 fi
@@ -124,3 +143,4 @@ cd "$RO_TARGET"
 echo "=== [ISOLATED TARGET RUNNER] Starting Reproduction Suite ==="
 timeout 300s "$NODE_BIN" --max-old-space-size=2048 tests/settlement-runtime/f02-independent-reproduction-runner.js
 echo "=== [ISOLATED TARGET RUNNER] Reproduction Suite Completed Successfully ==="
+
