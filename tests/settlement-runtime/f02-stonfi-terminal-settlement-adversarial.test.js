@@ -315,7 +315,7 @@ test('F-02 Adversarial 5: Partial deposit recovery via refund_me dispatches to a
 // ------------------------------------------------------------------------------------------------
 // TEST 8: Adversarial Case 6 — Duplicate Settlement / Replay Protection (Authenticated Sender)
 // ------------------------------------------------------------------------------------------------
-test('F-02 Adversarial 6: Replaying terminal settlement proof on already-graduated Curve from authentic Router fails closed with exit code 402', async () => {
+test('F-02 Adversarial 6: Replaying terminal settlement proof on already-graduated Curve from authentic Router fails closed with exit code 407 (ERROR_INVALID_STATE)', async () => {
   const [f02RouterCode, f02CurveCode] = await getCandidateCodes();
   const f = await ready();
   const c = f.c;

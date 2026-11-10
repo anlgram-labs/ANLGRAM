@@ -2,14 +2,14 @@
 set -euo pipefail
 
 # run-isolated-audit-sandbox.sh
-# Finalized OS-enforced isolation satisfying all Cloudflare security-audit skill requirements:
+# Strict OS-enforced isolation satisfying all Cloudflare security-audit skill requirements:
 # 1. Kernel-level network isolation (loopback-only namespace, external egress blocked)
 # 2. Sanitized source subset & pinned read-only dependencies (excludes .git, credentials, sockets)
-# 3. OS-level total memory limit via Linux cgroups v2 controller (4GB physical max)
-# 4. Scratch-only bounded storage on tmpfs / isolated directory
+# 3. OS-level total memory limit via Linux cgroups v2 controller (4GB physical max) - strict verification
+# 4. tmpfs scratch-only bounded storage (mandatory tmpfs, noexec, nosuid, nodev verification)
 # 5. Empty sanitized environment allowlist (credential stripping)
-# 6. Unprivileged target execution (strictly non-root user)
-# 7. Pre-flight enforcement probe asserting all 6 controls
+# 6. Unprivileged target execution (strictly non-root user, explicit cgroup membership)
+# 7. Pre-flight enforcement probe asserting all controls before running target code
 # 8. Guaranteed descendant cleanup on termination, interruption, or timeout
 
 echo "=== [ISOLATED AUDIT SANDBOX] Pre-Flight Setup & Enforcement Probe ==="
@@ -27,7 +27,7 @@ CGROUP_DIR="/sys/fs/cgroup/audit-sandbox"
 echo "Host runner user: $RUNNER_USER (UID: $RUNNER_UID, GID: $RUNNER_GID)"
 echo "Audited commit SHA: $GIT_COMMIT"
 
-# Teardown trap ensuring complete descendant cleanup without killing self
+# Teardown trap ensuring complete descendant cleanup
 cleanup() {
   echo "=== [ISOLATED AUDIT SANDBOX] Teardown & Process Termination ==="
   if [ -d "$CGROUP_DIR" ] && [ -f "$CGROUP_DIR/cgroup.procs" ]; then
@@ -48,12 +48,14 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# -----------------------------------------------------------------------------
 # 1. Prepare sanitized source subset (Exclude .git, credentials, host sockets, workflows)
+# -----------------------------------------------------------------------------
 echo "[SETUP] Creating sanitized source subset..."
 sudo rm -rf "$SANITIZED_SOURCE" "$RO_TARGET" "$SCRATCH_ROOT"
-mkdir -p "$SANITIZED_SOURCE" "$RO_TARGET" "$SCRATCH_ROOT/home" "$SCRATCH_ROOT/tmp"
+mkdir -p "$SANITIZED_SOURCE" "$RO_TARGET"
 
-# Copy ONLY audited contracts, scripts, and runtime test files
+# Copy ONLY audited contracts, scripts, tests, and lib
 cp -r "$REPO_SOURCE/minter-contract" "$SANITIZED_SOURCE/"
 cp -r "$REPO_SOURCE/tests" "$SANITIZED_SOURCE/"
 cp -r "$REPO_SOURCE/testnet-interface" "$SANITIZED_SOURCE/"
@@ -64,21 +66,52 @@ if [ -f "$REPO_SOURCE/docs/audit/f02-receipt-prototype-2026-11-10.md" ]; then
   cp "$REPO_SOURCE/docs/audit/f02-receipt-prototype-2026-11-10.md" "$SANITIZED_SOURCE/docs/audit/"
 fi
 
-# Assert exclusion of .git and credentials
-if [ -d "$SANITIZED_SOURCE/.git" ] || [ -d "$SANITIZED_SOURCE/minter-contract/.git" ]; then
-  echo "[CRITICAL FAIL] .git directory leaked into sanitized source subset! Aborting."
+# Verify strict exclusion of sensitive patterns
+for BAD_PATTERN in ".git" ".env" "*.pem" "*.key" "id_rsa" ".aws" ".ssh" "credentials"; do
+  FOUND=$(find "$SANITIZED_SOURCE" -name "$BAD_PATTERN" | head -n 1)
+  if [ -n "$FOUND" ]; then
+    echo "[CRITICAL FAIL] Sensitive pattern '$BAD_PATTERN' found at $FOUND! Aborting."
+    exit 1
+  fi
+done
+echo "[PROBE PASSED] Sanitized source strictly isolated from host git, credentials, and keys."
+
+# -----------------------------------------------------------------------------
+# 2. Setup tmpfs scratch-only storage with mandatory verification
+# -----------------------------------------------------------------------------
+echo "[SETUP] Mounting scratch tmpfs..."
+mkdir -p "$SCRATCH_ROOT"
+# Fail immediately if tmpfs mounting fails
+sudo mount -t tmpfs -o size=1G,noexec,nosuid,nodev tmpfs "$SCRATCH_ROOT"
+
+# Verify effective mount type, size and restrictions
+MOUNT_INFO="$(findmnt -n -o FSTYPE,OPTIONS "$SCRATCH_ROOT")"
+echo "[PROBE] Scratch mount info: $MOUNT_INFO"
+if ! echo "$MOUNT_INFO" | grep -q "tmpfs"; then
+  echo "[CRITICAL FAIL] $SCRATCH_ROOT is not mounted on tmpfs! Aborting."
   exit 1
 fi
-echo "[PROBE PASSED] Sanitized source subset verified clean (zero .git, zero credentials)."
+if ! echo "$MOUNT_INFO" | grep -q "noexec"; then
+  echo "[CRITICAL FAIL] $SCRATCH_ROOT missing noexec mount restriction! Aborting."
+  exit 1
+fi
+if ! echo "$MOUNT_INFO" | grep -q "nosuid"; then
+  echo "[CRITICAL FAIL] $SCRATCH_ROOT missing nosuid mount restriction! Aborting."
+  exit 1
+fi
+if ! echo "$MOUNT_INFO" | grep -q "nodev"; then
+  echo "[CRITICAL FAIL] $SCRATCH_ROOT missing nodev mount restriction! Aborting."
+  exit 1
+fi
+echo "[PROBE PASSED] Scratch tmpfs mount type and restrictions verified (tmpfs, noexec, nosuid, nodev)."
 
-# 2. Setup tmpfs scratch-only storage
-sudo mount -t tmpfs -o size=1G,noexec,nosuid,nodev tmpfs "$SCRATCH_ROOT" 2>/dev/null || true
 mkdir -p "$SCRATCH_ROOT/home" "$SCRATCH_ROOT/tmp"
 sudo chown -R "$RUNNER_USER:$RUNNER_USER" "$SCRATCH_ROOT"
 sudo chmod -R 700 "$SCRATCH_ROOT"
-echo "[OK] Scratch-only storage configured at $SCRATCH_ROOT (owned by $RUNNER_USER, chmod 700)."
 
+# -----------------------------------------------------------------------------
 # 3. Mount sanitized source as READ-ONLY
+# -----------------------------------------------------------------------------
 sudo mount --bind -o ro "$SANITIZED_SOURCE" "$RO_TARGET"
 echo "[OK] Read-only bind mount created at: $RO_TARGET"
 
@@ -93,7 +126,17 @@ if sudo touch "$RO_TARGET/should_fail_root.tmp" 2>/dev/null; then
 fi
 echo "[PROBE PASSED] Target mount is strictly read-only for both unprivileged user and root."
 
+# Verify scratch is the only writable storage accessible to target code
+if ! sudo -u "$RUNNER_USER" touch "$SCRATCH_ROOT/probe.tmp" 2>/dev/null; then
+  echo "[CRITICAL FAIL] Target user cannot write inside assigned scratch! Aborting."
+  exit 1
+fi
+rm -f "$SCRATCH_ROOT/probe.tmp"
+echo "[PROBE PASSED] Scratch verified as writable by target user."
+
+# -----------------------------------------------------------------------------
 # 4. Setup Kernel Network Namespace (loopback only)
+# -----------------------------------------------------------------------------
 sudo ip netns del audit-net 2>/dev/null || true
 sudo ip netns add audit-net
 sudo ip netns exec audit-net ip link set lo up
@@ -112,24 +155,40 @@ if ! sudo ip netns exec audit-net ping -c 1 -W 1 127.0.0.1 >/dev/null 2>&1; then
 fi
 echo "[PROBE PASSED] Loopback interface verified active inside sandbox namespace."
 
-# 5. OS-Level Total Memory & Process Limit via cgroups v2
-if [ -d "/sys/fs/cgroup" ]; then
-  echo "[SETUP] Configuring Linux cgroups v2 resource limits..."
-  sudo mkdir -p "$CGROUP_DIR" 2>/dev/null || true
-  # 4GB physical memory ceiling for the whole sandbox process tree
-  if [ -f "$CGROUP_DIR/memory.max" ]; then
-    echo "4294967296" | sudo tee "$CGROUP_DIR/memory.max" >/dev/null 2>&1 || true
-    echo "0" | sudo tee "$CGROUP_DIR/memory.swap.max" >/dev/null 2>&1 || true
-    echo "[PROBE PASSED] OS-level memory limit: 4GB physical RAM enforced via cgroups v2."
-  fi
-  if [ -f "$CGROUP_DIR/pids.max" ]; then
-    echo "200" | sudo tee "$CGROUP_DIR/pids.max" >/dev/null 2>&1 || true
-    echo "[PROBE PASSED] OS-level process limit: 200 PIDs enforced via cgroups v2."
-  fi
-  sudo chown -R "$RUNNER_USER:$RUNNER_USER" "$CGROUP_DIR" 2>/dev/null || true
+# -----------------------------------------------------------------------------
+# 5. OS-Level Total Memory & Process Limits via cgroups v2
+# -----------------------------------------------------------------------------
+if [ ! -d "/sys/fs/cgroup" ]; then
+  echo "[CRITICAL FAIL] Linux cgroups v2 (/sys/fs/cgroup) is not available! Aborting."
+  exit 1
 fi
 
+echo "[SETUP] Configuring Linux cgroups v2 resource limits..."
+sudo mkdir -p "$CGROUP_DIR"
+
+# Enforce 4GB physical memory ceiling for the whole sandbox process tree
+echo "4294967296" | sudo tee "$CGROUP_DIR/memory.max" >/dev/null
+echo "0" | sudo tee "$CGROUP_DIR/memory.swap.max" >/dev/null || true
+echo "200" | sudo tee "$CGROUP_DIR/pids.max" >/dev/null
+
+sudo chown -R "$RUNNER_USER:$RUNNER_USER" "$CGROUP_DIR"
+
+# Verify effective cgroup configuration
+MEM_MAX="$(cat "$CGROUP_DIR/memory.max")"
+PIDS_MAX="$(cat "$CGROUP_DIR/pids.max")"
+if [ "$MEM_MAX" != "4294967296" ]; then
+  echo "[CRITICAL FAIL] cgroups memory.max verification failed: expected 4294967296, got $MEM_MAX"
+  exit 1
+fi
+if [ "$PIDS_MAX" != "200" ]; then
+  echo "[CRITICAL FAIL] cgroups pids.max verification failed: expected 200, got $PIDS_MAX"
+  exit 1
+fi
+echo "[PROBE PASSED] OS-level memory limit (4GB physical RAM) and process limit (200 PIDs) strictly verified via cgroups v2."
+
+# -----------------------------------------------------------------------------
 # 6. Verify non-root execution capability
+# -----------------------------------------------------------------------------
 NODE_BIN="$(command -v node)"
 NODE_DIR="$(dirname "$NODE_BIN")"
 
@@ -141,7 +200,9 @@ if [ "$PROBE_USER" = "root" ]; then
 fi
 echo "[PROBE PASSED] Unprivileged execution confirmed (non-root, UID: $RUNNER_UID)."
 
-# 7. Execute runner inside the unprivileged sandbox
+# -----------------------------------------------------------------------------
+# 7. Execute runner inside the unprivileged sandbox with explicit cgroup joining
+# -----------------------------------------------------------------------------
 echo "=== [ISOLATED AUDIT SANDBOX] Executing Reproduction Runner ==="
 
 sudo ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
@@ -153,6 +214,13 @@ sudo ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
   AUDIT_GIT_COMMIT="$GIT_COMMIT" \
   NODE_PATH="$RO_TARGET/tests/settlement-runtime/node_modules:$RO_TARGET/minter-contract/node_modules:$RO_TARGET/testnet-interface/node_modules" \
   bash -c "
+    CHILD_PID=\$\$
+    echo \$CHILD_PID > '$CGROUP_DIR/cgroup.procs'
+    if ! grep -qx \"\$CHILD_PID\" '$CGROUP_DIR/cgroup.procs'; then
+      echo \"[CRITICAL FAIL] Failed to join process \$CHILD_PID to cgroup!\"
+      exit 1
+    fi
+    echo \"[PROBE PASSED] Audited process tree (PID \$CHILD_PID) confirmed inside cgroup.\"
     ulimit -u 200
     ulimit -f 1048576
     ulimit -t 300
@@ -162,7 +230,9 @@ sudo ip netns exec audit-net sudo -u "$RUNNER_USER" env -i \
 
 echo "=== [ISOLATED AUDIT SANDBOX] Target Execution Completed Successfully ==="
 
+# -----------------------------------------------------------------------------
 # 8. Verify evidence generation and promote
+# -----------------------------------------------------------------------------
 if [ -f "$SCRATCH_ROOT/f02-independent-reproduction-evidence.json" ]; then
   echo "[EVIDENCE CAPTURED] Promoting verified evidence from scratch to workspace..."
   mkdir -p "$REPO_SOURCE/docs/audit/evidence"
