@@ -1,0 +1,40 @@
+;; EXPERIMENTAL, UNCOMPILED, UNTESTED. Not a custody contract.
+;; One asset, one operation, and at most one outgoing transfer in flight.
+;; Inputs are contract state, not assertions supplied by a message sender.
+;; The integrating contract must authenticate each operation and all evidence,
+;; bind state to immutable asset/operation identities, and ensure real custody.
+;; A wallet request, ordinary excess message, or timeout is NOT delivery proof.
+;; A bounce only restores availability if it proves the exact outgoing request
+;; failed before the asset left custody. Otherwise the request remains pending.
+;; No terminal settlement or STON.fi closure is inferred here.
+
+() f02_recovery_check(int available, int pending, int delivered, int next, int pending_id) inline {
+    throw_unless(460, (available >= 0) & (pending >= 0) & (delivered >= 0));
+    throw_unless(460, (next >= 0) & (next <= 0xffffffffffffffff));
+    throw_unless(460, (pending_id >= 0) & (pending_id <= 0xffffffffffffffff));
+    throw_unless(460, (pending > 0) | (pending_id == 0));
+    throw_unless(460, (pending == 0) | ((next > 0) & (pending_id == next - 1)));
+}
+
+;; Caller must fund fees independently and atomically commit the send action.
+;; next is never reused, including after a proven bounce.
+(int, int, int, int, int) f02_recovery_reserve(int available, int pending, int delivered, int next, int pending_id, int amount) inline {
+    f02_recovery_check(available, pending, delivered, next, pending_id);
+    throw_unless(461, (pending == 0) & (amount > 0) & (amount <= available));
+    throw_unless(461, next < 0xffffffffffffffff);
+    return (available - amount, amount, delivered, next + 1, next);
+}
+
+;; Only call after independently authenticated proof of the exact delivery.
+(int, int, int, int, int) f02_recovery_delivered(int available, int pending, int delivered, int next, int pending_id, int evidence_id, int amount) inline {
+    f02_recovery_check(available, pending, delivered, next, pending_id);
+    throw_unless(462, (pending > 0) & (evidence_id == pending_id) & (amount == pending));
+    return (available, 0, delivered + pending, next, 0);
+}
+
+;; Only call for authenticated evidence that this exact send did not leave custody.
+(int, int, int, int, int) f02_recovery_restore(int available, int pending, int delivered, int next, int pending_id, int evidence_id, int amount) inline {
+    f02_recovery_check(available, pending, delivered, next, pending_id);
+    throw_unless(462, (pending > 0) & (evidence_id == pending_id) & (amount == pending));
+    return (available + pending, 0, delivered, next, 0);
+}

@@ -1,0 +1,63 @@
+name: F-02 Security Audit Isolated Reproduction
+
+on:
+  pull_request:
+    paths:
+      - 'minter-contract/contracts/anlgram-f02-*.fc'
+      - 'minter-contract/contracts/imports/*.fc'
+      - 'minter-contract/contracts/anlgram-migration-router-f02.fc'
+      - 'minter-contract/contracts/anlgram-bonding-curve-f02.fc'
+      - 'minter-contract/scripts/f02-*.js'
+      - 'tests/settlement-runtime/*.js'
+      - 'tests/settlement-runtime/*.sh'
+      - '.github/workflows/f02-security-audit-isolated.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-security-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            testnet-interface/package-lock.json
+            tests/settlement-runtime/package-lock.json
+
+      - name: Install locked testnet-interface dependencies
+        run: npm ci --ignore-scripts
+        working-directory: testnet-interface
+
+      - name: Install locked settlement-runtime dependencies
+        run: npm ci --ignore-scripts
+        working-directory: tests/settlement-runtime
+
+      - name: Install locked minter-contract dependencies
+        run: npm ci --ignore-scripts
+        working-directory: minter-contract
+
+      - name: Run OS-Enforced Isolated Security Audit Sandbox
+        env:
+          AUDIT_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          AUDIT_MERGE_SHA: ${{ github.sha }}
+        run: |
+          chmod +x tests/settlement-runtime/*.sh
+          ./tests/settlement-runtime/run-isolated-audit-sandbox.sh
+
+      - name: Upload Verified Reproduction Evidence Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: f02-independent-reproduction-evidence
+          path: docs/audit/evidence/f02-independent-reproduction-evidence.json
+          if-no-files-found: error
