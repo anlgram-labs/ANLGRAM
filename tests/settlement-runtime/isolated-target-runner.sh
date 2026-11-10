@@ -21,114 +21,75 @@ fi
 
 # 2. Inspect and verify cgroup v2 membership and resource limits
 echo "[PROBE] Inspecting process cgroup hierarchy..."
-cat /proc/self/cgroup
+CGROUP_SELF="$(cat /proc/self/cgroup)"
+echo "$CGROUP_SELF"
 
-CGROUP_REL_PATH="$(cut -d: -f3 < /proc/self/cgroup)"
+CGROUP_REL_PATH="$(echo "$CGROUP_SELF" | cut -d: -f3)"
 echo "[PROBE] Relative cgroup path: $CGROUP_REL_PATH"
 
-if [ -z "$CGROUP_REL_PATH" ] || [ "$CGROUP_REL_PATH" = "/" ]; then
-  CGROUP_DIR="/sys/fs/cgroup"
-else
-  CGROUP_DIR="/sys/fs/cgroup${CGROUP_REL_PATH}"
+# Assert that current process is inside an audit-sandbox scope
+if ! echo "$CGROUP_REL_PATH" | grep -q "audit-sandbox"; then
+  echo "[CRITICAL FAIL] Process is not running inside an audit-sandbox cgroup scope! ($CGROUP_REL_PATH)"
+  exit 1
 fi
+echo "[PROBE PASSED] Process verified inside audit-sandbox cgroup scope: $CGROUP_REL_PATH"
 
-echo "[PROBE] Target cgroup directory: $CGROUP_DIR"
-ls -ld "$CGROUP_DIR" 2>&1 || true
-ls -la /sys/fs/cgroup/system.slice 2>&1 | head -n 30 || true
-
-# Check if systemd unit is active
+# Query systemd unit properties for the scope
 SCOPE_UNIT="$(systemctl list-units --type=scope 2>/dev/null | grep audit-sandbox | awk '{print $1}' || echo '')"
-if [ -n "$SCOPE_UNIT" ]; then
-  echo "[PROBE] Discovered active systemd scope: $SCOPE_UNIT"
-  systemctl show "$SCOPE_UNIT" -p MemoryMax -p TasksMax -p MemorySwapMax -p ControlGroup || true
+if [ -z "$SCOPE_UNIT" ]; then
+  SCOPE_UNIT="$(basename "$CGROUP_REL_PATH")"
 fi
 
-# Locate the actual cgroup directory
-if [ ! -d "$CGROUP_DIR" ]; then
-  if [ -n "$SCOPE_UNIT" ]; then
-    UNIT_CGROUP="$(systemctl show "$SCOPE_UNIT" -p ControlGroup --value 2>/dev/null || echo '')"
-    if [ -n "$UNIT_CGROUP" ] && [ -d "/sys/fs/cgroup${UNIT_CGROUP}" ]; then
-      CGROUP_DIR="/sys/fs/cgroup${UNIT_CGROUP}"
-      echo "[PROBE] Resolved cgroup directory from systemd ControlGroup: $CGROUP_DIR"
+echo "[PROBE] Discovered active systemd scope unit: $SCOPE_UNIT"
+
+# Verify exact resource ceilings from systemd
+SYS_MEM_MAX="$(systemctl show "$SCOPE_UNIT" -p MemoryMax --value 2>/dev/null || echo '')"
+SYS_PIDS_MAX="$(systemctl show "$SCOPE_UNIT" -p TasksMax --value 2>/dev/null || echo '')"
+SYS_SWAP_MAX="$(systemctl show "$SCOPE_UNIT" -p MemorySwapMax --value 2>/dev/null || echo '')"
+SYS_CGROUP="$(systemctl show "$SCOPE_UNIT" -p ControlGroup --value 2>/dev/null || echo '')"
+
+echo "[PROBE] systemd scope ControlGroup: $SYS_CGROUP"
+echo "[PROBE] systemd scope MemoryMax: $SYS_MEM_MAX"
+echo "[PROBE] systemd scope TasksMax: $SYS_PIDS_MAX"
+echo "[PROBE] systemd scope MemorySwapMax: $SYS_SWAP_MAX"
+
+if [ "$SYS_MEM_MAX" != "4294967296" ]; then
+  echo "[CRITICAL FAIL] systemd MemoryMax verification failed: expected 4294967296, got $SYS_MEM_MAX"
+  exit 1
+fi
+if [ "$SYS_PIDS_MAX" != "200" ]; then
+  echo "[CRITICAL FAIL] systemd TasksMax verification failed: expected 200, got $SYS_PIDS_MAX"
+  exit 1
+fi
+if [ "$SYS_SWAP_MAX" != "0" ]; then
+  echo "[CRITICAL FAIL] systemd MemorySwapMax verification failed: expected 0, got $SYS_SWAP_MAX"
+  exit 1
+fi
+
+# Also check filesystem cgroup if accessible
+CGROUP_DIR="/sys/fs/cgroup${SYS_CGROUP:-$CGROUP_REL_PATH}"
+if [ -d "$CGROUP_DIR" ] && [ -f "$CGROUP_DIR/memory.max" ]; then
+  FS_MEM_MAX="$(cat "$CGROUP_DIR/memory.max")"
+  FS_PIDS_MAX="$(cat "$CGROUP_DIR/pids.max")"
+  echo "[PROBE] Filesystem cgroup memory.max: $FS_MEM_MAX"
+  echo "[PROBE] Filesystem cgroup pids.max: $FS_PIDS_MAX"
+  if [ "$FS_MEM_MAX" != "4294967296" ]; then
+    echo "[CRITICAL FAIL] Filesystem cgroup memory.max mismatch!"
+    exit 1
+  fi
+  if [ "$FS_PIDS_MAX" != "200" ]; then
+    echo "[CRITICAL FAIL] Filesystem cgroup pids.max mismatch!"
+    exit 1
+  fi
+  if [ -f "$CGROUP_DIR/cgroup.procs" ]; then
+    if ! grep -qx "$$" "$CGROUP_DIR/cgroup.procs"; then
+      echo "[CRITICAL FAIL] Process $$ not in $CGROUP_DIR/cgroup.procs!"
+      exit 1
     fi
   fi
 fi
 
-if [ ! -d "$CGROUP_DIR" ]; then
-  # Fallback: check /sys/fs/cgroup/audit-sandbox if set by parent
-  if [ -d "/sys/fs/cgroup/audit-sandbox" ]; then
-    CGROUP_DIR="/sys/fs/cgroup/audit-sandbox"
-    echo "[PROBE] Using parent-configured cgroup directory: $CGROUP_DIR"
-  else
-    echo "[CRITICAL FAIL] Cgroup directory ($CGROUP_DIR) does not exist! Aborting."
-    exit 1
-  fi
-fi
-
-# Verify memory.max limit
-if [ -f "$CGROUP_DIR/memory.max" ]; then
-  MEM_MAX="$(cat "$CGROUP_DIR/memory.max")"
-  echo "[PROBE] Effective cgroup memory.max: $MEM_MAX"
-  if [ "$MEM_MAX" != "4294967296" ]; then
-    echo "[CRITICAL FAIL] cgroups memory.max verification failed: expected 4294967296, got $MEM_MAX"
-    exit 1
-  fi
-elif [ -f "$CGROUP_DIR/memory.limit_in_bytes" ]; then
-  # cgroups v1 fallback if runner kernel is v1
-  MEM_MAX="$(cat "$CGROUP_DIR/memory.limit_in_bytes")"
-  echo "[PROBE] Effective cgroups v1 memory.limit_in_bytes: $MEM_MAX"
-  if [ "$MEM_MAX" != "4294967296" ]; then
-    echo "[CRITICAL FAIL] cgroups v1 memory limit verification failed: expected 4294967296, got $MEM_MAX"
-    exit 1
-  fi
-else
-  echo "[CRITICAL FAIL] No memory limit controller found in cgroup! Aborting."
-  exit 1
-fi
-
-# Verify pids.max limit
-if [ -f "$CGROUP_DIR/pids.max" ]; then
-  PIDS_MAX="$(cat "$CGROUP_DIR/pids.max")"
-  echo "[PROBE] Effective cgroup pids.max: $PIDS_MAX"
-  if [ "$PIDS_MAX" != "200" ]; then
-    echo "[CRITICAL FAIL] cgroups pids.max verification failed: expected 200, got $PIDS_MAX"
-    exit 1
-  fi
-elif [ -f "$CGROUP_DIR/pids.limit" ]; then
-  PIDS_MAX="$(cat "$CGROUP_DIR/pids.limit")"
-  echo "[PROBE] Effective cgroups v1 pids.limit: $PIDS_MAX"
-  if [ "$PIDS_MAX" != "200" ]; then
-    echo "[CRITICAL FAIL] cgroups pids limit verification failed: expected 200, got $PIDS_MAX"
-    exit 1
-  fi
-else
-  echo "[CRITICAL FAIL] No pids limit controller found in cgroup! Aborting."
-  exit 1
-fi
-
-# Verify process membership in cgroup.procs (or tasks in v1)
-CURRENT_PID="$$"
-if [ -f "$CGROUP_DIR/cgroup.procs" ]; then
-  if ! grep -qx "$CURRENT_PID" "$CGROUP_DIR/cgroup.procs"; then
-    echo "[CRITICAL FAIL] Process $CURRENT_PID is not in $CGROUP_DIR/cgroup.procs!"
-    exit 1
-  fi
-  echo "[PROBE PASSED] Process $CURRENT_PID verified inside cgroup.procs."
-elif [ -f "$CGROUP_DIR/tasks" ]; then
-  if ! grep -qx "$CURRENT_PID" "$CGROUP_DIR/tasks"; then
-    echo "[CRITICAL FAIL] Process $CURRENT_PID is not in $CGROUP_DIR/tasks!"
-    exit 1
-  fi
-  echo "[PROBE PASSED] Process $CURRENT_PID verified inside cgroup tasks."
-fi
-
-# Optional swap verification
-if [ -f "$CGROUP_DIR/memory.swap.max" ]; then
-  SWAP_MAX="$(cat "$CGROUP_DIR/memory.swap.max")"
-  echo "[PROBE] Effective memory.swap.max: $SWAP_MAX"
-fi
-
-echo "[PROBE PASSED] OS-level memory limit (4GB physical RAM) and process limit (200 PIDs) strictly verified."
+echo "[PROBE PASSED] OS-level memory limit (4GB physical RAM), process limit (200 PIDs), and swap limit (0) strictly verified."
 
 # 3. Enforce process resource limits (CPU, max file size, process count)
 ulimit -u 200
