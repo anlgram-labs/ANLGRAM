@@ -1,0 +1,25 @@
+;; F-02 accounting experiment. Not imported by any deployable contract.
+;; All quantities are principal in base units for ONE asset in ONE operation.
+;; Gas, minting, settlement, wallet balances and evidence authentication are
+;; intentionally outside this library. Never treat its output as custody proof.
+;;
+;; received = verified principal admitted to custody
+;; dispatched = principal sent across the DEX boundary
+;; returned = authenticated principal actually returned from that boundary
+;; paid = principal actually delivered to an authorized recipient
+;; pending = principal reserved for a delivery whose outcome is unresolved
+;;
+;; A caller MUST use evidence-backed values; an outbound send or an untrusted
+;; notification is not a delivered payment or returned principal. In
+;; particular, this model cannot decide whether a send action succeeded.
+
+(int, int) f02_principal_partition(int received, int dispatched, int returned, int paid, int pending) inline {
+    throw_unless(460, (received >= 0) & (dispatched >= 0) & (returned >= 0) & (paid >= 0) & (pending >= 0));
+    throw_unless(461, dispatched <= received);
+    throw_unless(462, returned <= dispatched);
+    int local_obligation = received - dispatched + returned;
+    throw_unless(463, paid + pending <= local_obligation);
+    ;; The exposure can include consumed principal, delayed messages and other
+    ;; unresolved obligations. It is NOT an assertion of foreign custody.
+    return (local_obligation - paid - pending, dispatched - returned);
+}
