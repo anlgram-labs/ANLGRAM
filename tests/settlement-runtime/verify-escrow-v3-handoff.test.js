@@ -20,7 +20,8 @@ test('Escrow V3 handoff constants are pinned correctly', () => {
 });
 
 test('verifySourceFile rejects corrupt source and validates correct source', () => {
-  const tmpDir = path.resolve(__dirname, '../../tmp/test-ingestion');
+  const baseTmp = process.env.AUDIT_SCRATCH_DIR || path.resolve(__dirname, '../../tmp');
+  const tmpDir = path.join(baseTmp, 'test-ingestion');
   fs.mkdirSync(tmpDir, { recursive: true });
   const corruptFile = path.join(tmpDir, 'corrupt.fc');
   fs.writeFileSync(corruptFile, ';; corrupt');

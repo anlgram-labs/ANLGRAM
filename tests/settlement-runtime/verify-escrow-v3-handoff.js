@@ -109,7 +109,8 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   let archiveArg = process.env.ESCROW_V3_ARCHIVE_PATH;
   let sourceArg = process.env.ESCROW_V3_SOURCE_PATH;
-  let targetDir = process.env.ESCROW_V3_EXTRACT_DIR || path.resolve(__dirname, '../../tmp/escrow-v3-staged');
+  const baseTmp = process.env.AUDIT_SCRATCH_DIR || path.resolve(__dirname, '../../tmp');
+  let targetDir = process.env.ESCROW_V3_EXTRACT_DIR || path.join(baseTmp, 'escrow-v3-staged');
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--archive' && args[i + 1]) {
