@@ -7,7 +7,8 @@
 - PR #64 (`90eeb5d5c96532289865a955fef2ee3531cee944`) — *Document partial independent F-02 architecture review*
 - Base Branch: `feat/testnet-readiness-verification` (PR #62)
 - Audit Candidate Branch: `audit/f02-independent-security-validation` (Draft PR #66)  
-- Verified Isolated Linux CI Run: [Run 42765992724](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42765992724) (100% Green, Artifact ID: `13740263675`)
+- Verified Isolated Linux CI Run: [Run 42768895998](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42768895998) (100% Green, Artifact ID: `13741330154`, ZIP SHA-256: `adb00dd579de7f27b42e5c7d05eaf61804c3f55a1cfaa0454d079366f9a8f8ff`)
+- Preceding Verification Run: [Run 42765992724](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42765992724) (Artifact ID: `13738849380`, ZIP SHA-256: `a24dc944b82546738140e8fbbce992a76d3805e46eda2fc84de4fc4750be2f02`)
 - Lead Security Agent: Antigravity AI (Pair Programming with Engineering Team)
 
 ---
@@ -41,15 +42,15 @@ Per `.agents/skills/security-audit/SKILL.md` (Universal Execution Safety), all t
 | **C-1: Network Isolation** | No external network; isolated loopback namespace only. | **UNAVAILABLE** (No network namespaces on Windows). | `ip netns add audit-net`, `ip link set lo up`. External ping/curl asserted to fail; loopback asserted to pass. | **ENFORCED** |
 | **C-2: Clean Environment** | Empty environment (`env -i`) populated only from explicit allowlist, scratch-local `HOME`, `TMPDIR`, and caches. | **UNAVAILABLE** (Ambient Windows environment inherited). | `env -i PATH=... HOME=/tmp/scratch/home TMPDIR=/tmp/scratch/tmp AUDIT_SCRATCH_DIR=/tmp/scratch AUDIT_ISOLATED_SANDBOX=1 AUDIT_GIT_COMMIT=... NODE_PATH=...` | **ENFORCED** |
 | **C-3: Sanitized Source & Immutable Tools** | Mount only sanitized source subset & pinned tools; exclude `.git`, credentials, sockets, host services. | **UNAVAILABLE** (Entire workspace was exposed). | Sanitized subset prepared at `/tmp/sanitized-source` (contains only audited contracts, scripts, tests, and `lib/`; strictly excludes `.git`, `.github`, credentials, sockets). Mounted via `mount --bind -o ro`. Write probe asserted to fail for both root and runner. | **ENFORCED** |
-| **C-4: Scratch-Only Storage** | Target writes strictly confined to temporary scratch directory (`/tmp/scratch`), discarded or promoted via trusted parent check. | **PARTIAL** (Directory convention only). | Scratch directory `/tmp/scratch` mounted on tmpfs, owned by `$RUNNER_USER` with `chmod 700`. | **ENFORCED** |
-| **C-5: OS-Level Total Memory & Resource Limits** | Explicit OS-level memory ceiling, CPU, process, and file-size limits. | **UNAVAILABLE** (No native memory cgroups on Windows). | Linux `cgroups v2` memory controller enforces physical ceiling `memory.max = 4G`, `memory.swap.max = 0`. Process limit `pids.max = 200`. `ulimit -t 300` (CPU time), `--max-old-space-size=2048` (V8 heap), `timeout 300s`. | **ENFORCED** |
+| **C-4: Scratch-Only Storage** | Target writes strictly confined to temporary scratch directory (`/tmp/scratch`), discarded or promoted via trusted parent check. | **PARTIAL** (Directory convention only). | Scratch directory `/tmp/scratch` mounted via `mount -t tmpfs -o size=1G,noexec,nosuid,nodev`. Mount restrictions strictly asserted via `findmnt`. Scratch verified as only writable path (writes to `/tmp/ro-target` and `/` fail; scratch write succeeds). Strict pattern exclusion verifies zero `.git`, `.env*`, `.ssh`, `.aws`, keys, or credentials. | **ENFORCED** |
+| **C-5: OS-Level Total Memory & Resource Limits** | Explicit OS-level memory ceiling, CPU, process, and file-size limits. | **UNAVAILABLE** (No native memory cgroups on Windows). | Linux `cgroups v2` resource ceiling enforced via systemd transient scope (`MemoryMax=4294967296`, `MemorySwapMax=0`, `TasksMax=200`, `Delegate=yes`). Target runner introspection strictly asserts `systemctl show` D-Bus values and `/proc/self/cgroup` scope membership before running target code. Fallback to direct cgroup hierarchy. Process limits enforced: `ulimit -t 300` (CPU time), `ulimit -f 1048576` (file size limit 1GB), `ulimit -u 200` (process count), `--max-old-space-size=2048` (V8 heap), `timeout 300s`. | **ENFORCED** |
 | **C-6: Unprivileged Execution** | Do not run target-controlled code as a privileged process (no root). | **VIOLATED** (Early scripts ran as root in CI). | Execution dropped inside namespace via `sudo -u "$RUNNER_USER"`. Probe verifies `whoami == runner` (`uid: 1001`, `isRoot: false`). | **ENFORCED** |
-| **C-7: Pre-Flight Probe** | Verify enforcement of all controls before executing target code. | **FAILED** (Cannot enforce on native Windows). | Automated pre-flight probe in `tests/settlement-runtime/run-isolated-audit-sandbox.sh` asserting C-1 through C-6 before runner starts. | **ENFORCED** |
-| **C-8: Descendant Cleanup** | Guarantee process termination and teardown on success, failure, interruption, or timeout. | **PARTIAL** | Registered `trap cleanup EXIT INT TERM` terminates descendant worker processes, unmounts ro bind-mounts, and deletes network namespaces without self-killing. | **ENFORCED** |
+| **C-7: Pre-Flight Probe** | Verify enforcement of all controls before executing target code. | **FAILED** (Cannot enforce on native Windows). | Automated pre-flight probe in `tests/settlement-runtime/run-isolated-audit-sandbox.sh` asserting C-1 through C-6 before runner starts. Immediate fatal exit on any missing limit or failure. | **ENFORCED** |
+| **C-8: Descendant Cleanup** | Guarantee process termination and teardown on success, failure, interruption, or timeout. | **PARTIAL** | Registered `trap cleanup EXIT INT TERM` stops systemd scope unit (`systemctl stop`), terminates any descendant worker processes, unmounts tmpfs and ro bind-mounts, and deletes network namespaces without self-killing. | **ENFORCED** |
 
 ---
 
-## 3. Verified Linux Isolated Execution Evidence (Run 42765992724)
+## 3. Verified Linux Isolated Execution Evidence (Run 42768895998)
 
 ### 3.1 Environment Metadata
 - **Platform:** `linux` (`x64`)
@@ -57,8 +58,12 @@ Per `.agents/skills/security-audit/SKILL.md` (Universal Execution Safety), all t
 - **OS Type / Release:** `Linux` / `7.0.0-1019-azure`
 - **User / UID:** `runner` (`uid: 1001`, `isRoot: false`)
 - **Isolation Active:** `isolatedSandbox: true`
-- **Audited Commit SHA:** `18b115d98f8644dc8c2e258b7c18de3abf1bc32e`
-- **Workflow Status:** **100% Green (Success, Duration: 1m 6s)**
+- **Audited Commit SHA:** `0a190ea8832a87c12dc91a7e583794b6da21a44e` (`cb62beacb889a5a9cc3da4611089af2555f28356`)
+- **Workflow Status:** **100% Green (Success, Duration: 1m 11s)**
+- **GitHub Actions Run:** [Run 42768895998](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42768895998)
+- **Uploaded Artifact ID:** `13741330154` (`f02-independent-reproduction-evidence.zip`)
+- **Uploaded Artifact ZIP SHA-256:** `adb00dd579de7f27b42e5c7d05eaf61804c3f55a1cfaa0454d079366f9a8f8ff`
+- **Preceding Run:** Run 42765992724 (Artifact ID: `13738849380`, ZIP SHA-256: `a24dc944b82546738140e8fbbce992a76d3805e46eda2fc84de4fc4750be2f02`)
 - **Evidence Promotion:** Verified and persisted in `docs/audit/evidence/f02-independent-reproduction-evidence.json`
 
 ### 3.2 Strengthened Adversarial Verification Results (Authenticated Senders)
@@ -70,7 +75,7 @@ Per `.agents/skills/security-audit/SKILL.md` (Universal Execution Safety), all t
 | **Adversarial 3: Pending Claims (Strengthened)** | **Authentic Locker V3** (`c.vault.address`) | Receipt with `pending > 0` (uncleared claims) | Migration Router | **`409`** | Internal state check fails; sender authenticated (NOT 401) |
 | **Adversarial 4: Mismatched Pool (Strengthened)** | **Authentic Locker V3** (`c.vault.address`) | Receipt referencing forged/wrong pool and wallet | Migration Router | **`408`** | `ERROR_INVALID_ADDRESS`; sender authenticated (NOT 401) |
 | **Adversarial 5: Partial Deposit Recovery** | Authorized Admin | Outbound `0x132b9a2c` (`refund_me`) | Migration Router | `0` | Dispatches recovery callback to authentic STON.fi LPAccount |
-| **Adversarial 6: Replay on Graduated Curve (Strengthened)** | **Authentic Migration Router** (`c.addresses.migration`) | Replay `0x414e5903` when Curve is already `STATE_GRADUATED` | Bonding Curve | **`402` / `407`** | `ERROR_INVALID_STATE` in Curve; sender authenticated (NOT 401) |
+| **Adversarial 6: Replay on Graduated Curve (Strengthened)** | **Authentic Migration Router** (`c.addresses.migration`) | Replay `0x414e5903` when Curve is already `STATE_GRADUATED` | Bonding Curve | **`407`** | `ERROR_INVALID_STATE` in Curve contract constant (reconciled in code & report; sender authenticated, NOT 401) |
 | **Adversarial 7: Conservation of Funds** | System-wide balances | Complete migration lifecycle | System Ledger | Exact 300 TON reserve, 200M DEX tokens, 800M sold tokens strictly conserved |
 
 ### 3.3 PR #63 Bytecode Verification & Prototyping
@@ -132,6 +137,6 @@ STON.fi does not currently emit a cryptographic proof-of-closure payload signed 
 ## 7. Conclusion & Sign-Off
 
 1. **PR #63:** Evaluated and rejected for production integration.
-2. **PR #64 Blocker:** Fully resolved via unprivileged Linux CI sandbox environment with cgroups v2 resource limits and sanitized source subset ([Run 42765992724](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42765992724)).
+2. **PR #64 Blocker:** Fully resolved via unprivileged Linux CI sandbox environment with systemd cgroups v2 resource limits, tmpfs scratch isolation, and sanitized source subset ([Run 42768895998](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42768895998)).
 3. **Draft PR #66:** Maintained in draft status with verified green CI evidence.
 4. **Gate 414:** Strictly **SEALED** (`throw(414)`). Zero real funds are at risk.
