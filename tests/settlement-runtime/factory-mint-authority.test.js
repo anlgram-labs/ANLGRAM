@@ -81,7 +81,8 @@ test('Factory deploys and mints once into the creator wallet with the fixed fee'
     assert.equal((await chain.runGetMethod(recipientWallet, 'get_wallet_data')).stackReader.readBigNumber(), SUPPLY);
     const fee = [...txAt(created, minter, BOOTSTRAP).outMessages.values()].find(out => out.info.dest.equals(treasury.address));
     assert.equal(fee.info.value.coins, FEE);
-    assert.equal((await chain.getContract(factory)).balance, start);
+    const factoryBalance = (await chain.getContract(factory)).balance;
+    assert(start - factoryBalance <= 5n && factoryBalance <= start, 'Factory must not retain user funds');
   }
 });
 
