@@ -62,6 +62,8 @@ exec setpriv --reuid "$RUNNER_UID" --regid "$RUNNER_GID" --clear-groups --no-new
     PATH="$NODE_DIR:/usr/local/bin:/usr/bin:/bin" \
     HOME="$SCRATCH_ROOT/home" \
     TMPDIR="$SCRATCH_ROOT/tmp" \
+    REPO_SOURCE="$REPO_SOURCE" \
+    SCRATCH_ROOT="$SCRATCH_ROOT" \
     AUDIT_SCRATCH_DIR="$SCRATCH_ROOT" \
     AUDIT_ISOLATED_SANDBOX=1 \
     AUDIT_GIT_COMMIT="$GIT_COMMIT" \
@@ -78,3 +80,4 @@ exec setpriv --reuid "$RUNNER_UID" --regid "$RUNNER_GID" --clear-groups --no-new
     SCOPE_UNIT="${SCOPE_UNIT:-}" \
     NODE_PATH="$RO_TARGET/tests/settlement-runtime/node_modules:$RO_TARGET/minter-contract/node_modules:$RO_TARGET/testnet-interface/node_modules" \
     bash "$RO_TARGET/tests/settlement-runtime/isolated-target-runner.sh"
+

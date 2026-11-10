@@ -158,7 +158,7 @@ echo "[PROBE PASSED] Inherited file descriptors verified clean (0, 1, 2 only)."
 # 5. Probe: Host filesystem isolation and path access denial
 # -----------------------------------------------------------------------------
 echo "[PROBE] Verifying denied access to host paths outside permitted view..."
-if [ -e "$REPO_SOURCE/.git" ]; then
+if [ -n "${REPO_SOURCE:-}" ] && [ -e "$REPO_SOURCE/.git" ]; then
   echo "[CRITICAL FAIL] Original checkout .git directory is accessible at $REPO_SOURCE/.git!"
   exit 1
 fi
