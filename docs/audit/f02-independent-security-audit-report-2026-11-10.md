@@ -7,8 +7,10 @@
 - PR #64 (`90eeb5d5c96532289865a955fef2ee3531cee944`) — *Document partial independent F-02 architecture review*
 - Base Branch: `feat/testnet-readiness-verification` (PR #62)
 - Audit Candidate Branch: `audit/f02-independent-security-validation` (Draft PR #66)  
-- Verified Isolated Linux CI Run: [Run 42768895998](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42768895998) (100% Green, Artifact ID: `13741330154`, ZIP SHA-256: `adb00dd579de7f27b42e5c7d05eaf61804c3f55a1cfaa0454d079366f9a8f8ff`)
-- Preceding Verification Run: [Run 42765992724](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42765992724) (Artifact ID: `13738849380`, ZIP SHA-256: `a24dc944b82546738140e8fbbce992a76d3805e46eda2fc84de4fc4750be2f02`)
+- Verified Isolated Linux CI Run: [Run 42909112874](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909112874) (100% Green, Artifact ID: `13805912706`, ZIP SHA-256: `165a7a648e7926861333b232770a818e12bce4e03a60875a56a03ab886bde885`)
+- PR Head SHA: `3b4c9deccf5117aadd9a5ae7430cd11fce1ecf93`
+- Tested Merge SHA: `075b4e9d87a6888ce0fca610f0e29ef4f46d1615`
+- Preceding Verification Runs: [Run 42768895998](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42768895998), [Run 42765992724](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42765992724)
 - Lead Security Agent: Antigravity AI (Pair Programming with Engineering Team)
 
 ---
@@ -45,25 +47,33 @@ Per `.agents/skills/security-audit/SKILL.md` (Universal Execution Safety), all t
 | **C-4: Scratch-Only Storage** | Target writes strictly confined to temporary scratch directory (`/tmp/scratch`), discarded or promoted via trusted parent check. | **PARTIAL** (Directory convention only). | Scratch directory `/tmp/scratch` mounted via `mount -t tmpfs -o size=1G,noexec,nosuid,nodev`. Mount restrictions strictly asserted via `findmnt`. Scratch verified as only writable path (writes to `/tmp/ro-target` and `/` fail; scratch write succeeds). Strict pattern exclusion verifies zero `.git`, `.env*`, `.ssh`, `.aws`, keys, or credentials. | **ENFORCED** |
 | **C-5: OS-Level Total Memory & Resource Limits** | Explicit OS-level memory ceiling, CPU, process, and file-size limits. | **UNAVAILABLE** (No native memory cgroups on Windows). | Linux `cgroups v2` resource ceiling enforced via systemd transient scope (`MemoryMax=4294967296`, `MemorySwapMax=0`, `TasksMax=200`, `Delegate=yes`). Target runner introspection strictly asserts `systemctl show` D-Bus values and `/proc/self/cgroup` scope membership before running target code. Fallback to direct cgroup hierarchy. Process limits enforced: `ulimit -t 300` (CPU time), `ulimit -f 1048576` (file size limit 1GB), `ulimit -u 200` (process count), `--max-old-space-size=2048` (V8 heap), `timeout 300s`. | **ENFORCED** |
 | **C-6: Unprivileged Execution** | Do not run target-controlled code as a privileged process (no root). | **VIOLATED** (Early scripts ran as root in CI). | Execution dropped inside namespace via `sudo -u "$RUNNER_USER"`. Probe verifies `whoami == runner` (`uid: 1001`, `isRoot: false`). | **ENFORCED** |
-| **C-7: Pre-Flight Probe** | Verify enforcement of all controls before executing target code. | **FAILED** (Cannot enforce on native Windows). | Automated pre-flight probe in `tests/settlement-runtime/run-isolated-audit-sandbox.sh` asserting C-1 through C-6 before runner starts. Immediate fatal exit on any missing limit or failure. | **ENFORCED** |
+| **C-7: Pre-Flight Probe** | Verify enforcement of all controls before executing target code. | **FAILED** (Cannot enforce on native Windows). | Automated pre-flight probe asserting C-1 through C-12 before runner starts. Immediate fatal exit on any missing limit or failure. | **ENFORCED** |
 | **C-8: Descendant Cleanup** | Guarantee process termination and teardown on success, failure, interruption, or timeout. | **PARTIAL** | Registered `trap cleanup EXIT INT TERM` stops systemd scope unit (`systemctl stop`), terminates any descendant worker processes, unmounts tmpfs and ro bind-mounts, and deletes network namespaces without self-killing. | **ENFORCED** |
+| **C-9: Mount Namespace Isolation** | Private mount namespace with restricted filesystem root view; mask host repo, `.git`, credentials, sockets. | **UNAVAILABLE** (No mount namespaces on Windows). | `unshare --mount` with `mount --make-rprivate /`. Read-only empty tmpfs mounts mask `$REPO_SOURCE`, `/home/runner/work`, `/root`, `/home/runner/.ssh`, `/home/runner/.aws`, `/home/runner/.config`, `/etc/sudoers.d`. `/usr/bin/sudo` and `/var/run/docker.sock` bound to `/dev/null`. Target mount namespace verified distinct from host (`mnt:[4026532316]` != `mnt:[4026531832]`). | **ENFORCED** |
+| **C-10: Capability Stripping & NoNewPrivs** | Lock kernel privilege escalation prevention and strip all capabilities. | **UNAVAILABLE** (No POSIX capabilities on Windows). | Dropped via `setpriv --reuid 1001 --regid 1001 --clear-groups --no-new-privs`. Probes strictly verify `NoNewPrivs: 1`, `CapEff: 0000000000000000`, `CapPrm: 0000000000000000`. Direct `sudo` execution verified to fail. | **ENFORCED** |
+| **C-11: File Descriptor Sanitization** | Ensure target code does not inherit host file descriptors, sockets, or pipes. | **PARTIAL** | All file descriptors > 2 explicitly closed before runner launch. Probes assert `/proc/self/fd` contains 0, 1, 2 only. | **ENFORCED** |
+| **C-12: Host Path Denial Verification** | Target code cannot read or access host credentials, git, or write outside scratch. | **FAILED** (No sandbox on host). | Probes assert non-existence/denial of `$REPO_SOURCE/.git`, `/home/runner/work/.../.git`, `~/.gitconfig`, `~/.ssh`, `~/.aws`, `/root`, `/var/run/docker.sock`. Write probes assert `/` and `/home/runner` and `$RO_TARGET` are unwritable, and only scratch tmpfs is writable. | **ENFORCED** |
 
 ---
 
-## 3. Verified Linux Isolated Execution Evidence (Run 42768895998)
+## 3. Verified Linux Isolated Execution Evidence (Run 42909112874)
 
 ### 3.1 Environment Metadata
 - **Platform:** `linux` (`x64`)
 - **Node Version:** `v22.23.4`
 - **OS Type / Release:** `Linux` / `7.0.0-1019-azure`
-- **User / UID:** `runner` (`uid: 1001`, `isRoot: false`)
+- **User / UID:** `runner` (`uid: 1001`, `gid: 1001`, `isRoot: false`)
 - **Isolation Active:** `isolatedSandbox: true`
-- **Audited Commit SHA:** `0a190ea8832a87c12dc91a7e583794b6da21a44e` (`cb62beacb889a5a9cc3da4611089af2555f28356`)
-- **Workflow Status:** **100% Green (Success, Duration: 1m 11s)**
-- **GitHub Actions Run:** [Run 42768895998](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42768895998)
-- **Uploaded Artifact ID:** `13741330154` (`f02-independent-reproduction-evidence.zip`)
-- **Uploaded Artifact ZIP SHA-256:** `adb00dd579de7f27b42e5c7d05eaf61804c3f55a1cfaa0454d079366f9a8f8ff`
-- **Preceding Run:** Run 42765992724 (Artifact ID: `13738849380`, ZIP SHA-256: `a24dc944b82546738140e8fbbce992a76d3805e46eda2fc84de4fc4750be2f02`)
+- **Mount Namespace Verified:** `mountNamespace: true` (`mnt:[4026532316]` != host `mnt:[4026531832]`)
+- **Network Namespace Verified:** `networkNamespace: true` (`net:[4026532260]` != host `net:[4026531833]`)
+- **NoNewPrivs Enforced:** `noNewPrivs: true` (`NoNewPrivs: 1`, `CapEff: 0000000000000000`, `CapPrm: 0000000000000000`)
+- **Cgroups V2 Enforced:** `cgroupsV2Enforced: true` (`MemoryMax: 4294967296`, `TasksMax: 200`, `MemorySwapMax: 0`)
+- **PR Head SHA:** `3b4c9deccf5117aadd9a5ae7430cd11fce1ecf93`
+- **Tested Merge SHA:** `075b4e9d87a6888ce0fca610f0e29ef4f46d1615`
+- **Workflow Status:** **100% Green (Success, Duration: 1m 9s)**
+- **GitHub Actions Run:** [Run 42909112874](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909112874)
+- **Uploaded Artifact ID:** `13805912706` (`f02-independent-reproduction-evidence.zip`)
+- **Uploaded Artifact ZIP SHA-256:** `165a7a648e7926861333b232770a818e12bce4e03a60875a56a03ab886bde885`
 - **Evidence Promotion:** Verified and persisted in `docs/audit/evidence/f02-independent-reproduction-evidence.json`
 
 ### 3.2 Strengthened Adversarial Verification Results (Authenticated Senders)
@@ -137,6 +147,6 @@ STON.fi does not currently emit a cryptographic proof-of-closure payload signed 
 ## 7. Conclusion & Sign-Off
 
 1. **PR #63:** Evaluated and rejected for production integration.
-2. **PR #64 Blocker:** Fully resolved via unprivileged Linux CI sandbox environment with systemd cgroups v2 resource limits, tmpfs scratch isolation, and sanitized source subset ([Run 42768895998](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42768895998)).
+2. **PR #64 Blocker:** Fully resolved via unprivileged Linux CI sandbox environment with mount namespace isolation, kernel NoNewPrivs, capability stripping, systemd cgroups v2 resource limits, tmpfs scratch isolation, and sanitized source subset ([Run 42909112874](https://github.com/anlgram-labs/ANLGRAM/actions/runs/42909112874)).
 3. **Draft PR #66:** Maintained in draft status with verified green CI evidence.
 4. **Gate 414:** Strictly **SEALED** (`throw(414)`). Zero real funds are at risk.

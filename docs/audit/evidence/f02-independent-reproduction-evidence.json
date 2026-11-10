@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-10T06:30:18.059Z",
+  "timestamp": "2026-11-10T21:52:07.141Z",
   "environment": {
     "platform": "linux",
     "arch": "x64",
@@ -10,12 +10,18 @@
     "username": "runner",
     "isRoot": false,
     "isolatedSandbox": true,
-    "gitCommit": "cb62beacb889a5a9cc3da4611089af2555f28356"
+    "gitCommit": "075b4e9d87a6888ce0fca610f0e29ef4f46d1615",
+    "prHeadSha": "3b4c9deccf5117aadd9a5ae7430cd11fce1ecf93",
+    "testedMergeSha": "075b4e9d87a6888ce0fca610f0e29ef4f46d1615",
+    "mountNamespace": true,
+    "networkNamespace": true,
+    "noNewPrivs": true,
+    "cgroupsV2Enforced": true
   },
   "pr63Compilation": {
     "name": "PR #63 Prototype Compilation Check",
     "exitCode": 0,
-    "durationMs": 713,
+    "durationMs": 527,
     "success": true,
     "stdoutPreview": "code cell 14f13ca485eadc716de8691bd3fe47d7bf9ced6d6b421a664ba1da94645cd7ac verified\n",
     "stderrPreview": "",
@@ -24,25 +30,25 @@
   "pr63PrototypeTest": {
     "name": "PR #63 Prototype TVM Sandbox Test",
     "exitCode": 0,
-    "durationMs": 2977,
+    "durationMs": 2808,
     "success": true,
-    "stdoutPreview": "TAP version 13\n# Subtest: isolated LP receipt authenticates captured wallet, records actual custody once, never finalizes or pays out\nok 1 - isolated LP receipt authenticates captured wallet, records actual custody once, never finalizes or pays out\n  ---\n  duration_ms: 2087.459503\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 2907.738561\n",
+    "stdoutPreview": "TAP version 13\n# Subtest: isolated LP receipt authenticates captured wallet, records actual custody once, never finalizes or pays out\nok 1 - isolated LP receipt authenticates captured wallet, records actual custody once, never finalizes or pays out\n  ---\n  duration_ms: 1964.478714\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 2751.024468\n",
     "stderrPreview": ""
   },
   "lpAccountSettlementEvidence": {
     "name": "STON.fi LPAccount Deletion/Recreation & Delayed Messages Evidence",
     "exitCode": 0,
-    "durationMs": 15029,
+    "durationMs": 15749,
     "success": true,
-    "stdoutPreview": "deletes LPAccount, and post-custody query and refund cannot prove zero or return\n  ---\n  duration_ms: 6521.309205\n  type: 'test'\n  ...\n# Subtest: authentic getter reply can become stale while a refund and the delayed second leg recreate the same LPAccount\nok 2 - authentic getter reply can become stale while a refund and the delayed second leg recreate the same LPAccount\n  ---\n  duration_ms: 2236.330298\n  type: 'test'\n  ...\n# LPACCOUNT_REFUND_EDGE f98e2b8\n# LPACCOUNT_RETURN_ROUTE f98e2b8 -> 657b54f5 -> 657b54f5 -> f8a7ea5 -> f8a7ea5 -> 1f3835d -> 178d4519 -> d53276db\n# Subtest: minimum-LP rejection recreates LPAccount holding both legs, while refund dispatch precedes returned balances\nok 3 - minimum-LP rejection recreates LPAccount holding both legs, while refund dispatch precedes returned balances\n  ---\n  duration_ms: 2070.270234\n  type: 'test'\n  ...\n# Subtest: failed first token send leaves only pTON in LPAccount and native return is separate from token bounce\nok 4 - failed first token send leaves only pTON in LPAccount and native return is separate from token bounce\n  ---\n  duration_ms: 1825.44528\n  type: 'test'\n  ...\n# Subtest: unlocked withdrawal changes LP holdings while the Migrator preserves its historical receipt\nok 5 - unlocked withdrawal changes LP holdings while the Migrator preserves its historical receipt\n  ---\n  duration_ms: 1867.155614\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 14977.425803\n",
+    "stdoutPreview": "eletes LPAccount, and post-custody query and refund cannot prove zero or return\n  ---\n  duration_ms: 6833.643482\n  type: 'test'\n  ...\n# Subtest: authentic getter reply can become stale while a refund and the delayed second leg recreate the same LPAccount\nok 2 - authentic getter reply can become stale while a refund and the delayed second leg recreate the same LPAccount\n  ---\n  duration_ms: 2408.851221\n  type: 'test'\n  ...\n# LPACCOUNT_REFUND_EDGE f98e2b8\n# LPACCOUNT_RETURN_ROUTE f98e2b8 -> 657b54f5 -> 657b54f5 -> f8a7ea5 -> f8a7ea5 -> 1f3835d -> 178d4519 -> d53276db\n# Subtest: minimum-LP rejection recreates LPAccount holding both legs, while refund dispatch precedes returned balances\nok 3 - minimum-LP rejection recreates LPAccount holding both legs, while refund dispatch precedes returned balances\n  ---\n  duration_ms: 2122.004112\n  type: 'test'\n  ...\n# Subtest: failed first token send leaves only pTON in LPAccount and native return is separate from token bounce\nok 4 - failed first token send leaves only pTON in LPAccount and native return is separate from token bounce\n  ---\n  duration_ms: 1881.963173\n  type: 'test'\n  ...\n# Subtest: unlocked withdrawal changes LP holdings while the Migrator preserves its historical receipt\nok 5 - unlocked withdrawal changes LP holdings while the Migrator preserves its historical receipt\n  ---\n  duration_ms: 1979.894629\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 15696.778389\n",
     "stderrPreview": ""
   },
   "f02AdversarialSuite": {
     "name": "F-02 Authenticated STON.fi Terminal Settlement Candidate Adversarial Suite",
     "exitCode": 0,
-    "durationMs": 24547,
+    "durationMs": 25585,
     "success": true,
-    "stdoutPreview": "9\nok 5 - F-02 Adversarial 3: Receipt with pending claims from authentic Locker is rejected with exit code 409\n  ---\n  duration_ms: 1849.315949\n  type: 'test'\n  ...\n# Subtest: F-02 Adversarial 4: LP receipt referencing mismatched or forged pool from authentic Locker is rejected with exit code 408\nok 6 - F-02 Adversarial 4: LP receipt referencing mismatched or forged pool from authentic Locker is rejected with exit code 408\n  ---\n  duration_ms: 1867.912886\n  type: 'test'\n  ...\n# Subtest: F-02 Adversarial 5: Partial deposit recovery via refund_me dispatches to authentic STON.fi LPAccount\nok 7 - F-02 Adversarial 5: Partial deposit recovery via refund_me dispatches to authentic STON.fi LPAccount\n  ---\n  duration_ms: 1541.097964\n  type: 'test'\n  ...\n# Subtest: F-02 Adversarial 6: Replaying terminal settlement proof on already-graduated Curve from authentic Router fails closed with exit code 407 (ERROR_INVALID_STATE)\nok 8 - F-02 Adversarial 6: Replaying terminal settlement proof on already-graduated Curve from authentic Router fails closed with exit code 407 (ERROR_INVALID_STATE)\n  ---\n  duration_ms: 1897.855014\n  type: 'test'\n  ...\n# Subtest: F-02 Economics: 300 TON reserve, 200M DEX tokens and 800M sold tokens strictly conserved\nok 9 - F-02 Economics: 300 TON reserve, 200M DEX tokens and 800M sold tokens strictly conserved\n  ---\n  duration_ms: 1382.273177\n  type: 'test'\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 24494.229074\n",
+    "stdoutPreview": " 409\nok 5 - F-02 Adversarial 3: Receipt with pending claims from authentic Locker is rejected with exit code 409\n  ---\n  duration_ms: 1961.180494\n  type: 'test'\n  ...\n# Subtest: F-02 Adversarial 4: LP receipt referencing mismatched or forged pool from authentic Locker is rejected with exit code 408\nok 6 - F-02 Adversarial 4: LP receipt referencing mismatched or forged pool from authentic Locker is rejected with exit code 408\n  ---\n  duration_ms: 1909.615219\n  type: 'test'\n  ...\n# Subtest: F-02 Adversarial 5: Partial deposit recovery via refund_me dispatches to authentic STON.fi LPAccount\nok 7 - F-02 Adversarial 5: Partial deposit recovery via refund_me dispatches to authentic STON.fi LPAccount\n  ---\n  duration_ms: 1591.199277\n  type: 'test'\n  ...\n# Subtest: F-02 Adversarial 6: Replaying terminal settlement proof on already-graduated Curve from authentic Router fails closed with exit code 407 (ERROR_INVALID_STATE)\nok 8 - F-02 Adversarial 6: Replaying terminal settlement proof on already-graduated Curve from authentic Router fails closed with exit code 407 (ERROR_INVALID_STATE)\n  ---\n  duration_ms: 1955.050217\n  type: 'test'\n  ...\n# Subtest: F-02 Economics: 300 TON reserve, 200M DEX tokens and 800M sold tokens strictly conserved\nok 9 - F-02 Economics: 300 TON reserve, 200M DEX tokens and 800M sold tokens strictly conserved\n  ---\n  duration_ms: 1387.765\n  type: 'test'\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 25524.912633\n",
     "stderrPreview": ""
   },
   "gate414Status": "SEALED (throw(414) enforced in baseline release candidates)",
