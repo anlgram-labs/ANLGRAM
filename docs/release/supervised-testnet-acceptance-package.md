@@ -47,7 +47,7 @@ graph TD
 |---|---|---|
 | **STON.fi v2.2 Router (Testnet)** | `kQAFpeGFJQA9KqiCxXZ8J4l__vSYAxFSirSOvPHn6SSX4ztn`<br/>(`0:05a5e18525003d2aa882c5767c27897ffef4980311528ab48ebcf1e7e92497e3`) | Known Testnet external protocol constant |
 | **STON.fi pTON v2 (Testnet)** | `kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px`<br/>(`0:024b7d03368510ecd7c0a4fbf387b78199267d2f8ca027e964356b5b6bc4d04f`) | Known Testnet external protocol constant |
-| **STON.fi pTON Wallet for Router** | `kQDYnMBdou92Ot3r0-Pe7HJFRzOLZW9Ot90WTySXeGf5CLLg`<br/>(`0:d89cc05da2fc763addebd3e3deec724547338b656f4eb7dd164f24977867f908`) | Known Testnet external protocol constant |
+| **STON.fi pTON Wallet for Router** | `kQDYnMBdovx2Ot3r0-Pe7HJFRzOLZW9Ot90WTySXeGf5CPSg`<br/>(`0:d89cc05da2fc763addebd3e3deec724547338b656f4eb7dd164f24977867f908`) | Known Testnet external protocol constant |
 | **ANLGRAM Factory** | *Deterministic Formula*:<br/>`contractAddress(0, { code: FACTORY_CODE, data: build_factory_data(admin, treasury, 70, 0, MINTER_CODE, WALLET_CODE) })` | Unresolved until owner provides `factory_admin` and `platform_treasury` addresses |
 | **Child Jetton Minter** | *Deterministic Formula*:<br/>`contractAddress(0, { code: MINTER_CODE, data: build_minter_data(0, creator, metadata, wallet_code, bootstrap_ref) })` | Unresolved until owner provides `creator_address`, `metadata`, and `query_id` in Step 2 |
 | **Curve Jetton Wallet** | *Deterministic Formula*:<br/>`contractAddress(0, { code: WALLET_CODE, data: build_wallet_data(0, curve, child_minter, wallet_code) })` | Fully resolved once Child Minter and Curve addresses are known |
