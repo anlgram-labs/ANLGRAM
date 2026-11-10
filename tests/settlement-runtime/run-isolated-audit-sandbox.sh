@@ -217,41 +217,46 @@ if [ "$USE_SYSTEMD" -eq 1 ]; then
       AUDIT_SCRATCH_DIR="$SCRATCH_ROOT" \
       AUDIT_ISOLATED_SANDBOX=1 \
       AUDIT_GIT_COMMIT="$GIT_COMMIT" \
+      RO_TARGET="$RO_TARGET" \
+      NODE_BIN="$NODE_BIN" \
       NODE_PATH="$RO_TARGET/tests/settlement-runtime/node_modules:$RO_TARGET/minter-contract/node_modules:$RO_TARGET/testnet-interface/node_modules" \
-      bash -c "
-        CGROUP_PATH=\$(cut -d: -f3 < /proc/self/cgroup 2>/dev/null || echo '')
-        CGROUP_DIR=\"/sys/fs/cgroup\${CGROUP_PATH}\"
-        echo \"[PROBE] Target process cgroup path: \$CGROUP_DIR\"
-        if [ ! -d \"\$CGROUP_DIR\" ]; then
-          echo \"[CRITICAL FAIL] Cgroup scope directory \$CGROUP_DIR does not exist!\"
+      bash -c '
+        set -euo pipefail
+        CGROUP_PATH="$(cut -d: -f3 < /proc/self/cgroup)"
+        CGROUP_DIR="/sys/fs/cgroup${CGROUP_PATH}"
+        echo "[PROBE] Target process cgroup path: $CGROUP_DIR"
+        if [ ! -d "$CGROUP_DIR" ]; then
+          echo "[CRITICAL FAIL] Cgroup scope directory $CGROUP_DIR does not exist!"
           exit 1
         fi
-        MEM_MAX=\$(cat \"\$CGROUP_DIR/memory.max\" 2>/dev/null || echo '0')
-        PIDS_MAX=\$(cat \"\$CGROUP_DIR/pids.max\" 2>/dev/null || echo '0')
-        if [ \"\$MEM_MAX\" != \"4294967296\" ]; then
-          echo \"[CRITICAL FAIL] cgroups memory.max verification failed: expected 4294967296, got \$MEM_MAX\"
+        MEM_MAX="$(cat "$CGROUP_DIR/memory.max")"
+        PIDS_MAX="$(cat "$CGROUP_DIR/pids.max")"
+        echo "[PROBE] Effective memory.max: $MEM_MAX"
+        echo "[PROBE] Effective pids.max: $PIDS_MAX"
+        if [ "$MEM_MAX" != "4294967296" ]; then
+          echo "[CRITICAL FAIL] cgroups memory.max verification failed: expected 4294967296, got $MEM_MAX"
           exit 1
         fi
-        if [ \"\$PIDS_MAX\" != \"200\" ]; then
-          echo \"[CRITICAL FAIL] cgroups pids.max verification failed: expected 200, got \$PIDS_MAX\"
+        if [ "$PIDS_MAX" != "200" ]; then
+          echo "[CRITICAL FAIL] cgroups pids.max verification failed: expected 200, got $PIDS_MAX"
           exit 1
         fi
-        if ! grep -qx \"\$\$\" \"\$CGROUP_DIR/cgroup.procs\" 2>/dev/null; then
-          echo \"[CRITICAL FAIL] Process \$\$ is not confirmed inside cgroup.procs!\"
+        if ! grep -qx "$$" "$CGROUP_DIR/cgroup.procs"; then
+          echo "[CRITICAL FAIL] Process $$ is not confirmed inside cgroup.procs!"
           exit 1
         fi
-        if [ -f \"\$CGROUP_DIR/memory.swap.max\" ]; then
-          SWAP_MAX=\$(cat \"\$CGROUP_DIR/memory.swap.max\" 2>/dev/null || echo 'none')
-          echo \"[PROBE] Effective memory.swap.max: \$SWAP_MAX\"
+        if [ -f "$CGROUP_DIR/memory.swap.max" ]; then
+          SWAP_MAX="$(cat "$CGROUP_DIR/memory.swap.max")"
+          echo "[PROBE] Effective memory.swap.max: $SWAP_MAX"
         fi
-        echo \"[PROBE PASSED] OS-level memory limit (4GB physical RAM) and process limit (200 PIDs) strictly verified via cgroups v2.\"
-        echo \"[PROBE PASSED] Audited process tree (PID \$\$) confirmed inside cgroup.\"
+        echo "[PROBE PASSED] OS-level memory limit (4GB physical RAM) and process limit (200 PIDs) strictly verified via cgroups v2."
+        echo "[PROBE PASSED] Audited process tree (PID $$) confirmed inside cgroup."
         ulimit -u 200
         ulimit -f 1048576
         ulimit -t 300
-        cd '$RO_TARGET'
-        timeout 300s '$NODE_BIN' --max-old-space-size=2048 tests/settlement-runtime/f02-independent-reproduction-runner.js
-      "
+        cd "$RO_TARGET"
+        timeout 300s "$NODE_BIN" --max-old-space-size=2048 tests/settlement-runtime/f02-independent-reproduction-runner.js
+      '
 else
   # Direct cgroup placement using sudo tee before running target code
   CGROUP_DIR="/sys/fs/cgroup/audit-sandbox"
@@ -262,20 +267,24 @@ else
     AUDIT_SCRATCH_DIR="$SCRATCH_ROOT" \
     AUDIT_ISOLATED_SANDBOX=1 \
     AUDIT_GIT_COMMIT="$GIT_COMMIT" \
+    RO_TARGET="$RO_TARGET" \
+    NODE_BIN="$NODE_BIN" \
+    CGROUP_DIR="$CGROUP_DIR" \
     NODE_PATH="$RO_TARGET/tests/settlement-runtime/node_modules:$RO_TARGET/minter-contract/node_modules:$RO_TARGET/testnet-interface/node_modules" \
-    bash -c "
-      MEM_MAX=\$(cat '$CGROUP_DIR/memory.max')
-      PIDS_MAX=\$(cat '$CGROUP_DIR/pids.max')
-      if [ \"\$MEM_MAX\" != \"4294967296\" ] || [ \"\$PIDS_MAX\" != \"200\" ]; then
-        echo \"[CRITICAL FAIL] Direct cgroup limit verification failed!\"
+    bash -c '
+      set -euo pipefail
+      MEM_MAX="$(cat "$CGROUP_DIR/memory.max")"
+      PIDS_MAX="$(cat "$CGROUP_DIR/pids.max")"
+      if [ "$MEM_MAX" != "4294967296" ] || [ "$PIDS_MAX" != "200" ]; then
+        echo "[CRITICAL FAIL] Direct cgroup limit verification failed!"
         exit 1
       fi
       ulimit -u 200
       ulimit -f 1048576
       ulimit -t 300
-      cd '$RO_TARGET'
-      timeout 300s '$NODE_BIN' --max-old-space-size=2048 tests/settlement-runtime/f02-independent-reproduction-runner.js
-    " &
+      cd "$RO_TARGET"
+      timeout 300s "$NODE_BIN" --max-old-space-size=2048 tests/settlement-runtime/f02-independent-reproduction-runner.js
+    ' &
   CHILD_PID=$!
   echo "$CHILD_PID" | sudo tee "$CGROUP_DIR/cgroup.procs" >/dev/null
   if ! grep -qx "$CHILD_PID" "$CGROUP_DIR/cgroup.procs" 2>/dev/null; then
