@@ -11,6 +11,7 @@
  */
 
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
@@ -21,13 +22,28 @@ if (!fs.existsSync(SCRATCH_DIR)) {
   fs.mkdirSync(SCRATCH_DIR, { recursive: true });
 }
 
+function getCommitSha() {
+  if (process.env.AUDIT_GIT_COMMIT) return process.env.AUDIT_GIT_COMMIT;
+  try {
+    const res = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT, encoding: 'utf8' });
+    if (res.status === 0 && res.stdout) return res.stdout.trim();
+  } catch {}
+  return 'unknown';
+}
+
 const evidence = {
   timestamp: new Date().toISOString(),
   environment: {
     platform: process.platform,
     arch: process.arch,
     nodeVersion: process.version,
+    osType: os.type(),
+    osRelease: os.release(),
+    uid: typeof process.getuid === 'function' ? process.getuid() : null,
+    username: typeof os.userInfo === 'function' ? os.userInfo().username : 'unknown',
+    isRoot: typeof process.getuid === 'function' ? process.getuid() === 0 : false,
     isolatedSandbox: !!process.env.AUDIT_ISOLATED_SANDBOX,
+    gitCommit: getCommitSha()
   },
   pr63Compilation: null,
   pr63PrototypeTest: null,
@@ -70,7 +86,7 @@ function runStep(name, cmd, args, cwd) {
 const compileRes = runStep(
   'PR #63 Prototype Compilation Check',
   'node',
-  ['minter-contract/compile-f02-receipt-prototype.js', '--check'],
+  ['--max-old-space-size=2048', 'minter-contract/compile-f02-receipt-prototype.js', '--check'],
   REPO_ROOT
 );
 evidence.pr63Compilation = {
@@ -86,7 +102,7 @@ if (!compileRes.success) {
 const protoTestRes = runStep(
   'PR #63 Prototype TVM Sandbox Test',
   'node',
-  ['--test', 'tests/settlement-runtime/f02-receipt-prototype.test.js'],
+  ['--max-old-space-size=2048', '--test', 'tests/settlement-runtime/f02-receipt-prototype.test.js'],
   REPO_ROOT
 );
 evidence.pr63PrototypeTest = protoTestRes;
@@ -99,7 +115,7 @@ if (!protoTestRes.success) {
 const lpAccountRes = runStep(
   'STON.fi LPAccount Deletion/Recreation & Delayed Messages Evidence',
   'node',
-  ['--test', 'tests/settlement-runtime/lpaccount-settlement-evidence.test.js'],
+  ['--max-old-space-size=2048', '--test', 'tests/settlement-runtime/lpaccount-settlement-evidence.test.js'],
   REPO_ROOT
 );
 evidence.lpAccountSettlementEvidence = lpAccountRes;
@@ -112,7 +128,7 @@ if (!lpAccountRes.success) {
 const f02AdversarialRes = runStep(
   'F-02 Authenticated STON.fi Terminal Settlement Candidate Adversarial Suite',
   'node',
-  ['--test', 'tests/settlement-runtime/f02-stonfi-terminal-settlement-adversarial.test.js'],
+  ['--max-old-space-size=2048', '--test', 'tests/settlement-runtime/f02-stonfi-terminal-settlement-adversarial.test.js'],
   REPO_ROOT
 );
 evidence.f02AdversarialSuite = f02AdversarialRes;
@@ -131,4 +147,3 @@ console.log(`[SUCCESS] All 4 independent reproduction steps completed successful
 console.log(`Structured evidence written to: ${evidencePath}`);
 console.log(`Gate 414 status: ${evidence.gate414Status}`);
 console.log(`======================================================\n`);
-
